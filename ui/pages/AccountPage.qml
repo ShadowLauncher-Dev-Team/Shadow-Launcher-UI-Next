@@ -96,19 +96,18 @@ Item {
     }
 
     // ---------- 底色 ----------
-    Rectangle { anchors.fill: parent; color: Theme.bg }
-
-    // 顶部环境光：给深色页面一个「光源」，避免整页一片死黑
-    Rectangle {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        height: 420
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: "#163b82f6" }
-            GradientStop { position: 1.0; color: "#00000000" }
-        }
+    // 用「同一张壁纸 + 深色压暗层」，而不是半透明透出下层：
+    // 直接透下层会把启动页的大标题、按钮一起透出来，两层 UI 叠着更乱。
+    Image {
+        anchors.fill: parent
+        fillMode: Image.PreserveAspectCrop
+        asynchronous: true
+        source: (b && b.customBgPath && b.customBgPath.length > 0)
+                ? ("file:///" + b.customBgPath)
+                : "qrc:/ui/stage-aurora.jpg"
     }
+    // 压暗：0xd9 ≈ 85%，壁纸隐约可见，正文对比度仍然够
+    Rectangle { anchors.fill: parent; color: "#d908090d" }
 
     // ---------- 顶栏 ----------
     Item {
@@ -208,7 +207,7 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                color: "#0a0c11"
+                color: "#c00a0c11"
             }
 
             Rectangle {

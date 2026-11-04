@@ -96,9 +96,10 @@ Item {
         Behavior on opacity {
             NumberAnimation { duration: Theme.durBase; easing.type: root.accountOpen ? Theme.easeEnter : Theme.easeExit }
         }
-        // 账户页从下方浮起（与版本页的横移区分开，减少"每次都一样"的疲劳）
+        // 账户页从下方浮起（与版本页的横移区分开）。
+        // 20px 在 320ms 里几乎看不出方向，实测被当成"没生效"，所以给到 48px。
         transform: Translate {
-            y: root.accountOpen ? 0 : 20
+            y: root.accountOpen ? 0 : 48
             Behavior on y {
                 NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
             }
