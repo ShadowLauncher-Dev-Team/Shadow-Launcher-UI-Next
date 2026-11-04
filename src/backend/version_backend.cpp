@@ -5821,19 +5821,11 @@ void VersionBackend::installOptifine(const QString& mcVersion, const QString& op
         ctx->installer->setModsDir(QString());
     }
 
-    ensureSession(installName);
-    auto* ds = dlSession(installName);
-    if (ds) ds->clearFailure();
-
-    ds->setMerged(true);
-    ds->mcVersion = mcVersion;
-    ds->loaderType = QStringLiteral("optifine");
-    ds->loaderVer = optifineVersion;
+    // 公共准备（C 项：与 Forge 路径共用同一段会话复位逻辑）
+    auto* ds = prepareMergedSession(installName, mcVersion, QStringLiteral("optifine"), optifineVersion);
+    if (!ds) return;
     ds->bmclType = bmclType;
     ds->bmclPatch = bmclPatch;
-
-    for (int i = 0; i < 3; i++) { ds->mcStepDone[i] = 0; ds->mcStepTotal[i] = 0; }
-    ds->mcFileAdded.clear();
 
     {
         const auto plan = ShadowLauncher::LoaderPlan::make(QStringLiteral("optifine"));
