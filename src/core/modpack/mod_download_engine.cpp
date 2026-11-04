@@ -429,7 +429,10 @@ bool ModDownloadEngine::verifyFile(const std::shared_ptr<Item>& it) const
         return h.result().toHex() == it->expectedSha1;
     }
     if (it->fileSize > 0) return fi.size() == it->fileSize;
-    return true;
+    // 既无 SHA1 也无预期大小 → 无法证明文件完整，不得判成功
+    // （DOWNLOAD_CONTRACT §6：大小未知不得直接判定成功；宁可记失败留给「补下」入口，
+    //   也不能把可能损坏/半截的文件当成功落盘——落盘后上层无法再发现）
+    return false;
 }
 
 void ModDownloadEngine::sourceFailed(std::shared_ptr<Item> it, const QString& why)

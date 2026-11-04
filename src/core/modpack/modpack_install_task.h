@@ -63,12 +63,18 @@ public:
     // 供 QML 展示的模组列表（status 随下载实时更新）
     QVariantList modItems() const;
 
+    /// 部分下载失败时暴露的失败文件清单（文件名），供后续「补下失败项」入口使用。
+    /// 只有任务以「部分失败」收尾时非空；已完成文件一律保留，不回滚。
+    QStringList failedModFiles() const { return m_failedModFiles; }
+
 signals:
     void stepChanged(const QString& stepName);
     void progressChanged(qreal total, const QString& text, const QString& file);
     void fileProgressChanged(const QString& fileName, qreal fileProgress);
     void logLine(const QString& msg);
     void modItemsChanged();
+    /// 部分文件下载失败（任务终态 failed，但已完成文件保留）：携带失败清单。
+    void modDownloadPartialFailed(const QStringList& failedFiles);
     void finished(bool success, const QString& versionName, const QString& error);
 
 private:
@@ -90,6 +96,7 @@ private:
     void completeImport();    // 刷新版本列表 + 成功信号
     void downloadPackIconToVersionDir();  // 主线程异步：拉取图标→解码(webp/PNG)→存 {版本目录}/modpack_icon.png
     void fail(const QString& error);      // 统一失败出口（含回滚）
+    void failPartial(const QString& error); // 部分下载失败出口：任务 failed，但保留已完成文件（不回滚）
     void finishCancelled();               // 取消出口（含回滚）
     void rollback();                      // 删除自建文件/恢复备份/清理版本目录
 
@@ -138,7 +145,9 @@ private:
     bool m_modsDone = false;     // 模组路完成
     bool m_mcDone = false;       // MC 路完成
     bool m_pendingFailSet = false;
+    bool m_pendingFailKeepFiles = false;  // 待失败出口是否保留已完成文件（部分下载失败）
     QString m_pendingFail;       // 失败等待另一路停止后统一出口
+    QStringList m_failedModFiles; // 部分失败的文件清单（供「补下」入口）
 
     // ── 加载器失败重试（MC+模组已就绪，只重跑加载器）──
     bool loaderFailureRetryable() const;  // 当前失败是否为「加载器终态失败（可重试）」

@@ -132,7 +132,9 @@ void ModpackInstallTask::start(const QString& zipPath, const QString& versionNam
     m_modsDone = false;
     m_mcDone = false;
     m_pendingFailSet = false;
+    m_pendingFailKeepFiles = false;
     m_pendingFail.clear();
+    m_failedModFiles.clear();
     // 加载器重试状态复位
     m_loaderAutoRetryCount = 0;
     m_loaderRetryMode = false;
@@ -513,25 +515,31 @@ void ModpackInstallTask::onDownloadAllFinished(bool cancelled)
         return;
     }
 
-    setCardStep(2, QStringLiteral("completed"), 100);
     refreshCardMods();
 
-    // 统计失败
+    // 统计失败 + 收集失败清单（供「补下失败项」入口）
     int failed = 0;
+    int doneCount = 0;
     QString firstError;
+    QStringList failedFiles;
     for (const ModpackRemoteFile& rf : m_meta.files) {
-        if (rf.status == QLatin1String("fail")) {
+        if (rf.status == QLatin1String("done")) ++doneCount;
+        else if (rf.status == QLatin1String("fail")) {
             ++failed;
             if (firstError.isEmpty()) firstError = rf.error;
+            const QString name = !rf.fileName.isEmpty() ? rf.fileName : rf.relPath;
+            if (!name.isEmpty()) failedFiles.append(name);
         }
     }
+    m_failedModFiles = failedFiles;
     const int total = m_meta.files.size();
 
     if (failed == total && total > 0) {
-        // 全部失败：视为导入失败（如 CF 密钥 401/403、网络完全不可用）
+        // 全部失败：视为导入失败（如 CF 密钥 401/403、网络完全不可用）→ 整体回滚
         if (m_installingMc) {
             // MC 路还在跑：登记待失败，等其停止后统一出口（避免与安装线程竞态）
             m_pendingFailSet = true;
+            m_pendingFailKeepFiles = false;
             m_pendingFail = tr("全部 %1 个文件下载失败，首个错误: %2").arg(total).arg(firstError);
             emit logLine(tr("⚠ %1").arg(m_pendingFail));
             return;
@@ -540,10 +548,20 @@ void ModpackInstallTask::onDownloadAllFinished(bool cancelled)
         return;
     }
     if (failed > 0) {
-        emit logLine(tr("⚠ %1/%2 个文件下载失败（已跳过），整合包可能不完整: %3")
-            .arg(failed).arg(total).arg(firstError));
+        // ── 部分失败：任务终态必须是 failed，不能标「完成」──
+        // 旧实现只打 warning 并把步骤 2 标 completed 100% → 用户看到"导入完成"但缺文件。
+        // 现在：步骤 2 标 failed、finished(false)、已完成文件一律保留（不回滚），
+        // 失败清单经 failedModFiles()/modDownloadPartialFailed() 暴露给「补下」入口。
+        const QString err = tr("%1/%2 个文件下载失败（已保留 %3 个已完成文件），首个错误: %4")
+            .arg(failed).arg(total).arg(doneCount).arg(firstError);
+        emit logLine(tr("❌ %1").arg(err));
+        if (!failedFiles.isEmpty())
+            emit modDownloadPartialFailed(failedFiles);
+        failPartial(err);
+        return;
     }
 
+    setCardStep(2, QStringLiteral("completed"), 100);
     tryFinalize();
 }
 
@@ -640,8 +658,15 @@ void ModpackInstallTask::onMcInstallFinished(bool ok)
         return;
     }
     if (m_pendingFailSet) {
-        // 模组路已判失败且等待本路停止：统一失败出口
-        fail(m_pendingFail);
+        // 模组路已判失败且等待本路停止：统一失败出口。
+        // 部分下载失败（KeepFiles）→ 保留已完成文件，不回滚；
+        // 全部失败 → 保持原语义整体回滚。
+        const QString err = m_pendingFail;
+        const bool keepFiles = m_pendingFailKeepFiles;
+        m_pendingFailSet = false;
+        m_pendingFailKeepFiles = false;
+        if (keepFiles) failPartial(err);
+        else fail(err);
         return;
     }
     if (!ok) {
@@ -1026,6 +1051,7 @@ void ModpackInstallTask::fail(const QString& error)
         m_downloader->cancel();
     if (m_installingMc && m_vb) {
         m_pendingFailSet = true;
+        m_pendingFailKeepFiles = false;   // 整体失败：等另一路停止后回滚
         m_pendingFail = error;
         emit logLine(tr("⚠ %1（等待版本安装停止后回滚）").arg(error));
         // ⚠ 同 cancel()：用会话 id（merged=targetName / vanilla=mcVersion）
@@ -1049,6 +1075,43 @@ void ModpackInstallTask::fail(const QString& error)
     emit progressChanged(m_progress, error, {});
     emit stepChanged(tr("失败"));
     rollback();
+    emit finished(false, {}, error);
+}
+
+// ── 部分下载失败：任务 failed，但保留已完成文件（不回滚）──
+void ModpackInstallTask::failPartial(const QString& error)
+{
+    if (m_phase == Phase::Error || m_phase == Phase::Cancelled || m_phase == Phase::Done) return;
+
+    // 步骤 2（模组批量下载）立即标失败——部分失败绝不能显示 completed 100%
+    if (m_cardSteps.size() > 2) {
+        setCardStep(2, QStringLiteral("failed"),
+                    m_cardSteps[2].toMap().value(QStringLiteral("percentage")).toInt());
+    }
+
+    // MC/加载器安装还在跑：等它自然停止后统一出口（不取消、不回滚，成果全保留）
+    if (m_installingMc && m_vb) {
+        m_pendingFailSet = true;
+        m_pendingFailKeepFiles = true;
+        m_pendingFail = error;
+        emit logLine(tr("⚠ %1（等待版本安装结束后置为失败，已完成文件保留）").arg(error));
+        return;
+    }
+
+    int doneCount = 0;
+    for (const ModpackRemoteFile& rf : m_meta.files) {
+        if (rf.status == QLatin1String("done")) ++doneCount;
+    }
+
+    m_phase = Phase::Error;
+    m_busy = false;
+    m_statusText = error;
+    finishCard(false, error);
+    emit logLine(tr("❌ 导入失败: %1").arg(error));
+    emit logLine(tr("→ 已保留 %1 个已下载文件，失败清单可用「补下失败项」重试").arg(doneCount));
+    emit progressChanged(m_progress, error, {});
+    emit stepChanged(tr("失败"));
+    // 终态 failed；versionName 仍为空（版本未注册），失败清单通过成员/信号暴露
     emit finished(false, {}, error);
 }
 

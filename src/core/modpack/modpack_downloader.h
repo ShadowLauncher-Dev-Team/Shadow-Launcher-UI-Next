@@ -39,6 +39,8 @@
 
 #include "modpack_common.h"
 
+class QTimer;
+
 namespace ShadowDownloader { class ModDownloadEngine; }
 
 namespace ShadowLauncher {
@@ -48,6 +50,9 @@ class HttpClient;
 class ModpackDownloader : public QObject {
     static constexpr int kConcurrentStartup = 3;  // 每轮批量启动上限
     static constexpr int kCleanupDelayMs = 2000; // 取消后延迟清理（等 abort/worker 退出）
+    static constexpr int kBatchRetryLimit = 2;    // 批次 API 失败重试次数（退避 1s/3s）
+    static constexpr int kStallTimeoutMs = 60000; // 下载阶段无字节进展判失败阈值
+    static constexpr int kStallCheckIntervalMs = 5000;
     Q_OBJECT
 public:
     explicit ModpackDownloader(QObject* parent = nullptr);
@@ -99,10 +104,17 @@ private:
     void onResolveBatchDone(int startIndex, int status, const QByteArray& body);
     void processResolvedBatch(int startIndex, const QMap<int, QJsonObject>& byId,
                               const QSet<int>& officialOnly = {});
-    void onResolveBatchFailed(int startIndex, const QString& err);
+    // deterministic=true：确定性错误（401/403/4xx 等），重试无意义 → 直接整体失败；
+    // false：网络/限流类瞬时错误 → 批次级重试 kBatchRetryLimit 次后退避 1s/3s。
+    void onResolveBatchFailed(int startIndex, const QString& err, bool deterministic = false);
+    // 是否已进入「不再推进」状态（用户取消 或 内部判失败）——所有异步回调统一用它早退。
+    bool stopped() const { return m_cancelled || m_internalFailed; }
     void finishDownloadUrlResolve(int idx, bool ok, int status);
     void resolveDownloadUrls();                        // downloadUrl 缺失的条目逐个补解析
     void startDownloadUrlResolve(int idx);
+    void failRemaining(const QString& err);            // 整体失败：把所有未完成条目标失败
+    void releaseEngineDeferred();                      // 延迟释放引擎（abort 异步窗口，避免阻塞 UI）
+    void checkStall();                                 // 下载阶段 60s 无字节进展 → 判失败
 
     // ── 引擎适配层（ShadowDownloader::ModDownloadEngine）──
     void startEngineDownloads();   // 地址就绪 → 构造引擎 + addFile 编排 + 启动
@@ -127,9 +139,17 @@ private:
     int m_skippedCount = 0;    // 可选跳过 + 取消未开始 计数（并入 queueProgress completed）
 
     bool m_running = false;
-    bool m_cancelled = false;
+    quint64 m_generation = 0;         // 任务代际（start 递增）：延迟定时器/旧回调据此失效
+    bool m_cancelled = false;         // 仅表示「用户取消 / 主动中止」
+    bool m_internalFailed = false;    // 内部判失败（批次重试耗尽、60s 停滞）：与用户取消语义分开
     QList<int> m_downloadUrlPending;   // 待补解析 download-url 的条目（镜像优先）
+    QSet<int> m_downloadUrlInflight;   // 正在补解析的条目（取代旧实现拿 finished 当占用标记）
     QSet<int> m_officialOnlyFileIds;   // 官方补查救回的 fileId（镜像未同步：跳过镜像分片/镜像接口）
+    int m_batchRetryStartIndex = -1;   // 批次重试计数绑定的批次起点
+    int m_batchRetryCount = 0;         // 当前批次已重试次数
+    QTimer* m_stallTimer = nullptr;    // 下载阶段停滞看门狗（5s 一扫，60s 无字节判失败）
+    qint64 m_lastWatchdogBytes = -1;   // 上一次采样到的引擎累计字节
+    qint64 m_lastWatchdogMs = 0;       // 最近一次字节增长时刻
     std::function<void(const QString&)> m_overwriteHook;   // 覆盖旧文件前的回调
     std::function<void(const QString&)> m_createdHook;     // 新建文件落盘后的回调（回滚登记）
     QList<QPointer<QNetworkReply>> m_inflight;   // CF API 在途请求（取消时 abort）
