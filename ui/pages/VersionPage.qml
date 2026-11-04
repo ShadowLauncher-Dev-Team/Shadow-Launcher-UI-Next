@@ -67,12 +67,51 @@ Item {
     // 看到的就是新内容先亮一下再闪一下（用户形容为"向上抽搐"）。
     // 所以拆成 shownId：先淡出 → 在透明时换 shownId → 再淡入，全程不闪。
     property string shownId: ""
-    readonly property var shownSel: {
+    readonly property var shownSelLive: {
         rev
         var list = rows
         for (var i = 0; i < list.length; i++)
             if (list[i] && list[i].id === page.shownId) return list[i]
         return list.length > 0 ? list[0] : null
+    }
+    // 后端刷新详情时 rows 会整段重算，过程中可能出现一瞬 shownSelLive 为空；
+    // 记住最后一次有效选中，避免右侧"最后一帧闪一下空白"。
+    property var shownSnapshot: null
+    readonly property var shownSel: shownSelLive || shownSnapshot
+    onShownSelLiveChanged: if (shownSelLive) page.shownSnapshot = shownSelLive
+
+    // 右侧信息行：模型用"固定键数组"，行只建一次；
+    // 数值变化走绑定（infoValue），不重建 delegate —— 之前每次刷新都会整列重建才闪。
+    readonly property var infoKeys: ["version", "mc", "loader", "type", "mods", "size", "last", "dir"]
+    function infoLabel(key) {
+        if (key === "version") return "版本名"
+        if (key === "mc") return "MC 版本"
+        if (key === "loader") return "加载器"
+        if (key === "type") return "版本类型"
+        if (key === "mods") return "模组"
+        if (key === "size") return "大小"
+        if (key === "last") return "上次游玩"
+        if (key === "dir") return "游戏目录"
+        return key
+    }
+    function infoValue(key) {
+        var s = page.shownSel
+        if (!s) return ""
+        if (key === "version") return s.id || ""
+        if (key === "mc") {
+            var mc = page.mcOf(s)
+            return mc.length > 0 ? mc : "未识别"
+        }
+        if (key === "loader") return page.loaderOf(s)
+        if (key === "type") return page.typeText(s) + (s.isModpack ? " · 整合包" : "")
+        if (key === "mods") return Number(s.modCount) > 0 ? (s.modCount + " 个") : "无模组"
+        if (key === "size") return page.sizeText(s.sizeBytes)
+        if (key === "last") {
+            var lp = page.lastPlayedOf(s)
+            return lp.length > 0 ? lp : "没有记录"
+        }
+        if (key === "dir") return page.b ? page.b.getVersionGameDir(s.id) : ""
+        return ""
     }
 
     // 切文件夹后后端会重扫版本列表，原来选中的 id 可能不存在了 ——
@@ -685,21 +724,8 @@ Item {
                 transform: Translate { id: infoShift; y: 0 }
 
                 Repeater {
-                    model: {
-                        var s = page.shownSel
-                        if (!s) return []
-                        var lp = page.lastPlayedOf(s)
-                        return [
-                            { k: "版本名", v: s.id || "" },
-                            { k: "MC 版本", v: page.mcOf(s).length > 0 ? page.mcOf(s) : "未识别" },
-                            { k: "加载器", v: page.loaderOf(s) },
-                            { k: "版本类型", v: page.typeText(s) + (s.isModpack ? " · 整合包" : "") },
-                            { k: "模组", v: (Number(s.modCount) > 0 ? s.modCount + " 个" : "无模组") },
-                            { k: "大小", v: page.sizeText(s.sizeBytes) },
-                            { k: "上次游玩", v: lp.length > 0 ? lp : "没有记录" },
-                            { k: "游戏目录", v: page.b ? page.b.getVersionGameDir(s.id) : "" }
-                        ]
-                    }
+                    // 固定 8 行、固定顺序：行不会被销毁重建，详情刷新只改文字
+                    model: page.infoKeys
                     delegate: Item {
                         width: infoCol.width
                         height: page.infoRowH
@@ -712,7 +738,7 @@ Item {
                         Text {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
-                            text: modelData.k
+                            text: page.infoLabel(modelData)
                             color: "#6d7684"
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
@@ -722,7 +748,7 @@ Item {
                             anchors.leftMargin: 104
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            text: modelData.v
+                            text: page.infoValue(modelData)
                             color: "#d8dde5"
                             font.family: Theme.fontFamily
                             font.pixelSize: 13
