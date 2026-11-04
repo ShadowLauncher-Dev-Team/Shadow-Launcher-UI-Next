@@ -224,6 +224,7 @@ void LaunchBackend::cancelLaunch()
     }
 
     m_launching = false;
+    m_launchFinishedOk = false;  // 与 launching 一起落，否则浮层卡在'完成态'不消失
     m_launchProgress = 0;
     m_launchStatus.clear();
     emit launchProgressChanged(0, QString());
@@ -244,6 +245,7 @@ void LaunchBackend::killGameProcess()
     m_runningLaunchers.clear();
 
     m_launching = false;
+    m_launchFinishedOk = false;  // 与 launching 一起落，否则浮层卡在'完成态'不消失
     m_launchProgress = 0;
     m_launchStatus.clear();
     emit launchProgressChanged(0, QString());
@@ -279,6 +281,7 @@ void LaunchBackend::detachAllGames()
     m_runningLaunchers.clear();
     m_activeLauncher = nullptr;
     m_launching = false;
+    m_launchFinishedOk = false;  // 与 launching 一起落，否则浮层卡在'完成态'不消失
     // 持久化 detach 的进程，供下次启动 adoptDetachedGames 接管
     if (!m_gameDir.isEmpty()) {
         writeDetachedGamesJson(detachedGamesFilePath(m_gameDir), persisted);
@@ -871,6 +874,7 @@ void LaunchBackend::abortCheck(const QString& phase, const QString& reason)
     qCDebug(logLaunch) << "[PROGRESS] ABORT: " << phase << "—" << reason;
     failPipelineStep(reason);
     m_launching = false;
+    m_launchFinishedOk = false;  // 与 launching 一起落，否则浮层卡在'完成态'不消失
     m_activeLauncher = nullptr;
     if (m_checkTimer) {
         m_checkTimer->stop();
@@ -1523,6 +1527,7 @@ void LaunchBackend::handleLaunchStarted(Launcher* launcher)
                 qCDebug(logLaunch) << "[PROCESS] Death check skipped (already removed by kill)";
             }
             m_launching = false;
+            m_launchFinishedOk = false;  // 与 launching 一起落，否则浮层卡在'完成态'不消失
             emit launchStateChanged();
             return;
         }
@@ -1537,6 +1542,7 @@ void LaunchBackend::handleLaunchStarted(Launcher* launcher)
         // Delay m_launching=false until after overlay animation
         QTimer::singleShot(2200, this, [this]() {
             m_launching = false;
+            m_launchFinishedOk = false;  // 与 launching 一起落，否则浮层卡在'完成态'不消失
             qCDebug(logLaunch) << "[STATE] m_launching = false (after overlay animation)";
             emit launchStateChanged();
         });
@@ -1625,6 +1631,7 @@ void LaunchBackend::handleLaunchFinished(Launcher* launcher, bool success, const
         QTimer::singleShot(120, this, &LaunchBackend::runCrashAnalysis);
     }
     m_launching = false;
+    m_launchFinishedOk = false;  // 与 launching 一起落，否则浮层卡在'完成态'不消失
 }
 
 // ============================================================
