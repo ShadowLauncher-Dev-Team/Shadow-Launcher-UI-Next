@@ -1,4 +1,4 @@
-param([string]$Exe, [string]$Out, [int]$W = 0, [int]$H = 0, [int]$WaitMs = 6000, [string]$Extra = "")
+param([string]$Exe, [string]$Out, [int]$W = 0, [int]$H = 0, [int]$WaitMs = 6000, [string]$Extra = "", [int]$HoverX = -1, [int]$HoverY = -1)
 Add-Type -AssemblyName System.Drawing
 Add-Type @"
 using System;using System.Runtime.InteropServices;using System.Text;
@@ -7,6 +7,7 @@ public class W {
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int cx, int cy, uint f);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint flags);
   [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
@@ -41,6 +42,13 @@ if ($W -gt 0) {
 }
 [W]::SetForegroundWindow($h) | Out-Null
 Start-Sleep -Milliseconds $WaitMs
+if ($HoverX -ge 0 -and $HoverY -ge 0) {
+    $rp = New-Object W+RECT
+    [W]::GetWindowRect($h, [ref]$rp) | Out-Null
+    [W]::SetCursorPos($rp.L + $HoverX, $rp.T + $HoverY) | Out-Null
+    Start-Sleep -Milliseconds 700
+    "hover at +$HoverX,+$HoverY"
+}
 
 $r = New-Object W+RECT
 [W]::GetWindowRect($h, [ref]$r) | Out-Null

@@ -11,9 +11,24 @@ Item {
     readonly property bool narrow: width < 900
     readonly property string ver: (b && b.selectedVersion) ? b.selectedVersion : ""
     readonly property string userName: b ? (b.isOnline ? (b.username || "") : (b.offlineUsername || "")) : ""
-    readonly property bool launching: b ? b.launching : false
-    readonly property bool running: b ? b.isRunning : false
-    readonly property string statusText: b ? (b.launchStatus || "") : ""
+    // 演示态：只在带 --ui-demo-launch 时启用，用于截图/试交互，绝不真启动游戏
+    readonly property bool demoMode: Qt.application.arguments.indexOf("--ui-demo-launch") >= 0
+    property bool demoBusy: true
+    property int demoStage: 0
+    readonly property var demoStages: ["正在校验游戏文件", "正在准备运行环境", "正在加载模组与配置"]
+
+    readonly property bool launching: demoMode ? demoBusy : (b ? b.launching : false)
+    readonly property bool running: demoMode ? false : (b ? b.isRunning : false)
+    readonly property string statusText: demoMode
+        ? (demoBusy ? demoStages[demoStage] : "")
+        : (b ? (b.launchStatus || "") : "")
+
+    Timer {
+        interval: 2400
+        repeat: true
+        running: page.demoMode && page.demoBusy
+        onTriggered: page.demoStage = (page.demoStage + 1) % page.demoStages.length
+    }
 
     readonly property int padL: narrow ? 28 : Theme.padL
     readonly property int padR: narrow ? 24 : 64
@@ -141,6 +156,7 @@ Item {
             text: page.launching ? "取消启动" : (page.running ? "游戏中" : "启动游戏")
             iconName: page.launching ? "x" : "play"
             onClicked: {
+                if (page.demoMode) { page.demoBusy = !page.demoBusy; return }
                 if (!page.b) return
                 if (page.launching) { page.b.cancelLaunch(); return }
                 if (page.running) return
