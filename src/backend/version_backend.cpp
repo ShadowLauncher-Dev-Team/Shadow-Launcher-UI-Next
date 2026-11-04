@@ -269,10 +269,11 @@ VersionBackend::VersionBackend(QObject* parent)
 
                 // 没坏文件，直接成功
 
-                qCInfo(logVersion) << QStringLiteral("自动修复无需修复 版本=%1").arg(m_autoRepairVersionId);
-
-                m_autoRepairVersionId.clear();
+                // 先取值再清：以前先 clear 后读，ver 恒为空串，
+                // driveMergedAfterRepair("") 匹配不到任何 ctx → merged 安装停在半装态（挂死）。
                 QString ver = m_autoRepairVersionId;
+                m_autoRepairVersionId.clear();
+                qCInfo(logVersion) << QStringLiteral("自动修复无需修复 版本=%1").arg(ver);
 
                 driveMergedAfterRepair(ver);   // merged：驱动继续（loader 流程）
                 emit installFinished(true);
@@ -289,10 +290,9 @@ VersionBackend::VersionBackend(QObject* parent)
 
             } else {
 
-                qCInfo(logVersion) << QStringLiteral("自动修复verify失败但缓存为空 版本=%1").arg(m_autoRepairVersionId);
-
-                m_autoRepairVersionId.clear();
                 QString ver = m_autoRepairVersionId;
+                m_autoRepairVersionId.clear();
+                qCInfo(logVersion) << QStringLiteral("自动修复verify失败但缓存为空 版本=%1").arg(ver);
 
                 for (auto it = m_mergedContexts.begin(); it != m_mergedContexts.end(); ++it) {
                     auto* ctx = it.value();
@@ -3810,7 +3810,10 @@ void VersionBackend::verifyVersion(const QString& versionId)
 
     if (m_verifyThread && m_verifyThread->isRunning()) {
 
-        emit logMessage(tr("校验已在运行中"));
+        // 不能静默 return：调用方在等 verifyFinished，会永久挂住。
+        // 记下这次请求，等当前校验结束后自动补跑（见校验完成处的排空逻辑）。
+        m_pendingVerifyId = versionId;
+        emit logMessage(tr("校验已在运行，本次校验排队，完成后自动继续"));
 
         return;
 
@@ -4286,6 +4289,14 @@ void VersionBackend::verifyVersion(const QString& versionId)
 
                     m_verifyThread = nullptr;
 
+                }
+
+                // 排空待校验请求（并发守卫期间进来的那个）：不排空就永久挂着
+                if (!m_pendingVerifyId.isEmpty()) {
+                    const QString pending = m_pendingVerifyId;
+                    m_pendingVerifyId.clear();
+                    qCInfo(logVersion) << QStringLiteral("补跑排队的校验 版本=%1").arg(pending);
+                    QTimer::singleShot(0, this, [this, pending]() { verifyVersion(pending); });
                 }
 
             }, Qt::QueuedConnection);
@@ -5524,7 +5535,16 @@ if (!loaderDlUrl.isEmpty()) {
                 if (ctx->mcDownloadDone) finalizeMergedFailure(installName, ctx->errorMessage);
                 return;
             }
-            if (!m_downloadSessions.contains(installName)) return;
+            if (!m_downloadSessions.contains(installName)) {
+                // 会话已被取消/销毁：以前静默 return，MC 完成分支会永远等 loader 回调（挂死）。
+                qWarning() << "[Coordinator] Loader 回调时会话已失效:" << installName;
+                updateStep(installName, loaderDlStepIdx, QStringLiteral("failed"), 0, 0, 0);
+                ctx->failed = true;
+                ctx->errorMessage = tr("安装会话已失效（可能已取消）");
+                ctx->mcDownloadDone = true;
+                finishInstall(installName);
+                return;
+            }
 
             ensureSession(installName);
             auto* ds = dlSession(installName);

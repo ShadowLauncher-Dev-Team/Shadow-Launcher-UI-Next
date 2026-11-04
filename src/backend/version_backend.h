@@ -484,6 +484,8 @@ private:
     class VerifyWorker;
     QThread* m_verifyThread = nullptr;
     VerifyWorker* m_verifyWorker = nullptr;
+    /// 并发校验守卫的排队位：调用方在等 verifyFinished，静默 return 会永久挂住
+    QString m_pendingVerifyId;
     QStringList m_failedPathsCache;
     QString m_autoRepairVersionId;  // 安装失败后自动修复的版本ID
     bool m_autoRepairVerifyDone = false; // 自动修复的verify阶段已完成的标记

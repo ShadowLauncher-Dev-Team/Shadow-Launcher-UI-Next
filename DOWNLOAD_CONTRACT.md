@@ -133,11 +133,11 @@ DownloadTask（任务：步骤模型 + 进度 + 状态机 + 取消）
 
 调研（安装管线）逐行确认，这三个是"进度中途卡死"的直接原因：
 
-| # | 现象 | 位置 | 改法 |
-|---|---|---|---|
-| H1 | 自动修复成功后合并安装不续跑（停在半装态） | `version_backend.cpp:274-275`（同型 294-295） | 先取值再 `clear()`：`QString ver = m_autoRepairVersionId; m_autoRepairVersionId.clear();` |
-| H2 | 校验步骤永远等不到 `verifyFinished` | `version_backend.cpp:3811-3817`（并发守卫直接 return） | 守卫命中时也要 `emit verifyFinished(ver, false/true)` |
-| H3 | 加载器侧静默退出，MC 完成分支两边都不进 → 永挂 | `version_backend.cpp:5527` + `2159-2171` | 未找到 session 时置 `ctx->failed` 并走失败收尾 |
+| # | 现象 | 位置 | 改法 | 状态 |
+|---|---|---|---|---|
+| H1 | 自动修复成功后合并安装不续跑（停在半装态） | `version_backend.cpp:274-275`（同型 294-295） | 先取值再 `clear()`：`QString ver = m_autoRepairVersionId; m_autoRepairVersionId.clear();` | ✅ 已修 |
+| H2 | 校验步骤永远等不到 `verifyFinished` | `version_backend.cpp:3811-3817`（并发守卫直接 return） | 改成**排队**：记 `m_pendingVerifyId`，当前校验清理后自动补跑（不能发 false——verifyFinished 不带版本号，会让别人的链路误判失败） | ✅ 已修 |
+| H3 | 加载器侧静默退出，MC 完成分支两边都不进 → 永挂 | `version_backend.cpp:5527` + `2159-2171` | 未找到 session 时置 `ctx->failed`、`mcDownloadDone` 并走 `finishInstall` 失败收尾 | ✅ 已修 |
 
 另有两条"次致命"：
 - `mod_loader_installer.cpp:1880-1897,1986` `finishLibs` 非幂等，取消后同一轮可重复发 `installerLibsDone/Failed`。
@@ -163,6 +163,35 @@ DownloadTask（任务：步骤模型 + 进度 + 状态机 + 取消）
 | S5 | UI 下载页 / 整合包导入页（接稳定契约） | `ui/` 新增 |
 
 ---
+
+## 11. 下载设置：每项必须有消费点（2026-11-05 接线审查）
+
+旧 UI「下载设置」共 4 项。逐项追到消费点后，**只有 1 项完全生效**：
+
+| 设置 | 存储键 | 声称的消费点 | 实际状态 |
+|---|---|---|---|
+| 文件下载源 `fileDownloadSource` | `download/fileSource` | VersionDownloader 选源（`version_downloader.cpp:280/490`） | ✅ 版本安装生效；❌ 模组/整合包（精卫）不读——`ModDownloadEngine::setSourcePolicy` **从未被调用** |
+| 列表下载源 `listDownloadSource` | `download/listSource` | 只写进 `DownloadConfig::listSource`（`version_backend.cpp:885`） | ❌ **完全悬空**：全仓库没有任何读取点 |
+| 下载线程数 `maxDownloadThreads` | `download/threadLimit` | `cfg.maxWorkers` → FileDownloader / AssetDownloader（`:887`） | ✅ 生效，但默认 64 过高；精卫固定 12 不读设置 |
+| 限速 `downloadSpeedLimitMB` | `download/speedLimitMB` | AssetDownloader 有闸门（`asset_downloader.cpp:758`） | ⚠️ 半悬空：FileDownloader 只 `setSpeedLimitMB` 存值、**从不读取**（`file_downloader.h:107`），大文件下载不受限 |
+
+### 强制规则（施工时逐条验收，违反就是返工）
+
+1. **一个设置 = 一个消费点**，并在代码注释里写明"生效时机"（立即 / 下次任务）。
+2. **没接线就删掉**，不做"看起来能调"的滑杆。宁可少一项，不可假一项。
+3. 每个设置必须有**可观测验收**：
+   - 限速 → 假服务器固定码率，实测吞吐落在设定值 ±20%；
+   - 线程数 → 抓同时在途请求数峰值；
+   - 源策略 → 抓请求 host 分布（官方/镜像比例）。
+4. 设置写入要能落到运行时：现在 `DownloadConfig` 只在下载器创建时读一次，**运行中改设置不生效** → UI 必须明确写"下次下载生效"，或实现热更新（S1 决定）。
+
+### S1/S2 必须接的线
+
+- 限速真正作用于 FileDownloader（令牌桶或按窗口 sleep，别只存变量）；
+- `setSourcePolicy` 接到精卫（模组 / 整合包）；
+- `listSource`：要么接给列表类请求（Modrinth/CF 列表与图标），要么从设置页**删掉**；
+- 线程数上限与契约并发上限对齐（默认 16，允许调到 24），并让精卫也读；
+- 每项设置补一条自检（见第 8 节验收用例，扩展为 6/7/8 条）。
 
 ## 10. 待确认
 
