@@ -99,6 +99,9 @@ tools/_mcmod_map_resume.jsonl
 !ui/assets/
 !ui/assets/**
 
+# 下载实测临时目录（20MB 测试文件，绝不入库）
+.probe/
+
 # 本地截图（不入库）
 shot-*.png
 shot-*.png

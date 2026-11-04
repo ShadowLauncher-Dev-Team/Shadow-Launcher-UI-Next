@@ -5,6 +5,7 @@
 #include "../core/http_client.h"
 #include "../core/step_keys.h"
 #include "../core/source_policy.h"
+#include "../core/file_downloader.h"
 #include "../core/step_pipeline.h"
 #include "../core/step_node.h"
 #include "../core/resource_fetch_engine.h"
@@ -2920,6 +2921,89 @@ void ShadowBackend::demoLaunchRepairs() {
 }
 
 /// 只用于核对 B1 失败面板：造一份崩溃诊断 + 让管线停在失败态。
+QString ShadowBackend::downloadProbe(const QString& url, int limitKBps, int timeoutMs)
+{
+    ShadowDownloader::FileDownloader fd;
+    fd.setMaxThreads(4);
+    if (limitKBps > 0) fd.setSpeedLimitMB(limitKBps / 1024.0);
+
+    const QString path = QDir::tempPath() + QStringLiteral("/shadow_probe.bin");
+    QFile::remove(path);
+    fd.addFile(path, QStringLiteral("probe.bin"), {url}, -1, QByteArray(),
+               /*jarStrip*/ false, /*skipCacheCheck*/ true);
+
+    QElapsedTimer t;
+    t.start();
+    qint64 lastRecv = 0;
+    QEventLoop loop;
+    bool finished = false;
+    QObject::connect(&fd, &ShadowDownloader::FileDownloader::fileProgress,
+                     [&lastRecv](const QString&, const QString&, qint64 r, qint64, const QString&) {
+                         lastRecv = r;
+                     });
+    QObject::connect(&fd, &ShadowDownloader::FileDownloader::allFinished, [&]() { finished = true; loop.quit(); });
+    QTimer::singleShot(timeoutMs > 0 ? timeoutMs : 20000, &loop, &QEventLoop::quit);
+
+    fd.start();
+    loop.exec();
+    fd.cancel();
+
+    const qint64 ms = qMax<qint64>(1, t.elapsed());
+    const qint64 size = QFileInfo::exists(path) ? QFileInfo(path).size() : 0;
+    QFile::remove(path);
+    const double avgMBps = (size / 1048576.0) / (ms / 1000.0);
+    return QStringLiteral("finished=%1 bytes=%2 file=%3 ms=%4 avgMBps=%5 limitKBps=%6")
+        .arg(finished ? QStringLiteral("yes") : QStringLiteral("no"))
+        .arg(lastRecv).arg(size).arg(ms)
+        .arg(avgMBps, 0, 'f', 2).arg(limitKBps);
+}
+
+QString ShadowBackend::downloadProbeCancel(const QString& url, int cancelAfterMs)
+{
+    ShadowDownloader::FileDownloader fd;
+    fd.setMaxThreads(4);
+
+    const QString path = QDir::tempPath() + QStringLiteral("/shadow_probe_cancel.bin");
+    QFile::remove(path);
+    fd.addFile(path, QStringLiteral("probe_cancel.bin"), {url}, -1, QByteArray(),
+               /*jarStrip*/ false, /*skipCacheCheck*/ true);
+
+    qint64 lastRecv = 0;
+    int allFinishedCount = 0;
+    QObject::connect(&fd, &ShadowDownloader::FileDownloader::fileProgress,
+                     [&lastRecv](const QString&, const QString&, qint64 r, qint64, const QString&) {
+                         lastRecv = r;
+                     });
+    QObject::connect(&fd, &ShadowDownloader::FileDownloader::allFinished,
+                     [&allFinishedCount]() { ++allFinishedCount; });
+
+    fd.start();
+
+    // 跑到 cancelAfterMs，然后取消
+    {
+        QEventLoop wait;
+        QTimer::singleShot(qMax(50, cancelAfterMs), &wait, &QEventLoop::quit);
+        wait.exec();
+    }
+    const qint64 bytesAtCancel = lastRecv;
+    fd.cancel();
+
+    // 取消后再观察 600ms：字节不得继续增长
+    {
+        QEventLoop wait;
+        QTimer::singleShot(600, &wait, &QEventLoop::quit);
+        wait.exec();
+    }
+    const qint64 bytesAfter = lastRecv;
+    const qint64 size = QFileInfo::exists(path) ? QFileInfo(path).size() : 0;
+    QFile::remove(path);
+    return QStringLiteral("bytesAtCancel=%1 bytesAfter=%2 grew=%3 allFinishedAfterCancel=%4 partialFile=%5")
+        .arg(bytesAtCancel).arg(bytesAfter)
+        .arg(bytesAfter - bytesAtCancel)
+        .arg(allFinishedCount)
+        .arg(size);
+}
+
 QString ShadowBackend::downloadSourceSummary()
 {
     const auto listPolicy = static_cast<DownloadSourcePolicy>(listDownloadSource());

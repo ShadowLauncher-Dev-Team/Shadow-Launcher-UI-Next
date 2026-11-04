@@ -53,7 +53,7 @@ enum class DownloadSourcePolicy : int {
 };
 
 struct DownloadConfig {
-    int maxWorkers = 64;
+    int maxWorkers = 16;   // 并发上限 24（settings 层夹取），精卫固定 12
     double speedLimitMB = -1;
     DownloadSourcePolicy fileSource = DownloadSourcePolicy::PreferOfficial;   // 全局 MC 下载策略
     DownloadSourcePolicy listSource = DownloadSourcePolicy::PreferOfficial;

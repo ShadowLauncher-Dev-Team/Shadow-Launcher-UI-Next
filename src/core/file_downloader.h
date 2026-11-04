@@ -102,7 +102,7 @@ public:
     void addInFlightReply(QNetworkReply* reply);
     void removeInFlightReply(QNetworkReply* reply);
 
-    void setMaxThreads(int n) { m_maxThreads = qBound(1, n, 128); }
+    void setMaxThreads(int n) { m_maxThreads = qBound(1, n, 24); }
     int maxThreads() const { return m_maxThreads; }
     void setSpeedLimitMB(double mb) { m_speedLimitBps.storeRelaxed(static_cast<qint64>(mb * 1024 * 1024)); }
     /// 模组下载专项模式（ModpackDownloader 实例开启；MC 下载实例保持默认关闭）：
@@ -257,7 +257,8 @@ private:
     // ── 限速（DOWNLOAD_CONTRACT §11：限速必须真正作用于传输层）──
     // 全局虚拟时钟（不是每 worker 各自限速——否则 N 个 worker 会让实际吞吐变成 N 倍）。
     // 每个 worker 的 delta 在锁内串行预约“允许完成时刻”，聚合吞吐收敛到 m_speedLimitBps。
-    static constexpr qint64 kSpeedLimitSleepSliceUs = 20 * 1000;  // 差额 sleep 分片（20ms，可被取消/暂停打断）
+    static constexpr qint64 kSpeedLimitSleepSliceUs = 50 * 1000;  // 单次 sleep 上限（50ms，可被取消/暂停打断）
+static constexpr qint64 kSpeedLimitMinSleepUs   = 4 * 1000;   // 欠账小于 4ms 不睡，先攒着（见 applySpeedLimit 注释）
     static constexpr int    kPausePollMs = 50;                    // 暂停轮询粒度
     mutable QMutex m_limitMutex;
     qint64 m_limitNextSlotUs = 0;   // 下一次允许完成数据的时刻（µs，0 = 未初始化）

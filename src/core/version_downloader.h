@@ -155,7 +155,7 @@ private:
     QString m_minecraftDir;
     QString m_cacheFallbackDir;  // real gameDir for cache lookups (used when m_minecraftDir is a tempDir)
     DownloadConfig m_downloadCfg;
-    int m_maxWorkers = 64;  // ≈ 65
+    int m_maxWorkers = 16;  // 与设置默认一致，上限 24
 
     // Mirror fallback: tracks current position in fallback chain
     QVector<MirrorSource> m_fallbackChain;

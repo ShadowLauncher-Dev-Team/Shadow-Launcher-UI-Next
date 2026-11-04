@@ -378,12 +378,26 @@ void FileDownloader::applySpeedLimit(qint64 deltaBytes)
         waitUs = m_limitNextSlotUs - nowUs;
     }
 
-    while (waitUs > 0) {
+    // ── 攒账再睡（2026-11-05 实测修正）──
+    // 逐块 sleep 会被 Windows 的 sleep 粒度（1–15ms，通常 15.6ms 一档）吃掉吞吐：
+    // 实测 1MB/s 档只跑到 0.64MB/s、4MB/s 档只跑到 2.52MB/s。
+    // 现在小欠账不睡（先跑快一点点把额度攒起来），攒到 4ms 以上才进入等待循环；
+    // 循环里每次用"真实时间"重算剩余（而不是账面减法），sleep 粒度带来的过冲会被
+    // 下一轮自动扣回，长期平均收敛到 limit。
+    if (waitUs < kSpeedLimitMinSleepUs) return;
+
+    while (true) {
         if (m_cancelled.loadRelaxed() || m_paused.loadRelaxed())
             return;   // 取消/暂停立即放弃本次限速等待
-        const qint64 slice = qMin<qint64>(waitUs, kSpeedLimitSleepSliceUs);
-        QThread::usleep(static_cast<unsigned long>(slice));
-        waitUs -= slice;
+        const qint64 nowUs = getElapsedMs() * 1000;
+        qint64 remain = 0;
+        {
+            QMutexLocker lock(&m_limitMutex);
+            remain = m_limitNextSlotUs - nowUs;
+        }
+        if (remain <= 1500) return;   // 剩余不足 1.5ms：直接放行，避免过度睡
+        QThread::usleep(static_cast<unsigned long>(
+            qMin<qint64>(remain - 1000, kSpeedLimitSleepSliceUs)));
     }
 }
 

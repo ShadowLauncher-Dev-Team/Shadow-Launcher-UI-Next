@@ -161,7 +161,8 @@ void SettingsBackend::loadSettings()
     // 与全局 fileSource 解耦，避免影响 MC 下载）。
     m_fileDownloadSource = s.value(QStringLiteral("download/fileSource"), 1).toInt();
     m_listDownloadSource = s.value(QStringLiteral("download/listSource"), 1).toInt();
-    m_maxDownloadThreads = s.value(QStringLiteral("download/threadLimit"), 64).toInt();
+    // 旧配置里的 64 也要夹回合理区间（读时钳制，避免历史值绕过 setter）
+    m_maxDownloadThreads = qBound(1, s.value(QStringLiteral("download/threadLimit"), 16).toInt(), 24);
     m_downloadSpeedLimitMB = s.value(QStringLiteral("download/speedLimitMB"), -1.0).toDouble();
 }
 

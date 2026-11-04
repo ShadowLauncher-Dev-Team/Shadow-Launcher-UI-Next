@@ -489,6 +489,15 @@ public:
 
     /// 源策略现状摘要（供人工验收）：四项下载设置当前值 + 版本清单实际会用的主源/兜底源。
     Q_INVOKABLE QString downloadSourceSummary();
+
+    /// 下载探针（仅本地验证用，不参与业务路径）：
+    /// 用真实 FileDownloader 下载一个 URL，返回 bytes/file/ms/平均 MBps。
+    /// limitKBps<=0 表示不限速。用于验证限速、取消、失败语义是否真的生效。
+    Q_INVOKABLE QString downloadProbe(const QString& url, int limitKBps, int timeoutMs);
+
+    /// 取消验证：跑 cancelAfterMs 后 cancel()，再观察 600ms 字节是否继续增长。
+    /// 期望：cancelled 后 bytes 不再变化（契约 §5：取消必须中止在途请求）。
+    Q_INVOKABLE QString downloadProbeCancel(const QString& url, int cancelAfterMs);
     Q_INVOKABLE void killMinecraft();
     Q_INVOKABLE void killGameByPid(qint64 pid);
     Q_INVOKABLE QVariantList runningGames();

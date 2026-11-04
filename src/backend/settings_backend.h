@@ -213,7 +213,9 @@ public:
     int listDownloadSource() const { return m_listDownloadSource; }
     void setListDownloadSource(int v) { m_listDownloadSource = v; saveSettings(); emit downloadSettingsChanged(); }
     int maxDownloadThreads() const { return m_maxDownloadThreads; }
-    void setMaxDownloadThreads(int v) { m_maxDownloadThreads = qBound(1, v, 128); saveSettings(); emit downloadSettingsChanged(); }
+    /// 并发上限 1..24：默认 16。64 是旧值 —— BMCLAPI/CF 在 64 并发下会 429/饿死连接，
+    /// 且 64 个 worker 各自持有 QNAM，连接数与内存都失控（契约 S1）。
+    void setMaxDownloadThreads(int v) { m_maxDownloadThreads = qBound(1, v, 24); saveSettings(); emit downloadSettingsChanged(); }
     double downloadSpeedLimitMB() const { return m_downloadSpeedLimitMB; }
     void setDownloadSpeedLimitMB(double v) { m_downloadSpeedLimitMB = (v < 0) ? -1.0 : qBound(0.1, v, 20.0); saveSettings(); emit downloadSettingsChanged(); }
     void setIsolationGameDir(const QString& dir);
@@ -294,7 +296,7 @@ private:
     // 于 version_backend / mod_loader_installer（默认镜像优先，2026-08-15）
     int m_fileDownloadSource = 1;      // 0=PreferMirror, 1=PreferOfficial, 2=AutoSwitch
     int m_listDownloadSource = 1;
-    int m_maxDownloadThreads = 64;
+    int m_maxDownloadThreads = 16;
     double m_downloadSpeedLimitMB = -1; // -1 = unlimited
 
     int m_autoLangMode = 1;  // 0=off, 1=system locale, 2=IP region

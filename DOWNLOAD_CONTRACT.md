@@ -205,8 +205,8 @@ DownloadTask（任务：步骤模型 + 进度 + 状态机 + 取消）
 |---|---|---|---|
 | S0 步骤 key 词表 + 按 key 路由 | ✅ | `032328e` `38cc45c` | 自检 `backend.downloadSelfcheck()` → `PASS stepkeys=22 legacy=15`；4 条安装路径共用 key；OptiFine「主文件当校验」误标已修 |
 | 终态不可逆 + 完成即 100% | ✅ | `38cc45c` | 自检第 3/4 组：completed 后 setPercentage/setByteProgress 拉不回、setActive 不生效；重试复位必须显式 forceStatus() |
-| 限速真正生效（文件下载侧） | ✅ 代码 / ⚠️ 未实测 | `0984cec` | 代码审查（全局虚拟时钟，N worker 共享时间线）；实测需真机下载，待补 |
-| 取消/暂停真中止 | ✅ 代码 | `0984cec` | 代码审查：abort 在途 reply + 50ms 轮询 + 回调早退；实测取消后无统计增长，待补 |
+| 限速真正生效（文件下载侧） | ✅ 实测 | `0984cec` `8972d19` | 本机 20MB 文件实测：不限速 32.5MB/s；1MB/s 档 **0.99MB/s**（首版 0.64，已按 Windows sleep 粒度修正）；4MB/s 档 3.84MB/s |
+| 取消/暂停真中止 | ✅ 实测 | `0984cec` `55ea577` | 取消于 17,084,856 字节 → 600ms 后仍 17,084,856（grew=0），取消后无 allFinished；失败路径（404 / 主机拒绝）分别 595ms / 545ms 收敛不挂死 |
 | 失败不计完成（assets） | ✅ | `0984cec` | 代码审查：成功才 +1，失败单列；allFinished(false) 语义不变 |
 | 整合包批次重试/状态复位/停滞看门狗/部分失败 | ✅ 代码 | `7c0b6d4` | 代码审查 + 五路径状态推演；实测需真机导入整合包，待补 |
 | 版本列表源真正生效 | ✅ | `d8ab617` | `/eval` 实测：listSource=0→主源 bmclapi；=1/2→launchermeta；`backend.downloadSourceSummary()` 现场可读 |
@@ -214,7 +214,9 @@ DownloadTask（任务：步骤模型 + 进度 + 状态机 + 取消）
 | S1 单例 QNAM / 共享连接池 | ⏳ | — | 每个 worker 各自 QNAM（file_downloader.cpp:684 附近） |
 | S2 文件级重试预算全局化 | ⏳ | — | 目前只有模组链路有（file_downloader.cpp:1275 附近） |
 | S4 进度单调（active 步骤百分比可下降） | ⏳ | — | updateStep 允许 active 步骤的 pct 回退 |
-| 并发默认值 64 → 16（上限 24） | ⏳ | — | settings_backend 默认值待改，精卫固定 12 |
+| 并发默认值 64 → 16（上限 24） | ✅ | `6bbc5e5` | `/eval` 实测：历史配置 64 → 24（读时夹）、set 64 → 24、set 0 → 1 |
+| 进度单调（active 不回退） | ✅ | `56399ba` | 自检第 3.5 组：active 回退被拒、字节口径回退被拒、forceStatus 复位后可重新从低处开始 |
+| 取消后半截文件清理（MC 主链） | ⏳ | — | 实测取消后目标文件仍是满尺寸（预分配/合并产物）；整合包链有清理，主链待确认 |
 
 **验收口径**：标 ✅ 的必须构建通过 + 自检 PASS + 应用启动正常；标"⚠️ 未实测"的表示逻辑已改但缺少真机下载验证，**不得当成已验收**。
 
