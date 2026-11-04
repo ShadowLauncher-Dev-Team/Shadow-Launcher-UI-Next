@@ -1,0 +1,100 @@
+# 鈹€鈹€ Sensitive local copies 鈹€鈹€
+# Original source files that contain sensitive information (beta keys, server URLs, etc.)
+# These are kept locally for development; sanitized versions are tracked by git.
+*.local
+
+# Local encrypted configuration (contains real relay endpoint, beta server URL, etc.)
+# Not tracked by design 鈥?use encrypted_addr.h (all-zero placeholder) as reference.
+encrypted_addr_local.h
+cf_api_key_local.h
+
+# 鈹€鈹€ Build artifacts 鈹€鈹€
+build/
+cmake-build-*/
+out/
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles/
+*.o
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+
+# 鈹€鈹€ IDE / OS 鈹€鈹€
+.vs/
+.idea/
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.vcxproj.*.user
+Thumbs.db
+.DS_Store
+
+# 鈹€鈹€ Qt Creator / VS Code 鈹€鈹€
+*.autosave
+*.pro.user
+cmake-build-*
+
+# 鈹€鈹€ Runtime data 鈹€鈹€
+_update/
+*.log
+logs/
+skins/
+assets/
+
+# 鈹€鈹€ Python/scripts 鈹€鈹€
+__pycache__/
+*.pyc
+*.pyo
+
+# Encrypted blob fragments (auto-generated, keep local)
+src/multiplayer/encrypted_frag_*.cpp
+# Stub for CI/open-source builds 鈥?zero placeholder, safe to commit
+!src/multiplayer/encrypted_frag_stub.cpp
+src/multiplayer/encrypted_addr_local.h
+cf_api_key_local.h
+
+
+# ═══ Ad-hoc diagnostic scripts (session scratch, not source) ═══
+_*.py
+_*.cpp
+_*.ps1
+_*.cs
+_*.toml
+_yidao_server*/
+build-test/
+
+# 本地慢速测试服务器数据
+_slow_server/
+
+# Local secrets (real values override src/secrets.h placeholders)
+src/secrets_local.h
+
+# ═══ 豁免目录（2026-08-14 历史重写后不再入库，仅本地保留）═══
+# WebView2 登录测试构建产物
+build-wv2/
+# 旧代码备份 / 内部分析文档 / 开发记忆（含第三方品牌引用，不公开）
+backup/
+docs/
+memory/
+# 第三方 LZMA SDK 完整源码（按需单独分发）
+lzma_sdk/
+# 临时反编译产物
+temp_decompile/
+# 旧 CEF 登录辅助（已被 WebView2 方案替代）
+cef_helper/
+
+# Publish tool local config (real base_url / paths)
+tools/publish_config.json
+
+# MC百科抓取断点缓存（可重新生成）
+tools/_mcmod_map_resume.jsonl
+
+# ═══ 新一代 UI：内置资源必须入库（assets/ 被上面全局忽略） ═══
+!ui/assets/
+!ui/assets/**

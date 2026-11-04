@@ -1,0 +1,523 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2025-2026 影 / Shadow / xiaole1173
+#pragma once
+
+#include <QObject>
+#include <QString>
+#include <QStringList>
+#include <QVariantList>
+#include <QTimer>
+#include <QElapsedTimer>
+#include <QQueue>
+#include <QThread>
+#include <QAtomicInt>
+#include <QMap>
+#include <QtConcurrent>
+#include <QSet>
+#include <QVector>
+#include <QNetworkReply>
+#include <QHash>
+#include <QAbstractListModel>
+#include <memory>
+#include <QJsonObject>
+#include <functional>
+
+#include "../utils/types.h"
+#include "../session/download_session.h"
+#include "../core/http_client.h"
+
+namespace ShadowLauncher {
+
+// --- InstallCard: per-card data struct ---
+
+
+// --- InstallCardModel: QAbstractListModel with explicit role names ---
+class InstallCardModel : public QAbstractListModel {
+    Q_OBJECT
+    Q_PROPERTY(int count READ count NOTIFY generationChanged)
+    Q_PROPERTY(int generation READ generation NOTIFY generationChanged)
+public:
+    enum CardRoles {
+        IidRole = Qt::UserRole + 1,
+        NameRole,
+        TypeRole,
+        ProgressRole,
+        SpeedRole,
+        PhaseRole,
+        RemainingRole,
+        StepsRole,
+        FailedRole,
+        ErrorRole,
+        TotalProgressVisibleRole,
+        HasUserDataImportRole,
+        CanCancelRole,
+        CanRetryRole,
+        ImportFailedAtMsRole
+    };
+
+    explicit InstallCardModel(QObject* parent = nullptr);
+
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+    QHash<int, QByteArray> roleNames() const override;
+
+    void rebuild(const QVector<InstallCard>& cards);
+
+    // ── 增量更新接口 (避免全量 rebuild) ──
+    void updateRow(int row, const InstallCard& card);
+    void updateProgressAndSpeed(int row, qreal progress, qint64 speed);  // 仅触发 ProgressRole + SpeedRole
+    bool updateStepList(int row, const QVariantList& newSteps);  // 原地更新步骤，仅触发 StepsRole
+    void updatePhase(int row, const QString& phase);  // 仅触发 PhaseRole
+    void insertRow(int row, const InstallCard& card);
+    void appendRow(const InstallCard& card);
+    void removeRow(int row);
+    int findRowByIid(const QString& iid) const;
+    Q_INVOKABLE QVariantMap cardData(int row) const;  // poll 接口：返回整行数据
+    const InstallCard* cardAt(int row) const;  // read-only peek
+
+    // ── 2026-08-15：速度"抓取式"改造 ──
+    // QML 每 200ms 轮询 cardData()。速度是轻量值（三个 qint64 相加），
+    // 不必走 byteProgress→throttle→updateCardFromSession 回调刷新链：
+    // VersionBackend 注入 provider，cardData() 被 poll 时现场读实时会话状态
+    // （ds->mlSpeed / m_dlStates / fabSpeed）聚合返回 → 速度永不依赖回调时序。
+    void setLiveSpeedProvider(std::function<qint64(int row)> provider);
+
+    int count() const { return m_cards.size(); }
+    int generation() const { return m_generation; }
+
+signals:
+    void generationChanged();
+
+private:
+    QVector<InstallCard> m_cards;
+    int m_generation = 0;
+    std::function<qint64(int)> m_liveSpeed;   // 2026-08-15：速度现场聚合 provider（轮询时调用）
+};
+
+class VersionManager;
+class VersionDownloader;
+class VersionIsolation;
+class ModLoaderInstaller;
+
+// ── MergedInstallContext: per-task lifecycle for MC+loader combined install ──
+struct MergedInstallContext {
+    QString installId;
+    QString mcVersion;
+    QString tempDir;              // UUID-based unique temp directory
+    QString loaderType;           // forge / neoforge / fabric / optifine
+    QString loaderVersion;
+    QJsonObject versionJson;      // Cached version manifest for MC download
+
+    // Independent state flags
+    bool mcDownloadDone = false;
+    bool loaderJarReady = false;  // loader JAR downloaded + verified
+    bool bootstrapperDone = false;
+    bool failed = false;
+    QString failReason;
+
+    // ── 加载器失败重试状态 ──
+    bool installFailed = false;           // 终态失败（保留卡片供手动重试，不再阻塞安装态）
+    int  loaderAutoRetryCount = 0;        // 可重试型安装失败自动重装计数（上限 1）
+    int  loaderUrlChainRetries = 0;       // 主文件 URL 候选链整链重试计数（上限 1）
+    QString forgeInstallerBranch;         // 主文件下载链需要重跑时复用（installModLoader 写入）
+
+    // Owned children (deleted in ~VersionBackend via destroyMergedContext)
+    VersionDownloader* mcDownloader = nullptr;
+    ModLoaderInstaller* installer = nullptr;
+
+    // In-flight network downloads owned by this context (aborted on cancel BEFORE
+    // the context is destroyed — their completion callbacks capture raw ctx*).
+    HttpClient::DownloadHandle* loaderDlHandle = nullptr;  // Forge/NeoForge installer JAR (驿道)
+    QNetworkReply* fabricApiReply = nullptr;   // Fabric API download
+    QVector<QNetworkReply*> optifineJarReplies;  // OptiFine JAR race replies (BMCLAPI+official)
+
+    // Error handling
+    QString errorMessage;
+};
+
+class VersionBackend : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(bool installing READ isInstalling NOTIFY installStateChanged)
+    Q_PROPERTY(int activeCount READ activeCount NOTIFY installStateChanged)
+    Q_PROPERTY(QString installVersionId READ installVersionId NOTIFY installStateChanged)
+    Q_PROPERTY(QString installPhase READ installPhase NOTIFY installPhaseChanged)
+    Q_PROPERTY(QString activeInstallId READ activeInstallId NOTIFY installStateChanged)
+    Q_PROPERTY(QObject* installCardsModel READ installCardsModel CONSTANT)
+    Q_PROPERTY(int verifyChecked READ verifyChecked NOTIFY verifyProgressChanged)
+    Q_PROPERTY(int verifyTotal READ verifyTotal NOTIFY verifyProgressChanged)
+    Q_PROPERTY(QStringList versionIds READ versionIds NOTIFY versionListReady)
+    Q_PROPERTY(QStringList installedIds READ installedIds NOTIFY installedVersionsChanged)
+    Q_PROPERTY(QString selectedVersion READ selectedVersion NOTIFY selectedVersionChanged)
+
+public:
+    explicit VersionBackend(QObject* parent = nullptr);
+    ~VersionBackend() override;
+
+    bool isInstalling() const { return m_installing || (m_activeCount > 0) || hasActiveMergedContexts(); }
+    int activeCount() const { return m_activeCount; }
+
+    QVariantList versionInfoList() const;
+    QVector<McVersion> cachedMcVersions() const;
+    QString installVersionId() const { return m_activeIds.isEmpty() ? QString() : m_activeIds.first(); }
+    QString installPhase() const { return m_installPhase; }
+    QString activeInstallId() const { return m_activeIds.isEmpty() ? QString() : m_activeIds.first(); }
+    int installRemainingSteps(const QString& sessionId) const;
+    QObject* installCardsModel() const { return m_installCardsModel; }
+    int verifyChecked() const { return m_verifyChecked; }
+    int verifyTotal() const { return m_verifyTotal; }
+    bool isVerifyRunning() const { return m_verifyRunning.loadRelaxed() != 0; }
+    bool isRepairRunning() const { return m_repairRunning.loadRelaxed() != 0; }
+    QStringList versionIds() const { return m_versionIds; }
+    QStringList installedIds() const { return m_installedIds; }
+    QStringList activeVersionNames() const {
+        QStringList names = m_installedIds;
+        for (const QString& v : m_activeIds) {
+            if (!names.contains(v)) names.append(v);
+        }
+
+        for (const auto& key : m_downloadSessions.keys()) {
+            auto* ds = m_downloadSessions[key];
+            if (ds && ds->hasPendingLoader && !ds->pendingLoaderName.isEmpty()
+                && !names.contains(ds->pendingLoaderName))
+                names.append(ds->pendingLoaderName);
+        }
+        return names;
+    }
+    QString selectedVersion() const { return m_selectedVersion; }
+
+    // ── 版本文件查找工具（灵活扫描，目录名≠文件名时使用）──
+    /// 在版本目录中查找有效的版本 JSON，返回路径或空字符串
+    static QString findVersionJson(const QString& verDir, const QString& dirName);
+    /// 在版本目录中查找主 JAR，返回路径或空字符串
+    static QString findVersionJar(const QString& verDir, const QString& dirName);
+
+    Q_INVOKABLE void setGameDir(const QString& dir);
+    void setIsolation(class VersionIsolation* iso) { m_isolation = iso; }
+
+    // Auto-language settings
+    void setAutoLangMode(int mode) { m_autoLangMode = mode; }
+    void setDetectedRegion(const QString& region) { m_detectedRegion = region; }
+
+    VersionManager* versionManager() const { return m_versionMgr; }
+    Q_INVOKABLE void setSelectedVersion(const QString& versionId);
+    /// 校验当前选中版本是否真实存在（已安装）；不存在/为空时自愈：
+    /// 优先选第一个已安装版本（无已安装则清空）。返回 true 表示发生过变化。
+    Q_INVOKABLE bool ensureSelectedVersionValid();
+    Q_INVOKABLE void refreshVersionList();
+    Q_INVOKABLE void refreshInstalled();
+    Q_INVOKABLE void installVersion(const QString& versionId);
+    Q_INVOKABLE void cancelVersionInstall(const QString& versionId);
+    Q_INVOKABLE void cancelQueuedDownload(const QString& versionId);
+    void prefetchVersionJson(const QString& versionId);
+    Q_INVOKABLE QVariantList downloadQueue() const;
+    Q_INVOKABLE QVariantList activeDownloads() const;
+    Q_INVOKABLE QString getVersionGameDir(const QString& versionId) const;
+
+    Q_INVOKABLE void verifyVersion(const QString& versionId);
+    Q_INVOKABLE void cancelVerify();
+    // 校验/修复的根目录：merged 安装中 MC 版本在 tempDir，修复须在 tempDir 上进行
+    QString repairRootFor(const QString& versionId) const;
+    // auto-repair 成功后驱动 merged 继续（mcDownloadDone → loader 流程）
+    void driveMergedAfterRepair(const QString& versionId);
+    void cancelActiveDownload(const QString& versionId);
+    // On cancel/fail: delete the entire version folder,
+    // with a safety guard — skip if saves/ already exists (user has played).
+    void cleanupCanceledVersion(const QString& versionId, const QString& gameDir);
+    Q_INVOKABLE void cleanCorruptVersion(const QString& versionId);
+    Q_INVOKABLE void repairVersion(const QString& versionId);
+    Q_INVOKABLE bool renameVersion(const QString& oldId, const QString& newId);
+    Q_INVOKABLE bool cloneVersion(const QString& sourceId, const QString& newId);
+    Q_INVOKABLE QString copyVersionPath(const QString& versionId);
+
+    // User data import integration
+    Q_INVOKABLE void setPendingUserDataImport(const QString& installId, const QString& archivePath);
+    Q_INVOKABLE void cancelPendingUserDataImport(const QString& installId);
+    Q_INVOKABLE void dismissCard(const QString& installId);
+    Q_INVOKABLE void dismissAllCompleted();  // remove card from progress page
+    /// 合并安装卡片失败态「重试」：MC 文件完好则跳过（缺了走修复），只重跑加载器阶段
+    Q_INVOKABLE void retryVersionInstall(const QString& installId);
+    /// 是否为整合包任务卡片（modpack-*）；shadow_backend 据此把「重试」转发到加载器重试
+    bool isTaskCard(const QString& cardId) const { return m_taskCards.contains(cardId); }
+    /// 合并安装会话是否处于「加载器失败（MC 已下载完成，可只重试加载器）」终态
+    bool isLoaderFailure(const QString& installId) const;
+    /// 该会话的加载器类型是否支持重试（forge/neoforge/fabric；quilt 等暂不支持）
+    bool canRetryLoaderInstall(const QString& installId) const;
+    /// 整合包任务卡片：设置「重试加载器」按钮可用性（失败卡保留 + 不自动消失）
+    void setTaskCardRetry(const QString& cardId, bool canRetry, const QString& error = {});
+
+    Q_INVOKABLE void installModLoader(const QString& mcVersion, const QString& loaderType,
+                                       const QString& loaderVersion, const QString& installName,
+                                       const QString& fabricApiVersion = QString(),
+                                       const QString& fabricApiUrl = QString(),
+                                       const QString& fabricApiSavePath = QString(),
+                                       const QString& forgeInstallerSha1 = QString(),
+                                       const QString& forgeInstallerBranch = QString());
+    /// 全局下载源策略：true=官方源优先（fileSource==PreferOfficial|AutoSwitch）。
+    /// 供加载器安装/整合包导入/版本清单等子流程读取源路由。
+    bool downloadPreferOfficial() const;
+    Q_INVOKABLE void installOptifine(const QString& mcVersion, const QString& optifineVersion,
+                                       const QString& forgeVersion, const QString& installName,
+                                       const QString& bmclType = QString(), const QString& bmclPatch = QString());
+    Q_INVOKABLE void installOptifineJar(const QString& mcVersion, const QString& optifineVersion,
+                                         const QString& bmclType = QString(), const QString& bmclPatch = QString(),
+                                         const QString& installName = QString());
+    void finishOptifineMerged(const QString& mcVersion, const QString& installName);
+    void delegateOptifineInstall(const QString& mcVersion, const QString& installName,
+                                  const QByteArray& jarData);
+    void startOptifineJarParallel(const QString& installName, const QString& mcVersion,
+                                   const QString& optifineVersion, const QString& bmclType, const QString& bmclPatch);
+    void onParallelOptifineDone(const QString& installName, const QByteArray& jarData);
+    Q_INVOKABLE bool isModLoaderInstalling() const;
+
+    // Resource / Mod download cards
+    Q_INVOKABLE void addResourceCard(const QString& cardId, const QString& displayName);
+    Q_INVOKABLE void updateResourceCard(const QString& cardId, qreal progress, const QString& status, qint64 speed = 0);
+    /// 资源下载失败：卡片标记失败态（红名+错误信息+可关闭），保留卡片等待手动关闭
+    Q_INVOKABLE void failResourceCard(const QString& cardId, const QString& error);
+    /// 资源下载完成：定格绿色完成态（progress=1.0, canCancel=false, failed=false），保留卡片
+    Q_INVOKABLE void completeResourceCard(const QString& cardId);
+    Q_INVOKABLE void removeResourceCard(const QString& cardId);
+
+    // ── 整合包任务卡片（原生卡片通道：QML 经 InstallCardModel::cardData 轮询）──
+    // 卡片生命周期与普通下载任务完全一致：add → 逐步更新 → 完成/失败后由
+    // DownloadQueueCard 的自动收拢/手动关闭触发 dismissCard → removeTaskCard。
+    Q_INVOKABLE void addTaskCard(const QString& cardId, const QString& displayName);
+    Q_INVOKABLE void updateTaskCard(const QString& cardId, qreal progress, const QString& phase,
+                                    bool failed = false, const QString& error = QString(),
+                                    qint64 speed = 0, bool canCancel = true,
+                                    const QString& name = QString());
+    Q_INVOKABLE void updateTaskCardSteps(const QString& cardId, const QVariantList& steps);
+    Q_INVOKABLE void updateTaskCardAttachments(const QString& cardId, const QVariantList& mods,
+                                               const QVariantList& logs, const QVariantMap& info);
+    Q_INVOKABLE void removeTaskCard(const QString& cardId);
+
+    // ── 整合包任务注册（ModpackInstallTask 调用）──
+    // 1) 卡片原生取消控件(cancelVersionInstall)转发到任务取消回调；
+    // 2) MC/加载器阶段抑制独立会话卡片（合并进本任务卡片的子步骤，杜绝双卡）。
+    void setModpackCard(const QString& cardId, std::function<void()> cancelHandler);
+    void updateModpackCardTargets(const QString& targetVersion, const QString& mcVersion);
+    bool isModpackSessionSuppressed(const QString& installId) const;
+    // MC 阶段进度/速度访问器（任务侧轮询更新卡片子步骤）
+    Q_INVOKABLE qreal installProgressOf(const QString& installId) const;
+    Q_INVOKABLE qint64 installSpeedOf(const QString& installId) const;
+    // MC 阶段实时原子步骤（pipeline 实时源，整合包卡片子步骤透传用）
+    QVariantList sessionSteps(const QString& installId) const;
+
+signals:
+    void versionListReady();
+    void installedVersionsChanged();
+    void selectedVersionChanged();
+    void installStateChanged();
+    void installPhaseChanged(const QString& phase);
+    void installFinished(bool success);
+    void installComplete(const QString& installId);
+    void logMessage(const QString& msg);
+    void toastMessage(const QString& msg);
+    // 加载器安装期间自动下载便携 Java 完成（转发 ModLoaderInstaller::javaAutoInstalled）
+    void javaAutoInstalled(int majorVersion);
+    void mcJsonReady(const QString& versionId);
+
+    void verifyStarted();
+    void verifyProgress(int checked, int total);
+    void verifyProgressChanged(int checked, int total);
+    void verifyFinished(bool allPassed);
+    void cancelNotification(const QString& installId, const QString& message);
+    void verifyFailedFiles(const QStringList& failedFiles);
+    void verifyCancelled();
+    void repairRunningChanged();
+    void downloadQueueChanged();
+    void downloadQueueFull(const QString& displayName);
+
+private slots:
+    void onVersionDownloadLog(const QString& msg);
+    void onVersionDownloadFinished(bool success, const QString& error);
+
+private:
+    void proceedToLoaderInstall(const QString& installId);
+    void updateInstalledList();
+    void setInstalling(bool v);
+    void finishInstall(const QString& installName);
+    void setInstallPhase(const QString& phase);
+
+    VersionManager* m_versionMgr = nullptr;
+    class VersionIsolation* m_isolation = nullptr;
+    int m_autoLangMode = 1;
+    QString m_detectedRegion;
+    QMap<QString, ModLoaderInstaller*> m_mlInstallers;
+    QMap<QString, MergedInstallContext*> m_mergedContexts;
+    QString m_gameDir;
+
+    QStringList m_versionIds;
+    QStringList m_installedIds;
+    bool m_refreshInstalledBusy = false;   // 防异步刷新重入
+    QString m_selectedVersion;
+    QMap<QString, QByteArray> m_prefetchedJson;  // version JSON prefetch cache
+
+    int m_activeCount = 0;
+    bool m_installing = false;
+
+    static constexpr int MAX_CONCURRENT = 5;
+    QStringList m_activeIds;                                                                                
+    QSet<QString> m_userCancelledIds;  // versions cancelled by user (suppress error in finish handler)     
+    // In-flight version-JSON race replies per versionId. Aborted on cancel so a stale
+    // JSON response (arriving after re-download started) can never create a downloader
+    // or take()/cancel the fresh one (race: re-install after JSON-phase cancel).
+    QHash<QString, QVector<QNetworkReply*>> m_pendingJsonReplies;
+
+    struct DlState {
+        int progress = 0;            // download file count (cf from progressChanged)
+        int total = 0;               // download file total (tf from progressChanged)
+        int verifyChecked = 0;       // verify phase: items checked (independent from progress/total)
+        int verifyTotal = 0;         // verify phase: total items to check
+        qint64 bytesDl = 0;
+        qint64 bytesTotal = 0;
+        qint64 networkBytesDl = 0;   // bytes from network only (excl. cache), for speed
+        qint64 speed = 0;              // EMA-smoothed speed (bytes/s)
+        double smoothSpeed = 0.0;      // EMA accumulator (bytes/s float, avoids int truncation)
+        QString file;
+        QString phase = QStringLiteral("idle");
+        qint64 speedLastTimeMs = 0;
+        // Per-category byte tracking (0=versions, 1=libraries, 2=assets)
+        qint64 catBytesDl[3] = {};
+        qint64 catBytesTotal[3] = {};
+        qint64 catBytesDoneBase[3] = {};
+        int catFilesDone[3] = {};    // per-category completed file count
+        int catFilesTotal[3] = {};   // per-category total file count
+        QSet<QString> catBytesCountedPaths; // savePaths already counted in catBytesDoneBase
+        int logFileCounter = 0;              // throttle counter for per-file log
+        bool catsFullyDone = false;  // set by fileProgress when all categories complete
+        bool downloadsDone = false;  // sticky: set once when downloads finish, stays true through verify
+        bool verifyStartLogged = false;  // 验证步骤"已启动"日志只打一次
+        bool verifyDoneLogged = false;   // 验证步骤"已完成"日志只打一次
+        qreal lastCardProgress = -1.0;  // monotonic guard: card progress never goes backward
+    };
+    QMap<QString, DlState> m_dlStates;
+    QMap<QString, VersionDownloader*> m_downloaders;
+
+    bool m_initialFetchDone = false;
+    qint64 m_installBytesDl = 0;
+    qint64 m_installBytesTotal = 0;
+    qint64 m_installStartEpoch = 0;
+    QString m_installPhase = "idle";
+
+
+    QMap<QString, DownloadSession*> m_downloadSessions;
+    QMap<QString, QString> m_pendingImports;  // installId → archivePath
+    QMap<QString, QVariantMap> m_extraCards;
+
+    DownloadSession* ensureSession(const QString& installId);
+    DownloadSession* dlSession(const QString& installId) const;
+    void updateCardFromSession(const QString& installId, const QString& name = QString(), const QString& type = QString());
+
+    // Per-task ModLoaderInstaller lifecycle (legacy, kept for non-merged paths)
+    ModLoaderInstaller* createLoaderInstaller(const QString& installId);
+    void destroyLoaderInstaller(const QString& installId);
+    ModLoaderInstaller* loaderInstaller(const QString& installId) const { return m_mlInstallers.value(installId, nullptr); }
+
+    // MergedInstallContext lifecycle
+    MergedInstallContext* createMergedContext(const QString& installId,
+                                               const QString& mcVersion,
+                                               const QString& loaderType,
+                                               const QString& loaderVersion);
+    void destroyMergedContext(const QString& installId);
+    MergedInstallContext* mergedContext(const QString& installId) const { return m_mergedContexts.value(installId, nullptr); }
+    /// 是否仍有「活跃」（未终态失败）的合并上下文（失败保留的上下文不计入，见 installFailed）
+    bool hasActiveMergedContexts() const;
+    /// 合并安装失败的统一终态收尾：标失败 + 保留卡片（可重试）+ 复位安装态
+    void finalizeMergedFailure(const QString& installId, const QString& errMsg);
+    /// 启动加载器主文件下载链（Forge/NeoForge）；重试时复用（MC 已下好）。
+    void beginLoaderDownload(const QString& installId);
+    /// 判断加载器错误是否属于「可自动重试型」（网络/超时类）；配置/校验类不回滚重试
+    static bool isRetryableLoaderError(const QString& errMsg);
+    /// 重试前复位加载器相关步骤状态（MC 步骤保持 completed）
+    void resetLoaderStepsForRetry(const QString& installId);
+
+    bool m_cardsRebuildPending = false;
+    QElapsedTimer m_cardsTimer;
+
+    // Throttle incremental card updates (100ms — avoid UI freeze from rapid progress signals)
+    QTimer m_cardUpdateThrottle;
+    QStringList m_pendingCardUpdates;
+
+    InstallCardModel* m_installCardsModel = nullptr;
+
+    // ── 整合包任务卡片状态 ──
+    QMap<QString, QVariantMap> m_taskCards;      // cardId → 完整卡片数据（含 steps/mods/logs/info）
+    QString m_modpackCardId;                     // 当前整合包任务卡片 id
+    QString m_modpackTargetVersion;              // 目标版本名（merged 会话 id，解析后可知）
+    QString m_modpackMcVersion;                  // 原版 MC 版本（vanilla 会话 id）
+    std::function<void()> m_modpackCancelHandler; // 卡片取消转发
+    InstallCard taskCardToInstallCard(const QString& cardId) const;
+    InstallCard resourceCardToInstallCard(const QString& cardId) const;
+
+    void rebuildSteps(const QString& installId, const QStringList& names, const QVector<qreal>& weights = {},
+                      const QVector<bool>& showFlags = {});
+    void updateStep(const QString& installId, int index, const QString& status, int percentage, qint64 bytesRecv = 0, qint64 bytesTotal = 0);
+    void showStep(const QString& installId, int index);  // Make a hidden step visible and active
+    /// 按步骤名（子串匹配）查找步骤索引；未找到返回 -1（2026-08-14）
+    int findStepByName(const QString& installId, const QString& namePart);
+    /// 精确查找 loader 校验步骤（"校验 X 完整性"，排除"校验游戏资源完整性"），
+    /// findStepByName("完整性") 是模糊子串匹配，会误命中"校验游戏资源完整性"（2026-08-15）
+    int findLoaderVerifyStep(const QString& installId);
+    /// 精确查找 loader 安装步骤（"安装 X"，排除"下载 X 安装器库"——它含"安装"二字）
+    int findLoaderInstallStep(const QString& installId);
+    /// 精确查找 loader 安装器库下载步骤（"下载 X 安装器库"）
+    int findLoaderLibsStep(const QString& installId);
+    void rebuildInstallCards();
+    void doRebuildInstallCards();
+    void activateVerifyOnDownloadsDone(const QString& versionId);
+
+
+    // User data import step
+    void startUserDataImport(const QString& installId);
+
+    int m_verifyChecked = 0;
+    int m_verifyTotal = 0;
+    QQueue<QString> m_installQueue;
+
+    QString primaryVersionId() const;
+    void syncPrimaryProgress();
+    void updateDownloadProgress(const QString& versionId, int cf, int tf, qint64 db, qint64 tb);
+    void updateDownloadFile(const QString& versionId, const QString& url, const QString& fileName, qint64 received, qint64 total, const QString& savePath = QString());
+    void startNextFromQueue();
+
+    class VerifyWorker;
+    QThread* m_verifyThread = nullptr;
+    VerifyWorker* m_verifyWorker = nullptr;
+    QStringList m_failedPathsCache;
+    QString m_autoRepairVersionId;  // 安装失败后自动修复的版本ID
+    bool m_autoRepairVerifyDone = false; // 自动修复的verify阶段已完成的标记
+    QAtomicInt m_verifyRunning = 0;
+    QAtomicInt m_repairRunning = 0;
+    QAtomicInt m_verifyCancelled = 0;
+};
+
+struct VerifyItem {
+    QString path;
+    QString sha1;
+    QString name;
+};
+
+class VersionBackend::VerifyWorker : public QObject {
+    Q_OBJECT
+public:
+    explicit VerifyWorker(QObject* parent = nullptr) : QObject(parent) {}
+    void setItems(const QVector<VerifyItem>& items) { m_items = items; }
+    void cancel() { m_cancelled.storeRelease(1); }
+public slots:
+    void process();
+signals:
+    void progressChecked(int checked, int total);
+    void cancelled(int checked, int total);
+    void finished(bool allPassed, const QStringList& failedFiles,
+                  const QStringList& failedPaths);
+private:
+    static QString sha1FileFast(const QString& filePath);
+    QVector<VerifyItem> m_items;
+    QAtomicInt m_cancelled = 0;
+    int m_failed = 0;
+    QStringList m_failedFiles;
+    QStringList m_failedPaths;
+};
+
+} // namespace ShadowLauncher

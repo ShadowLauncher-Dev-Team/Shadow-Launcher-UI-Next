@@ -1,0 +1,37 @@
+
+/* ---------- B : library (3 columns) ---------- */
+.lib{width:296px;flex:0 0 296px;background:#0b0d12;border-right:1px solid #14171d;display:flex;flex-direction:column}
+.libhead{padding:16px 16px 10px}
+.libttl{display:flex;align-items:baseline;justify-content:space-between}
+.libttl b{font-size:13.5px;color:#fff;font-weight:600;letter-spacing:.02em}
+.libttl span{font-size:11.5px;color:#5d6673}
+.searchrow{display:flex;gap:8px;margin-top:12px}
+.search{flex:1;display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border-radius:8px;
+ background:#11141b;border:1px solid #1c2029;color:#5d6673;font-size:12px}
+.search svg{width:14px;height:14px}
+.vlist{flex:1;overflow:hidden;padding:6px 8px 8px;display:flex;flex-direction:column;gap:2px}
+.vrow{display:flex;align-items:center;gap:10px;height:54px;padding:0 9px;border-radius:9px;position:relative}
+.vrow .lico{width:34px;height:34px;flex:0 0 34px;border-radius:8px;display:grid;place-items:center;
+ background:#171d29;border:1px solid #212836;color:#7f8ea6}
+.vrow .lico svg{width:16px;height:16px}
+.vrow .t{font-size:12.8px;color:#cbd2dd;font-weight:500;line-height:1.25}
+.vrow .s{font-size:10.8px;color:#5a6472;margin-top:2px}
+.vrow.on{background:#161b24}
+.vrow.on::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:2px;border-radius:0 2px 2px 0;background:#3b82f6}
+.vrow.on .t{color:#fff;font-weight:600}
+.vrow.on .lico{background:#1b2436;border-color:#2a3650}
+.detail{flex:1;min-width:0;display:flex;flex-direction:column;background:#08090d}
+.cover{position:relative;height:44%;overflow:hidden}
+.cover .im{position:absolute;inset:-4%;background:url('../visual/vis_20260821_120122_5f5a12c6/MC夜景去水印加青蛙.png') center 34%/cover no-repeat}
+.cover .sc{position:absolute;inset:0;background:linear-gradient(0deg,#08090d 1%,rgba(8,9,13,.35) 46%,rgba(8,9,13,.55))}
+.cover .cap{position:absolute;left:32px;right:32px;bottom:16px;display:flex;align-items:flex-end;justify-content:space-between}
+.cap h2{font-size:27px;font-weight:700;color:#fff;letter-spacing:-.01em;line-height:1.1}
+.cap h2 em{display:block;font-style:normal;font-size:12.5px;font-weight:500;color:#a8b1bf;letter-spacing:.02em;margin-top:7px}
+.dbody{flex:1;padding:14px 32px 0;display:flex;flex-direction:column}
+.drow{display:flex;align-items:center;height:44px;border-bottom:1px solid #12151b;font-size:12.8px}
+.drow .k{width:96px;color:#6d7684;display:flex;align-items:center;gap:8px}
+.drow .k svg{width:14px;height:14px;opacity:.7}
+.drow .v{color:#d8dde5}
+.dbody .grow{flex:1}
+.dbar{display:flex;align-items:center;gap:8px;padding:16px 32px 22px}
+.dbar .sp{flex:1}

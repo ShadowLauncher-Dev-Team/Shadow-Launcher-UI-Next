@@ -1,0 +1,377 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2025-2026 影 / Shadow / xiaole1173
+#include "microsoft_auth.h"
+#include "http_client.h"
+#include "../utils/logger.h"
+
+#include <QCoreApplication>
+#include <QDesktopServices>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QProcess>
+#include <QRandomGenerator>
+#include <QStandardPaths>
+#include <QTcpServer>
+#include <QUrl>
+#include <QUrlQuery>
+#include <QTimer>
+#include <QWindow>
+#include <QWidget>
+#include <QDebug>
+
+namespace ShadowLauncher {
+
+using namespace Qt::StringLiterals;
+
+// ── Constants ──
+
+static const char* kAuthUrl = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
+static const char* kTokenUrl = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
+static const char* kNativeRedirectUri = "https://login.microsoftonline.com/common/oauth2/nativeclient";
+
+static const QString kClientId = u"YOUR_CLIENT_ID_HERE"_s;
+
+static QString createState() {
+    QByteArray bytes;
+    bytes.resize(32);
+    for (int i = 0; i < 32; ++i) bytes[i] = static_cast<char>(QRandomGenerator::global()->bounded(256));
+    return QString::fromLatin1(bytes.toHex());
+}
+
+// ── Constructor / Destructor ──
+
+MicrosoftAuth::MicrosoftAuth(QObject* parent) : QObject(parent) {
+    qCInfo(logAccount) << QStringLiteral("MSA认证模块初始化");
+}
+MicrosoftAuth::~MicrosoftAuth() { cancelLogin(); }
+
+// ── cancelLogin ──
+
+void MicrosoftAuth::cancelLogin() {
+    qCInfo(logAccount) << QStringLiteral("取消登录");
+    if (m_localServer) { m_localServer->close(); m_localServer->deleteLater(); m_localServer = nullptr; }
+    if (m_wv2Process) {
+        m_wv2Process->kill();
+        m_wv2Process->deleteLater();
+        m_wv2Process = nullptr;
+    }
+    m_embeddedMode = false;
+    m_busy = false;
+    m_codeCaptured = false;
+}
+
+// ═══════════════════════════════════════════════════
+// Localhost callback login (Mode A — default)
+// ═══════════════════════════════════════════════════
+
+void MicrosoftAuth::startLogin(const QString& clientId) {
+    if (m_busy) return;
+    m_busy = true;
+    m_embeddedMode = false;
+    m_clientId = clientId.isEmpty() ? kClientId : clientId;
+    qCInfo(logAccount) << QStringLiteral("开始本地回调登录 clientId=%1").arg(m_clientId);
+
+    // Create local HTTP server
+    m_localServer = new QTcpServer(this);
+    int port = 0;
+    for (int p : {49152, 49153, 49154, 49155, 49156}) {
+        if (m_localServer->listen(QHostAddress::LocalHost, p)) { port = p; break; }
+    }
+    if (port == 0) {
+        qCWarning(logAccount) << QStringLiteral("本地回调端口全部占用");
+        emit loginFailed(tr("无法启动本地回调服务器"));
+        m_busy = false;
+        return;
+    }
+    m_localRedirectUri = QStringLiteral("http://localhost:%1").arg(port);
+
+    connect(m_localServer, &QTcpServer::newConnection, this, [this]() {
+        auto* socket = m_localServer->nextPendingConnection();
+        socket->waitForReadyRead(500);
+        QByteArray data = socket->readAll();
+        QString request = QString::fromUtf8(data);
+        socket->write("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n"
+            "<html><body><h2>登录成功</h2><p>请返回启动器</p></body></html>");
+        socket->close();
+        socket->deleteLater();
+        m_localServer->close();
+
+        int codeIdx = request.indexOf("code=");
+        if (codeIdx == -1) { emit loginFailed(tr("浏览器回调中未找到验证码")); m_busy = false; return; }
+        QString code = request.mid(codeIdx + 5);
+        int ampIdx = code.indexOf('&');
+        if (ampIdx != -1) code = code.left(ampIdx);
+        int spaceIdx = code.indexOf(' ');
+        if (spaceIdx != -1) code = code.left(spaceIdx);
+        code = QUrl::fromPercentEncoding(code.toUtf8());
+        emit loginProgress(tr("获取授权码"), code.left(15) + u"..."_s);
+        exchangeCode(code, m_localRedirectUri);
+    });
+
+    QString state = createState();
+    QUrl url(kAuthUrl);
+    QUrlQuery q;
+    q.addQueryItem("client_id", m_clientId);
+    q.addQueryItem("response_type", "code");
+    q.addQueryItem("redirect_uri", m_localRedirectUri);
+    q.addQueryItem("scope", "XboxLive.signin offline_access");
+    q.addQueryItem("prompt", "select_account");
+    q.addQueryItem("state", state);
+    url.setQuery(q);
+
+    emit loginProgress(tr("打开浏览器"), url.toString().left(80));
+    QDesktopServices::openUrl(url);
+}
+
+// ═══════════════════════════════════════════════════
+// Embedded login (wv2login.exe — Edge WebView2, separate process)
+// The WebView2 browser never runs inside this process, so closing the
+// login window can never crash the launcher. The helper writes the OAuth
+// code to a result file we delete right after reading.
+// ═══════════════════════════════════════════════════
+
+void MicrosoftAuth::startEmbeddedLogin(const QString& clientId) {
+    startWv2LoginProcess(clientId);
+}
+
+// ═══════════════════════════════════════════════════
+// Embedded login (Mode C — standalone wv2login.exe)
+// The WebView2 browser runs in a separate process; the launcher only
+// reads the result file, so closing the login window can never crash us.
+// ═══════════════════════════════════════════════════
+
+void MicrosoftAuth::startWv2LoginProcess(const QString& clientId) {
+    m_busy = true;
+    m_embeddedMode = true;
+    m_clientId = clientId.isEmpty() ? kClientId : clientId;
+    const QString redirect = u"https://login.microsoftonline.com/common/oauth2/nativeclient"_s;
+    qCInfo(logApp) << QStringLiteral("[wv2login] 启动独立登录进程 clientId=%1").arg(m_clientId);
+
+    const QString exePath = QCoreApplication::applicationDirPath() + QStringLiteral("/wv2login.exe");
+    if (!QFileInfo::exists(exePath)) {
+        qCWarning(logApp) << QStringLiteral("[wv2login] 未找到 %1").arg(exePath);
+        m_busy = false;
+        m_embeddedMode = false;
+        emit loginFailed(tr("登录组件缺失：未找到 wv2login.exe"));
+        return;
+    }
+
+    // Result file + WebView2 profile live in the launcher's private data
+    // directory (NOT C:\Users\Public — that is world-readable and would leak
+    // the authorization code / login cookies). The code file is deleted right
+    // after reading; the profile holds login cookies and stays private.
+    const QString dataDir =
+        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(dataDir);
+    const QString outFile = dataDir + QStringLiteral("/wv2login_result_%1.txt")
+                                        .arg(QCoreApplication::applicationPid());
+    const QString profileDir = dataDir + QStringLiteral("/wv2login-profile");
+    QDir().mkpath(profileDir);
+    QFile::remove(outFile);
+
+    // Kill any stale helper from a previous run before starting a new one.
+    if (m_wv2Process) {
+        m_wv2Process->kill();
+        m_wv2Process->deleteLater();
+    }
+    m_wv2Process = new QProcess(this);
+    connect(m_wv2Process, &QProcess::finished, this,
+            [this, outFile, redirect](int exitCode, QProcess::ExitStatus) {
+        qCInfo(logApp) << QStringLiteral("[wv2login] 进程退出 exitCode=%1").arg(exitCode);
+        // Read the result file the helper wrote (UTF-8: "code=..." or "cancel").
+        QString content;
+        {
+            QFile f(outFile);
+            if (f.open(QIODevice::ReadOnly)) {
+                content = QString::fromUtf8(f.readAll());
+            }
+        }
+        QFile::remove(outFile);
+
+        m_embeddedMode = false;
+        m_busy = false;
+        if (content.startsWith(u"code="_s) && content.size() > 5) {
+            const QString code = content.mid(5);
+            qCInfo(logApp) << QStringLiteral("[wv2login] 已获取授权码 code=%1...").arg(code.left(15));
+            emit loginProgress(tr("获取授权码"), code.left(15) + u"..."_s);
+            exchangeCode(code, redirect);
+        } else {
+            qCInfo(logApp) << QStringLiteral("[wv2login] 未完成登录（窗口关闭/失败），按取消处理");
+            emit loginFailed(tr("登录被用户手动取消"));
+        }
+    });
+    connect(m_wv2Process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError err) {
+        qCWarning(logApp) << QStringLiteral("[wv2login] 启动失败 error=%1").arg(static_cast<int>(err));
+    });
+
+    emit loginProgress(tr("正在加载登录页面"), QString());
+    m_wv2Process->start(exePath, {
+        QStringLiteral("--client-id=") + m_clientId,
+        QStringLiteral("--output-file=") + outFile,
+        QStringLiteral("--user-data-folder=") + profileDir,
+    });
+}
+
+// ═══════════════════════════════════════════════════
+// Token exchange + MC auth (shared between both modes)
+// ═══════════════════════════════════════════════════
+
+void MicrosoftAuth::exchangeCode(const QString& code, const QString& redirectUri) {
+    qCInfo(logAccount) << QStringLiteral("换取Token 授权码=%1...").arg(code.left(15));
+    emit loginProgress(tr("换取访问令牌"), QString());
+
+    QUrlQuery params;
+    params.addQueryItem("client_id", m_clientId);
+    params.addQueryItem("code", code);
+    params.addQueryItem("redirect_uri", redirectUri);
+    params.addQueryItem("grant_type", "authorization_code");
+
+    QNetworkRequest req(QUrl(QString::fromLatin1(kTokenUrl)));
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+    auto* reply = HttpClient::instance().post(req, params.toString(QUrl::FullyEncoded).toUtf8());
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        reply->deleteLater();
+        int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        QByteArray data = reply->readAll();
+        if (status != 200) {
+            qCWarning(logAccount) << QStringLiteral("Token换取失败 HTTP=%1").arg(status);
+            emit loginFailed(QStringLiteral("Token exchange failed: %1").arg(status));
+            m_busy = false; return;
+        }
+        QJsonObject resp = QJsonDocument::fromJson(data).object();
+        if (resp.contains("error")) {
+            emit loginFailed(resp["error_description"].toString());
+            m_busy = false; return;
+        }
+        m_msAccessToken = resp["access_token"].toString();
+        m_msRefreshToken = resp["refresh_token"].toString();
+        qCInfo(logAccount) << QStringLiteral("Token换取成功 类型=%1 过期=%2s").arg(resp["token_type"].toString(), QString::number(resp["expires_in"].toInt()));
+        authenticateXbl(m_msAccessToken);
+    });
+}
+
+void MicrosoftAuth::authenticateXbl(const QString& accessToken) {
+    qCInfo(logAccount) << QStringLiteral("XBL认证");
+    emit loginProgress(tr("Xbox Live 认证"), QString());
+    QJsonObject body;
+    QJsonObject props;
+    props["AuthMethod"] = "RPS";
+    props["SiteName"] = "user.auth.xboxlive.com";
+    props["RpsTicket"] = QStringLiteral("d=%1").arg(accessToken);
+    body["Properties"] = props;
+    body["RelyingParty"] = "http://auth.xboxlive.com";
+    body["TokenType"] = "JWT";
+
+    QNetworkRequest req(QUrl(QString::fromLatin1("https://user.auth.xboxlive.com/user/authenticate")));
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    auto* reply = HttpClient::instance().post(req, QJsonDocument(body).toJson(QJsonDocument::Compact));
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        reply->deleteLater();
+        QJsonObject resp = QJsonDocument::fromJson(reply->readAll()).object();
+        QString token = resp["Token"].toString();
+        if (token.isEmpty()) { qCWarning(logAccount) << QStringLiteral("XBL认证失败 错误=%1").arg(QStringLiteral("Token为空")); emit loginFailed(tr("XBL 令牌为空")); m_busy = false; return; }
+        qCInfo(logAccount) << QStringLiteral("XBL认证成功");
+        authenticateXsts(token);
+    });
+}
+
+void MicrosoftAuth::authenticateXsts(const QString& xblToken) {
+    qCInfo(logAccount) << QStringLiteral("XSTS认证");
+    emit loginProgress(tr("XSTS 认证"), QString());
+    QJsonObject body;
+    QJsonObject props;
+    props["SandboxId"] = "RETAIL";
+    props["UserTokens"] = QJsonArray{xblToken};
+    body["Properties"] = props;
+    body["RelyingParty"] = "rp://api.minecraftservices.com/";
+    body["TokenType"] = "JWT";
+
+    QNetworkRequest req(QUrl(QString::fromLatin1("https://xsts.auth.xboxlive.com/xsts/authorize")));
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    auto* reply = HttpClient::instance().post(req, QJsonDocument(body).toJson(QJsonDocument::Compact));
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        reply->deleteLater();
+        QJsonObject resp = QJsonDocument::fromJson(reply->readAll()).object();
+        if (resp.contains("XErr")) {
+            qCWarning(logAccount) << QStringLiteral("XSTS认证失败 XErr=%1").arg(resp["XErr"].toInt());
+            emit loginFailed(tr("XSTS 错误: %1").arg(resp["XErr"].toInt()));
+            m_busy = false; return;
+        }
+        QString token = resp["Token"].toString();
+        QString uhs = resp["DisplayClaims"].toObject()["xui"].toArray()[0].toObject()["uhs"].toString();
+        if (token.isEmpty() || uhs.isEmpty()) { emit loginFailed(tr("XSTS 响应无效")); m_busy = false; return; }
+        authenticateMc(token, uhs);
+    });
+}
+
+void MicrosoftAuth::authenticateMc(const QString& xstsToken, const QString& uhs) {
+    qCInfo(logAccount) << QStringLiteral("Minecraft认证");
+    emit loginProgress(tr("Minecraft 认证"), QString());
+    QJsonObject body;
+    body["identityToken"] = QStringLiteral("XBL3.0 x=%1;%2").arg(uhs, xstsToken);
+
+    QNetworkRequest req(QUrl(QString::fromLatin1("https://api.minecraftservices.com/authentication/login_with_xbox")));
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    auto* reply = HttpClient::instance().post(req, QJsonDocument(body).toJson(QJsonDocument::Compact));
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        reply->deleteLater();
+        QJsonObject resp = QJsonDocument::fromJson(reply->readAll()).object();
+        m_msMcToken = resp["access_token"].toString();
+        if (m_msMcToken.isEmpty()) { emit loginFailed(tr("MC 令牌为空")); m_busy = false; return; }
+        m_msTokenExpiresIn = resp["expires_in"].toInt(86400);
+        qCInfo(logAccount) << QStringLiteral("MC认证成功 expiresIn=%1s").arg(m_msTokenExpiresIn);
+        fetchMcProfile(m_msMcToken);
+    });
+}
+
+void MicrosoftAuth::fetchMcProfile(const QString& mcAccessToken) {
+    qCInfo(logAccount) << QStringLiteral("获取MC档案");
+    emit loginProgress(tr("获权个人信息"), QString());
+
+    QNetworkRequest req(QUrl(QString::fromLatin1("https://api.minecraftservices.com/minecraft/profile")));
+    req.setRawHeader("Authorization", QStringLiteral("Bearer %1").arg(mcAccessToken).toUtf8());
+
+    auto* reply = HttpClient::instance().getRaw(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        reply->deleteLater();
+        m_busy = false;
+        QJsonObject resp = QJsonDocument::fromJson(reply->readAll()).object();
+        QString name = resp["name"].toString();
+        QString uuid = resp["id"].toString();
+        if (name.isEmpty() || uuid.isEmpty()) { emit loginFailed(tr("未找到 Minecraft 档案")); return; }
+        qCInfo(logAccount) << QStringLiteral("MC档案获取成功 玩家=%1 UUID=%2").arg(name, uuid);
+        emit loginSuccess(m_msMcToken, name, uuid, m_msRefreshToken, m_msTokenExpiresIn);
+    });
+}
+
+void MicrosoftAuth::refreshMcChain(const QString& msAccessToken, const QString& msRefreshToken) {
+    qCInfo(logAccount) << QStringLiteral("刷新MC令牌链");
+    // 记录刷新得到的新令牌，供 loginSuccess 透传（旧实现不设置 → 信号里 refreshToken 为空）
+    if (!msRefreshToken.isEmpty()) m_msRefreshToken = msRefreshToken;
+    if (m_busy) {
+        // Don't silently skip — the caller (LaunchBackend step 0) is waiting for
+        // a signal and will hang if we return without emitting anything.
+        // Emit loginFailed so AccountBackend can relay tokenRefreshFailed.
+        // m_busy is cleared in fetchMcProfile on success, or in each chain
+        // step's error handler.
+        qCWarning(logApp) << QStringLiteral("[MSA] refreshMcChain 阻塞 已有认证流程在进行,发射失败信号");
+        // Call resetBusy first to clear the stuck flag, then emit
+        m_busy = false;
+        emit loginFailed(tr("认证流程冲突，请稍后重试"));
+        return;
+    }
+    m_busy = true;
+    authenticateXbl(msAccessToken);
+}
+
+} // namespace ShadowLauncher

@@ -1,0 +1,138 @@
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;
+ font-family:"Microsoft YaHei UI","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+ -webkit-font-smoothing:antialiased;color:#e8ebf2}
+.win{position:relative;display:flex;width:100vw;height:100vh;background:#08090d;overflow:hidden;border-radius:12px}
+svg{stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;display:block}
+.side{width:208px;flex:0 0 208px;background:#0a0b0f;border-right:1px solid #14171d;display:flex;flex-direction:column;padding:16px 12px 12px}
+.brand{font-size:14px;font-weight:700;letter-spacing:.16em;color:#fff;padding:0 10px;margin:4px 0 20px}
+.nav{display:flex;flex-direction:column;gap:1px}
+.navsub{display:flex;flex-direction:column;gap:1px;margin-top:14px;padding-top:14px;border-top:1px solid #14171d}
+.nav a,.navsub a{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border-radius:8px;color:#98a1ae;font-size:13.5px;text-decoration:none;position:relative}
+.nav a svg,.navsub a svg{width:17px;height:17px;flex:0 0 17px;opacity:.9}
+.nav a.on{background:#151a23;color:#fff;font-weight:600}
+.nav a.on::before{content:"";position:absolute;left:-12px;top:10px;bottom:10px;width:2px;border-radius:0 2px 2px 0;background:#3b82f6}
+.pill{margin-left:auto;font-style:normal;font-size:10.5px;font-weight:600;color:#0a0b0f;background:#3b82f6;border-radius:99px;padding:1px 6px;line-height:14px}
+.sidefoot{margin-top:auto;padding:0 10px;font-size:11px;color:#4b535f}
+.wctl{position:absolute;top:0;right:0;height:44px;display:flex;align-items:center;gap:6px;padding:0 10px;z-index:20}
+.chip{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:8px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.075);font-size:12.5px;color:#dfe4ec}
+.chip svg{width:15px;height:15px;opacity:.85}
+.ico{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06);color:#aab2be}
+.ico svg{width:15px;height:15px}
+.play{display:inline-flex;align-items:center;justify-content:center;gap:9px;height:48px;padding:0 34px;border:none;border-radius:10px;
+ font-family:inherit;font-size:15px;font-weight:600;letter-spacing:.03em;color:#fff;
+ background:linear-gradient(180deg,#4b8cf7,#2563eb);box-shadow:0 10px 26px -6px rgba(37,99,235,.55),inset 0 1px 0 rgba(255,255,255,.18)}
+.play svg{width:18px;height:18px;stroke-width:2.2}
+.ghost{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:8px;background:rgba(255,255,255,.02);
+ border:1px solid #262b35;color:#bfc6d2;font-size:12.5px;font-family:inherit}
+.ghost svg{width:14px;height:14px;opacity:.8}
+.drow{display:flex;align-items:center;border-bottom:1px solid #12151b;font-size:12.8px}
+.drow .k{width:92px;color:#6d7684;display:flex;align-items:center;gap:8px}
+.drow .k svg{width:14px;height:14px;opacity:.66}
+.drow .v{color:#d8dde5}
+.drow .acc{margin-left:auto;color:#79828f;font-size:11.5px}
+
+/* ===== A2 : poster split ===== */
+.amain{flex:1;display:flex;min-width:0;background:#08090d}
+.ainfo{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:0 0 56px 64px;position:relative;z-index:2}
+.ainfo .toprow{position:absolute;top:0;left:0;right:0;height:52px;display:flex;align-items:center;gap:8px;padding:0 44px 0 64px}
+.ainfo .toprow .sp{flex:1}
+.acct{display:flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 5px;border-radius:99px;
+ background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);font-size:12.5px;color:#dfe4ec}
+.acct .av{width:22px;height:22px;border-radius:99px;background:linear-gradient(160deg,#2b3444,#1a212c);
+ display:grid;place-items:center;font-size:10px;font-weight:700;color:#8f9aab}
+.ainfo .kick{display:flex;align-items:center;gap:9px;font-size:11.5px;letter-spacing:.1em;color:#8d96a4;margin-bottom:16px}
+.ainfo .kick .ln{width:22px;height:1px;background:#3b82f6}
+.ainfo h1{font-size:48px;line-height:1.04;font-weight:700;letter-spacing:-.02em;color:#fff}
+.ainfo h1 .lc{color:#8ea6c8;font-weight:600}
+.ainfo .sub{font-size:13.5px;color:#a9b2c0;margin-top:14px;letter-spacing:.01em}
+.ainfo .tags{display:flex;align-items:center;gap:14px;margin-top:18px;font-size:12.5px;color:#8f99a7}
+.ainfo .tags i{width:3px;height:3px;border-radius:99px;background:#454e5c;font-style:normal}
+.ainfo .acts{display:flex;align-items:center;gap:10px;margin-top:44px}
+.ainfo .foot{position:absolute;left:64px;right:44px;bottom:26px;display:flex;align-items:center;gap:10px;
+ padding-top:14px;border-top:1px solid #14171d;font-size:11.5px;color:#5b6472}
+.ainfo .foot .st{color:#4ade80;display:inline-flex;align-items:center;gap:5px}
+.ainfo .foot .st i{width:5px;height:5px;border-radius:99px;background:#4ade80;font-style:normal}
+.ainfo .foot .sp{flex:1}
+.apost{flex:0 0 44%;position:relative;overflow:hidden;background:#07080c}
+.apost .im{position:absolute;inset:0;background:url('../visual/vis_20260821_120122_5f5a12c6/MC夜景去水印加青蛙.png') center 30%/cover no-repeat;filter:brightness(1.22) saturate(1.12)}
+.apost .fadeL{position:absolute;left:0;top:0;bottom:0;width:190px;
+ background:linear-gradient(90deg,#08090d 4%,rgba(8,9,13,.86) 34%,rgba(8,9,13,.34) 72%,rgba(8,9,13,0) 100%)}
+.apost .fadeB{position:absolute;left:0;right:0;bottom:0;height:180px;background:linear-gradient(0deg,rgba(8,9,13,.9),rgba(8,9,13,0))}
+.apost .pill-tag{position:absolute;left:34px;bottom:30px;display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 11px;border-radius:99px;
+ background:rgba(8,9,13,.55);border:1px solid rgba(255,255,255,.12);font-size:11.5px;color:#dfe6ef;backdrop-filter:none}
+.apost .pill-tag i{width:5px;height:5px;border-radius:99px;background:#4ade80;font-style:normal}
+
+/* ===== B2 : library ===== */
+.lib{width:300px;flex:0 0 300px;background:#0b0d12;border-right:1px solid #14171d;display:flex;flex-direction:column}
+.libhead{padding:18px 16px 10px}
+.libttl{display:flex;align-items:baseline;justify-content:space-between}
+.libttl b{font-size:13.5px;color:#fff;font-weight:600;letter-spacing:.02em}
+.libttl span{font-size:11.5px;color:#5d6673}
+.searchrow{display:flex;gap:8px;margin-top:12px}
+.search{flex:1;display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border-radius:8px;background:#11141b;border:1px solid #1c2029;color:#5d6673;font-size:12px}
+.search svg{width:14px;height:14px}
+.vlist{flex:1;overflow:hidden;padding:6px 8px 8px;display:flex;flex-direction:column;gap:2px}
+.vrow{display:flex;align-items:center;gap:10px;height:56px;padding:0 9px;border-radius:9px;position:relative}
+.vrow .lico{width:36px;height:36px;flex:0 0 36px;border-radius:8px;display:grid;place-items:center;background:#171d29;border:1px solid #212836;color:#7f8ea6}
+.vrow .lico svg{width:17px;height:17px}
+.vrow .t{font-size:12.8px;color:#cbd2dd;font-weight:500;line-height:1.25}
+.vrow .s{font-size:10.8px;color:#5a6472;margin-top:2px}
+.vrow.on{background:#161b24}
+.vrow.on::before{content:"";position:absolute;left:0;top:13px;bottom:13px;width:2px;border-radius:0 2px 2px 0;background:#3b82f6}
+.vrow.on .t{color:#fff;font-weight:600}
+.vrow.on .lico{background:#1b2436;border-color:#2a3650;color:#93a6c4}
+.detail{flex:1;min-width:0;display:flex;flex-direction:column;background:#08090d;position:relative}
+.cover{position:relative;height:50%;overflow:hidden}
+.cover .im{position:absolute;inset:0;background:url('../visual/vis_20260821_120122_5f5a12c6/MC夜景去水印加青蛙.png') center 26%/cover no-repeat;filter:brightness(1.26) saturate(1.12)}
+.cover .sc{position:absolute;inset:0;background:linear-gradient(0deg,#08090d 1%,rgba(8,9,13,.3) 48%,rgba(8,9,13,.45))}
+.cover .cap{position:absolute;left:36px;right:36px;bottom:18px}
+.cap h2{font-size:30px;font-weight:700;color:#fff;letter-spacing:-.015em;line-height:1.08}
+.cap h2 em{display:block;font-style:normal;font-size:12.5px;font-weight:500;color:#aab3c1;letter-spacing:.02em;margin-top:8px}
+.dbody{flex:1;padding:6px 36px 0;display:flex;flex-direction:column}
+.dbody .drow{flex:1;min-height:48px;max-height:76px}
+.dbar{display:flex;align-items:center;gap:8px;padding:16px 36px 20px;border-top:1px solid #12151b}
+.dbar .sp{flex:1}
+
+/* ===== C2 : banner ===== */
+.cmain{flex:1;min-width:0;display:flex;flex-direction:column;background:#08090d}
+.bbanner{position:relative;flex:0 0 58%;overflow:hidden}
+.bbanner .im{position:absolute;inset:0;background:url('../visual/vis_20260821_120122_5f5a12c6/MC夜景去水印加青蛙.png') center 30%/cover no-repeat;filter:brightness(1.2) saturate(1.1)}
+.bbanner .sc{position:absolute;inset:0;background:
+ linear-gradient(180deg,rgba(8,9,13,.55) 0%,rgba(8,9,13,0) 26%),
+ linear-gradient(0deg,#08090d 1%,rgba(8,9,13,.55) 30%,rgba(8,9,13,.05) 66%)}
+.bbanner .cap{position:absolute;left:48px;right:48px;bottom:26px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.cap h2{font-size:44px;font-weight:700;color:#fff;letter-spacing:-.02em;line-height:1.03}
+.cap h2 em{display:block;font-style:normal;font-size:13px;font-weight:500;color:#b3bcc9;letter-spacing:.02em;margin-top:11px}
+.cbase{flex:1;display:flex;align-items:center;gap:40px;padding:0 48px;border-top:1px solid #12151b}
+.cbase .col{flex:1;display:flex;gap:40px}
+.cbase .kvp{display:flex;flex-direction:column;gap:6px}
+.cbase .kvp .k{font-size:10.5px;letter-spacing:.1em;color:#5d6673}
+.cbase .kvp .v{font-size:13.5px;color:#dbe0e8}
+.cbase .go{margin-left:auto}
+
+@media (max-width:900px){
+ .side{width:64px;flex:0 0 64px;padding:14px 8px}
+ .brand{display:none}
+ .nav a span,.navsub a span,.pill,.sidefoot{display:none}
+ .nav a,.navsub a{justify-content:center;padding:0}
+ .ainfo{padding-left:28px;padding-bottom:120px}
+ .ainfo .toprow{padding:0 20px 0 28px}
+ .ainfo .foot{left:28px;right:20px;bottom:18px}
+ .ainfo h1{font-size:34px}
+ .ainfo .acts{margin-top:26px;flex-wrap:wrap}
+ .apost{flex:0 0 40%}
+ .apost .fadeL{width:110px}
+ .ainfo .sub{font-size:12px}
+ .cap h2{font-size:28px}
+ .bbanner{flex:0 0 56%}
+ .bbanner .cap,.cbase{padding-left:24px;padding-right:24px}
+ .bbanner .cap{left:24px;right:24px}
+ .cbase{gap:18px}
+ .cbase .col{gap:18px}
+ .lib{width:240px;flex:0 0 240px}
+ .cover .cap,.dbody,.dbar{padding-left:22px;padding-right:22px}
+ .cover .cap{left:22px;right:22px}
+ .play{height:42px;padding:0 22px;font-size:13.5px}
+ .ghost{padding:0 10px}
+}

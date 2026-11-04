@@ -1,0 +1,333 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2025-2026 影 / Shadow / xiaole1173
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
+// ============================================================
+// AgreementOverlay.qml — 协议同意弹窗
+// ============================================================
+
+Rectangle {
+    id: overlay
+    anchors.fill: parent
+    color: StyleTokens.bgPrimary
+    radius: StyleTokens.radiusXl
+    z: 999
+
+    // ── Precompute HTML properties at overlay scope ──
+    readonly property string betaHtml: typeof backend !== "undefined" && backend ? (backend.betaAgreementHtml || "") : ""
+    readonly property string privacyHtml: typeof backend !== "undefined" && backend ? (backend.privacyAgreementHtml || "") : ""
+    readonly property string termsHtml: typeof backend !== "undefined" && backend ? (backend.termsAgreementHtml || "") : ""
+    // 编译期内测开关：公测版（默认）恒 false → 隐藏内测协议行与内测文案
+    readonly property bool betaGateEnabled: typeof backend !== "undefined" && backend ? (backend.betaGateEnabled || false) : false
+
+    // Pass-through MouseArea — blocks click-through but allows title drag
+    MouseArea {
+        anchors.fill: parent
+    }
+
+    // ── AgreementRow — inline component (scope: overlay) ──
+    component AgreementRow: RowLayout {
+        id: row
+        spacing: 2
+        property bool checked: false
+        property string labelText: ""
+        property string linkText: "[查看]"
+        property var onView: null  // callback to open agreement
+        signal toggled()
+        Layout.preferredHeight: 28
+
+        Rectangle {
+            id: cb
+            Layout.preferredWidth: 16
+            Layout.preferredHeight: 16
+            radius: StyleTokens.radiusXs
+            color: row.checked ? StyleTokens.info : "transparent"
+            border.color: row.checked ? StyleTokens.info : StyleTokens.infoBg
+            border.width: 1.5
+            Text {
+                anchors.centerIn: parent
+                text: row.checked ? "\u2713" : ""
+                font.pixelSize: StyleTokens.fontSizeXs
+                color: StyleTokens.textInverse
+                visible: row.checked
+            }
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: { row.checked = !row.checked; row.toggled() }
+            }
+        }
+        Text {
+            text: row.labelText
+            font.pixelSize: StyleTokens.fontSizeSm
+            color: StyleTokens.textTertiary
+            Layout.leftMargin: 6
+        }
+        Text {
+            text: row.linkText
+            font.pixelSize: StyleTokens.fontSizeSm
+            color: StyleTokens.info
+            font.underline: true
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    if (row.onView) row.onView()
+                }
+            }
+        }
+    }
+
+    // ── State ──
+    property bool betaChecked: false
+    property bool privacyChecked: false
+    property bool termsChecked: false
+    // 内测版需勾内测协议；公测版只要求隐私+用户协议
+    property bool allChecked: (!betaGateEnabled || betaChecked) && privacyChecked && termsChecked
+    property bool showingAgreement: false
+    property string currentAgreementTitle: ""
+    property string currentAgreementHtml: ""
+
+    // ── Title bar (draggable) ──
+    Item {
+        id: titleBar
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 64
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            cursorShape: Qt.OpenHandCursor
+            property point lastPos: Qt.point(0, 0)
+            onPressed: function(mouse) { lastPos = Qt.point(mouse.x, mouse.y) }
+            onPositionChanged: function(mouse) {
+                if (overlay.Window && overlay.Window.window) {
+                    overlay.Window.window.x += mouse.x - lastPos.x
+                    overlay.Window.window.y += mouse.y - lastPos.y
+                }
+            }
+        }
+    }
+
+    // ── Close button (matches main launcher style) ──
+    ShadowIconButton {
+        id: closeBtn
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: 12
+        icon: "\u2715"; type: "close"
+        onClicked: Qt.quit()
+    }
+
+    // ── Main content ──
+    ColumnLayout {
+        id: mainContent
+        anchors.centerIn: parent
+        width: Math.min(parent.width * 0.55, 560)
+        spacing: 0
+        visible: !showingAgreement
+
+        ColumnLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 4
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                text: "SHADOW LAUNCHER"
+                font.pixelSize: 28
+                font.weight: Font.Bold
+                font.letterSpacing: 4
+                color: StyleTokens.textInverse
+            }
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                text: typeof backend !== "undefined" && backend ? backend.appVersion : ""
+                font.pixelSize: StyleTokens.fontSizeSm
+                color: StyleTokens.textMuted
+            }
+        }
+
+        Item { Layout.preferredHeight: 24 }
+
+        Text {
+            Layout.alignment: Qt.AlignHCenter
+            text: betaGateEnabled ? "欢迎使用 Shadow Launcher 内测版！" : "欢迎使用 Shadow Launcher！"
+            font.pixelSize: StyleTokens.fontSizeMd
+            font.weight: Font.Medium
+            color: StyleTokens.textSecondary
+        }
+        Text {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 4
+            text: "请仔细阅读并同意以下协议后开始使用。"
+            font.pixelSize: StyleTokens.fontSizeSm
+            color: StyleTokens.textSubtle
+        }
+
+        Item { Layout.preferredHeight: 20 }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: agreementColumn.implicitHeight + 30
+            color: StyleTokens.surfaceOverlay
+            radius: StyleTokens.radiusLg
+            border.color: StyleTokens.accentSubtle
+            border.width: 1
+
+            ColumnLayout {
+                id: agreementColumn
+                anchors.fill: parent
+                anchors.margins: 15
+                spacing: 4
+                AgreementRow {
+                    id: betaRow; Layout.fillWidth: true
+                    visible: betaGateEnabled
+                    labelText: "我已阅读并同意《Shadow Launcher 内测人员协议》"
+                    checked: overlay.betaChecked
+                    onToggled: overlay.betaChecked = checked
+                    onView: function() { overlay.showAgreement("内测人员协议", overlay.betaHtml) }
+                }
+                AgreementRow {
+                    id: privacyRow; Layout.fillWidth: true
+                    labelText: "我已阅读并同意《Shadow Launcher 隐私协议》"
+                    checked: overlay.privacyChecked
+                    onToggled: overlay.privacyChecked = checked
+                    onView: function() { overlay.showAgreement("隐私协议", overlay.privacyHtml) }
+                }
+                AgreementRow {
+                    id: termsRow; Layout.fillWidth: true
+                    labelText: "我已阅读并同意《Shadow Launcher 用户协议》"
+                    checked: overlay.termsChecked
+                    onToggled: overlay.termsChecked = checked
+                    onView: function() { overlay.showAgreement("用户协议", overlay.termsHtml) }
+                }
+            }
+        }
+
+        Item { Layout.preferredHeight: 24 }
+
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 16
+            Rectangle {
+                id: agreeBtn
+                property bool btnEnabled: overlay.allChecked
+                Layout.preferredWidth: 160
+                Layout.preferredHeight: 40
+                radius: StyleTokens.radiusLg
+                color: btnEnabled ? StyleTokens.info : StyleTokens.accentSubtle
+                Text {
+                    anchors.centerIn: parent
+                    text: "同意并继续"
+                    font.pixelSize: StyleTokens.fontSizeMd
+                    font.weight: Font.Medium
+                    color: agreeBtn.btnEnabled ? StyleTokens.textInverse : StyleTokens.textMuted
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: agreeBtn.btnEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    enabled: agreeBtn.btnEnabled
+                    onClicked: {
+                        if (typeof backend !== "undefined" && backend) backend.markAgreed = true
+                    }
+                }
+            }
+            Rectangle {
+                Layout.preferredWidth: 160
+                Layout.preferredHeight: 40
+                radius: StyleTokens.radiusLg
+                color: "transparent"
+                border.color: StyleTokens.infoBg
+                border.width: 1
+                Text {
+                    anchors.centerIn: parent
+                    text: "不同意并退出"
+                    font.pixelSize: StyleTokens.fontSizeMd
+                    color: StyleTokens.textSubtle
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Qt.quit()
+                }
+            }
+        }
+    }
+
+    // ── RichText reading view ──
+    Rectangle {
+        anchors.fill: parent
+        color: StyleTokens.bgPrimary
+        visible: showingAgreement
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 0
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 48
+                color: StyleTokens.bgSecondary
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 16
+                    anchors.rightMargin: 8
+                    Text {
+                        text: currentAgreementTitle
+                        font.pixelSize: StyleTokens.fontSizeMd
+                        font.weight: Font.Medium
+                        color: StyleTokens.textSecondary
+                        Layout.fillWidth: true
+                    }
+                    Rectangle {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        radius: StyleTokens.radiusMd
+                        color: StyleTokens.bgCard
+                        Text {
+                            anchors.centerIn: parent
+                            text: "\u2715"
+                            font.pixelSize: StyleTokens.fontSizeMd
+                            color: StyleTokens.textSubtle
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: overlay.showingAgreement = false
+                        }
+                    }
+                }
+            }
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.margins: 20
+                clip: true
+
+                Text {
+                    id: agreementText
+                    width: overlay.width - 40
+                    text: currentAgreementHtml || "<p style='color:#7880a0'>无法加载协议文件</p>"
+                    textFormat: Text.RichText
+                    font.pixelSize: StyleTokens.fontSizeMd
+                    color: StyleTokens.textTertiary
+                    wrapMode: Text.WordWrap
+                    onLinkActivated: function(url) {
+                        Qt.openUrlExternally(url)
+                    }
+                }
+            }
+        }
+    }
+
+    function showAgreement(title, html) {
+        currentAgreementTitle = title
+        currentAgreementHtml = html
+        showingAgreement = true
+    }
+}

@@ -1,0 +1,516 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shadow Launcher · 启动页原型</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;
+ font-family:"Microsoft YaHei UI","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+ -webkit-font-smoothing:antialiased;color:#e8ebf2}
+.win{position:relative;display:flex;width:100vw;height:100vh;background:#08090d;overflow:hidden;border-radius:12px}
+svg{stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;display:block}
+.side{width:208px;flex:0 0 208px;background:#0a0b0f;border-right:1px solid #14171d;display:flex;flex-direction:column;padding:16px 12px 12px}
+.brand{font-size:14px;font-weight:700;letter-spacing:.16em;color:#fff;padding:0 10px;margin:4px 0 20px}
+.nav{display:flex;flex-direction:column;gap:1px}
+.navsub{display:flex;flex-direction:column;gap:1px;margin-top:14px;padding-top:14px;border-top:1px solid #14171d}
+.nav a,.navsub a{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border-radius:8px;color:#98a1ae;font-size:13.5px;text-decoration:none;position:relative}
+.nav a svg,.navsub a svg{width:17px;height:17px;flex:0 0 17px;opacity:.9}
+.nav a.on{background:#151a23;color:#fff;font-weight:600}
+.nav a.on::before{content:"";position:absolute;left:-12px;top:10px;bottom:10px;width:2px;border-radius:0 2px 2px 0;background:#3b82f6}
+.pill{margin-left:auto;font-style:normal;font-size:10.5px;font-weight:600;color:#0a0b0f;background:#3b82f6;border-radius:99px;padding:1px 6px;line-height:14px}
+.sidefoot{margin-top:auto;padding:0 10px;font-size:11px;color:#4b535f}
+.wctl{position:absolute;top:0;right:0;height:44px;display:flex;align-items:center;gap:6px;padding:0 10px;z-index:20}
+.chip{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:8px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.075);font-size:12.5px;color:#dfe4ec}
+.chip svg{width:15px;height:15px;opacity:.85}
+.ico{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06);color:#aab2be}
+.ico svg{width:15px;height:15px}
+.play{display:inline-flex;align-items:center;justify-content:center;gap:9px;height:48px;padding:0 34px;border:none;border-radius:10px;
+ font-family:inherit;font-size:15px;font-weight:600;letter-spacing:.03em;color:#fff;
+ background:linear-gradient(180deg,#4b8cf7,#2563eb);box-shadow:0 10px 26px -6px rgba(37,99,235,.55),inset 0 1px 0 rgba(255,255,255,.18)}
+.play svg{width:18px;height:18px;stroke-width:2.2}
+.ghost{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:8px;background:rgba(255,255,255,.02);
+ border:1px solid #262b35;color:#bfc6d2;font-size:12.5px;font-family:inherit}
+.ghost svg{width:14px;height:14px;opacity:.8}
+.drow{display:flex;align-items:center;border-bottom:1px solid #12151b;font-size:12.8px}
+.drow .k{width:92px;color:#6d7684;display:flex;align-items:center;gap:8px}
+.drow .k svg{width:14px;height:14px;opacity:.66}
+.drow .v{color:#d8dde5}
+.drow .acc{margin-left:auto;color:#79828f;font-size:11.5px}
+
+/* ===== A2 : poster split ===== */
+.amain{flex:1;display:flex;min-width:0;background:#08090d}
+.ainfo{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:0 0 56px 64px;position:relative;z-index:2}
+.ainfo .toprow{position:absolute;top:0;left:0;right:0;height:52px;display:flex;align-items:center;gap:8px;padding:0 44px 0 64px}
+.ainfo .toprow .sp{flex:1}
+.acct{display:flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 5px;border-radius:99px;
+ background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);font-size:12.5px;color:#dfe4ec}
+.acct .av{width:22px;height:22px;border-radius:99px;background:linear-gradient(160deg,#2b3444,#1a212c);
+ display:grid;place-items:center;font-size:10px;font-weight:700;color:#8f9aab}
+.ainfo .kick{display:flex;align-items:center;gap:9px;font-size:11.5px;letter-spacing:.1em;color:#8d96a4;margin-bottom:16px}
+.ainfo .kick .ln{width:22px;height:1px;background:#3b82f6}
+.ainfo h1{font-size:48px;line-height:1.04;font-weight:700;letter-spacing:-.02em;color:#fff}
+.ainfo h1 .lc{color:#8ea6c8;font-weight:600}
+.ainfo .sub{font-size:13.5px;color:#a9b2c0;margin-top:14px;letter-spacing:.01em}
+.ainfo .tags{display:flex;align-items:center;gap:14px;margin-top:18px;font-size:12.5px;color:#8f99a7}
+.ainfo .tags i{width:3px;height:3px;border-radius:99px;background:#454e5c;font-style:normal}
+.ainfo .acts{display:flex;align-items:center;gap:10px;margin-top:44px}
+.ainfo .foot{position:absolute;left:64px;right:44px;bottom:26px;display:flex;align-items:center;gap:10px;
+ padding-top:14px;border-top:1px solid #14171d;font-size:11.5px;color:#5b6472}
+.ainfo .foot .st{color:#4ade80;display:inline-flex;align-items:center;gap:5px}
+.ainfo .foot .st i{width:5px;height:5px;border-radius:99px;background:#4ade80;font-style:normal}
+.ainfo .foot .sp{flex:1}
+.apost{flex:0 0 44%;position:relative;overflow:hidden;background:#07080c}
+.apost .im{position:absolute;inset:0;background:url('../visual/vis_20260821_120122_5f5a12c6/MC夜景去水印加青蛙.png') center 30%/cover no-repeat;filter:brightness(1.22) saturate(1.12)}
+.apost .fadeL{position:absolute;left:0;top:0;bottom:0;width:190px;
+ background:linear-gradient(90deg,#08090d 4%,rgba(8,9,13,.86) 34%,rgba(8,9,13,.34) 72%,rgba(8,9,13,0) 100%)}
+.apost .fadeB{position:absolute;left:0;right:0;bottom:0;height:180px;background:linear-gradient(0deg,rgba(8,9,13,.9),rgba(8,9,13,0))}
+.apost .pill-tag{position:absolute;left:34px;bottom:30px;display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 11px;border-radius:99px;
+ background:rgba(8,9,13,.55);border:1px solid rgba(255,255,255,.12);font-size:11.5px;color:#dfe6ef;backdrop-filter:none}
+.apost .pill-tag i{width:5px;height:5px;border-radius:99px;background:#4ade80;font-style:normal}
+
+/* ===== B2 : library ===== */
+.lib{width:300px;flex:0 0 300px;background:#0b0d12;border-right:1px solid #14171d;display:flex;flex-direction:column}
+.libhead{padding:18px 16px 10px}
+.libttl{display:flex;align-items:baseline;justify-content:space-between}
+.libttl b{font-size:13.5px;color:#fff;font-weight:600;letter-spacing:.02em}
+.libttl span{font-size:11.5px;color:#5d6673}
+.searchrow{display:flex;gap:8px;margin-top:12px}
+.search{flex:1;display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border-radius:8px;background:#11141b;border:1px solid #1c2029;color:#5d6673;font-size:12px}
+.search svg{width:14px;height:14px}
+.vlist{flex:1;overflow:hidden;padding:6px 8px 8px;display:flex;flex-direction:column;gap:2px}
+.vrow{display:flex;align-items:center;gap:10px;height:56px;padding:0 9px;border-radius:9px;position:relative}
+.vrow .lico{width:36px;height:36px;flex:0 0 36px;border-radius:8px;display:grid;place-items:center;background:#171d29;border:1px solid #212836;color:#7f8ea6}
+.vrow .lico svg{width:17px;height:17px}
+.vrow .t{font-size:12.8px;color:#cbd2dd;font-weight:500;line-height:1.25}
+.vrow .s{font-size:10.8px;color:#5a6472;margin-top:2px}
+.vrow.on{background:#161b24}
+.vrow.on::before{content:"";position:absolute;left:0;top:13px;bottom:13px;width:2px;border-radius:0 2px 2px 0;background:#3b82f6}
+.vrow.on .t{color:#fff;font-weight:600}
+.vrow.on .lico{background:#1b2436;border-color:#2a3650;color:#93a6c4}
+.detail{flex:1;min-width:0;display:flex;flex-direction:column;background:#08090d;position:relative}
+.cover{position:relative;height:50%;overflow:hidden}
+.cover .im{position:absolute;inset:0;background:url('../visual/vis_20260821_120122_5f5a12c6/MC夜景去水印加青蛙.png') center 26%/cover no-repeat;filter:brightness(1.26) saturate(1.12)}
+.cover .sc{position:absolute;inset:0;background:linear-gradient(0deg,#08090d 1%,rgba(8,9,13,.3) 48%,rgba(8,9,13,.45))}
+.cover .cap{position:absolute;left:36px;right:36px;bottom:18px}
+.cap h2{font-size:30px;font-weight:700;color:#fff;letter-spacing:-.015em;line-height:1.08}
+.cap h2 em{display:block;font-style:normal;font-size:12.5px;font-weight:500;color:#aab3c1;letter-spacing:.02em;margin-top:8px}
+.dbody{flex:1;padding:6px 36px 0;display:flex;flex-direction:column}
+.dbody .drow{flex:1;min-height:48px;max-height:76px}
+.dbar{display:flex;align-items:center;gap:8px;padding:16px 36px 20px;border-top:1px solid #12151b}
+.dbar .sp{flex:1}
+
+/* ===== C2 : banner ===== */
+.cmain{flex:1;min-width:0;display:flex;flex-direction:column;background:#08090d}
+.bbanner{position:relative;flex:0 0 58%;overflow:hidden}
+.bbanner .im{position:absolute;inset:0;background:url('../visual/vis_20260821_120122_5f5a12c6/MC夜景去水印加青蛙.png') center 30%/cover no-repeat;filter:brightness(1.2) saturate(1.1)}
+.bbanner .sc{position:absolute;inset:0;background:
+ linear-gradient(180deg,rgba(8,9,13,.55) 0%,rgba(8,9,13,0) 26%),
+ linear-gradient(0deg,#08090d 1%,rgba(8,9,13,.55) 30%,rgba(8,9,13,.05) 66%)}
+.bbanner .cap{position:absolute;left:48px;right:48px;bottom:26px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.cap h2{font-size:44px;font-weight:700;color:#fff;letter-spacing:-.02em;line-height:1.03}
+.cap h2 em{display:block;font-style:normal;font-size:13px;font-weight:500;color:#b3bcc9;letter-spacing:.02em;margin-top:11px}
+.cbase{flex:1;display:flex;align-items:center;gap:40px;padding:0 48px;border-top:1px solid #12151b}
+.cbase .col{flex:1;display:flex;gap:40px}
+.cbase .kvp{display:flex;flex-direction:column;gap:6px}
+.cbase .kvp .k{font-size:10.5px;letter-spacing:.1em;color:#5d6673}
+.cbase .kvp .v{font-size:13.5px;color:#dbe0e8}
+.cbase .go{margin-left:auto}
+
+@media (max-width:900px){
+ .side{width:64px;flex:0 0 64px;padding:14px 8px}
+ .brand{display:none}
+ .nav a span,.navsub a span,.pill,.sidefoot{display:none}
+ .nav a,.navsub a{justify-content:center;padding:0}
+ .ainfo{padding-left:28px;padding-bottom:120px}
+ .ainfo .toprow{padding:0 20px 0 28px}
+ .ainfo .foot{left:28px;right:20px;bottom:18px}
+ .ainfo h1{font-size:34px}
+ .ainfo .acts{margin-top:26px;flex-wrap:wrap}
+ .apost{flex:0 0 40%}
+ .apost .fadeL{width:110px}
+ .ainfo .sub{font-size:12px}
+ .cap h2{font-size:28px}
+ .bbanner{flex:0 0 56%}
+ .bbanner .cap,.cbase{padding-left:24px;padding-right:24px}
+ .bbanner .cap{left:24px;right:24px}
+ .cbase{gap:18px}
+ .cbase .col{gap:18px}
+ .lib{width:240px;flex:0 0 240px}
+ .cover .cap,.dbody,.dbar{padding-left:22px;padding-right:22px}
+ .cover .cap{left:22px;right:22px}
+ .play{height:42px;padding:0 22px;font-size:13.5px}
+ .ghost{padding:0 10px}
+}
+
+/* ================= interactive prototype layer ================= */
+.variant{display:none;width:100vw;height:100vh}
+.variant.on{display:block}
+html,body{background:#0b0d12}
+button{font-family:inherit;cursor:pointer}
+.play{position:relative;overflow:hidden}
+.play::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:var(--p,0%);
+ background:rgba(255,255,255,.8);transition:width .12s linear;opacity:0}
+.play.busy::after{opacity:1}
+.play.busy{background:linear-gradient(180deg,#ef4444,#dc2626);
+ box-shadow:0 10px 26px -6px rgba(220,38,38,.5),inset 0 1px 0 rgba(255,255,255,.16)}
+.play.done{background:linear-gradient(180deg,#1b2129,#12161c);border:1px solid #2a3140;
+ box-shadow:none;color:#9aa3b2}
+.play:hover{filter:brightness(1.07)}
+.ghost:hover{background:#171b23;border-color:#333a47;color:#e8ebf2}
+.nav a:hover,.navsub a:hover{background:#12151c;color:#dfe4ec}
+.vrow:hover{background:#10141b}
+.chip:hover,.ico:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.15)}
+.acct:hover{background:rgba(255,255,255,.09)}
+.vsw{position:fixed;left:14px;bottom:12px;display:flex;align-items:center;gap:2px;padding:3px;
+ border-radius:99px;background:rgba(14,17,23,.9);border:1px solid #262b35;
+ box-shadow:0 12px 30px rgba(0,0,0,.55);z-index:120}
+.vsw b{font-size:10px;color:#5d6673;font-weight:500;letter-spacing:.08em;padding:0 7px}
+.vsw button{height:24px;min-width:26px;padding:0 9px;border-radius:99px;border:none;background:transparent;
+ color:#98a1ae;font-size:11.5px;font-family:inherit;cursor:pointer}
+.vsw button.on{background:#1b2330;color:#fff}
+.menu{position:absolute;z-index:60;width:286px;background:#0e1117;border:1px solid #232a35;
+ border-radius:12px;padding:6px;box-shadow:0 28px 70px -14px rgba(0,0,0,.92);display:none}
+.menu.on{display:block}
+.menu.ver{top:52px;left:64px}
+.menu.acc{top:52px}
+.menu-h{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;
+ color:#6d7684;padding:8px 10px 7px;letter-spacing:.04em}
+.mi{display:flex;align-items:center;justify-content:space-between;width:100%;height:38px;padding:0 10px;
+ border-radius:8px;border:none;background:transparent;color:#cbd2dd;font-size:12.5px;text-align:left}
+.mi:hover{background:#151a23}
+.mi.on{background:#17202e;color:#fff}
+.mi-s{font-size:11px;color:#5d6673}
+.menu-f{border-top:1px solid #1a1f27;margin-top:6px;padding:9px 10px 4px;font-size:11.5px;
+ color:#5d6673;text-align:center}
+#toastHost{position:fixed;right:22px;bottom:22px;display:flex;flex-direction:column;gap:8px;
+ z-index:200;pointer-events:none}
+.toast{padding:10px 14px;border-radius:10px;background:#151a23;border:1px solid #2a3140;
+ font-size:12.5px;color:#dfe4ec;box-shadow:0 14px 34px rgba(0,0,0,.6);animation:tin .18s ease-out}
+@keyframes tin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ===== D : full-bleed stage, content cut to the bone ===== */
+.dmain{position:relative;flex:1;min-width:0;overflow:hidden;background:#070910}
+.dbg{position:absolute;inset:0;background:url('assets/aurora.jpg') center 44%/cover no-repeat}
+.dscrim{position:absolute;inset:0;background:
+ linear-gradient(180deg,rgba(5,8,14,.62) 0%,rgba(5,8,14,.10) 20%,rgba(5,8,14,0) 40%),
+ linear-gradient(0deg,rgba(5,8,14,.94) 0%,rgba(5,8,14,.62) 20%,rgba(5,8,14,.06) 52%,rgba(5,8,14,0) 70%),
+ linear-gradient(90deg,rgba(5,8,14,.72) 0%,rgba(5,8,14,.18) 38%,rgba(5,8,14,0) 62%)}
+.dtop{position:absolute;top:0;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:flex-end;
+ gap:8px;padding:0 104px 0 64px}
+.dbody{position:absolute;left:64px;right:64px;bottom:58px}
+.dbody .kick{display:flex;align-items:center;gap:9px;font-size:11.5px;letter-spacing:.1em;color:#9aa6b6;margin-bottom:15px}
+.dbody .kick .ln{width:22px;height:1px;background:#3b82f6}
+.dbody h1{font-size:58px;line-height:1.02;font-weight:700;letter-spacing:-.022em;color:#fff;
+ text-shadow:0 4px 30px rgba(0,0,0,.45)}
+.dbody h1 .lc{color:#9fb4cf;font-weight:600}
+.dbody .acts{display:flex;align-items:center;gap:10px;margin-top:34px}
+@media (max-width:900px){
+ .dbody{left:28px;right:24px;bottom:34px}
+ .dbody h1{font-size:34px}
+ .dbody .acts{margin-top:20px}
+ .dtop{padding:0 96px 0 28px;height:46px}
+ .dbg{background-position:center 40%}
+}
+@media (max-width:900px){
+ .vsw{left:auto;right:6px;top:50%;bottom:auto;transform:translateY(-50%);flex-direction:column;padding:3px}
+ .vsw button{height:20px;font-size:10.5px;min-width:22px;padding:0 7px}
+ .vsw b{display:none}
+ .menu.ver{left:28px;width:250px}
+}
+.st.warn{color:#93a6c4}
+</style></head><body>
+<div class="variant" data-v="a"><div class="win"><aside class="side">
+  <div class="brand">SHADOW</div>
+  <nav class="nav"><a class="on"><svg class="" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg><span>启动</span></a><a class=""><svg class="" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>下载</span></a><a class=""><svg class="" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span>联机</span></a><a class=""><svg class="" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>统计</span></a><a class=""><svg class="" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg><span>设置</span></a></nav>
+  <div class="navsub"><a><svg class="" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg><span>下载进度</span><em class="pill">2</em></a><a><svg class="" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span>帮助文档</span></a><a><svg class="" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.2 7.8 14.1 14.1 7.8 16.2 9.9 9.9 16.2 7.8"/></svg><span>实用网站</span></a></div>
+  <div class="sidefoot">v1.0.4</div>
+</aside>
+<main class="amain">
+  <div class="ainfo">
+  <div class="toprow">
+    <div class="chip js-verchip"><svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg><span class="js-chipver">1.20.1 · Fabric</span> <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+    <div class="ico"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg></div>
+    <div class="sp"></div>
+    <div class="acct js-acct"><div class="av">X</div><span class="js-acctname">xiaole1173</span></div>
+  </div>
+    <div class="kick"><span class="ln"></span>上次游玩 · 昨天 21:40</div>
+    <h1><span class="js-ver">1.20.1</span><span class="lc"> · Fabric</span></h1>
+    <div class="sub"><span class="js-sub">原版增强整合 · 24 个模组 · 加载完成</span></div>
+    <div class="tags"><span>Java 21</span><i></i><span>内存 8 GB</span><i></i><span>15 个版本</span></div>
+    <div class="acts">
+      <button class="play js-play"><svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg><span class="js-playlabel">启动游戏</span></button>
+      <button class="ghost"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>版本</button>
+      <button class="ghost"><svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>设置</button>
+    </div>
+    
+  <div class="menu ver js-vermenu">
+    <div class="menu-h"><span>选择版本</span><span>15 个已安装</span></div>
+    <button class="mi on" data-v="1.20.1" data-l="Fabric"><span>1.20.1 · Fabric</span><span class="mi-s">昨天 21:40</span></button>
+    <button class="mi" data-v="1.20.1" data-l="原版"><span>1.20.1 · 原版</span><span class="mi-s">10月28日</span></button>
+    <button class="mi" data-v="1.12.2" data-l="Forge"><span>1.12.2 · Forge</span><span class="mi-s">10月20日</span></button>
+    <button class="mi" data-v="1.21" data-l="NeoForge"><span>1.21 · NeoForge</span><span class="mi-s">10月12日</span></button>
+    <button class="mi" data-v="1.8.9" data-l="PvP"><span>1.8.9 · PvP</span><span class="mi-s">9月18日</span></button>
+    <div class="menu-f">管理全部版本 →</div>
+  </div>
+  <div class="menu acc js-accmenu" style="left:auto;right:44px">
+    <div class="menu-h"><span>账户</span><span>正版账户</span></div>
+    <button class="mi on" data-a="xiaole1173" data-t="正版账户"><span>xiaole1173</span><span class="mi-s">正版 · 在线</span></button>
+    <button class="mi" data-a="Steve_Offline" data-t="离线账户"><span>Steve_Offline</span><span class="mi-s">离线</span></button>
+    <button class="mi" data-a="外置登录" data-t="Yggdrasil"><span>外置登录…</span><span class="mi-s">Yggdrasil</span></button>
+    <div class="menu-f">切换账户 →</div>
+  </div>
+    <div class="foot"><span>xiaole1173</span><span>·</span><span class="st"><i></i><span class="js-stage">准备就绪</span></span><span class="sp"></span><span>SHADOW LAUNCHER v1.0.4</span></div>
+  </div>
+  <div class="apost"><div class="im"></div><div class="fadeL"></div><div class="fadeB"></div>
+    <div class="pill-tag"><i></i>就绪</div>
+  </div>
+</main><div class="wctl"><div class="ico"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="ico"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div></div></div>
+<div class="variant" data-v="b"><div class="win"><aside class="side">
+  <div class="brand">SHADOW</div>
+  <nav class="nav"><a class="on"><svg class="" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg><span>启动</span></a><a class=""><svg class="" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>下载</span></a><a class=""><svg class="" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span>联机</span></a><a class=""><svg class="" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>统计</span></a><a class=""><svg class="" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg><span>设置</span></a></nav>
+  <div class="navsub"><a><svg class="" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg><span>下载进度</span><em class="pill">2</em></a><a><svg class="" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span>帮助文档</span></a><a><svg class="" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.2 7.8 14.1 14.1 7.8 16.2 9.9 9.9 16.2 7.8"/></svg><span>实用网站</span></a></div>
+  <div class="sidefoot">v1.0.4</div>
+</aside>
+<section class="lib">
+  <div class="libhead">
+    <div class="libttl"><b>游戏版本</b><span>15 个已安装</span></div>
+    <div class="searchrow"><div class="search"><svg class="" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>搜索版本</div><div class="ico"><svg class="" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg></div></div>
+  </div>
+  <div class="vlist"><div class="vrow on"><div class="lico"><svg class="" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><polyline points="3.3 8 12 13 20.7 8"/><line x1="12" y1="22" x2="12" y2="13"/></svg></div><div><div class="t">1.20.1 · Fabric</div><div class="s">昨天 21:40 · 8 GB</div></div></div><div class="vrow "><div class="lico"><svg class="" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><polyline points="3.3 8 12 13 20.7 8"/><line x1="12" y1="22" x2="12" y2="13"/></svg></div><div><div class="t">1.20.1 · 原版</div><div class="s">10月28日 · 4 GB</div></div></div><div class="vrow "><div class="lico"><svg class="" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><polyline points="3.3 8 12 13 20.7 8"/><line x1="12" y1="22" x2="12" y2="13"/></svg></div><div><div class="t">1.12.2 · Forge</div><div class="s">10月20日 · 4 GB</div></div></div><div class="vrow "><div class="lico"><svg class="" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><polyline points="3.3 8 12 13 20.7 8"/><line x1="12" y1="22" x2="12" y2="13"/></svg></div><div><div class="t">1.21 · NeoForge</div><div class="s">10月12日 · 6 GB</div></div></div><div class="vrow "><div class="lico"><svg class="" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><polyline points="3.3 8 12 13 20.7 8"/><line x1="12" y1="22" x2="12" y2="13"/></svg></div><div><div class="t">1.19.2 · OptiFine</div><div class="s">9月30日 · 4 GB</div></div></div><div class="vrow "><div class="lico"><svg class="" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><polyline points="3.3 8 12 13 20.7 8"/><line x1="12" y1="22" x2="12" y2="13"/></svg></div><div><div class="t">1.8.9 · PvP</div><div class="s">9月18日 · 2 GB</div></div></div><div class="vrow "><div class="lico"><svg class="" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><polyline points="3.3 8 12 13 20.7 8"/><line x1="12" y1="22" x2="12" y2="13"/></svg></div><div><div class="t">1.20.1 · Quilt 测试</div><div class="s">9月02... (line truncated to 2000 chars)
+</section>
+<main class="detail">
+  <div class="cover"><div class="im"></div><div class="sc"></div>
+    <div class="cap"><h2><span class="js-ver">1.20.1</span><em><span class="js-sub">Fabric 0.16.9 · 原版增强整合 · 24 个模组</span></em></h2></div>
+  </div>
+  <div class="dbody">
+    <div class="drow"><div class="k"><svg class="" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>账户</div><div class="v">xiaole1173</div><div class="acc">正版账户 · 在线</div></div>
+    <div class="drow"><div class="k"><svg class="" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg>Java</div><div class="v">Java 21</div><div class="acc">已就绪</div></div>
+    <div class="drow"><div class="k"><svg class="" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="9" rx="2"/><line x1="7" y1="17" x2="7" y2="20"/><line x1="12" y1="17" x2="12" y2="20"/><line x1="17" y1="17" x2="17" y2="20"/></svg>内存</div><div class="v">8192 MB</div><div class="acc">上限 12288 MB</div></div>
+    <div class="drow"><div class="k"><svg class="" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.2 3.9A2 2 0 0 0 7.5 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg>游戏目录</div><div class="v">D:/Minecraft/.minecraft</div><div class="acc">15 个版本</div></div>
+    <div class="drow"><div class="k"><svg class="" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>上次游玩</div><div class="v">昨天 21:40</div><div class="acc">2 小时 14 分</div></div>
+  </div>
+  <div class="dbar">
+    <button class="ghost"><svg class="" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>版本设置</button>
+    <button class="ghost"><svg class="" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.2 3.9A2 2 0 0 0 7.5 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg>打开目录</button>
+    <div class="sp"></div>
+    <button class="play js-play"><svg class="" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg><span class="js-playlabel">启动游戏</span></button>
+  </div>
+</main><div class="wctl"><div class="ico"><svg class="" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="ico"><svg class="" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div></div></div>
+<div class="variant" data-v="c"><div class="win"><aside class="side">
+  <div class="brand">SHADOW</div>
+  <nav class="nav"><a class="on"><svg class="" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg><span>启动</span></a><a class=""><svg class="" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>下载</span></a><a class=""><svg class="" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span>联机</span></a><a class=""><svg class="" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>统计</span></a><a class=""><svg class="" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg><span>设置</span></a></nav>
+  <div class="navsub"><a><svg class="" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg><span>下载进度</span><em class="pill">2</em></a><a><svg class="" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span>帮助文档</span></a><a><svg class="" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.2 7.8 14.1 14.1 7.8 16.2 9.9 9.9 16.2 7.8"/></svg><span>实用网站</span></a></div>
+  <div class="sidefoot">v1.0.4</div>
+</aside>
+<main class="cmain">
+  <div class="bbanner"><div class="im"></div><div class="sc"></div>
+    <div class="cap">
+      <h2><span class="js-chipver">1.20.1 · Fabric</span><em><span class="js-sub">原版增强整合 · 24 个模组 · 上次游玩 昨天 21:40</span></em></h2>
+      <button class="play js-play"><svg class="" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg><span class="js-playlabel">启动游戏</span></button>
+    </div>
+  </div>
+  <div class="cbase">
+    <div class="col">
+      <div class="kvp"><div class="k">账户</div><div class="v">xiaole1173</div></div>
+      <div class="kvp"><div class="k">JAVA</div><div class="v">Java 21</div></div>
+      <div class="kvp"><div class="k">内存</div><div class="v">8192 MB</div></div>
+      <div class="kvp"><div class="k">状态</div><div class="v"><span class="js-stage">准备就绪</span></div></div>
+    </div>
+    <div class="go"><button class="ghost"><svg class="" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>版本切换</button> <button class="ghost"><svg class="" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>版本设置</button></div>
+  </div>
+</main><div class="wctl"><div class="ico"><svg class="" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="ico"><svg class="" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div></div></div>
+<div class="vsw"><b>方案</b>
+  <button data-v="a" class="on">A 舞台</button>
+  <button data-v="b">B 三栏</button>
+  <button data-v="c">C 横幅</button><button data-v="d">D 全幅</button>
+</div><div class="variant" data-v="d"><div class="win"><aside class="side">
+  <div class="brand">SHADOW</div>
+  <nav class="nav"><a class="on"><svg class="" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg><span>启动</span></a><a class=""><svg class="" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>下载</span></a><a class=""><svg class="" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span>联机</span></a><a class=""><svg class="" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>统计</span></a><a class=""><svg class="" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg><span>设置</span></a></nav>
+  <div class="navsub"><a><svg class="" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg><span>下载进度</span><em class="pill">2</em></a><a><svg class="" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span>帮助文档</span></a><a><svg class="" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.2 7.8 14.1 14.1 7.8 16.2 9.9 9.9 16.2 7.8"/></svg><span>实用网站</span></a></div>
+  <div class="sidefoot">v1.0.4</div>
+</aside>
+<main class="dmain">
+  <div class="dbg"></div><div class="dscrim"></div>
+  <div class="dtop"><div class="acct js-acct"><div class="av">X</div><span class="js-acctname">xiaole1173</span></div></div>
+  <div class="dbody">
+    <div class="kick"><span class="ln"></span><span class="js-stage">上次游玩 · 昨天 21:40</span></div>
+    <h1><span class="js-ver">1.20.1</span> <span class="lc">Fabric</span></h1>
+    <div class="acts">
+      <button class="play js-play"><svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg><span class="js-playlabel">启动游戏</span></button>
+      <button class="ghost"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>版本</button>
+      <button class="ghost"><svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>设置</button>
+    </div>
+  </div>
+</main>
+<div class="wctl"><div class="ico"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="ico"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>
+</div></div><div id="toastHost"></div>
+<script>
+(function(){
+  var q = new URLSearchParams(location.search);
+  var state = { variant: q.get('v') || 'a', phase: 'idle', p: 0, timer: null, runAt: 0, runTimer: null };
+  var stageText = {
+    idle: '准备就绪',
+    launching: '正在校验资源并准备启动环境',
+    running: '游戏运行中'
+  };
+  function $(s, r){ return (r||document).querySelector(s); }
+  function $$(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
+
+  function applyVariant(){
+    $$('.variant').forEach(function(el){
+      el.classList.toggle('on', el.getAttribute('data-v') === state.variant);
+    });
+    $$('.vsw button').forEach(function(b){
+      b.classList.toggle('on', b.getAttribute('data-v') === state.variant);
+    });
+  }
+
+  function paintStage(text){
+    $$('.js-stage').forEach(function(el){
+      el.textContent = text;
+      var box = el.closest('.st');
+      if(box) box.classList.toggle('warn', text.indexOf('准备就绪') !== 0);
+    });
+  }
+  function paintProgress(){
+    $$('.js-play').forEach(function(el){
+      el.style.setProperty('--p', state.p + '%');
+      var lab = el.querySelector('.js-playlabel');
+      if(!lab) return;
+      if(state.phase === 'launching') lab.textContent = state.p >= 0 ? '取消启动' : '取消启动';
+      else if(state.phase === 'running') lab.textContent = '游戏中 · 点击结束';
+      else lab.textContent = '启动游戏';
+    });
+  }
+  function setPhase(ph){
+    state.phase = ph;
+    $$('.js-play').forEach(function(el){
+      el.classList.toggle('busy', ph === 'launching');
+      el.classList.toggle('done', ph === 'running');
+    });
+    if(ph === 'launching'){
+      state.p = 0; paintStage(stageText.launching); paintProgress();
+      clearInterval(state.timer);
+      state.timer = setInterval(function(){
+        state.p += 2.2;
+        if(state.p >= 100){ state.p = 100; paintProgress(); clearInterval(state.timer); finish(); return; }
+        if(state.p > 34) paintStage('正在准备运行环境');
+        if(state.p > 66) paintStage('正在加载模组与配置');
+        paintProgress();
+      }, 90);
+    } else if(ph === 'idle'){
+      clearInterval(state.timer); clearInterval(state.runTimer);
+      state.p = 0; paintProgress(); paintStage(stageText.idle);
+    } else if(ph === 'running'){
+      paintProgress(); paintStage(stageText.running);
+      state.runAt = Date.now();
+      clearInterval(state.runTimer);
+      state.runTimer = setInterval(function(){
+        var s = Math.floor((Date.now() - state.runAt)/1000);
+        var m = Math.floor(s/60); var ss = s%60;
+        paintStage('游戏运行中 · ' + m + ':' + (ss<10?'0':'') + ss);
+      }, 1000);
+    }
+    if(q.get('s') && state.p === 0){ /* initial states handled below */ }
+  }
+
+  function finish(){
+    setPhase('running');
+    toast('游戏已启动 · 1.20.1 · Fabric');
+  }
+
+  function toast(msg){
+    var host = $('#toastHost');
+    var t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    host.appendChild(t);
+    setTimeout(function(){
+      t.style.transition = 'opacity .2s'; t.style.opacity = '0';
+      setTimeout(function(){ t.remove(); }, 220);
+    }, 2200);
+  }
+
+  function bindPlay(){
+    $$('.js-play').forEach(function(b){
+      b.addEventListener('click', function(){
+        if(state.phase === 'launching'){ setPhase('idle'); toast('已取消启动'); return; }
+        if(state.phase === 'running'){ setPhase('idle'); toast('已结束游戏'); return; }
+        setPhase('launching');
+      });
+    });
+  }
+
+  function bindMenus(){
+    var vc = $('.js-verchip'), vm = $('.js-vermenu');
+    var ac = $('.js-acct'), am = $('.js-accmenu');
+    function closeAll(except){
+      [vm, am].forEach(function(m){ if(m && m !== except) m.classList.remove('on'); });
+    }
+    if(vc && vm){
+      vc.addEventListener('click', function(e){
+        e.stopPropagation();
+        var on = vm.classList.toggle('on'); closeAll(vm);
+        if(on) vm.classList.add('on');
+      });
+    }
+    if(ac && am){
+      ac.addEventListener('click', function(e){
+        e.stopPropagation();
+        var on = am.classList.toggle('on'); closeAll(am);
+        if(on) am.classList.add('on');
+      });
+    }
+    $$('.mi').forEach(function(mi){
+      mi.addEventListener('click', function(){
+        var sibs = mi.parentNode.querySelectorAll('.mi');
+        Array.prototype.forEach.call(sibs, function(s){ s.classList.remove('on'); });
+        mi.classList.add('on');
+        if(mi.hasAttribute('data-v')){
+          var v = mi.getAttribute('data-v'), l = mi.getAttribute('data-l'), full = v + ' · ' + l;
+          $$('.js-ver').forEach(function(el){ el.textContent = full; });
+          $$('.js-chipver').forEach(function(el){ el.textContent = full; });
+          if(vm) vm.classList.remove('on');
+          toast('已切换版本 · ' + full);
+        }
+        if(mi.hasAttribute('data-a')){
+          var nm = mi.getAttribute('data-a');
+          $$('.js-acctname').forEach(function(el){ el.textContent = nm; });
+          if(am) am.classList.remove('on');
+          toast('已切换账户 · ' + nm);
+        }
+      });
+    });
+    document.addEventListener('click', function(){ closeAll(null); });
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeAll(null); });
+  }
+
+  function bindSwitcher(){
+    $$('.vsw button').forEach(function(b){
+      b.addEventListener('click', function(){
+        state.variant = b.getAttribute('data-v');
+        applyVariant();
+      });
+    });
+    document.addEventListener('keydown', function(e){
+      if(e.key >= '1' && e.key <= '4'){
+        state.variant = ['a','b','c','d'][parseInt(e.key, 10) - 1];
+        applyVariant();
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    applyVariant(); bindPlay(); bindMenus(); bindSwitcher();
+    var s = q.get('s');
+    if(s === 'launching'){
+      state.phase = 'launching'; state.p = 46;
+      $$('.js-play').forEach(function(el){ el.classList.add('busy'); });
+      paintStage('正在校验资源并准备启动环境'); paintProgress();
+    } else if(s === 'running'){
+      state.phase = 'running';
+      $$('.js-play').forEach(function(el){ el.classList.add('done'); });
+      paintStage('游戏运行中 · 2:14'); paintProgress();
+    }
+  });
+})();
+</script>
+</body></html>

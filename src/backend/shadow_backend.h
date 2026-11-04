@@ -1,0 +1,979 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2025-2026 影 / Shadow / xiaole1173
+#pragma once
+#include <QObject>
+#include <QString>
+#include <QStringList>
+#include <QVariantList>
+#include <QVariantMap>
+#include <QMap>
+#include <QTranslator>
+#include <QEvent>
+#include <QNetworkReply>
+#include <QPointer>
+
+class QQmlEngine;
+
+// Q_PROPERTY(QObject*) getter 需要完整类型（派生→基类指针转换），直接 include
+#include "java_backend.h"
+#include "userdata_backend.h"
+
+namespace ShadowLauncher {
+
+class AppBackend;
+class AccountBackend;
+class SettingsBackend;
+class CheckBackend;
+class VersionBackend;
+class LaunchBackend;
+class ResourceBackend;
+class ModpackImporter;
+class ModpackExporter;
+class StatsBackend;
+class JavaBackend;
+class UserDataBackend;
+class YggdrasilBackend;
+class ModManager;
+class LocalModManager;
+class IconCache;
+class ResourceFetchEngine;
+class MultiplayerManager;
+class UpdateManager;
+class MinecraftFolderBackend;
+
+class ShadowBackend : public QObject {
+    Q_OBJECT
+    // Allow the static helper to access reply tracking members
+    friend void queryModLoaderApi(ShadowBackend*, const QString&, const QString&,
+                                  std::function<QVariantList(const QByteArray&)>,
+                                  std::function<void(const QVariantList&)>);
+    // ── Account ──
+    Q_PROPERTY(QObject* account READ account CONSTANT)
+    Q_PROPERTY(QObject* yggdrasil READ yggdrasil CONSTANT)
+    Q_PROPERTY(QString username READ username NOTIFY accountChanged)
+    Q_PROPERTY(QString offlineUsername READ offlineUsername NOTIFY accountChanged)
+    Q_PROPERTY(bool isOnline READ isOnline NOTIFY accountChanged)
+    Q_PROPERTY(QString accountUuid READ accountUuid NOTIFY accountChanged)
+    Q_PROPERTY(QString offlineUuid READ offlineUuid NOTIFY accountChanged)
+    Q_PROPERTY(QString skinPath READ skinPath NOTIFY skinReady)
+    Q_PROPERTY(QString offlineSkinPath READ offlineSkinPath NOTIFY offlineSkinReady)
+    Q_PROPERTY(QStringList offlineUsernames READ offlineUsernames NOTIFY offlineHistoryChanged)
+    Q_PROPERTY(int lastLoginMode READ lastLoginMode WRITE setLastLoginMode NOTIFY loginModeChanged)
+
+    // ── Settings ──
+    Q_PROPERTY(QString javaPath READ javaPath NOTIFY javaPathChanged)
+    Q_PROPERTY(QString javaVersion READ javaVersion NOTIFY javaPathChanged)
+    Q_PROPERTY(int javaMajor READ javaMajor NOTIFY javaPathChanged)
+    Q_PROPERTY(bool javaInstalled READ javaInstalled NOTIFY javaPathChanged)
+    Q_PROPERTY(bool javaReady READ javaInstalled NOTIFY javaPathChanged)
+    Q_PROPERTY(int minMemoryMb READ minMemoryMb NOTIFY memorySettingsChanged)
+    Q_PROPERTY(int maxMemoryMb READ maxMemoryMb NOTIFY memorySettingsChanged)
+    Q_PROPERTY(bool isolationEnabled READ isolationEnabled NOTIFY isolationChanged)
+    Q_PROPERTY(bool embeddedLoginEnabled READ embeddedLoginEnabled WRITE setEmbeddedLoginEnabled NOTIFY embeddedLoginChanged)
+    // 2026-08-15：实验性——版本悬停前置依赖 tooltip（可能卡顿/信息有误）
+    Q_PROPERTY(bool modDepsTooltipEnabled READ modDepsTooltipEnabled WRITE setModDepsTooltipEnabled NOTIFY modDepsTooltipEnabledChanged)
+    Q_PROPERTY(QVariantList availableJavaList READ availableJavaList NOTIFY javaPathChanged)
+
+    // ── Version ──
+    Q_PROPERTY(QString selectedVersion READ selectedVersion NOTIFY selectedVersionChanged)
+    Q_PROPERTY(QStringList versionIds READ versionIds NOTIFY versionListReady)
+    Q_PROPERTY(QVariantList versionList READ versionList NOTIFY versionListReady)
+    Q_PROPERTY(QStringList releaseVersions READ releaseVersions NOTIFY versionListReady)
+    Q_PROPERTY(QStringList snapshotVersions READ snapshotVersions NOTIFY versionListReady)
+    Q_PROPERTY(QStringList oldVersions READ oldVersions NOTIFY versionListReady)
+    Q_PROPERTY(QStringList aprilFoolVersions READ aprilFoolVersions NOTIFY versionListReady)
+    Q_PROPERTY(QStringList installedVersions READ installedVersions NOTIFY installedVersionsChanged)
+    Q_PROPERTY(QStringList activeVersionNames READ activeVersionNames NOTIFY activeVersionNamesChanged)
+    Q_PROPERTY(bool installing READ isInstalling NOTIFY installStateChanged)
+    Q_PROPERTY(QString installVersionId READ installVersionId NOTIFY installStateChanged)
+    Q_PROPERTY(QString installPhase READ installPhase NOTIFY installPhaseChanged)
+
+    // ── Launch ──
+    Q_PROPERTY(bool launching READ isLaunching NOTIFY launchStateChanged)
+    Q_PROPERTY(QVariantMap lastCrash READ lastCrash NOTIFY crashDetected)
+    Q_PROPERTY(QString launchStatus READ launchStatus NOTIFY launchProgressChanged)
+    Q_PROPERTY(bool isRunning READ isRunning NOTIFY isRunningChanged)
+    Q_PROPERTY(int runningCount READ runningCount NOTIFY runningCountChanged)
+    Q_PROPERTY(QString launchVersion READ launchVersion NOTIFY launchStateChanged)
+    Q_PROPERTY(QString launchUsername READ launchUsername NOTIFY launchStateChanged)
+
+    // ── Resource ──
+    Q_PROPERTY(bool downloading READ isResourceDownloading NOTIFY resourceDownloadStateChanged)
+    Q_PROPERTY(int resourceDownloadProgress READ resourceDownloadProgress NOTIFY resourceDownloadProgress)
+    Q_PROPERTY(int resourceDownloadTotal READ resourceDownloadTotal NOTIFY resourceDownloadProgress)
+    Q_PROPERTY(int resourceDownloadSpeed READ resourceDownloadSpeed NOTIFY resourceDownloadProgress)
+    Q_PROPERTY(QString resourceDownloadFile READ resourceDownloadFile NOTIFY resourceDownloadProgress)
+
+    Q_PROPERTY(QObject* modManager READ modManager CONSTANT)
+    Q_PROPERTY(QObject* multiplayer READ multiplayer CONSTANT)
+
+    // ── App ──
+    Q_PROPERTY(QString gameDir READ gameDir NOTIFY gameDirChanged)
+    Q_PROPERTY(QString dataDir READ appDataDir CONSTANT)
+    Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
+    Q_PROPERTY(QString theme READ theme NOTIFY themeChanged)
+    Q_PROPERTY(bool devMode READ devMode CONSTANT)
+
+    // ── Modpack Import ──
+    Q_PROPERTY(QObject* modpackImporter READ modpackImporter CONSTANT)
+    Q_PROPERTY(QObject* modpackExporter READ modpackExporter CONSTANT)
+
+    // ── 外部 .minecraft 文件夹（选择/识别/读取，2026-08-18）──
+    Q_PROPERTY(QObject* mcFolder READ mcFolder CONSTANT)
+
+    // ── Update ──
+    Q_PROPERTY(bool updateChecking READ updateChecking NOTIFY updateCheckingChanged)
+    Q_PROPERTY(int updateState READ updateState NOTIFY updateStateChanged)
+
+    // ── Agreements ──
+    Q_PROPERTY(bool agreementAccepted READ agreementAccepted NOTIFY agreementAcceptedChanged)
+    Q_PROPERTY(QString betaAgreementHtml READ betaAgreementHtml CONSTANT)
+    Q_PROPERTY(QString privacyAgreementHtml READ privacyAgreementHtml CONSTANT)
+    Q_PROPERTY(QString termsAgreementHtml READ termsAgreementHtml CONSTANT)
+    Q_PROPERTY(bool markAgreed READ isMarkAgreed WRITE setMarkAgreed)
+    // 编译期内测开关（SHADOW_ENABLE_BETA_GATE）：公测版恒 false，QML 据此隐藏内测 UI
+    Q_PROPERTY(bool betaGateEnabled READ betaGateEnabled CONSTANT)
+    bool isMarkAgreed() const { return false; }
+    void setMarkAgreed(bool v);
+
+    // ── Custom background ──
+    Q_PROPERTY(QString customBgPath READ customBgPath NOTIFY customBgChanged)
+    Q_PROPERTY(qreal sidebarOpacity READ sidebarOpacity NOTIFY customBgChanged)
+    Q_PROPERTY(qreal contentOpacity READ contentOpacity NOTIFY customBgChanged)
+    Q_PROPERTY(qreal backgroundBlur READ backgroundBlur NOTIFY customBgChanged)
+    Q_PROPERTY(qreal cropX READ cropX WRITE setCropX NOTIFY customBgChanged)
+    Q_PROPERTY(qreal cropY READ cropY WRITE setCropY NOTIFY customBgChanged)
+
+    // ── Version details/summary ──
+    Q_PROPERTY(QVariantList versionDetails READ versionDetails NOTIFY versionDetailsReady)
+    Q_PROPERTY(bool isScanningVersions READ isScanningVersions NOTIFY scanningChanged)
+    Q_PROPERTY(QVariantMap currentVersionSummary READ currentVersionSummary NOTIFY currentVersionSummaryChanged)
+
+    // ── Download queue ──
+    Q_PROPERTY(QVariantList downloadQueue READ downloadQueue NOTIFY downloadQueueChanged)
+    Q_PROPERTY(QVariantList activeDownloads READ activeDownloads NOTIFY downloadQueueChanged)
+
+    // ── Game info（2026-08-07 清理：版本文件夹卡片已删，gameDirInfo/gameDirectories/diskFree/diskPercent 随左侧卡片移除）──
+    Q_PROPERTY(bool autoMemoryEnabled READ autoMemoryEnabled NOTIFY memorySettingsChanged)
+    Q_PROPERTY(QVariantMap systemMemoryInfo READ systemMemoryInfo NOTIFY memorySettingsChanged)
+    Q_PROPERTY(QVariantList availableCapes READ availableCapes CONSTANT)
+    Q_PROPERTY(QString loginType READ loginType CONSTANT)
+    Q_PROPERTY(QString selectedSkinPath READ selectedSkinPath NOTIFY skinChanged)
+    Q_PROPERTY(bool wardrobeBusy READ isWardrobeBusy NOTIFY wardrobeBusyChanged)
+    Q_PROPERTY(int fileDownloadSource READ fileDownloadSource WRITE setFileDownloadSource NOTIFY downloadSettingsChanged)
+    Q_PROPERTY(int listDownloadSource READ listDownloadSource WRITE setListDownloadSource NOTIFY downloadSettingsChanged)
+    Q_PROPERTY(int maxDownloadThreads READ maxDownloadThreads WRITE setMaxDownloadThreads NOTIFY downloadSettingsChanged)
+    Q_PROPERTY(double downloadSpeedLimitMB READ downloadSpeedLimitMB WRITE setDownloadSpeedLimitMB NOTIFY downloadSettingsChanged)
+    Q_PROPERTY(QString jvmArgs READ jvmArgs NOTIFY jvmArgsChanged)
+    Q_PROPERTY(QString gameArgs READ gameArgs NOTIFY gameArgsChanged)
+    Q_PROPERTY(bool highPerfGpu READ highPerfGpu NOTIFY highPerfGpuChanged)
+    // ── 启动细节（低垂果实批，2026-08-08）──
+    Q_PROPERTY(int gcMode READ gcMode WRITE setGcMode NOTIFY launchDetailChanged)
+    Q_PROPERTY(int processPriority READ processPriority WRITE setProcessPriority NOTIFY launchDetailChanged)
+    Q_PROPERTY(bool fullscreenEnabled READ fullscreenEnabled WRITE setFullscreenEnabled NOTIFY launchDetailChanged)
+    Q_PROPERTY(QString autoJoinServer READ autoJoinServer WRITE setAutoJoinServer NOTIFY launchDetailChanged)
+    Q_PROPERTY(QString windowTitleOverride READ windowTitleOverride WRITE setWindowTitleOverride NOTIFY launchDetailChanged)
+    Q_PROPERTY(QString preLaunchCommand READ preLaunchCommand WRITE setPreLaunchCommand NOTIFY launchDetailChanged)
+    Q_PROPERTY(QString postExitCommand READ postExitCommand WRITE setPostExitCommand NOTIFY launchDetailChanged)
+
+    // ── Verify ──
+    Q_PROPERTY(bool verifyRunning READ verifyRunning NOTIFY verifyRunningChanged)
+    Q_PROPERTY(bool repairRunning READ repairRunning NOTIFY repairRunningChanged)
+    Q_PROPERTY(int verifyChecked READ verifyChecked NOTIFY verifyCheckedChanged)
+    Q_PROPERTY(int verifyTotal READ verifyTotal NOTIFY verifyTotalChanged)
+    Q_PROPERTY(bool verifyResultOk READ verifyResultOk NOTIFY verifyResultTextChanged)
+    Q_PROPERTY(QString verifyResultText READ verifyResultText NOTIFY verifyResultTextChanged)
+    // InstallCardModel (QAbstractListModel) — exposed as QObject* for QML compat
+    Q_PROPERTY(QObject* installCardsModel READ installCardsModel CONSTANT)
+
+    // ── Beta key gate ──
+    Q_PROPERTY(QString betaStatus READ betaStatus NOTIFY betaStatusChanged)
+
+public:
+    explicit ShadowBackend(QObject* parent = nullptr);
+
+    // ── Account getters ──
+    QString username() const;
+    QString offlineUsername() const;
+    bool isOnline() const;
+    QString accountUuid() const;
+    QString offlineUuid() const;
+    QString skinPath() const;
+    QString offlineSkinPath() const;
+    QStringList offlineUsernames() const;
+    int lastLoginMode() const;
+    void setLastLoginMode(int mode);
+
+    // ── Settings getters ──
+    QString javaPath() const;
+    QString javaVersion() const;
+    int javaMajor() const;
+    bool javaInstalled() const;
+    int minMemoryMb() const;
+    int maxMemoryMb() const;
+    bool isolationEnabled() const;
+    int fileDownloadSource() const;
+    void setFileDownloadSource(int v);
+    int listDownloadSource() const;
+    void setListDownloadSource(int v);
+    int maxDownloadThreads() const;
+    void setMaxDownloadThreads(int v);
+    double downloadSpeedLimitMB() const;
+    void setDownloadSpeedLimitMB(double v);
+    bool embeddedLoginEnabled() const;
+    Q_INVOKABLE void setEmbeddedLoginEnabled(bool v);
+    // 2026-08-15：实验性 tooltip 开关
+    bool modDepsTooltipEnabled() const;
+    Q_INVOKABLE void setModDepsTooltipEnabled(bool v);
+
+    // ── Custom background ──
+    QString customBgPath() const;
+    Q_INVOKABLE void setCustomBgPath(const QString& path);
+    qreal sidebarOpacity() const;
+    Q_INVOKABLE void setSidebarOpacity(qreal v);
+    qreal contentOpacity() const;
+    Q_INVOKABLE void setContentOpacity(qreal v);
+    qreal backgroundBlur() const;
+    Q_INVOKABLE void setBackgroundBlur(qreal v);
+    qreal cropX() const;
+    Q_INVOKABLE void setCropX(qreal v);
+    qreal cropY() const;
+    Q_INVOKABLE void setCropY(qreal v);
+    Q_INVOKABLE void updateCrop(qreal x, qreal y);
+    Q_INVOKABLE QString pickBackgroundImage();
+
+    QVariantList availableJavaList() const;
+
+    // ── Version getters ──
+    QString selectedVersion() const;
+    QStringList versionIds() const;
+    QVariantList versionList() const;
+    QStringList releaseVersions() const;
+    QStringList snapshotVersions() const;
+    QStringList oldVersions() const;
+    QStringList aprilFoolVersions() const;
+    QStringList installedVersions() const;
+    QStringList activeVersionNames() const;
+    bool isInstalling() const;
+    QString installVersionId() const;
+    QString installPhase() const;
+    QVariantList versionDetails() const { return m_versionDetails; }
+    QVariantMap currentVersionSummary() const { return m_currentVersionSummary; }
+
+    // ── Download queue ──
+    QVariantList downloadQueue() const;
+    QVariantList activeDownloads() const;
+
+    // ── Launch getters ──
+    bool isLaunching() const;
+    int launchProgress() const;
+    QString launchStatus() const;
+    bool isRunning() const;
+    int runningCount() const;
+    QString launchVersion() const { return m_launchVersion; }
+    QString launchUsername() const { return m_launchUsername; }
+    void setLaunchVersion(const QString& v) { m_launchVersion = v; }
+    void setLaunchUsername(const QString& u) { m_launchUsername = u; }
+
+    // ── Crash getters ──
+    QVariantMap lastCrash() const { return m_lastCrash; }
+
+    // ── Resource getters ──
+    bool isResourceDownloading() const;
+    int resourceDownloadProgress() const { return m_resourceDlProgress; }
+    int resourceDownloadTotal() const { return m_resourceDlTotal; }
+    int resourceDownloadSpeed() const { return m_resourceDlSpeed; }
+    QString resourceDownloadFile() const { return m_resourceDlFile; }
+
+    // ── App getters ──
+    QString gameDir() const;
+    QString appDataDir() const;
+    QString appVersion() const;
+    QString theme() const;
+    bool devMode() const;
+    bool agreementAccepted() const;
+    QString betaAgreementHtml() const;
+    QString privacyAgreementHtml() const;
+    QString termsAgreementHtml() const;
+
+    bool autoMemoryEnabled() const;
+    QVariantMap systemMemoryInfo() const;
+    QString gameArgs() const;
+    bool highPerfGpu() const;
+    QString jvmArgs() const;
+
+    // ── 启动细节（低垂果实批，2026-08-08）──
+    int gcMode() const;
+    Q_INVOKABLE void setGcMode(int v);
+    int processPriority() const;
+    Q_INVOKABLE void setProcessPriority(int v);
+    bool fullscreenEnabled() const;
+    Q_INVOKABLE void setFullscreenEnabled(bool v);
+    QString autoJoinServer() const;
+    Q_INVOKABLE void setAutoJoinServer(const QString& v);
+    QString windowTitleOverride() const;
+    Q_INVOKABLE void setWindowTitleOverride(const QString& v);
+    QString preLaunchCommand() const;
+    Q_INVOKABLE void setPreLaunchCommand(const QString& v);
+    QString postExitCommand() const;
+    Q_INVOKABLE void setPostExitCommand(const QString& v);
+    /// 版本级覆盖：GC 模式（0=跟随全局）
+    Q_INVOKABLE int versionGcMode(const QString& versionId) const;
+    Q_INVOKABLE void setVersionGcMode(const QString& versionId, int mode);
+    /// 版本级覆盖：自动进服地址（空=跟随全局）
+    Q_INVOKABLE QString versionAutoJoinServer(const QString& versionId) const;
+    Q_INVOKABLE void setVersionAutoJoinServer(const QString& versionId, const QString& addr);
+    /// 版本级覆盖：全屏（mode 0=跟随全局 1=版本覆盖）
+    Q_INVOKABLE int versionFullscreenMode(const QString& versionId) const;
+    Q_INVOKABLE void setVersionFullscreenMode(const QString& versionId, int mode);
+    Q_INVOKABLE bool versionFullscreen(const QString& versionId) const;
+    Q_INVOKABLE void setVersionFullscreen(const QString& versionId, bool v);
+    /// 版本级覆盖：窗口标题
+    Q_INVOKABLE int versionWindowTitleMode(const QString& versionId) const;
+    Q_INVOKABLE void setVersionWindowTitleMode(const QString& versionId, int mode);
+    Q_INVOKABLE QString versionWindowTitle(const QString& versionId) const;
+    Q_INVOKABLE void setVersionWindowTitle(const QString& versionId, const QString& v);
+    /// 版本级覆盖：启动前命令
+    Q_INVOKABLE int versionPreLaunchMode(const QString& versionId) const;
+    Q_INVOKABLE void setVersionPreLaunchMode(const QString& versionId, int mode);
+    Q_INVOKABLE QString versionPreLaunchCommand(const QString& versionId) const;
+    Q_INVOKABLE void setVersionPreLaunchCommand(const QString& versionId, const QString& v);
+    /// 版本级覆盖：退出后命令
+    Q_INVOKABLE int versionPostExitMode(const QString& versionId) const;
+    Q_INVOKABLE void setVersionPostExitMode(const QString& versionId, int mode);
+    Q_INVOKABLE QString versionPostExitCommand(const QString& versionId) const;
+    Q_INVOKABLE void setVersionPostExitCommand(const QString& versionId, const QString& v);
+    /// 解析后的 GC 模式（版本级优先）
+    Q_INVOKABLE int resolvedGcMode(const QString& versionId) const;
+    /// 解析后的自动进服地址（版本级优先）
+    Q_INVOKABLE QString resolvedAutoJoinServer(const QString& versionId) const;
+    /// 解析后的全屏（版本级优先）
+    Q_INVOKABLE bool resolvedFullscreen(const QString& versionId) const;
+    /// 解析后的窗口标题（版本级优先）
+    Q_INVOKABLE QString resolvedWindowTitle(const QString& versionId) const;
+    /// 解析后的启动前命令（版本级优先）
+    Q_INVOKABLE QString resolvedPreLaunchCommand(const QString& versionId) const;
+    /// 解析后的退出后命令（版本级优先）
+    Q_INVOKABLE QString resolvedPostExitCommand(const QString& versionId) const;
+    // ── 设置导入导出（转发 SettingsBackend）──
+    Q_INVOKABLE bool exportSettingsToFile(const QString& path);
+    Q_INVOKABLE bool importSettingsFromFile(const QString& path);
+    Q_INVOKABLE QString exportSettingsPreview() const;
+
+    // ── Language hot-switch ──
+    void setEngine(QQmlEngine* engine) { m_engine = engine; }
+    Q_INVOKABLE void switchLanguage(int index);
+    Q_INVOKABLE int readLanguageFile() const;
+    void writeLanguageFile(int index) const;
+    bool event(QEvent* event) override;
+
+    // ── Verify stubs ──
+    bool verifyRunning() const;
+    bool repairRunning() const;
+    int verifyChecked() const;
+    int verifyTotal() const;
+    QObject* installCardsModel() const;
+    bool verifyResultOk() const;
+    QString verifyResultText() const;
+    void setVerifyResult(const QString& text, bool ok);
+
+    // ── Mod/file list stubs ──
+    Q_INVOKABLE QVariantList listMods(const QString& versionId = {}) const;
+    Q_INVOKABLE QVariantList listResourcePacks(const QString& versionId = {}) const;
+    Q_INVOKABLE QVariantList listSaves(const QString& versionId = {}) const;
+
+    // ── 异步列表加载（模组上百时 parseJar/目录遍历耗时，worker 线程执行不卡 UI）──
+    Q_INVOKABLE void listModsAsync(const QString& versionId = {});
+    Q_INVOKABLE void listResourcePacksAsync(const QString& versionId = {});
+    Q_INVOKABLE void listSavesAsync(const QString& versionId = {});
+
+    // ── Q_INVOKABLE methods ──
+    Q_INVOKABLE void offlineLogin(const QString& username);
+    /// 离线登录是否受限：地区未明确检测为 CN（含检测失败/未完成/海外/港澳台）且未完成正版登录 → true
+    /// （检测不出 CN 即受限——防止断网/屏蔽 GeoIP 绕过合规限制；正版登录后不受限）
+    Q_INVOKABLE bool isOfflineRestricted() const;
+    Q_INVOKABLE void updateOfflineSkin(const QString& username);
+    Q_INVOKABLE void removeOfflineUsername(const QString& username);
+    Q_INVOKABLE void microsoftLogin();
+    Q_INVOKABLE void cancelMicrosoftLogin();
+    Q_INVOKABLE void logout();
+    Q_INVOKABLE QVariantList scanJavaInstallations();
+    Q_INVOKABLE QString autoSelectJava();
+    Q_INVOKABLE QString detectJava();
+    Q_INVOKABLE QString browseJava();
+    Q_INVOKABLE void selectJavaByIndex(int index);
+    Q_INVOKABLE QVariantMap getMemoryStatus();
+    Q_INVOKABLE void setMinMemory(int mb);
+    Q_INVOKABLE void setMaxMemory(int mb);
+    Q_INVOKABLE void setIsolationEnabled(bool enabled);
+    Q_INVOKABLE QString getVersionGameDir(const QString& versionId) const;
+    Q_INVOKABLE void migrateVersionToIsolated(const QString& versionId);
+    Q_INVOKABLE bool openGameDir(const QString& versionId = {});
+    Q_INVOKABLE bool openLatestLog(const QString& versionId = {});
+    Q_INVOKABLE bool openLogsFolder(const QString& versionId = {});
+    Q_INVOKABLE bool openLauncherLogsFolder();
+    Q_INVOKABLE bool openCrashLog(const QString& versionId = {});
+    // ── Crash analysis (forwarded to LaunchBackend) ──
+    Q_INVOKABLE void analyzeCrashNow();
+    Q_INVOKABLE QString exportCrashLogs(const QString& destDir = {});
+    Q_INVOKABLE void openPath(const QString& path);
+    Q_INVOKABLE void cleanupCrashArtifacts();
+    Q_INVOKABLE bool openSavesFolder(const QString& versionId = {});
+    Q_INVOKABLE bool openScreenshotsFolder(const QString& versionId = {});
+    Q_INVOKABLE bool openModsFolder(const QString& versionId = {});
+    Q_INVOKABLE bool openResourcePacksFolder(const QString& versionId = {});
+    Q_INVOKABLE bool openShaderPacksFolder(const QString& versionId = {});
+    Q_INVOKABLE bool openVersionDir(const QString& versionId);
+    Q_INVOKABLE void deleteVersion(const QString& versionId);
+    Q_INVOKABLE void refreshVersionList();
+    Q_INVOKABLE void refreshInstalled();
+    Q_INVOKABLE void refreshInstalledList();
+    Q_INVOKABLE void refreshVersionDetails();
+    Q_INVOKABLE void installVersion(const QString& versionId);
+    Q_INVOKABLE void cancelVersionInstall(const QString& versionId);
+    Q_INVOKABLE void dismissCard(const QString& installId);
+    Q_INVOKABLE void retryVersionInstall(const QString& installId);
+    Q_INVOKABLE void launch(const QString& versionId, bool online);
+    Q_INVOKABLE void cancelLaunch();
+    /// launch() 后半段：auth 注入 + 启动（Java 自动安装完成由 LaunchBackend 状态机继续）
+    void proceedLaunch(const QString& versionId, bool online, const QString& javaPath,
+                       int maxMemory, const QString& jvmArgs, const QString& gameArgs,
+                       bool highPerfGpu);
+    Q_INVOKABLE void killGameProcess();
+    Q_INVOKABLE void killMinecraft();
+    Q_INVOKABLE void killGameByPid(qint64 pid);
+    Q_INVOKABLE QVariantList runningGames();
+    Q_INVOKABLE QVariantList getPopularMods(const QString& loader);
+    Q_INVOKABLE QVariantList getShaderList();
+    Q_INVOKABLE void searchMods(const QString& query, const QString& loader = {});
+    Q_INVOKABLE void searchModsEx(const QString& query, const QString& loader,
+        const QString& category, const QString& gameVersion,
+        const QString& environment, const QString& license,
+        int offset, int limit, const QString& source = {});
+    Q_INVOKABLE QVariantMap getModCategories();
+    // CurseForge 分类静态表（QML 叠加下拉用）
+    Q_INVOKABLE QVariantList cfCategories(int classId) const;
+    Q_INVOKABLE void searchShadersEx(const QString& query, const QStringList& gameVersions,
+        const QStringList& categories, const QStringList& performance,
+        const QStringList& loader, int offset, int limit, const QString& source = {});
+    // 翻页预取（只预热缓存，不产生聚合信号，与真实搜索物理隔离）
+    Q_INVOKABLE void prefetchModsEx(const QString& query, const QString& loader,
+        const QString& category, const QStringList& gameVersions,
+        int offset, int limit, const QString& source = {});
+    Q_INVOKABLE void prefetchShadersEx(const QString& query, const QStringList& gameVersions,
+        const QStringList& categories, int offset, int limit, const QString& source = {});
+    Q_INVOKABLE void prefetchResourcepacks(const QString& query, const QString& gameVersion,
+        int offset, const QStringList& categories, const QString& source = {});
+    // 整合包翻页预取（只预热缓存，不产生聚合信号）
+    Q_INVOKABLE void prefetchModpacks(const QString& query, const QString& loader,
+        const QString& category, const QStringList& gameVersions,
+        int offset, int limit, const QString& source = {});
+    // 数据包翻页预取（同构）
+    Q_INVOKABLE void prefetchDatapacks(const QString& query, const QString& category,
+        const QStringList& gameVersions, const QString& sort,
+        int offset, int limit, const QString& source = {});
+    Q_INVOKABLE void downloadMod(const QString& slug, const QString& gameVersion, const QString& minecraftDir = QString());
+    Q_INVOKABLE void downloadShader(const QString& slug, const QString& gameVersion, const QString& minecraftDir = QString());
+    Q_INVOKABLE void searchResourcepacks(const QString& query, const QString& gameVersion = {}, int offset = 0, const QStringList& categories = {}, const QString& source = {});
+    // 整合包双源搜索（池子架构）
+    Q_INVOKABLE void searchModpacksEx(const QString& query, const QString& loader,
+        const QString& category, const QStringList& gameVersions,
+        int offset, int limit, const QString& source = {});
+    // 数据包双源搜索（Modrinth project_type:datapack + CF classId=6945）
+    Q_INVOKABLE void searchDatapacksEx(const QString& query, const QString& category,
+        const QStringList& gameVersions, const QString& sort,
+        int offset, int limit, const QString& source = {});
+    // 整合包详情版本列表（Modrinth slug / CF 数字 id 自动路由，复用 modVersionsPartial）
+    Q_INVOKABLE void fetchModpackVersions(const QString& slug, const QString& gameVersion = {}, const QString& loader = {});
+    /// 整合包压缩包下载：静默下载到 {gameDir}/downloads/，完成后自动走导入流程
+    /// 返回 dlId（卡片通道 mod:N）；versionName=用户指定版本名（注册名），actualName=整合包实际名
+    Q_INVOKABLE int downloadModpack(const QString& url, const QString& filename, qint64 size,
+                                    const QString& sha1, const QString& versionName, const QString& actualName,
+                                    const QString& iconUrl = {});
+    /// 整合包任务是否占用中（下载中 或 导入中）→ 同一时间只允许一个整合包任务（下载或导入）
+    Q_INVOKABLE bool modpackBusy() const;
+    Q_INVOKABLE void downloadResourcepack(const QString& slug, const QString& gameVersion, const QString& minecraftDir = QString());
+    Q_INVOKABLE void fetchResourcepackVersions(const QStringList& slugs);  // batch-fetch game_versions
+    Q_INVOKABLE void fetchModVersions(const QStringList& slugs);
+    Q_INVOKABLE void fetchShaderVersions(const QStringList& slugs);
+    // CurseForge 详情页版本（复用 modVersionsPartial 等信号）
+    Q_INVOKABLE void fetchModVersionsCf(const QString& modId, const QString& gameVersion = {}, const QString& loader = {});
+    Q_INVOKABLE void fetchShaderVersionsCf(const QString& modId, const QString& gameVersion = {}, const QString& loader = {});
+    Q_INVOKABLE void fetchResourcepackVersionsCf(const QString& modId, const QString& gameVersion = {}, const QString& loader = {});
+    /// CF 详情页前置依赖解析（Modrinth 优先映射），结果经 cfDependenciesResolved 回传
+    Q_INVOKABLE void resolveCfDependencies(const QString& modId, const QVariantList& deps);
+    Q_INVOKABLE void fetchCfDependencies(const QString& modId);
+    /// 汉化反查：英文名 → 中文名（依赖卡用），转发 resource 层
+    Q_INVOKABLE QString resolveModZh(const QString& title) const;
+    /// 详情页「转到 XX / 复制链接」统一链接解析（转发 resource 层），返回 { mrUrl, cfUrl, mcmodUrl }
+    Q_INVOKABLE QVariantMap resolveProjectLinks(const QString& title, const QString& slug, const QString& kind) const;
+
+    // Mod file download
+    Q_INVOKABLE int downloadModFile(const QString& url, const QString& savePath, const QString& displayName,
+                                    qint64 expectedSize, const QString& sha1, qint64 receivedOffset = 0, int resumeId = -1);
+    Q_INVOKABLE void cancelModFileDownload(int downloadId);
+    Q_INVOKABLE void pauseModFileDownload(int downloadId);
+    Q_INVOKABLE void resumeModFileDownload(int downloadId);
+    Q_INVOKABLE void retryModFileDownload(int downloadId);
+    /// 2026-08-15：版本级前置依赖（详情页悬停 tooltip）
+    Q_INVOKABLE void fetchVersionDependencies(const QString& slug, const QString& versionId);
+
+    // ═══ Wardrobe (衣帽间) ═══
+    Q_INVOKABLE void browseSkin();  // File dialog
+    Q_INVOKABLE void uploadSkin(const QString& skinPath, int modelType);  // Mojang API
+    Q_INVOKABLE void saveWardrobeSettings(const QString& skinPath, const QString& capeId, int modelType);
+    Q_INVOKABLE void saveSkinToFile();
+    Q_INVOKABLE QVariantList availableCapes() const;
+    Q_INVOKABLE QString loginType() const;
+    QString selectedSkinPath() const { return m_selectedSkinPath; }
+    bool isWardrobeBusy() const { return m_wardrobeBusy; }
+    bool isScanningVersions() const { return m_isScanningVersions; }
+    Q_INVOKABLE void cacheIconAsync(const QString& webpUrl);  // async: download webp → ffmpeg → PNG, emits iconCached
+    Q_INVOKABLE QString cachedIconPath(const QString& webpUrl) const;  // sync: check cache, return file:/// or ""
+
+    // ── Mod Loader version queries (BMCLAPI) ──
+    Q_INVOKABLE void queryForgeVersions(const QString& mcVersion);
+    Q_INVOKABLE void queryFabricVersions(const QString& mcVersion);
+    Q_INVOKABLE void queryNeoForgeVersions(const QString& mcVersion);
+    Q_INVOKABLE void queryOptifineVersions(const QString& mcVersion);
+    Q_INVOKABLE void queryFabricApiVersions(const QString& mcVersion);
+
+    // Cancel all in-flight mod-loader version queries (called when install starts)
+    Q_INVOKABLE void cancelModLoaderQueries();
+
+    // Cache Forge installer SHA1 from version list (avoids extra network fetch for verification)
+    Q_INVOKABLE void cacheForgeInstallerSha1(const QString& mcVer, const QString& forgeVer, const QString& sha1);
+    QString getForgeInstallerSha1(const QString& mcVer, const QString& forgeVer) const;
+
+    // Cache Forge Maven branch suffix (e.g. "1.10.0" for MC 1.10, "mc172" for MC 1.7.2)
+    void cacheForgeInstallerBranch(const QString& mcVer, const QString& forgeVer, const QString& branch);
+    QString getForgeInstallerBranch(const QString& mcVer, const QString& forgeVer) const;
+
+
+    // Mod loader installation
+    Q_INVOKABLE void installModLoader(const QString& mcVersion, const QString& loaderType,
+                                       const QString& loaderVersion, const QString& installName,
+                                       const QString& fabricApiVersion = QString(),
+                                       const QString& fabricApiUrl = QString(),
+                                       const QString& fabricApiSavePath = QString(),
+                                       const QString& forgeInstallerSha1 = QString());
+    Q_INVOKABLE void installOptifine(const QString& mcVersion, const QString& optifineVersion,
+                                       const QString& forgeVersion, const QString& installName,
+                                       const QString& bmclType = QString(), const QString& bmclPatch = QString());
+    /// 转发到 VersionBackend::installOptifineJar（InstallPage 直接调 backend.xxx，曾断链）
+    Q_INVOKABLE void installOptifineJar(const QString& mcVersion, const QString& optifineVersion,
+                                        const QString& bmclType = QString(), const QString& bmclPatch = QString(),
+                                        const QString& installName = QString());
+    /// 整合包导入-用户数据迁移：转发到 VersionBackend（InstallPage 直接调 backend.xxx，曾断链）
+    Q_INVOKABLE void setPendingUserDataImport(const QString& installId, const QString& archivePath);
+    Q_INVOKABLE void cancelPendingUserDataImport(const QString& installId);
+    Q_INVOKABLE void setSelectedVersion(const QString& versionId);
+    Q_INVOKABLE void setTheme(const QString& theme);
+    Q_INVOKABLE QVariantMap checkAll(const QString& versionId);
+    Q_INVOKABLE int getAutoMemory();
+    Q_INVOKABLE void setAutoMemoryEnabled(bool enabled);
+
+    // Per-version memory override
+    Q_INVOKABLE int versionMemoryMode(const QString& versionId) const;
+    Q_INVOKABLE void setVersionMemoryMode(const QString& versionId, int mode);
+    Q_INVOKABLE int versionMemoryManualMB(const QString& versionId) const;
+    Q_INVOKABLE void setVersionMemoryManualMB(const QString& versionId, int mb);
+    Q_INVOKABLE int resolvedMemoryMB(const QString& versionId);
+
+    // Per-version Java/launch overrides (0=follow global, 1=custom)
+    Q_INVOKABLE int versionJavaMode(const QString& versionId) const;
+    Q_INVOKABLE void setVersionJavaMode(const QString& versionId, int mode);
+    Q_INVOKABLE int versionJvmArgsMode(const QString& versionId) const;
+    Q_INVOKABLE void setVersionJvmArgsMode(const QString& versionId, int mode);
+    Q_INVOKABLE QString versionJvmArgs(const QString& versionId) const;
+    Q_INVOKABLE void setVersionJvmArgs(const QString& versionId, const QString& args);
+    Q_INVOKABLE QString resolvedJvmArgs(const QString& versionId) const;
+
+    Q_INVOKABLE int versionGameArgsMode(const QString& versionId) const;
+    Q_INVOKABLE void setVersionGameArgsMode(const QString& versionId, int mode);
+    Q_INVOKABLE QString versionGameArgs(const QString& versionId) const;
+    Q_INVOKABLE void setVersionGameArgs(const QString& versionId, const QString& args);
+    Q_INVOKABLE QString resolvedGameArgs(const QString& versionId) const;
+
+    Q_INVOKABLE int versionHighPerfGpuMode(const QString& versionId) const;
+    Q_INVOKABLE void setVersionHighPerfGpuMode(const QString& versionId, int mode);
+    Q_INVOKABLE bool versionHighPerfGpu(const QString& versionId) const;
+    Q_INVOKABLE void setVersionHighPerfGpu(const QString& versionId, bool v);
+    Q_INVOKABLE bool resolvedHighPerfGpu(const QString& versionId) const;
+
+    // Global setters
+    Q_INVOKABLE void setJvmArgs(const QString& args);
+    Q_INVOKABLE void setGameArgs(const QString& args);
+    Q_INVOKABLE void setHighPerfGpu(bool v);
+    Q_INVOKABLE void copyToClipboard(const QString& text);
+
+    // ── Q_INVOKABLE versions of Q_PROPERTY-only getters ──
+    Q_INVOKABLE bool isModdedVersion(const QString& versionId) const { Q_UNUSED(versionId); return false; }
+
+    // ── Path/document stubs ──
+    Q_INVOKABLE void openJavaFileDialog() { browseJava(); }
+    Q_INVOKABLE void pickJava() { browseJava(); }
+    Q_INVOKABLE void checkFileChanges() {}
+    Q_INVOKABLE void deleteMod(const QString& filename, const QString& versionId = {});
+    Q_INVOKABLE void setModEnabled(const QString& filename, const QString& versionId = {}, bool enabled = true);
+    /// 全部启用/禁用（2026-08-11）：返回实际改动数，QML 刷新列表 + toast
+    Q_INVOKABLE int setAllModsEnabled(const QString& versionId, bool enabled);
+    /// 导出启动脚本（.bat）——转发 launchBackend（2026-08-07）
+    Q_INVOKABLE QString exportLaunchScript(const QString& versionId, const QString& javaPath,
+                                           int maxMemoryMB, const QString& jvmArgs = {},
+                                           const QString& gameArgs = {}, bool highPerfGpu = false);
+    /// 写文本文件（QML 侧无直接文件写 API，2026-08-07）
+    Q_INVOKABLE bool saveTextFile(const QString& path, const QString& content);
+    Q_INVOKABLE void deleteResourcePack(const QString& filename, const QString& versionId = {});
+    Q_INVOKABLE bool importResourcePack(const QString& filePath, const QString& versionId = {});
+    Q_INVOKABLE bool importMod(const QString& filePath, const QString& versionId = {});
+    Q_INVOKABLE void deleteSave(const QString& saveName, const QString& versionId = {});
+    Q_INVOKABLE void migrateVersion(const QString& versionId);
+    Q_INVOKABLE void openConfigFolder() { openGameDir({}); }
+    Q_INVOKABLE void cancelQueuedDownload(const QString& versionId);
+    Q_INVOKABLE void verifyVersion(const QString& versionId);
+    Q_INVOKABLE void cleanCorruptVersion(const QString& versionId);
+    Q_INVOKABLE bool renameVersion(const QString& oldId, const QString& newId);
+    Q_INVOKABLE bool renameVersion(const QString& oldId);  // single-param stub (dialog handled in QML)
+    Q_INVOKABLE bool cloneVersion(const QString& sourceId, const QString& newId);
+    Q_INVOKABLE bool cloneVersion(const QString& sourceId);  // auto-generates "{name} (副本)"
+    Q_INVOKABLE QString copyVersionPath(const QString& versionId);
+    Q_INVOKABLE void repairVersion(const QString& versionId);
+    Q_INVOKABLE void cancelVerify();
+    Q_INVOKABLE void openVerifyReport();
+
+    // ── Beta key gate ──
+    Q_INVOKABLE void submitBetaKey(const QString& key);
+    QString betaStatus() const { return m_betaStatus; }
+    // 编译期内测开关：公测版（未定义 SHADOW_ENABLE_BETA_GATE）恒返回 false
+    static bool betaGateEnabled();
+    static QString loadBetaKey();
+    static bool validateBetaKey(const QString& key, QString* outError = nullptr);
+    static bool saveBetaKey(const QString& key);
+
+    // ── Modpack Import ──
+    QObject* modpackImporter() const { return m_modpackImporter; }
+    QObject* modpackExporter() const { return m_modpackExporter; }
+
+    // ── Update ──
+    Q_INVOKABLE void checkForUpdate();
+    Q_INVOKABLE void quitForUpdate();   // 2026-08-15：确认重启安装后退出进程（下次启动 PreInit 自动安装）
+    bool updateChecking() const;
+    int updateState() const;
+
+signals:
+    void betaVerified();
+    void betaKeyInvalid(const QString& reason);
+    void betaStatusChanged();
+
+    // ── Update signals ──
+    void updateCheckingChanged();
+    void updateStateChanged();
+    void toastMessage(const QString& message);
+    void updateDownloadProgress(qint64 received, qint64 total);
+    void updateChangelogAvailable(const QString& version, const QString& notes);
+    /// 2026-08-15：更新包下载完成、可重启安装（转发自 UpdateManager::updateAvailableForInstall，
+    /// QML 弹常驻 toast 引导用户重启）
+    void updateReadyForRestart(const QString& version);
+    void accountChanged();
+    void microsoftLoginProgress(const QString& step, const QString& detail);
+    void microsoftLoginSuccess(const QString& username, const QString& uuid);
+    void microsoftLoginFailed(const QString& error);
+    void skinReady();
+    void offlineSkinReady();
+    void offlineHistoryChanged();
+    void javaPathChanged();
+    /// Java 扫描完整结束（设置-Java 刷新按钮 toast）
+    void javaScanFinished();
+    void javaReadyChanged();
+    void memorySettingsChanged();
+    void jvmArgsChanged();
+    void gameArgsChanged();
+    void highPerfGpuChanged();
+    /// 启动细节设置变更（GC/优先级/全屏/自动进服/窗口标题/pre-post 命令）
+    void launchDetailChanged();
+    void versionLaunchSettingsChanged(const QString& versionId);
+    void launchBlocked(const QString& reason);
+    void generalSettingsChanged();
+    void downloadSettingsChanged();
+    void isolationChanged();
+    void embeddedLoginChanged();
+    void modDepsTooltipEnabledChanged();   // 2026-08-15：实验性 tooltip 开关
+    void versionListReady();
+    void versionDetailsReady();
+    void scanningChanged();
+    void installedVersionsChanged();
+    // 异步列表加载完成（worker 线程扫描后回主线程发信号）
+    void modsListReady(const QString& versionId, const QVariantList& mods);
+    void resourcePacksListReady(const QString& versionId, const QVariantList& packs);
+    void savesListReady(const QString& versionId, const QVariantList& saves);
+    void activeVersionNamesChanged();
+    void selectedVersionChanged();
+    void selectedVersionClearedAfterDelete();
+    void currentVersionSummaryChanged();
+    void installStateChanged();
+    void installPhaseChanged();
+    void installFinished(bool success);
+    void installComplete(const QString& installName);
+    void launchProgressChanged(int progress, const QString& status);
+    void launchStateChanged();
+    void minecraftStarted();
+    void minecraftStopped();
+    // ── Crash detection ──
+    void crashDetected(const QVariantMap& report);
+    /// 启动失败 → 开始异步分析（QML 弹 toast）
+    void crashAnalysisStarted();
+    /// 异步分析完成（完整报告）
+    void crashAnalysisReady(const QVariantMap& report);
+    void isRunningChanged();
+    void runningCountChanged();
+    void resourceDownloadStateChanged();
+    void resourcepackSearchCompleted(const QVariantList& results, int totalHits);
+    void resourcepackSearchFailed(const QString& error);
+    void resourcepackDownloadFinished(const QString& slug, bool success, const QString& filePath);
+    void resourcepackVersionsLoaded(const QVariantMap& slugToVersions);
+    void resourcepackVersionsPartial(const QString& slug, const QStringList& versions, const QVariantMap& details);
+    void resourcepackVersionsProgress(int done, int total);
+
+    void modVersionsLoaded(const QVariantMap& slugToVersions);
+    void modVersionsPartial(const QString& slug, const QStringList& versions, const QVariantMap& details);
+    void modVersionsProgress(int done, int total);
+
+    // Fabric API signals
+    void fabricApiVersionsReady(const QVariantList& versions);
+
+    // Mod file download signals
+    void modFileDownloadStarted(int downloadId, const QString& fileName, qint64 fileSize, const QString& displayName);
+    void modFileDownloadProgress(int downloadId, qint64 received, qint64 total);
+    void modFileDownloadFinished(int downloadId, bool success, const QString& filePath, const QString& displayName);
+    void modFileDownloadFailed(int downloadId, const QString& errorDetail, const QString& displayName);
+    /// 2026-08-15：用户主动取消文件下载（QML 弹"取消成功" toast）
+    void modFileDownloadCancelled(int downloadId, const QString& displayName);
+    /// 2026-08-15：版本级前置依赖（悬停 tooltip）
+    void versionDependenciesResolved(const QString& versionId, const QVariantList& deps);
+    /// 2026-08-15：MC/加载器安装取消（转发自 VersionBackend，QML 弹 toast）
+    void cancelNotification(const QString& installId, const QString& message);
+    /// 整合包搜索完成（池子全量，QML 按页切片）
+    void modpackSearchResultsReady(const QVariantList& results);
+    /// 数据包搜索完成（池子全量，QML 按页切片）
+    void datapackSearchResultsReady(const QVariantList& results);
+    /// CF 前置依赖解析完成（QML 回填依赖卡片）
+    void cfDependenciesResolved(const QString& modId, const QVariantList& deps);
+
+    void shaderVersionsLoaded(const QVariantMap& slugToVersions);
+    void shaderVersionsPartial(const QString& slug, const QStringList& versions, const QVariantMap& details);
+    void shaderVersionsProgress(int done, int total);
+    void resourceDownloadProgress(int completed, int total, const QString& fileName);
+    void resourceDownloadDone(bool success);
+    void verifyRunningChanged();
+    void repairRunningChanged();
+    void verifyCheckedChanged();
+    void verifyTotalChanged();
+    void verifyResultTextChanged();
+    void downloadQueueChanged();
+    void downloadQueueFull(const QString& displayName);
+    void searchResultsReady(const QVariantList& results);  // deprecated
+    void modSearchResultsReady(const QVariantList& results);
+    void shaderSearchResultsReady(const QVariantList& results);
+    void gameDirChanged();
+    void themeChanged();
+    void agreementAcceptedChanged();
+    void loginModeChanged();
+    void customBgChanged();
+    void logMessage(const QString& msg);
+    void skinChanged();
+    void wardrobeBusyChanged();
+    void wardrobeError(const QString& error);
+
+    // ── Mod loader version signals ──
+    void forgeVersionsReady(const QVariantList& versions);
+    void fabricVersionsReady(const QVariantList& versions);
+    void neoforgeVersionsReady(const QVariantList& versions);
+    void optifineVersionsReady(const QVariantList& versions);
+
+    // ── Game stats signals ──
+    void statsChanged();
+    void statsLoadingChanged();
+
+    // ── Icon cache signal ──
+    void iconCached(const QString& webpUrl, const QString& pngPath);
+    // 资源拉取引擎（司南）图标就绪信号：QML 监听并更新 model 对应项
+    void iconReady(const QString& url, const QString& localPath);
+
+    // ── Auto-test navigation signal ──
+    // pageIndex: 0=Launch, 1=Download, 2=Settings
+    // subTab: for Download page → 0=MC, 1=Mod, 2=Shader, 3=RP; otherwise ignored
+    void navigateToRequested(int pageIndex, int subTab);
+
+    // ── Auto-test: open RP detail page ──
+    void openRpDetailRequested(const QString& slug);
+    void openModDetailRequested(const QString& slug);
+    void openShaderDetailRequested(const QString& slug);
+    void openPackDetailRequested(const QString& slug);
+
+    // ── Auto-test: UI interaction signals ──
+    void setRpShowPreReleases(bool show);
+    void openRpVersionMenu();
+    void expandRpDetailGroup(const QString& major);
+    void selectRpDetailSubVer(const QString& version);
+
+    // ── Verify signals ──
+    void verifyStarted();
+    void verifyProgress(int checked, int total);
+    void verifyFinished(bool allPassed);
+    void verifyFailedFiles(const QStringList& failedFiles);
+
+    // ── Pre-launch check signals ──
+    void launchCheckProgress(const QString& step);
+    void launchCheckFailed(const QString& phase, const QString& details);
+    void launchCheckMissingFiles(const QStringList& files);
+    void launchCheckWarning(const QString& warning);
+
+public:
+    AppBackend* app() const { return m_app; }
+    AccountBackend* account() const { return m_account; }
+    QObject* yggdrasil() const { return m_yggdrasil; }
+    Q_INVOKABLE SettingsBackend* settings() const { return m_settings; }
+    // Auto-language mode helpers (bypass backend.settings.* QML chain issues in Loaders)
+    Q_INVOKABLE int diagAutoLangComboIdx() const;
+    Q_INVOKABLE void setAutoLangModeFromCombo(int idx);
+    Q_INVOKABLE void logUiMsg(const QString& msg);
+    // ── UI 一次性标记（QSettings 持久化；2026-08-24 v1.0.1 一次性启动公告 toast 用）──
+    Q_INVOKABLE bool readUiFlag(const QString& key) const;
+    Q_INVOKABLE void writeUiFlag(const QString& key, bool value);
+    // 更新后首次启动判定（蓝色"更新内容"toast 仅更新用户弹出；一次性消费；2026-08-25）
+    Q_INVOKABLE bool consumeJustUpdatedFlag();
+    CheckBackend* check() const { return m_check; }
+    VersionBackend* version() const { return m_version; }
+    LaunchBackend* launchBackend() const { return m_launch; }
+    ResourceBackend* resource() const { return m_resource; }
+    Q_INVOKABLE StatsBackend* statsBackend() const { return m_stats; }
+    // 注意：QML 暴露必须用 Q_PROPERTY(QObject*) 模式——Q_INVOKABLE 返回具体类型指针
+    // 会报 "Unknown method return type"（2026-08-04 导出功能踩坑实锤）
+    Q_PROPERTY(QObject* javaBackend READ javaBackend CONSTANT)
+    Q_PROPERTY(QObject* userDataBackend READ userDataBackend CONSTANT)
+    QObject* javaBackend() const { return m_java; }
+    QObject* userDataBackend() const { return m_userData; }
+
+    // Game stats (exposed directly on backend for QML compatibility)
+    Q_PROPERTY(double totalGameHours READ totalGameHours NOTIFY statsChanged)
+    Q_PROPERTY(QVariantList versionGameStats READ versionGameStats NOTIFY statsChanged)
+    Q_PROPERTY(bool statsLoading READ statsLoading NOTIFY statsLoadingChanged)
+    Q_PROPERTY(bool statsEmpty READ statsEmpty NOTIFY statsChanged)
+    Q_INVOKABLE void refreshGameStats();
+    double totalGameHours() const;
+    QVariantList versionGameStats() const;
+    bool statsLoading() const;
+    bool statsEmpty() const;
+    QObject* modManager() const;  // QML exposed (returns m_resource->modManager())
+    QObject* multiplayer() const;
+    QObject* mcFolder() const;  // 外部 .minecraft 选择/识别/读取（实现见 cpp，需完整类型转换）
+    // 资源拉取引擎访问器（ResourceBackend 搜索接入用）
+    ResourceFetchEngine* fetchEngine() const { return m_fetchEngine; }
+
+    // ── Icon cache (QML-callable methods: mod / shader / rp) ──
+    Q_INVOKABLE QString resolveIconUrl(const QString &url);
+    Q_INVOKABLE void cacheIconBatchAsync(const QStringList &urls);
+    Q_INVOKABLE QString resolveShaderIconUrl(const QString &url);
+    Q_INVOKABLE void cacheShaderIconBatchAsync(const QStringList &urls);
+    Q_INVOKABLE QString resolveRpIconUrl(const QString &url);
+    Q_INVOKABLE void cacheRpIconBatchAsync(const QStringList &urls);
+
+
+private:
+    int requiredJavaMajor(const QString& versionId);
+    static int inferJavaByMcVersion(const QString& mcVersion);
+    QString gameDirForVersion(const QString& versionId) const;
+    bool isVersionInstalled(const QString& versionId) const;
+    void syncPlayerName();
+    void checkChangelog();
+    void loadJavaRuntimeSettings();
+    void saveJvmArgs();
+    void saveGameArgs();
+    void saveHighPerfGpu();
+
+    // ── 外部 .minecraft 目录应用/回退（MinecraftFolderBackend 信号驱动）──
+    void onApplyForeignFolder(const QString& root, int layout);
+    void onRevertForeignFolder();
+
+    AppBackend* m_app = nullptr;
+    AccountBackend* m_account = nullptr;
+    SettingsBackend* m_settings = nullptr;
+    CheckBackend* m_check = nullptr;
+    VersionBackend* m_version = nullptr;
+    LaunchBackend* m_launch = nullptr;
+    ResourceBackend* m_resource = nullptr;
+    StatsBackend*   m_stats = nullptr;
+    JavaBackend*    m_java = nullptr;
+    QObject* m_yggdrasil = nullptr;
+    UserDataBackend* m_userData = nullptr;
+    IconCache* m_modIconCache = nullptr;
+    IconCache* m_shaderIconCache = nullptr;
+    IconCache* m_rpIconCache = nullptr;
+    ResourceFetchEngine* m_fetchEngine = nullptr;
+    MultiplayerManager* m_multiplayer = nullptr;
+    LocalModManager* m_localMods = nullptr;
+    class GeoIpService* m_geoIp = nullptr;
+    QObject* m_modpackImporter = nullptr;
+    QObject* m_modpackExporter = nullptr;
+    MinecraftFolderBackend* m_mcFolder = nullptr;
+
+    bool m_isolationEnabled = true;
+    int m_lastLoginMode = 1;
+    QString m_launchVersion;
+    QString m_launchUsername;
+
+    // ── Beta key ──
+    QString m_betaStatus;
+
+    // ── Translation hot-switch ──
+    QTranslator* m_translator = nullptr;
+    QQmlEngine* m_engine = nullptr;
+    QString m_currentLang = QStringLiteral("zh_CN");
+    QVariantMap m_lastCrash;
+    QString m_verifyReportPath;
+    QString m_gameDir;
+    QVariantList m_versionDetails;
+    QVariantMap m_currentVersionSummary;
+
+    // ── Async version scanning state ──
+    bool m_isScanningVersions = false;
+
+    // ── Resource download progress tracking ──
+    int m_resourceDlProgress = 0;
+    int m_resourceDlTotal = 0;
+    int m_resourceDlSpeed = 0;
+    QString m_resourceDlFile;
+    QMap<int, QString> m_modDownloadCards;  // dlId → cardId for mod file cards
+
+    // 整合包压缩包下载 → 自动导入联动记录（dlId → 待导入信息）
+    struct PackDownloadInfo {
+        QString zipPath;       // 下载落盘路径（{gameDir}/downloads/xxx.mrpack|zip）
+        QString versionName;   // 用户指定版本名（注册名）
+        QString iconUrl;       // 整合包图标（搜索结果来源，传给导入卡片）
+    };
+    QMap<int, PackDownloadInfo> m_packDownloads;
+    bool m_packDownloading = false;   // 整合包压缩包正在下载中（同一时间只允许一个整合包任务）
+
+    // Mod-loader query tracking (for cancellation when install starts)
+    QList<QPointer<QNetworkReply>> m_modLoaderReplies;
+    bool m_modLoaderQueriesCancelled = false;
+
+    // Forge installer SHA1 cache (populated from version list API)
+    QMap<QString, QString> m_forgeInstallerSha1Cache;  // "mcVer-forgeVer" -> sha1
+    QMap<QString, QString> m_forgeInstallerBranchCache; // "mcVer-forgeVer" -> branch (e.g. "1.10.0", "mc172")
+
+    // ── Update ──
+    UpdateManager* m_updateManager = nullptr;
+
+    // ── Wardrobe cache ──
+    QVariantList m_capeCache;
+    void initCapeCache();
+    QString m_selectedSkinPath;
+    bool m_wardrobeBusy = false;
+
+    // ── Verify results ──
+    QString m_verifyResultText;
+    bool m_verifyResultOk = true;
+};
+}

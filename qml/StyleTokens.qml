@@ -1,0 +1,162 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2025-2026 影 / Shadow / xiaole1173
+pragma Singleton
+import QtQuick 2.15
+
+// ═══════════════════════════════════════
+// StyleTokens — 统一设计令牌（颜色、间距、圆角、字号）
+//
+// 所有 QML 文件应从本文件引用样式值，而非硬编码。
+//
+// 用法:
+//   color: StyleTokens.bgCard
+//   radius: StyleTokens.radiusMd
+//   font.pixelSize: StyleTokens.fontSizeMd
+// ═══════════════════════════════════════
+
+QtObject {
+    id: root
+
+    // ──────────────────────────────────────
+    // [色彩] 色彩系统
+    // ──────────────────────────────────────
+
+    // 背景色
+    readonly property color bgPrimary:     "#0c0f16"
+    readonly property color bgSecondary:   "#11141c"
+    readonly property color bgCard:        "#1a1f2e"
+    readonly property color bgElevated:    "#1e2230"
+    readonly property color bgHover:       "#2a3040"
+    readonly property color bgInput:       "#1a1f2a"
+
+    // 前景/表面色
+    readonly property color surfaceOverlay: "#141820"
+    readonly property color surfaceLight:  "#1a1d24"
+
+    // 文字色（5 级灰阶，逐级可辨）
+    readonly property color textPrimary:   "#e8ecf8"
+    readonly property color textSecondary: "#d0d4e0"
+    readonly property color textTertiary:  "#a8b0c0"
+    readonly property color textSubtle:    "#8088a0"
+    readonly property color textDanger:    "#c05050"
+    readonly property color textMuted:     "#505468"
+    readonly property color textInverse:   "#ffffff"
+
+    // 主色调 (蓝色系)
+    readonly property color accent:        "#3b82f6"
+    readonly property color accentHover:   "#5068c8"
+    readonly property color accentLight:   "#6080e8"
+    readonly property color accentVivid:   "#4a8fe7"
+    readonly property color accentLink:    "#8aaeff"
+    readonly property color accentSubtle:  "#1a2848"
+
+    // 状态色
+    readonly property color success:       "#4bc870"
+    readonly property color successBg:     "#1a3a1a"
+    readonly property color warning:       "#ff9800"
+    readonly property color warningDim:    "#c06420"
+    readonly property color warningBg:     "#3a3000"
+    readonly property color error:         "#ef4444"
+    readonly property color errorBg:       "#3a1a1a"
+    readonly property color errorLight:    "#e06060"
+
+    // 信息色
+    readonly property color info:          "#5098e8"
+    readonly property color infoBg:        "#1a3a5c"
+
+    // 遮罩/状态
+    readonly property color scrim:         "#000000"   // 全黑遮罩（配合 opacity 使用）
+    readonly property color scrim50:       "#80000000" // 50% 黑遮罩
+    readonly property color statusOff:     "#884444"   // 状态指示灯熄灭（暗红）
+
+    // 品牌色（来源标识）
+    readonly property color brandCurseForge: "#f08a5d"
+
+    // 紫罗兰（导入/导出、整合包标签）
+    readonly property color accentViolet:      "#7c3aed"
+    readonly property color accentVioletLight: "#a878c8"
+
+    // Mod 加载器语义色
+    readonly property color loaderFabric:   "#3a7a9a"
+    readonly property color loaderNeoforge: "#c08050"
+    readonly property color loaderOptifine: "#8a8a5a"
+    readonly property color loaderDefault:  "#4a6a8a"
+
+    // 图表系列色（数据可视化需要多色相区分，统一在此维护）
+    readonly property var chartColors: ["#5068c8", "#4a8fe7", "#5aa8c0", "#4bc870", "#4bc870",
+                                        "#4bc870", "#4bc870", "#9cf888", "#abff7c", "#baff70"]
+
+    // 半透明强调底色（徽章/卡片 tint）
+    readonly property color warningTint: "#20f59e0b"
+    readonly property color accentTint:  "#204ade80"
+    readonly property color errorTint:   "#1aef4444"
+    readonly property color successTint: "#2060c060"
+
+    // 边框色
+    readonly property color border:        "#1e2230"
+    readonly property color borderLight:   "#2a3040"
+    readonly property color borderFocus:   "#5068c8"
+
+    // ──────────────────────────────────────
+    // [间距] 间距体系 (8px 网格)
+    // ──────────────────────────────────────
+
+    readonly property int spacingXs:   4
+    readonly property int spacingSm:   8
+    readonly property int spacingMd:  12
+    readonly property int spacingLg:  16
+    readonly property int spacingXl:  24
+    readonly property int spacing2xl: 32
+    readonly property int spacing3xl: 40
+
+    // ──────────────────────────────────────
+    // [圆角] 圆角
+    // ──────────────────────────────────────
+
+    readonly property int radiusXs:   2
+    readonly property int radiusSm:   4
+    readonly property int radiusMd:   6
+    readonly property int radiusLg:   8
+    readonly property int radiusXl:   12
+    readonly property int radiusWindow: 16  // 窗口容器圆角
+    readonly property int radiusFull: 9999
+
+    // ──────────────────────────────────────
+    // [字体] 字体
+    // ──────────────────────────────────────
+
+    // 字族 — 简中首选 Noto Sans SC，西文 fallback 自动
+    readonly property string fontFamily:     "Noto Sans SC"
+    // 等宽字族用于技术文本
+    readonly property string fontFamilyMono: "JetBrains Mono, Consolas, monospace"
+
+    // 字重（使用整数值，Font.Light/Normal 等在 QtObject 单例中不可用）
+    readonly property int fontWeightLight:   25
+    readonly property int fontWeightNormal:  50
+    readonly property int fontWeightMedium:  57
+    readonly property int fontWeightBold:    75
+
+    // 字号（较默认+1px 提升可读性）
+    readonly property int fontSizeXs:   11  // 最小辅助文字
+    readonly property int fontSizeSm:   12  // 次要文字 / toast
+    readonly property int fontSizeCaption: 13  // 标注/选项卡文字
+    readonly property int fontSizeMd:   14  // 正文
+    readonly property int fontSizeLg:   16  // 小标题
+    readonly property int fontSizeXl:   19  // 大标题
+    readonly property int fontSize2xl:  24  // 页面标题
+
+    // ──────────────────────────────────────
+    // [下载] 容器 & 布局
+    // ──────────────────────────────────────
+
+    readonly property int sidebarWidth: 220
+    readonly property int headerHeight: 48
+    readonly property int cardMinHeight: 120
+
+    // ──────────────────────────────────────
+    // [阴影] 阴影 (QML 不支持复杂阴影, 用于参考)
+    // ──────────────────────────────────────
+
+    readonly property color shadowColor:  "#0a0a12"
+    readonly property real shadowOpacity: 0.3
+}
