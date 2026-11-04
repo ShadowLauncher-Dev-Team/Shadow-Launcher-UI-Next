@@ -98,6 +98,18 @@ Item {
     // ---------- 底色 ----------
     Rectangle { anchors.fill: parent; color: Theme.bg }
 
+    // 顶部环境光：给深色页面一个「光源」，避免整页一片死黑
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: 420
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: "#163b82f6" }
+            GradientStop { position: 1.0; color: "#00000000" }
+        }
+    }
+
     // ---------- 顶栏 ----------
     Item {
         id: topBar
@@ -190,6 +202,11 @@ Item {
             width: page.leftW
 
             Rectangle {
+                anchors.fill: parent
+                color: "#0a0c11"
+            }
+
+            Rectangle {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 anchors.right: parent.right
@@ -226,7 +243,18 @@ Item {
                     width: menu.width
                     height: 56
                     radius: 8
-                    color: "#151a23"
+                    color: "#161c26"
+                    border.width: 1
+                    border.color: "#232c3a"
+                    // 左侧强调条：表明「当前正在使用」
+                    Rectangle {
+                        width: 2
+                        height: parent.height - 18
+                        radius: 1
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left
+                        color: Theme.accent
+                    }
                     SMinecraftHead {
                         x: 10
                         anchors.verticalCenter: parent.verticalCenter
@@ -382,14 +410,26 @@ Item {
                             text: page.displayName
                             color: "#ffffff"
                             font.family: Theme.fontFamily
-                            font.pixelSize: 22
+                            font.pixelSize: 26
                             font.weight: Font.Bold
                         }
-                        Text {
-                            text: page.typeText
-                            color: "#9fb4cf"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 12
+                        // 类型徽章：比一行裸文本更有「身份感」，也给头部补一点颜色
+                        Rectangle {
+                            visible: page.typeText.length > 0
+                            height: 20
+                            width: badgeText.implicitWidth + 18
+                            radius: 10
+                            color: "#1f3b82f6"
+                            border.width: 1
+                            border.color: "#3a5b9e"
+                            Text {
+                                id: badgeText
+                                anchors.centerIn: parent
+                                text: page.typeText
+                                color: "#a9c6f2"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
                         }
                     }
                 }

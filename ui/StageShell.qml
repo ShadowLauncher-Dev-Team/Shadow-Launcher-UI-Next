@@ -37,8 +37,9 @@ Item {
         width: root.fullOpen ? 0 : root.sideW
         narrow: root.narrow
         hostWindow: root.hostWindow
+        // 快起：前 40% 时间就收掉大部分宽度，与页面淡入同帧开始，视觉上是一次动作
         Behavior on width {
-            NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeStandard }
+            NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
         }
     }
 
@@ -69,13 +70,15 @@ Item {
         anchors.fill: parent
         visible: root.versionsOpen || opacity > 0.01
         opacity: root.versionsOpen ? 1 : 0
+        // 透明度比位移先完成：用户先"看到内容"，再感受滑动，
+        // 避免出现"侧栏收走了、页面还是空的"这种先后感
         Behavior on opacity {
-            NumberAnimation { duration: Theme.durPage; easing.type: root.versionsOpen ? Theme.easeEnter : Theme.easeExit }
+            NumberAnimation { duration: Theme.durBase; easing.type: root.versionsOpen ? Theme.easeEnter : Theme.easeExit }
         }
         transform: Translate {
-            x: root.versionsOpen ? 0 : 24
+            x: root.versionsOpen ? 0 : 16
             Behavior on x {
-                NumberAnimation { duration: Theme.durPage; easing.type: root.versionsOpen ? Theme.easeEnter : Theme.easeExit }
+                NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
             }
         }
         VersionPage {
@@ -91,12 +94,13 @@ Item {
         visible: root.accountOpen || opacity > 0.01
         opacity: root.accountOpen ? 1 : 0
         Behavior on opacity {
-            NumberAnimation { duration: Theme.durPage; easing.type: root.accountOpen ? Theme.easeEnter : Theme.easeExit }
+            NumberAnimation { duration: Theme.durBase; easing.type: root.accountOpen ? Theme.easeEnter : Theme.easeExit }
         }
+        // 账户页从下方浮起（与版本页的横移区分开，减少"每次都一样"的疲劳）
         transform: Translate {
-            x: root.accountOpen ? 0 : 24
-            Behavior on x {
-                NumberAnimation { duration: Theme.durPage; easing.type: root.accountOpen ? Theme.easeEnter : Theme.easeExit }
+            y: root.accountOpen ? 0 : 20
+            Behavior on y {
+                NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
             }
         }
         AccountPage {

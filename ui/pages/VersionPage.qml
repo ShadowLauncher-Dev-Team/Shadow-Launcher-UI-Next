@@ -421,7 +421,7 @@ Item {
                     // 延迟封顶 120ms，避免长列表把整段拖过 300ms
                     opacity: 0
                     Component.onCompleted: {
-                        rowDelay.interval = Math.min(index * Theme.staggerStep, 120)
+                        rowDelay.interval = Math.min(index * 16, 72)
                         rowDelay.restart()
                     }
                     Timer {
