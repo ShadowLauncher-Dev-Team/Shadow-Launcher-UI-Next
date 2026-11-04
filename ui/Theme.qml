@@ -33,4 +33,27 @@ QtObject {
 
     // 字体
     readonly property string fontFamily: "Microsoft YaHei UI"
+
+    // ── 动效 ────────────────────────────────────────────────
+    // 唯一真源。禁止在别处写裸 duration 数字（构建期契约检查会拦）。
+    // 语义分工：
+    //   durFast  120  状态反馈：hover / 颜色 / 图标显隐 / 按压缩放
+    //   durBase  180  局部动作：下拉展开、提示条出现、进度条生长
+    //   durSlow  260  面板与列表：面板进出、列表逐条入场
+    //   durPage  320  整页切换：启动页 ↔ 版本页 / 账户页
+    readonly property int durFast: 120
+    readonly property int durBase: 180
+    readonly property int durSlow: 260
+    readonly property int durPage: 320
+
+    // 缓动：进入用 OutQuint（快起慢收，有重量感），离开用 InCubic（加速离场，利落）
+    readonly property int easeStandard: Easing.OutCubic
+    readonly property int easeEnter: Easing.OutQuint
+    readonly property int easeExit: Easing.InCubic
+
+    // 列表逐条入场的步进（行数 × 步进 控制在 240ms 内）
+    readonly property int staggerStep: 28
+
+    // 循环型动效（不确定进度条、骨架屏）的周期，不属于过渡时长
+    readonly property int marquee: 1150
 }

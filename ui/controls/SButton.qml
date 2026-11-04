@@ -75,14 +75,14 @@ Item {
                 running: root.busy
                 from: -prog.width
                 to: bg.width
-                duration: 1150
+                duration: Theme.marquee
                 loops: Animation.Infinite
             }
         }
 
         scale: press.pressed ? 0.985 : 1.0
-        Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
-        Behavior on color { ColorAnimation { duration: 120 } }
+        Behavior on scale { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+        Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
     }
 
     RowLayout {

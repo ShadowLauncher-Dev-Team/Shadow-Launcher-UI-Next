@@ -166,7 +166,7 @@ Item {
                         height: 4
                         width: parent.width * root.overall
                         color: root.failed ? "#ef4444" : "#3b82f6"
-                        Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                        Behavior on width { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     }
                 }
             }

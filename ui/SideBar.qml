@@ -107,7 +107,7 @@ Item {
                 anchors.fill: parent
                 radius: Theme.rSm
                 color: row.sel ? "#151a23" : (rowHover.containsMouse ? "#12151c" : "transparent")
-                Behavior on color { ColorAnimation { duration: 110 } }
+                Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
             }
             Rectangle {
                 visible: row.sel

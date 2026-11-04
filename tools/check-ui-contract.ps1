@@ -37,7 +37,13 @@ foreach ($f in $files) {
         # 3) SpringAnimation 实测数值发散到 ±Infinity
         if ($t -match 'SpringAnimation') { Add-Problem $rel $ln '禁止 SpringAnimation（会发散到 ±Infinity）' }
 
-        # 4) font.pixelSize 是 int，小数会让整页加载失败
+        # 4) 动效时长必须走 Theme token（durFast/durBase/durSlow/durPage/marquee）
+        #    裸数字会让同一个交互在不同控件里出现 90/110/120 三种时长（历史上就是这样）
+        if (($t -notmatch 'Theme\.(dur|marquee)') -and ($t -match '\bduration\s*:\s*-?\d+')) {
+            Add-Problem $rel $ln '动效时长须用 Theme.durFast/durBase/durSlow/durPage，禁止裸 duration 数字'
+        }
+
+        # 5) font.pixelSize 是 int，小数会让整页加载失败
         if ($t -match 'font\.pixelSize\s*:\s*-?\d+\.\d+') {
             Add-Problem $rel $ln 'font.pixelSize 是 int，不能写小数'
         }

@@ -19,7 +19,7 @@ Item {
             if (!root.danger) return hover.containsMouse ? "#1affffff" : "transparent"
             return hover.containsMouse ? Theme.danger : "transparent"
         }
-        Behavior on color { ColorAnimation { duration: 110 } }
+        Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
     }
 
     SIcon {
