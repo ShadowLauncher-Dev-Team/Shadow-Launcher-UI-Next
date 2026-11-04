@@ -433,6 +433,11 @@ void AccountBackend::logout()
     }
 
     emit accountChanged();
+    // 2026-11-04：skinPath / skinTexturePath 的 NOTIFY 是 skinReady，不是 accountChanged。
+    // 登出清空了皮肤路径却不发 skinReady，QML 里绑定 skinPath 的头像就不会重算 ——
+    // 表现为"退出登录后主页头像还在"。这里补发，让头像跟着一起回到未登录态。
+    emit skinReady();
+    emit offlineSkinReady();
     qCInfo(logAccount) << QStringLiteral("已登出");
     emit logMessage(tr("已登出"));
 }

@@ -20,7 +20,7 @@ Item {
     property string apiRootInput: ""
     property string emailInput: ""
     property string passwordInput: ""
-    property string hint: ""
+    property var toast: null          // StageShell 注入的 ToastHost：反馈统一走 Toast
 
     readonly property bool narrow: width < 900
     readonly property int leftW: narrow ? 240 : 300
@@ -51,7 +51,8 @@ Item {
         return "未登录"
     }
 
-    function flash(msg) { page.hint = msg; hintTimer.restart() }
+    // 反馈统一走 Toast（顶栏绿色文字会挤动右侧按钮，也留不住）
+    function flash(msg) { if (page.toast) page.toast.show(msg) }
     function startMicrosoft() { if (page.b) { page.b.lastLoginMode = 0; page.b.microsoftLogin() } }
     function cancelMicrosoft() { if (page.b) page.b.cancelMicrosoftLogin() }
     function doOffline() {
@@ -72,8 +73,6 @@ Item {
         page.yg.login(page.apiRootInput.trim(), page.emailInput.trim(), page.passwordInput)
         page.flash("正在登录外置账户…")
     }
-
-    Timer { id: hintTimer; interval: 2600; onTriggered: page.hint = "" }
 
     Component.onCompleted: {
         if (page.b) {
@@ -154,19 +153,6 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
 
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                // 提示条淡入淡出，不要硬切（文字内容变化时也顺滑）
-                visible: opacity > 0.01
-                opacity: page.hint.length > 0 ? 1 : 0
-                Behavior on opacity {
-                    NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
-                }
-                text: page.hint
-                color: Theme.ok
-                font.family: Theme.fontFamily
-                font.pixelSize: 11
-            }
             SButton {
                 kind: 1
                 radius: 2
@@ -292,6 +278,45 @@ Item {
                     }
                 }
 
+                // 添加账号：入口放左侧列表里（右侧不再有"切换账号"——
+                // 那个按钮点下去只是回到登录首屏，语义和"退出登录"撞车）
+                Item {
+                    id: addAccountRow
+                    visible: page.hasAccount && !page.loginPanel
+                    width: menu.width
+                    height: 38
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 8
+                        color: addHover.containsMouse ? "#12ffffff" : "transparent"
+                        Behavior on color {
+                            ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                        }
+                    }
+                    Row {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 8
+                        SIcon { name: "users"; size: 14; color: Theme.fg2 }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "添加账号"
+                            color: "#cbd3de"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                        }
+                    }
+                    MouseArea {
+                        id: addHover
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: { page.loginPanel = true; page.tab = 0 }
+                    }
+                }
+
                 // 三个登录方式
                 Repeater {
                     model: [
@@ -301,7 +326,7 @@ Item {
                     ]
                     delegate: Item {
                         width: menu.width
-                        height: 54
+                        height: 62
                         readonly property bool sel: page.tab === index
                         visible: !page.hasAccount || page.loginPanel
                         Rectangle {
@@ -318,19 +343,18 @@ Item {
                             color: Theme.accent
                         }
                         Text {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 14
-                            anchors.verticalCenter: parent.verticalCenter
+                            x: 14
+                            y: 12
+                            height: 18
+                            verticalAlignment: Text.AlignVCenter
                             text: modelData.t
                             color: parent.sel ? "#ffffff" : "#cbd3de"
                             font.family: Theme.fontFamily
                             font.pixelSize: 13
                         }
                         Text {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 14
-                            anchors.bottom: parent.bottom
-                            anchors.bottomMargin: 10
+                            x: 14
+                            y: 34
                             text: modelData.s
                             color: Theme.fg3
                             font.family: Theme.fontFamily
@@ -489,14 +513,6 @@ Item {
 
                 Row {
                     spacing: 10
-                    SButton {
-                        kind: 1
-                        radius: 2
-                        height: 34
-                        iconName: "user"
-                        text: "切换账号"
-                        onClicked: { page.loginPanel = true; page.tab = 0 }
-                    }
                     SButton {
                         kind: 1
                         radius: 2

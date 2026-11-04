@@ -246,3 +246,29 @@ ee2682a feat(launch-overlay): 启动阶段管线接入后端 StepPipeline；新�
 4. 版本设置页（Java/内存/JVM 参数），对接已有 `ShadowBackend` 的 per-version 接口
 5. 账户面板（`loginMode` 三态严格分离：正版/离线/外置）
 6. 浅色主题
+
+---
+
+## 9. 2026-11-04 晚：逻辑修正 + Toast 系统
+
+用户在实操 v2 后提了 5 个逻辑问题 + 2 个美观问题，本轮处理结果：
+
+| 问题 | 根因 | 处理 |
+|---|---|---|
+| 切游戏文件夹后 chip 文字不变 | `MinecraftFolderBackend::setActiveFolder()` 只写注册表、**不重扫 folders**，而 `folders` 是异步探测出来的缓存（含 active 标记）→ QML 读到旧列表 | setActiveFolder / revertToDefault 末尾补 `refreshFolders()`；`switchFolder()` 同时改为看返回值，失败提示"不是有效的游戏目录"（以前不管成败都提示"已切换"） |
+| 账户页有"切换账号" | 语义与"退出登录"撞车（点下去只是回登录首屏） | 右侧删掉；左侧列表加"添加账号"行（hasAccount 时显示，点开登录表单） |
+| 登录方式三行文字几乎重叠 | 行高 54 + 标题垂直居中 + 副标题 bottomMargin 10 → 两行只差 1~2px | 行高 62；标题 `y:12 h:18` 垂直居中，副标题 `y:34` |
+| 退出登录后主页头像/名字不变 | `logout()` 清了 `m_skinPath` 但只 emit `accountChanged`；而 `skinPath/skinTexturePath` 的 NOTIFY 是 `skinReady` → QML 绑定不重算 | logout 里补 emit `skinReady()` + `offlineSkinReady()` |
+| 版本页右侧信息硬切 | `page.sel` 换值直接改文本 | rightPane 加 `infoSwap`：120ms 压暗到 0.25 → 180ms 淡回，同时 infoCol 6px 上浮 |
+| 左侧选中条只有"变大变小" | 每行各有一根自己的指示条 | 换成**整页唯一一根** `listSelBar`：`animIdx`（real 行号）带 Behavior 滑行，`contentY` 变化时不加动画（滚动实时跟随） |
+| "刷新"绿色文字挤动控件 | 反馈写在顶栏 Text 里 | 新增 `ui/ToastHost.qml`（右下角栈，info/warning/success 三色，`show()` / `showAction()`），StageShell 全窗挂一份，页面用 `toast` 属性调用；页面原有的 `hint` 属性与 hintTimer 全部删除 |
+
+**Toast 使用约定**：
+- 位置右下角，bottomMargin = 16 + 56（避开页面主操作按钮，如版本页「确定」）
+- 默认 2600ms；`showAction(msg, cb)` 常驻可点；最多同时 4 条，超了丢最老的
+- 时长/缓动一律走 Theme token（`durFast`/`durBase`/`durPage`），契约检查会拦裸数字
+
+**已知缺口**：后端目前只有"一个当前账号"，没有多账号列表存储，所以"添加账号"实际是打开登录流程、登录后**替换**当前账号。真正的多账号（列表 + 切换）需要后端加持久化，待确认后再做。
+
+**顺带修**：`icons/lucide/lock.svg` 没进 CMake 资源列表（`qml/icons` 有、`icons/` 没有），启动日志一直报 icon missing；已补文件 + 资源条目。
+

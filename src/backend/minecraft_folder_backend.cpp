@@ -174,6 +174,8 @@ void MinecraftFolderBackend::revertToDefault()
     emit revertRequested();
     // 2026-08-19：持久化回退 —— 活动目录记为默认，重启后不再恢复外部目录。
     writeRegistry(readRegistryPaths(), defaultFolderPath());
+    // 与 setActiveFolder 同理：重扫才能把 active 标记刷回默认目录
+    refreshFolders();
 }
 
 bool MinecraftFolderBackend::effectiveIsolation() const
@@ -473,6 +475,9 @@ bool MinecraftFolderBackend::setActiveFolder(const QString& path)
     QStringList paths = readRegistryPaths();
     if (!paths.contains(clean)) paths.append(clean);
     writeRegistry(paths, clean);
+    // 2026-11-04：切完必须重扫 —— folders 是异步探测出来的缓存列表（含 active 标记），
+    // 不重扫的话 QML 里 folderLabel / "使用中" 读到的还是旧 active，标签永远不变。
+    refreshFolders();
     return true;
 }
 

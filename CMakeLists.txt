@@ -240,6 +240,7 @@ set_source_files_properties(ui/controls/SButton.qml PROPERTIES QT_RESOURCE_ALIAS
 set_source_files_properties(ui/controls/SWindowButton.qml PROPERTIES QT_RESOURCE_ALIAS controls/SWindowButton.qml)
 set_source_files_properties(ui/controls/SAcctChip.qml PROPERTIES QT_RESOURCE_ALIAS controls/SAcctChip.qml)
 set_source_files_properties(ui/controls/SMinecraftHead.qml PROPERTIES QT_RESOURCE_ALIAS controls/SMinecraftHead.qml)
+set_source_files_properties(ui/ToastHost.qml PROPERTIES QT_RESOURCE_ALIAS ToastHost.qml)
 
 qt_add_qml_module(ShadowLauncher
     URI ShadowLauncher.Next
@@ -260,6 +261,7 @@ qt_add_qml_module(ShadowLauncher
         ui/controls/SWindowButton.qml
         ui/controls/SAcctChip.qml
         ui/controls/SMinecraftHead.qml
+        ui/ToastHost.qml
 )
 
 # UI 契约检查（构建期硬失败：版本号装饰 / emoji 图标 / SpringAnimation / pixelSize 小数 ...）
@@ -385,6 +387,7 @@ qt6_add_resources(ShadowLauncher "icon_resources"
         icons/lucide/x.svg
         icons/lucide/shield-check.svg
         icons/lucide/key.svg
+        icons/lucide/lock.svg
         icons/lucide/user.svg
         icons/lucide/chevron-down.svg
         icons/lucide/log-out.svg

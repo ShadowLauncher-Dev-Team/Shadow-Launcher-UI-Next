@@ -1,0 +1,21 @@
+fix(ui): 逻辑问题五连 + Toast 系统 + 版本页转场
+
+逻辑：
+- 切游戏文件夹后 chip 文字不变：setActiveFolder/revertToDefault 补 refreshFolders()，
+  folders 是异步缓存（含 active 标记），不重扫 QML 永远读旧值；
+  switchFolder 同时改为按返回值判断成败，失败提示"不是有效的游戏目录"。
+- 账户页：删掉右侧"切换账号"（语义与退出登录撞车），左侧列表加"添加账号"。
+- 登录方式三行文字重叠：行高 54→62，标题 y12 h18、副标题 y34，不再只差 1~2px。
+- 退出登录后主页头像不刷新：logout 清皮肤却没发 skinReady（skinPath 的 NOTIFY 是它），
+  补 emit skinReady + offlineSkinReady。
+- 修 lock.svg 缺失（qml/icons 有、icons/ 没有、CMake 也没列）导致的图标告警。
+
+动效：
+- 版本页右侧信息不再硬切：120ms 压暗 → 180ms 淡回 + infoCol 6px 上浮。
+- 左侧选中指示条改为整页唯一一根，随选中项滑行（行号动画 + 滚动实时跟随）。
+
+Toast（新增 ui/ToastHost.qml）：
+- 右下角堆叠，info/warning/success 三色，show()/showAction()，最多 4 条。
+- 全窗挂一份（StageShell），页面通过 toast 属性调用。
+- 版本页/账户页原来的"绿色提示文字 + hintTimer"全部删除 —— 那个会挤动右侧按钮。
+- 抬离底部 56px，避免压住页面主操作按钮。

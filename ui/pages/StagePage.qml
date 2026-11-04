@@ -14,6 +14,7 @@ Item {
     readonly property bool hasAccount: b ? (b.isOnline || (b.offlineUsername || "").length > 0) : false
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
+    property var toast: null          // StageShell 注入的 ToastHost
     // narrow 必须由整窗宽度决定（StageShell 注入）。页面自己的 width 是"内容区宽"
     // （已扣掉侧栏），拿它和 900 比会让 1100 宽的窗口被判成窄窗、标题从 58 掉到 34。
     property bool narrow: false

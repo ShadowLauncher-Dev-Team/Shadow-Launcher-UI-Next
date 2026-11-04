@@ -22,13 +22,16 @@ Item {
     property bool folderMenuOpen: false
     readonly property bool busy: b ? b.launching : false
     property string query: ""
-    property string hint: ""
+    property var toast: null          // StageShell 注入的 ToastHost：反馈统一走 Toast
     property int rev: 0            // 递增以强制重算"上次游玩"等非绑定字段
 
     readonly property bool narrow: width < 900
     readonly property int leftW: narrow ? 268 : 336
     readonly property real coverH: narrow ? 128 : 200
     readonly property int infoRowH: narrow ? 34 : 44
+    // 列表行高/间距：滑动指示条要靠这两个值算位置，所以提取成常量（delegate 与指示条共用）
+    readonly property int listRowH: 60
+    readonly property int listRowGap: 2
 
     // ── 过滤 + 排序（版本发布时间倒序）──
     readonly property var rows: {
@@ -75,8 +78,12 @@ Item {
     function switchFolder(path, isDefault) {
         if (!page.mcFolder || !page.b) return
         page.folderMenuOpen = false
+        // setActiveFolder 是有返回值的：目录不存在 / 识别不出 .minecraft 会返回 false。
+        // 以前不管成败都提示"已切换"，失败时用户会以为切了但其实没切。
+        var ok = true
         if (isDefault) page.mcFolder.revertToDefault()
-        else page.mcFolder.setActiveFolder(path)
+        else ok = page.mcFolder.setActiveFolder(path)
+        if (!ok) { page.flash("切换失败：这个文件夹不是有效的游戏目录"); return }
         page.b.refreshVersionDetails()
         page.rev++
         page.flash(isDefault ? "已切回默认游戏目录" : "已切换游戏文件夹")
@@ -153,9 +160,17 @@ Item {
         if (v.versionType === "old") return "qrc:/qt/qml/ShadowLauncher/qml/icons/blocks/CobbleStone.png"
         return "qrc:/qt/qml/ShadowLauncher/qml/icons/blocks/Grass.png"
     }
-    function flash(msg) { page.hint = msg; hintTimer.restart() }
+    // 反馈统一走 Toast：以前写进顶栏 label，一出现就把右侧按钮挤走（控件错位），
+    // 而且返回启动页后再也看不到"到底刷新了什么"。
+    function flash(msg) { if (page.toast) page.toast.show(msg) }
 
-    Timer { id: hintTimer; interval: 2600; onTriggered: page.hint = "" }
+    // 当前待选版本在列表里的行号（-1 = 不在列表里）。滑动指示条靠它定位。
+    function rowIndex(id) {
+        if (!id) return -1
+        for (var i = 0; i < page.rows.length; ++i)
+            if (page.rows[i] && page.rows[i].id === id) return i
+        return -1
+    }
     // 进入本页必须主动触发扫描：versionDetails 是异步扫 versions/ 得到的，
     // 后端不会自己开始扫（旧 UI 也是进版本页时才调 refreshVersionDetails）。
     Component.onCompleted: {
@@ -254,14 +269,6 @@ Item {
                 }
             }
 
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                visible: page.hint.length > 0
-                text: page.hint
-                color: Theme.ok
-                font.family: Theme.fontFamily
-                font.pixelSize: 11
-            }
             SButton {
                 kind: 1
                 radius: 2
@@ -396,7 +403,7 @@ Item {
                 model: page.rows
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                spacing: 2
+                spacing: page.listRowGap
 
                 // 打开页面时把当前选中版本滚进视野（列表按发布时间排序，选中项可能不在首屏）
                 function scrollToCurrent() {
@@ -413,7 +420,7 @@ Item {
                 delegate: Item {
                     id: row
                     width: vlist.width
-                    height: 60
+                    height: page.listRowH
                     readonly property bool cur: !!modelData && modelData.id === page.pendingId
                     readonly property bool hov: rowHover.containsMouse
 
@@ -445,17 +452,6 @@ Item {
                         color: row.cur ? "#151a23" : (row.hov ? "#101419" : "transparent")
                         Behavior on color {
                             ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
-                        }
-                    }
-                    // 选中指示条：从 0 长出来
-                    Rectangle {
-                        width: 2
-                        height: row.cur ? parent.height - 18 : 0
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.left: parent.left
-                        color: Theme.accent
-                        Behavior on height {
-                            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
                         }
                     }
                     Image {
@@ -524,6 +520,32 @@ Item {
                     lineHeight: 1.5
                 }
             }
+
+            // 选中指示条（唯一一根）：换选中项时从旧行滑到新行，
+            // 而不是每行各长一根（那样只有"变大变小"，没有"上下移动"）。
+            Item {
+                id: selBarLayer
+                anchors.fill: vlist
+                clip: true
+                z: 2
+
+                Rectangle {
+                    id: listSelBar
+                    // 用行号做动画值：行号变化时滑过去；contentY 变化时直接跟（滚动不加动画）
+                    property real animIdx: page.rowIndex(page.pendingId)
+                    Behavior on animIdx {
+                        NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
+                    }
+                    visible: page.rowIndex(page.pendingId) >= 0
+                    x: 8
+                    width: 2
+                    height: 42
+                    radius: 1
+                    color: Theme.accent
+                    y: animIdx * (page.listRowH + page.listRowGap) - vlist.contentY
+                       + (page.listRowH - height) / 2
+                }
+            }
         }
 
         // ===== 右：详情 =====
@@ -533,6 +555,24 @@ Item {
             anchors.top: parent.top
             anchors.right: parent.right
             anchors.bottom: parent.bottom
+
+            // 换版本时右侧信息不能硬切：先 120ms 压暗，再 180ms 淡回 + 6px 上浮，
+            // 观感是"内容翻了一页"，而不是文字逐行闪一下。
+            Connections {
+                target: page
+                function onPendingIdChanged() { infoSwap.restart() }
+            }
+            SequentialAnimation {
+                id: infoSwap
+                ParallelAnimation {
+                    NumberAnimation { targets: [coverInfo, infoCol]; property: "opacity"; to: 0.25; duration: Theme.durFast; easing.type: Theme.easeExit }
+                    NumberAnimation { target: infoShift; property: "y"; to: 6; duration: Theme.durFast; easing.type: Theme.easeExit }
+                }
+                ParallelAnimation {
+                    NumberAnimation { targets: [coverInfo, infoCol]; property: "opacity"; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+                    NumberAnimation { target: infoShift; property: "y"; to: 0; duration: Theme.durBase; easing.type: Theme.easeEnter }
+                }
+            }
 
             // 封面
             Item {
@@ -559,6 +599,7 @@ Item {
                 }
 
                 Column {
+                    id: coverInfo
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
@@ -597,6 +638,7 @@ Item {
                 anchors.leftMargin: page.narrow ? 20 : 32
                 anchors.rightMargin: page.narrow ? 20 : 32
                 anchors.topMargin: 6
+                transform: Translate { id: infoShift; y: 0 }
 
                 Repeater {
                     model: {

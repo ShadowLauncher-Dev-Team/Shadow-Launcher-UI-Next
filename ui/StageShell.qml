@@ -52,6 +52,7 @@ Item {
         enabled: !root.fullOpen
         hostWindow: root.hostWindow
         narrow: root.narrow
+        toast: toastHost
         onOpenVersions: root.versionsOpen = true
         onOpenAccount: root.accountOpen = true
     }
@@ -83,6 +84,7 @@ Item {
         }
         VersionPage {
             anchors.fill: parent
+            toast: toastHost
             onClose: root.versionsOpen = false
         }
     }
@@ -106,8 +108,16 @@ Item {
         }
         AccountPage {
             anchors.fill: parent
+            toast: toastHost
             onClose: root.accountOpen = false
         }
+    }
+
+    // Toast：右下角通知栈。全窗挂一份，页面通过 toast 属性调用；
+    // 不再往顶栏塞一行绿色文字（会挤动右侧按钮，且离开该页就看不到）。
+    ToastHost {
+        id: toastHost
+        anchors.fill: parent
     }
 
     // 窗口按钮：所有页面共用（否则进全屏页就丢最小化/关闭）
