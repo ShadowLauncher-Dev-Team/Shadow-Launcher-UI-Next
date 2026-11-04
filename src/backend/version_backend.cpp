@@ -9271,6 +9271,26 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
     return ctx;
 }
 
+int VersionBackend::cleanupOrphanTempDirsIfIdle()
+{
+    // 危险边界：还有活跃合并上下文 / 正在安装 / 下载器在跑 → 一律不动
+    if (!m_mergedContexts.isEmpty()) return 0;
+    if (isInstalling()) return 0;
+    for (auto* d : m_downloaders) {
+        if (d && d->isRunning()) return 0;
+    }
+
+    const QString trackerDir = TempTracker::trackerDir();
+    const int before = QDir(trackerDir).entryList({ QStringLiteral("*.track") }, QDir::Files).size();
+    if (before == 0) return 0;
+    TempTracker::cleanupOrphans();
+    const int after = QDir(trackerDir).entryList({ QStringLiteral("*.track") }, QDir::Files).size();
+    const int removed = qMax(0, before - after);
+    if (removed > 0)
+        qCInfo(logVersion) << QStringLiteral("[追踪] 取消后清扫遗留临时目录: %1 个").arg(removed);
+    return removed;
+}
+
 void VersionBackend::destroyMergedContext(const QString& installId)
 {
     auto* ctx = m_mergedContexts.take(installId);
@@ -9294,8 +9314,39 @@ void VersionBackend::destroyMergedContext(const QString& installId)
         TempTracker::forget(ctx->tempDir);
         qCInfo(logVersion) << QStringLiteral("[追踪] 清理临时目录: %1").arg(ctx->tempDir);
     } else if (workerBusy) {
-        qCWarning(logVersion) << QStringLiteral("[追踪] 取消时安装 worker 仍在运行，跳过临时目录删除: %1")
-            .arg(ctx->tempDir);
+        // ── 取消后临时目录必须清干净（2026-11-05 实测：取消一次留下 673MB / 4048 文件）──
+        // 旧实现只是"跳过"，把清理甩给下次启动的 TempTracker::cleanupOrphans()。
+        // 用户取消后看到的是"磁盘上还压着半个游戏"，这就是没清干净。
+        // 现在改成延迟重试：worker 结束（或文件句柄释放）后 500ms 一轮，最多 60 轮（30s）。
+        const QString dir = ctx->tempDir;
+        qCWarning(logVersion) << QStringLiteral("[追踪] 取消时安装 worker 仍在运行，改为延迟清理: %1")
+            .arg(dir);
+        auto tries = std::make_shared<int>(0);
+        auto* timer = new QTimer(this);
+        timer->setInterval(500);
+        connect(timer, &QTimer::timeout, this, [this, timer, dir, tries]() {
+            ++(*tries);
+            if (QDir(dir).exists()) {
+                QDir d(dir);
+                // removeRecursively 返回 false 时说明还有句柄/子目录在写，下一轮再试
+                if (d.removeRecursively() && !QDir(dir).exists()) {
+                    TempTracker::forget(dir);
+                    qCInfo(logVersion) << QStringLiteral("[追踪] 临时目录延迟清理完成: %1").arg(dir);
+                    timer->stop();
+                    timer->deleteLater();
+                }
+            } else {
+                TempTracker::forget(dir);
+                timer->stop();
+                timer->deleteLater();
+            }
+            if (*tries >= 60 && timer->isActive()) {
+                qCWarning(logVersion) << QStringLiteral("[追踪] 临时目录延迟清理超时，留给下次启动: %1").arg(dir);
+                timer->stop();
+                timer->deleteLater();
+            }
+        });
+        timer->start();
     }
 
     // Delete owned children

@@ -1159,6 +1159,14 @@ void ModpackInstallTask::finishCancelled()
 {
     if (!m_busy) return;
     m_phase = Phase::Cancelled;
+
+    // 取消收尾后清扫遗留的 %TEMP%/shadow-merged-*（实测：取消一次会留下 ~670MB 的
+    // 合并安装暂存目录，旧实现只把它甩给"下次启动"清理）。
+    if (m_vb) {
+        QTimer::singleShot(1500, m_vb, [vb = m_vb]() {
+            if (vb) vb->cleanupOrphanTempDirsIfIdle();
+        });
+    }
     m_busy = false;
     m_statusText = tr("已取消");
     finishCard(false, tr("已取消"));

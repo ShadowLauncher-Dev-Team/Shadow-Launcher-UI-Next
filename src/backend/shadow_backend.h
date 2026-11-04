@@ -502,6 +502,10 @@ public:
     /// 多文件探针：同一 URL 下 count 个文件（不同落盘路径），用于验收 QNAM 复用
     /// （创建次数应 ≈ 线程数，而不是 ≈ 文件数）。
     Q_INVOKABLE QString downloadProbeMulti(const QString& url, int count, int timeoutMs);
+
+    /// 取消残留诊断：取消后统计"目标文件 / .shadow_temp 分片 / 目录"是否还留东西。
+    /// 不自动删除，交给验收者看；用于证明"取消能否完全清干净"。
+    Q_INVOKABLE QString downloadProbeCancelLeak(const QString& url, int cancelAfterMs);
     Q_INVOKABLE void killMinecraft();
     Q_INVOKABLE void killGameByPid(qint64 pid);
     Q_INVOKABLE QVariantList runningGames();

@@ -178,6 +178,11 @@ private:
     enum State { Idle, Running, Paused, Cancelled, Verifying, Done, Failed };
     State m_state = Idle;
 
+    // ── 资源索引临时文件（取消时必须清掉，否则 assets/indexes 留下 .part.* 残片）──
+    QStringList m_indexTempFiles;                  // idx.part.0 / .1 / …
+    QString m_indexFinalPath;                      // 索引最终 json 路径
+    bool m_indexCommitted = false;                 // 索引已成功落盘
+
     QString m_currentVersionId;
 
     // Cached for integrity verification

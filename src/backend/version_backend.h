@@ -207,6 +207,10 @@ public:
     Q_INVOKABLE void refreshInstalled();
     Q_INVOKABLE void installVersion(const QString& versionId);
     Q_INVOKABLE void cancelVersionInstall(const QString& versionId);
+    /// 空闲时清扫遗留的 %TEMP%/shadow-merged-*（取消/失败后兜底）。
+    /// 只在"没有任何活跃合并上下文 + 没有安装在跑"时执行，避免误删别人正在用的目录。
+    /// 返回清扫掉的目录数。
+    Q_INVOKABLE int cleanupOrphanTempDirsIfIdle();
     Q_INVOKABLE void cancelQueuedDownload(const QString& versionId);
     void prefetchVersionJson(const QString& versionId);
     Q_INVOKABLE QVariantList downloadQueue() const;

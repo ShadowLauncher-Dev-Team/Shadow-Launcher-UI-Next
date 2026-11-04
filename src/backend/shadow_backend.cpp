@@ -2959,6 +2959,50 @@ QString ShadowBackend::downloadProbe(const QString& url, int limitKBps, int time
         .arg(avgMBps, 0, 'f', 2).arg(limitKBps);
 }
 
+QString ShadowBackend::downloadProbeCancelLeak(const QString& url, int cancelAfterMs)
+{
+    ShadowDownloader::FileDownloader fd;
+    fd.setMaxThreads(4);
+
+    const QString dir = QDir::tempPath() + QStringLiteral("/shadow_leak_probe");
+    QDir(dir).removeRecursively();
+    QDir().mkpath(dir);
+    const QString path = dir + QStringLiteral("/target.bin");
+    fd.addFile(path, QStringLiteral("target.bin"), {url}, -1, QByteArray(), false, true);
+
+    fd.start();
+    {
+        QEventLoop wait;
+        QTimer::singleShot(qMax(50, cancelAfterMs), &wait, &QEventLoop::quit);
+        wait.exec();
+    }
+    const qint64 sizeAtCancel = QFileInfo::exists(path) ? QFileInfo(path).size() : -1;
+    fd.cancel();
+    {
+        QEventLoop wait;
+        QTimer::singleShot(800, &wait, &QEventLoop::quit);
+        wait.exec();
+    }
+
+    const qint64 targetSize = QFileInfo::exists(path) ? QFileInfo(path).size() : -1;
+    const QString shadowTemp = dir + QStringLiteral("/.shadow_temp");
+    QStringList temps;
+    qint64 tempBytes = 0;
+    if (QDir(shadowTemp).exists()) {
+        for (const QFileInfo& fi : QDir(shadowTemp).entryInfoList(QDir::Files)) {
+            temps.append(QStringLiteral("%1:%2").arg(fi.fileName()).arg(fi.size()));
+            tempBytes += fi.size();
+        }
+    }
+    const bool dirExists = QDir(dir).exists();
+    return QStringLiteral("sizeAtCancel=%1 targetAfterCancel=%2 shadowTempFiles=%3 tempBytes=%4 shadowTempDir=%5 dirExists=%6")
+        .arg(sizeAtCancel).arg(targetSize)
+        .arg(temps.isEmpty() ? QStringLiteral("none") : temps.join(QStringLiteral(",")))
+        .arg(tempBytes)
+        .arg(QDir(shadowTemp).exists() ? QStringLiteral("yes") : QStringLiteral("no"))
+        .arg(dirExists ? QStringLiteral("yes") : QStringLiteral("no"));
+}
+
 QString ShadowBackend::downloadProbeMulti(const QString& url, int count, int timeoutMs)
 {
     ShadowDownloader::FileDownloader fd;

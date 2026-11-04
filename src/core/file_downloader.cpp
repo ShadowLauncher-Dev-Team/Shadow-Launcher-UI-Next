@@ -308,17 +308,33 @@ void FileDownloader::cancel()
         m_inflightReplies.clear();
     }
 
-    // 清理分片临时文件（.shadow_temp/dl_*.tmp）
+    // ── 清理分片临时文件（.shadow_temp/dl_*.tmp）+ 未提交的目标文件 ──
+    // 实测（2026-11-05）：取消后目标文件可能残留**满尺寸**（isNoSplit 直写最终路径，
+    // 写完整数据后才被取消），也可能残留半截（写文件中途取消）。
+    // 规则：只删"本次写过、但没走到成功收尾"的目标文件；已提交的一律保留。
+    QStringList tempDirs;
     {
         QMutexLocker lock(&m_filesMutex);
         for (auto& f : m_files) {
             for (auto& t : f->threads) {
                 if (!t->tempPath.isEmpty()) {
+                    tempDirs.append(QFileInfo(t->tempPath).absolutePath());
                     QFile::remove(t->tempPath);
                     t->tempPath.clear();
                 }
             }
+            if (f->targetWritten && !f->committed) {
+                if (QFile::remove(f->localPath))
+                    qCInfo(logDownload) << QStringLiteral("[夸父] 取消清理未完成文件 %1").arg(f->localPath);
+            }
         }
+    }
+
+    // 空壳目录（.shadow_temp/）不留在磁盘上
+    tempDirs.removeDuplicates();
+    for (const QString& d : tempDirs) {
+        if (QDir(d).exists() && QDir(d).isEmpty())
+            QDir().rmdir(d);
     }
 
     emit logMessage(QString::fromUtf8("[夸父] [失败] 下载已取消"));
@@ -1273,6 +1289,7 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 if (file->isNoSplit) {
                     QFile f(file->localPath);
                     QDir().mkpath(QFileInfo(file->localPath).absolutePath());
+                    file->targetWritten = true;   // 直写最终路径：取消后必须删
                     if (f.open(QIODevice::WriteOnly)) { f.write(data); f.close(); }
                 } else {
                     QString tmpDir = QFileInfo(file->localPath).absolutePath() + "/.shadow_temp/";
@@ -1448,6 +1465,7 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 if (file->isNoSplit) {
                     QFile f(file->localPath);
                     QDir().mkpath(QFileInfo(file->localPath).absolutePath());
+                    file->targetWritten = true;   // 直写最终路径：取消后必须删
                     if (f.open(QIODevice::WriteOnly)) { f.write(data); f.close(); }
                 } else {
                     QString tmpDir = QFileInfo(file->localPath).absolutePath() + "/.shadow_temp/";
@@ -1558,6 +1576,7 @@ cleanup:
                 self->logMessage(QString::fromUtf8("[夸父] [失败] 下载失败: %1 (所有源均失败)").arg(file->localName));
                 self->fileFinished(file->localPath, false);
             } else {
+                file->committed = true;   // 已提交：取消不再删该文件
                 self->m_completedFiles.fetchAndAddRelaxed(1);
                 for (const auto& t : file->threads)
                     self->recordHostResult(QUrl(t->sourceUrl).host().toLower(), true);
@@ -1600,6 +1619,7 @@ bool FileDownloader::mergeFile(std::shared_ptr<FileDownload> file)
 
     QDir().mkpath(QFileInfo(file->localPath).absolutePath());
     QFile out(file->localPath);
+    file->targetWritten = true;   // 合并写最终路径：取消后必须删
     if (!out.open(QIODevice::WriteOnly)) {
         emit logMessage(QString("[夸父] 无法写入: %1").arg(file->localPath));
         return false;

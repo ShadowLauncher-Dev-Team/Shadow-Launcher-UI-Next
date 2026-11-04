@@ -63,6 +63,10 @@ struct FileDownload {
     bool isUnknownSize = false;
     /// fileSize 是占位值（如未知大小时的 10MB 假值）：不能拿它做完整性判定。
     bool sizeIsPlaceholder = false;
+    /// 本次下载是否已经往最终路径写过字节（取消时要删除——否则留下满尺寸/半截文件）
+    bool targetWritten = false;
+    /// 已通过校验/合并并成功收尾（取消时不得删除）
+    bool committed = false;
     bool isNoSplit = false;    // files < 50MB, single range
     int state = 0;             // 0=waiting,1=connecting,2=downloading,3=merging,4=finished,5=failed
     QStringList orderedSources;

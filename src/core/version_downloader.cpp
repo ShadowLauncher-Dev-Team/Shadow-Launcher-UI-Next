@@ -588,6 +588,10 @@ void VersionDownloader::downloadAssetIndexRace(const QString& idxUrl, const QStr
     mirror.replace(QStringLiteral("piston-meta.mojang.com"),
                    QStringLiteral("bmclapi2.bangbang93.com"));
 
+    m_indexFinalPath = idxPath;
+    m_indexCommitted = false;
+    m_indexTempFiles.clear();
+
     auto won = std::make_shared<bool>(false);
     auto pending = std::make_shared<int>(mirror == official ? 1 : 2);
 
@@ -603,6 +607,8 @@ void VersionDownloader::downloadAssetIndexRace(const QString& idxUrl, const QStr
     auto win = [this, won, done](const QString& label) {
         if (*won) return;
         *won = true;
+        m_indexCommitted = true;
+        m_indexTempFiles.clear();   // 成功路径已自行删除分片，清账即可
         emit logMessage(QStringLiteral("[盘古] 资源索引竞速胜出 源=%1").arg(label));
         done();
     };
@@ -689,7 +695,9 @@ void VersionDownloader::downloadAssetIndexRace(const QString& idxUrl, const QStr
                 if (ok) {
                     const QByteArray data = r->readAll();
                     if (data.size() == (end - start + 1)) {
-                        QFile pf(partPrefix + QStringLiteral(".") + QString::number(i));
+                        const QString partPath = partPrefix + QStringLiteral(".") + QString::number(i);
+                        if (!m_indexTempFiles.contains(partPath)) m_indexTempFiles.append(partPath);
+                        QFile pf(partPath);
                         if (pf.open(QIODevice::WriteOnly)) {
                             pf.write(data);
                             pf.close();
@@ -734,6 +742,7 @@ void VersionDownloader::downloadAssetIndexRace(const QString& idxUrl, const QStr
                         for (int j = 0; j < n; ++j)
                             QFile::remove(partPrefix + QStringLiteral(".") + QString::number(j));
                         QFile::remove(idxPath);
+                        m_indexTempFiles.clear();
                         failBoth();
                     }
                 }
@@ -813,6 +822,28 @@ void VersionDownloader::cancel()
 {
     if (m_state == Idle || m_state == Done || m_state == Failed) return;
     m_state = Cancelled;
+
+    // ── 资源索引残片清理（契约 §5：取消必须清干净）──
+    // 资产索引是"分片下载 + 拼接"：取消时 .part.* 分片与半截 json 都可能是残留。
+    // 延迟 300ms 删：给在途分片回调收尾时间，避免刚删完又被写完。
+    if (!m_indexCommitted) {
+        const QStringList temps = m_indexTempFiles;
+        const QString finalPath = m_indexFinalPath;
+        const QString partDir = finalPath.isEmpty() ? QString()
+                                                    : QFileInfo(finalPath).absolutePath();
+        const QString finalName = finalPath.isEmpty() ? QString() : QFileInfo(finalPath).fileName();
+        QTimer::singleShot(300, this, [temps, finalPath, partDir, finalName]() {
+            for (const QString& t : temps) QFile::remove(t);
+            if (!finalPath.isEmpty()) QFile::remove(finalPath);
+            // 兜底：同目录下同名的 .part.* 一律清掉（覆盖"取消时分片还没登记"的窗口）
+            if (!partDir.isEmpty() && !finalName.isEmpty()) {
+                QDir d(partDir);
+                for (const QString& f : d.entryList({ finalName + QStringLiteral(".part.*") }, QDir::Files))
+                    QFile::remove(d.absoluteFilePath(f));
+            }
+        });
+    }
+    m_indexTempFiles.clear();
     if (m_downloader) m_downloader->cancel();
     if (m_assetDownloader) m_assetDownloader->cancel();
     if (m_verifyWorkerObj) {
