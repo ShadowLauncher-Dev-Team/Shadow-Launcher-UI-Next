@@ -85,7 +85,8 @@ Item {
 
         Text {
             visible: !root.narrow
-            text: "v" + ((typeof backend !== "undefined" && backend) ? backend.appVersion : "")
+            // appVersion 已是可直接显示的完整串（含 v 前缀，见 src/version.h），此处禁止再做任何拼接装饰
+            text: ((typeof backend !== "undefined" && backend) ? backend.appVersion : "")
             color: "#4b535f"
             font.family: Theme.fontFamily
             font.pixelSize: 11

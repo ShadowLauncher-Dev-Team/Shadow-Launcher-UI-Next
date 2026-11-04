@@ -254,6 +254,14 @@ qt_add_qml_module(ShadowLauncher
         ui/controls/SAcctChip.qml
 )
 
+# UI 契约检查（构建期硬失败：版本号装饰 / emoji 图标 / SpringAnimation / pixelSize 小数 ...）
+add_custom_target(UiContractCheck
+    COMMAND powershell -NoProfile -ExecutionPolicy Bypass -File "${CMAKE_SOURCE_DIR}/tools/check-ui-contract.ps1" -UiDir "${CMAKE_SOURCE_DIR}/ui"
+    COMMENT "Checking ui/ contract"
+    VERBATIM
+)
+add_dependencies(ShadowLauncher UiContractCheck)
+
 # 启动页背景图（临时内置图；正式版应由用户自定义背景或版本 splash 提供）
 qt6_add_resources(ShadowLauncher "ui_stage_assets"
     PREFIX "/ui"
