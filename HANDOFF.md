@@ -1,6 +1,6 @@
 # 交接文档 — Shadow Launcher v2 UI 重写
 
-> 更新时间：2026-11-04 17:40（上一版 16:57）
+> 更新时间：2026-11-04 21:10（上一版 20:40）
 > 仓库：`D:\latest-code\shadow-v2`（git，main）
 > 设计稿源：`D:\latest-code\cpp\design-2026-11-04\`（网页原型，不在本仓库 git 里；仓库内 `design/` 是迁移时的一份拷贝）
 
@@ -202,6 +202,32 @@ ee2682a feat(launch-overlay): 启动阶段管线接入后端 StepPipeline；新�
 
 - 调试参数新增 `--ui-folder-menu`（直接展开文件夹面板，截图/验证用）。
 - 注意：`--ui-versions` 进版本页仍保留；两者可叠加。
+
+### 3.7 账户页（2026-11-04 21:xx，全屏）
+
+用户拍板「全屏吧，专门留出管理账户的地方」，不再做抽屉。实现要点：
+
+| 项 | 实现 |
+|---|---|
+| 形态 | 全屏页 `ui/pages/AccountPage.qml`，`StageShell` 里与 `VersionPage` 同级 `anchors.fill`，侧栏宽度收为 0 |
+| 入口 | 启动页右上胶囊 `SAcctChip` → `onOpenAccount`；未登录时主按钮变「先登录」（`SButton.muted`，灰底但仍可点）也进这里 |
+| 顶栏 | 左「返回」+ 标题「账户」+ 副标题（正版/离线/未登录；打开换号面板时留空，避免"已登录"与正文冲突）|
+| 左列 | 已登录=当前账户卡（头像+名+类型/状态）；未登录 / 换号=登录方式三选一（正版 / 离线 / 外置）|
+| 右栏 | 正版：Uuid 掩码、访问令牌状态、皮肤状态 + 「切换账号」「退出登录」；离线：用户名输入 + 历史名列表；外置：API 根地址/邮箱/密码 + 服务器名 + 档案选择 |
+| 数据源 | 全部真实后端属性，**没有一条编造**：`username/isOnline/accountUuid/skinPath/offlineUsernames/lastLoginMode/microsoftLoginBusy/msStatus` + `yggdrasil.*`；登录态切换用 `b.lastLoginMode = n`（属性写，不是 `setLastLoginMode()`）|
+| 防重复点 | `b.microsoftLoginBusy` 时按钮换「取消登录」，`msStatus` 原文显示在提示条里（不加工、不猜进度）|
+| 调试参数 | `--ui-account` 直接进账户页；`--ui-account-login` 再叠一层：直接展开登录面板（截图未登录态用）|
+
+#### 3.7.1 头像：方形、无框、自己裁脸（用户明确要求）
+
+- 用户原话：「MC头像是方形的，QML不要用圆形头像；而且，不需要任何框把头像框住。」→ `SMinecraftHead.qml` 全组件 **无 radius、无 border**。
+- 数据现实（实测，别再踩）：
+  - `backend.skinPath` 指向的是后端 `renderHead3D()` **渲染好的 128×128 头部图**，不是原始皮肤；
+  - `renderHead3D` 对部分皮肤会渲染出错误结果（本机某皮肤渲染成紫色竖条）；
+  - 原始皮肤 64×64 存在 `assets/skins/<md5>.png`，于是新增 `backend.skinTexturePath`（`AccountBackend::skinTexturePath()` → `skinCachePath(username)`）暴露原文纹理。
+- `SMinecraftHead` 优先级：`rawSource`（整张皮肤 → 裁 (8,8,8,8) 放大）> `source`（已渲染头图，直接铺满）> 无图时方形色块 + 首字母。
+- 判断靠 `probe Image` 的 `implicitWidth/implicitHeight`：== 且 ≤64 视为整张皮肤走裁剪，否则当头图。
+- 本机实测：`xiaoole1173` 的皮肤 64×64 modern、1839 字节，脸区本身是深紫配色（**不是渲染 bug**，是皮肤本身如此）；重新下载官方皮肤校验过大小一致，缓存没问题。
 
 ---
 

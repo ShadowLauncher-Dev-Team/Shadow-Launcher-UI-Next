@@ -8,6 +8,10 @@ Item {
     property Window hostWindow: null
     /// 打开版本管理（由 StageShell 接管：侧栏收起 + 版本页全宽）
     signal openVersions()
+    /// 打开账户页（点右上胶囊 / 未登录时点主按钮）
+    signal openAccount()
+    /// 有可用账号：正版在线登录，或设置过离线名
+    readonly property bool hasAccount: b ? (b.isOnline || (b.offlineUsername || "").length > 0) : false
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     // narrow 必须由整窗宽度决定（StageShell 注入）。页面自己的 width 是"内容区宽"
@@ -119,26 +123,18 @@ Item {
         backend: page.b
         name: page.userName
         online: page.b ? page.b.isOnline : false
-        onClicked: console.info("[ui] account chip")
+        status: (page.b && page.b.isOnline) ? 0 : 1
+        // 原始皮肤优先（后端 renderHead3D 对部分皮肤会渲染出错误的头图）
+        rawSkinSource: (page.b && page.b.isOnline) ? (page.b.skinTexturePath || "") : ""
+        skinSource: {
+            if (!page.b) return ""
+            if (page.b.isOnline) return page.b.skinPath || page.b.offlineSkinPath || ""
+            return page.b.offlineSkinPath || ""
+        }
+        onClicked: page.openAccount()
     }
 
-    // ---------- 窗口按钮（关闭 hover 变红） ----------
-    Row {
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.topMargin: 8
-        anchors.rightMargin: 8
-        spacing: 4
-        SWindowButton {
-            iconName: "minus"
-            onClicked: if (page.hostWindow) page.hostWindow.showMinimized()
-        }
-        SWindowButton {
-            iconName: "x"
-            danger: true
-            onClicked: if (page.hostWindow) page.hostWindow.close()
-        }
-    }
+    // 窗口按钮由 StageShell 统一挂在最上层（版本页 / 账户页这类全屏页也要能用）
 
     // ---------- 底：操作 ----------
     Row {
@@ -152,13 +148,18 @@ Item {
         SButton {
             kind: 0
             busy: page.launching
+            // 未登录：灰态但可点（点了去登录），不是 dimmed（dimmed 是不可点）
+            muted: !page.hasAccount && !page.launching
             dimmed: page.running || page.ver.length === 0
-            text: page.launching ? "取消启动" : (page.running ? "游戏中" : "启动游戏")
-            iconName: page.launching ? "x" : "play"
+            text: page.launching ? "取消启动"
+                  : (page.running ? "游戏中"
+                     : (!page.hasAccount ? "先登录" : "启动游戏"))
+            iconName: page.launching ? "x" : (!page.hasAccount ? "lock" : "play")
             onClicked: {
                 if (!page.b) return
                 if (page.launching) { page.b.cancelLaunch(); return }
                 if (page.running) return
+                if (!page.hasAccount) { page.openAccount(); return }
                 if (page.ver.length === 0) return
                 page.b.launch(page.ver, page.b.isOnline)
             }
@@ -198,9 +199,11 @@ Item {
     readonly property string kicker: {
         if (page.launching) return page.statusText.length > 0 ? page.statusText : "正在准备启动"
         if (page.running) return "游戏运行中"
+        if (!page.hasAccount) return "还没有登录账号"
         if (page.lastPlayed.length > 0) return "上次游玩 · " + page.lastPlayed
         return ""
     }
+    readonly property bool kickerWarn: !page.hasAccount && !page.launching && !page.running
 
     Row {
         anchors.left: parent.left
@@ -214,11 +217,13 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             width: 22
             height: 1
-            color: page.launching ? Theme.accent : (page.running ? Theme.ok : Theme.fg3)
+            color: page.launching ? Theme.accent
+                   : (page.running ? Theme.ok
+                      : (page.kickerWarn ? Theme.warn : Theme.fg3))
         }
         Text {
             text: page.kicker
-            color: Theme.fg2
+            color: page.kickerWarn ? "#d8a24a" : Theme.fg2
             font.family: Theme.fontFamily
             font.pixelSize: 11
             font.letterSpacing: 1.0

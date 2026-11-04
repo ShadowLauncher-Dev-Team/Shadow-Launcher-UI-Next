@@ -56,8 +56,12 @@ class ShadowBackend : public QObject {
     Q_PROPERTY(QString accountUuid READ accountUuid NOTIFY accountChanged)
     Q_PROPERTY(QString offlineUuid READ offlineUuid NOTIFY accountChanged)
     Q_PROPERTY(QString skinPath READ skinPath NOTIFY skinReady)
+    Q_PROPERTY(QString skinTexturePath READ skinTexturePath NOTIFY skinReady)
     Q_PROPERTY(QString offlineSkinPath READ offlineSkinPath NOTIFY offlineSkinReady)
     Q_PROPERTY(QStringList offlineUsernames READ offlineUsernames NOTIFY offlineHistoryChanged)
+    // 账户页需要：登录中状态 + 后端推送的当前步骤文案（account_backend 有，这里转发）
+    Q_PROPERTY(bool microsoftLoginBusy READ microsoftLoginBusy NOTIFY microsoftLoginBusyChanged)
+    Q_PROPERTY(QString msStatus READ msStatus NOTIFY microsoftLoginProgress)
     Q_PROPERTY(int lastLoginMode READ lastLoginMode WRITE setLastLoginMode NOTIFY loginModeChanged)
 
     // ── Settings ──
@@ -211,8 +215,11 @@ public:
     QString accountUuid() const;
     QString offlineUuid() const;
     QString skinPath() const;
+    QString skinTexturePath() const;
     QString offlineSkinPath() const;
     QStringList offlineUsernames() const;
+    bool microsoftLoginBusy() const;
+    QString msStatus() const;
     int lastLoginMode() const;
     void setLastLoginMode(int mode);
 
@@ -698,6 +705,7 @@ signals:
     void microsoftLoginProgress(const QString& step, const QString& detail);
     void microsoftLoginSuccess(const QString& username, const QString& uuid);
     void microsoftLoginFailed(const QString& error);
+    void microsoftLoginBusyChanged();
     void skinReady();
     void offlineSkinReady();
     void offlineHistoryChanged();

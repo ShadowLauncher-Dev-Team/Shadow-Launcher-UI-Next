@@ -660,6 +660,21 @@ QString AccountBackend::toImageUrl(const QString& filePath)
     return QUrl::fromLocalFile(filePath).toString();
 }
 
+// 原始皮肤纹理（整张皮肤）：给 UI 自己裁脸用。
+// 优先当前在线账号的缓存，其次上次用过的离线皮肤；都没有返回空。
+QString AccountBackend::skinTexturePath() const
+{
+    if (!m_username.isEmpty()) {
+        const QString p = skinCachePath(m_username);
+        if (QFileInfo::exists(p)) return toImageUrl(p);
+    }
+    if (!m_offlineSkinPath.isEmpty()) {
+        // 离线头图没有原始皮肤备份，只能返回空让 UI 退回头图
+        return {};
+    }
+    return {};
+}
+
 // ────────────────────────────────────────────────────────────
 // Download Skin
 // ────────────────────────────────────────────────────────────

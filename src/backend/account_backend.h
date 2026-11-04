@@ -37,6 +37,9 @@ class AccountBackend : public QObject {
     Q_PROPERTY(QString accountUuid READ accountUuid NOTIFY accountChanged)
     Q_PROPERTY(QString offlineUuid READ offlineUuid NOTIFY accountChanged)
     Q_PROPERTY(QString skinPath READ skinPath NOTIFY skinReady)
+    // 原始皮肤纹理（整张 64/128）。UI 自己裁脸用：renderHead3D 对部分皮肤会渲染出
+    // 错误的头部图（2026-11-04 实测某皮肤渲染成紫色竖条），所以不能只依赖 skinPath。
+    Q_PROPERTY(QString skinTexturePath READ skinTexturePath NOTIFY skinReady)
     Q_PROPERTY(QString offlineSkinPath READ offlineSkinPath NOTIFY offlineSkinReady)
     Q_PROPERTY(QString capePath READ capePath NOTIFY capeReady)
     Q_PROPERTY(QVariantList capes READ capes NOTIFY capesReady)
@@ -57,6 +60,7 @@ public:
     QString offlineUuid() const { return m_offlineUuid; }
     QString mcToken() const { return m_msMcToken; }
     QString skinPath() const { return m_skinPath; }
+    QString skinTexturePath() const;
     QString offlineSkinPath() const { return m_offlineSkinPath; }
     QVariantList capes() const;
     QString capePath() const { return m_capePath; }

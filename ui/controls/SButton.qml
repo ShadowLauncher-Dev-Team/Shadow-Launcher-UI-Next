@@ -17,6 +17,8 @@ Item {
     property int radius: kind === 0 ? Theme.rMd : Theme.rSm
     // ghost 的危险变体（描边红/文字红）：只给"重试/结束进程"这类真实危险动作用
     property bool danger: false
+    // 灰态但**仍可点**：用于"未登录，点了去登录"这类引导（dimmed 是不可点，别混用）
+    property bool muted: false
     signal clicked()
 
     implicitHeight: kind === 0 ? 48 : 34
@@ -29,20 +31,20 @@ Item {
         color: {
             if (root.kind === 0) {
                 if (root.busy) return Theme.danger
-                if (root.dimmed) return "#1b2129"
+                if (root.dimmed || root.muted) return "#1b2129"
                 return Theme.accentBot
             }
             return "transparent"
         }
-        border.width: root.kind === 0 ? 0 : 1
-        border.color: root.danger ? "#6d2a2a" : Theme.line2
+        border.width: (root.kind === 0 && root.muted) ? 1 : (root.kind === 0 ? 0 : 1)
+        border.color: root.kind === 0 ? "#222b36" : (root.danger ? "#6d2a2a" : Theme.line2)
         antialiasing: true
 
         // 主按钮渐亮（覆盖在纯色之上）
         Rectangle {
             anchors.fill: parent
             radius: parent.radius
-            visible: root.kind === 0 && !root.busy && !root.dimmed
+            visible: root.kind === 0 && !root.busy && !root.dimmed && !root.muted
             gradient: Gradient {
                 GradientStop { position: 0.0; color: Theme.accentTop }
                 GradientStop { position: 1.0; color: Theme.accentBot }
@@ -56,7 +58,7 @@ Item {
             anchors.top: parent.top
             height: 1
             radius: parent.radius
-            visible: root.kind === 0 && !root.busy && !root.dimmed
+            visible: root.kind === 0 && !root.busy && !root.dimmed && !root.muted
             color: "#33ffffff"
         }
 
@@ -91,11 +93,15 @@ Item {
             visible: root.iconName !== ""
             name: root.iconName
             size: root.kind === 0 ? 18 : 14
-            color: root.kind === 0 ? "#ffffff" : (root.danger ? "#ff9a94" : Theme.fg2)
+            color: root.kind === 0
+                   ? (root.muted ? "#8d96a4" : "#ffffff")
+                   : (root.danger ? "#ff9a94" : Theme.fg2)
         }
         Text {
             text: root.text
-            color: root.kind === 0 ? "#ffffff" : (root.danger ? "#ff9a94" : Theme.fg)
+            color: root.kind === 0
+                   ? (root.muted ? "#8d96a4" : "#ffffff")
+                   : (root.danger ? "#ff9a94" : Theme.fg)
             font.family: Theme.fontFamily
             font.pixelSize: root.kind === 0 ? 15 : 13
             font.weight: root.kind === 0 ? Font.DemiBold : Font.Normal

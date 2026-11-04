@@ -362,6 +362,8 @@ ShadowBackend::ShadowBackend(QObject* parent)
             this, &ShadowBackend::microsoftLoginSuccess);
     connect(m_account, &AccountBackend::microsoftLoginFailed,
             this, &ShadowBackend::microsoftLoginFailed);
+    connect(m_account, &AccountBackend::microsoftLoginBusyChanged,
+            this, &ShadowBackend::microsoftLoginBusyChanged);
     // Persist username on every login
     connect(m_account, &AccountBackend::accountChanged,
             this, [this]() {
@@ -888,6 +890,14 @@ bool ShadowBackend::isOnline() const {
     return m_account->isOnline();
 }
 
+bool ShadowBackend::microsoftLoginBusy() const {
+    return m_account ? m_account->isMicrosoftLoginBusy() : false;
+}
+
+QString ShadowBackend::msStatus() const {
+    return m_account ? m_account->msStatus() : QString();
+}
+
 QString ShadowBackend::accountUuid() const {
     return m_account->accountUuid();
 }
@@ -898,6 +908,10 @@ QString ShadowBackend::offlineUuid() const {
 
 QString ShadowBackend::skinPath() const {
     return m_account->skinPath();
+}
+
+QString ShadowBackend::skinTexturePath() const {
+    return m_account ? m_account->skinTexturePath() : QString();
 }
 
 QString ShadowBackend::offlineSkinPath() const {

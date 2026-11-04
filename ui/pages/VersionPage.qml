@@ -218,7 +218,8 @@ Item {
 
         Row {
             anchors.right: parent.right
-            anchors.rightMargin: page.narrow ? 18 : 24
+            // 给 StageShell 的全局窗口按钮让位（否则全屏页会重叠）
+            anchors.rightMargin: page.narrow ? 96 : 112
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
 
