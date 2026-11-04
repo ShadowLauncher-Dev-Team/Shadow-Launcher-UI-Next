@@ -3010,6 +3010,27 @@ QString ShadowBackend::downloadSelfcheck()
         }
     }
 
+    // ── 3.5) active 期间进度单调（不得回退）
+    {
+        StepPipeline pipe;
+        auto* a = pipe.addStep(QStringLiteral("t.mono"), QStringLiteral("m"), 1.0);
+        if (a) {
+            a->setActive();
+            a->setPercentage(60);
+            a->setPercentage(30);
+            if (a->percentage() != 60)
+                fails << QStringLiteral("active step regressed to %1 (want 60)").arg(a->percentage());
+            a->setByteProgress(10, 100);
+            if (a->percentage() != 60)
+                fails << QStringLiteral("active byte-progress regressed to %1").arg(a->percentage());
+            a->forceStatus(StepStatus::Pending);
+            a->setActive();
+            a->setPercentage(5);   // 复位后允许从低处重新开始
+            if (a->percentage() != 5)
+                fails << QStringLiteral("reset step cannot restart low (%1)").arg(a->percentage());
+        }
+    }
+
     // ── 4) 百分比钳制 0..100
     {
         StepPipeline pipe;

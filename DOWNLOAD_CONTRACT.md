@@ -199,6 +199,25 @@ DownloadTask（任务：步骤模型 + 进度 + 状态机 + 取消）
 
 **现状问题（要在 S1 一并处理）**：模组搜索目前是**硬编码 MCIM 优先**（`resource_backend.cpp:613` 起十余处全是 `mod.mcimirror.top/modrinth/v2/search`，`cf_api.cpp:25` 同样镜像优先）→ MCIM 一挂，搜索整块不可用。改为"官方优先 + MCIM 降级"，并加 30s 健康探测缓存，避免每次请求都先撞一次镜像。
 
+### 施工进度与验收记录（2026-11-05 夜）
+
+| 切片 | 状态 | 提交 | 验收方式（可复现） |
+|---|---|---|---|
+| S0 步骤 key 词表 + 按 key 路由 | ✅ | `032328e` `38cc45c` | 自检 `backend.downloadSelfcheck()` → `PASS stepkeys=22 legacy=15`；4 条安装路径共用 key；OptiFine「主文件当校验」误标已修 |
+| 终态不可逆 + 完成即 100% | ✅ | `38cc45c` | 自检第 3/4 组：completed 后 setPercentage/setByteProgress 拉不回、setActive 不生效；重试复位必须显式 forceStatus() |
+| 限速真正生效（文件下载侧） | ✅ 代码 / ⚠️ 未实测 | `0984cec` | 代码审查（全局虚拟时钟，N worker 共享时间线）；实测需真机下载，待补 |
+| 取消/暂停真中止 | ✅ 代码 | `0984cec` | 代码审查：abort 在途 reply + 50ms 轮询 + 回调早退；实测取消后无统计增长，待补 |
+| 失败不计完成（assets） | ✅ | `0984cec` | 代码审查：成功才 +1，失败单列；allFinished(false) 语义不变 |
+| 整合包批次重试/状态复位/停滞看门狗/部分失败 | ✅ 代码 | `7c0b6d4` | 代码审查 + 五路径状态推演；实测需真机导入整合包，待补 |
+| 版本列表源真正生效 | ✅ | `d8ab617` | `/eval` 实测：listSource=0→主源 bmclapi；=1/2→launchermeta；`backend.downloadSourceSummary()` 现场可读 |
+| 版本 JSON / 资源索引 / 加载器列表的源优先级 | ⏳ 未接 | — | 目前仍是"双源竞速先成功者赢"，listSource 不参与；要接需改"优先源先发 + 兜底延迟" |
+| S1 单例 QNAM / 共享连接池 | ⏳ | — | 每个 worker 各自 QNAM（file_downloader.cpp:684 附近） |
+| S2 文件级重试预算全局化 | ⏳ | — | 目前只有模组链路有（file_downloader.cpp:1275 附近） |
+| S4 进度单调（active 步骤百分比可下降） | ⏳ | — | updateStep 允许 active 步骤的 pct 回退 |
+| 并发默认值 64 → 16（上限 24） | ⏳ | — | settings_backend 默认值待改，精卫固定 12 |
+
+**验收口径**：标 ✅ 的必须构建通过 + 自检 PASS + 应用启动正常；标"⚠️ 未实测"的表示逻辑已改但缺少真机下载验证，**不得当成已验收**。
+
 ### S1/S2 必须接的线
 
 - 限速真正作用于 FileDownloader（令牌桶或按窗口 sleep，别只存变量）；

@@ -48,8 +48,16 @@ void StepNode::setStatus(StepStatus s) {
 }
 
 void StepNode::forceStatus(StepStatus s) {
-    const bool pctChanged = (s == StepStatus::Completed && m_percentage < 100);
-    if (pctChanged) m_percentage = 100;
+    // 复位到 Pending 同时把进度归零：否则重试时单调保护会把旧百分比顶住，
+    // 界面表现为"重试后进度卡在上次的值"（自检 assertion 抓到的真实问题）。
+    bool pctChanged = false;
+    if (s == StepStatus::Pending && m_percentage != 0) {
+        m_percentage = 0;
+        pctChanged = true;
+    } else if (s == StepStatus::Completed && m_percentage < 100) {
+        m_percentage = 100;
+        pctChanged = true;
+    }
     if (m_status == s) {
         if (pctChanged) emit progressChanged();
         return;
@@ -66,8 +74,12 @@ void StepNode::setFailed(const QString& error) {
 
 void StepNode::setPercentage(int pct) {
     pct = qBound(0, pct, 100);
-    // 已完成的步骤不允许把进度拉回（契约 §1 进度单调）
+    // 进度单调（契约 §3）：
+    // - completed 恒 100；
+    // - active 期间不得回退（多路进度信号抢同一个步骤时，旧实现会让百分比往回跳）；
+    // - 复位由 forceStatus(Pending) 显式完成，之后才允许从 0 重新爬。
     if (m_status == StepStatus::Completed) pct = 100;
+    else if (m_status == StepStatus::Active && pct < m_percentage) pct = m_percentage;
     if (m_percentage == pct) return;
     m_percentage = pct;
     emit progressChanged();
@@ -83,6 +95,8 @@ void StepNode::setByteProgress(qint64 recv, qint64 total) {
         int pct = static_cast<int>(qMin<qint64>(recv * 100 / total, 100));
         // 完成的步骤不接受字节进度回写（否则 completed 后又被拉到 87%）
         if (m_status == StepStatus::Completed) pct = 100;
+        // active 期间字节口径同样单调（recv 可能因重试/分片回退）
+        else if (m_status == StepStatus::Active && pct < m_percentage) pct = m_percentage;
         if (pct != m_percentage) {
             m_percentage = pct;
         }

@@ -7054,6 +7054,22 @@ void VersionBackend::updateStep(const QString& installId, int index, const QStri
     // 若某一路径未钳制，进度会突破 100%（实测主文件 110%）。
     if (percentage < 0) percentage = 0;
     if (percentage > 100) percentage = 100;
+
+    // ── 进度单调（契约 §3）：active 步骤的百分比不得回退 ──
+    // 旧实现把 percentage 原样写进 ds->steps（UI 读的是这份镜像），
+    // 多路信号抢同一步骤时（如 loader 安装器库 → 安装阶段切换）百分比会往回跳。
+    {
+        const QVariantMap cur = ds->steps[index].toMap();
+        const QString curStatus = cur.value(QStringLiteral("status")).toString();
+        const int curPct = cur.value(QStringLiteral("percentage")).toInt();
+        if (status == QStringLiteral("completed")) {
+            percentage = 100;
+        } else if (status == QStringLiteral("active") && curStatus == QStringLiteral("active")
+                   && percentage < curPct) {
+            percentage = curPct;
+        }
+    }
+
     auto* node = ds->pipeline()->stepNode(index);
     if (node) {
         if (status == "active") {
