@@ -34,6 +34,9 @@ class LaunchBackend : public QObject {
     Q_PROPERTY(bool launchFailed READ launchFailed NOTIFY launchStepsChanged)
     Q_PROPERTY(QString launchFailReason READ launchFailReason NOTIFY launchStepsChanged)
     Q_PROPERTY(bool launchFinishedOk READ launchFinishedOk NOTIFY launchStepsChanged)
+    // A2「准备运行环境」：启动过程中自动补全的任务（Java / authlib 等），
+    // 行数据 {key,name,detail,progress(0-100),state(1 进行中 2 完成 3 失败)}。
+    Q_PROPERTY(QVariantList launchRepairs READ launchRepairs NOTIFY launchRepairsChanged)
 
 public:
     explicit LaunchBackend(QObject* parent = nullptr);
@@ -52,11 +55,14 @@ public:
     bool launchFailed() const { return m_launchFailed; }
     QString launchFailReason() const { return m_launchFailReason; }
     bool launchFinishedOk() const { return m_launchFinishedOk; }
+    QVariantList launchRepairs() const { return m_repairs; }
 
     // ── 开发期安全演示（--ui-demo-launch / --ui-demo-fail）──
     // 只驱动阶段管线走假数据，绝不触碰真实启动流程（不检测 Java、不拉文件、不起进程）。
     Q_INVOKABLE void demoLaunch(int mode);  // mode 0=在 Java 节点失败，1=全流程成功
     Q_INVOKABLE void stopDemo();
+    // 只填「准备运行环境」卡片并停在 Java 节点，用于截图核对该卡片的排版。
+    Q_INVOKABLE void demoRepairs();
 
     // ---- Slots ----
     Q_INVOKABLE void launch(const QString& versionId, const QString& username,
@@ -154,6 +160,7 @@ signals:
     void launchStateChanged();
     /// 阶段节点集合的内容变化（状态 / 详情 / 显隐 / 总进度）
     void launchStepsChanged();
+    void launchRepairsChanged();
     void minecraftStarted();
     void minecraftStopped();
     void crashDetected(const QVariantMap& report);
@@ -271,6 +278,13 @@ private:
     QTimer* m_javaInstallPoll = nullptr; // 下载进度轮询 → launchCheckProgress
     bool m_javaInstallFailed = false;    // 安装失败标志（避免重入）
     bool m_javaListRefreshed = false;    // Step 1 本轮已刷新列表（防重复刷新）
+
+    // ── 自动补全任务（A2 卡片）──
+    QVariantList m_repairs;
+    void clearRepairs();
+    void beginRepair(const QString& key, const QString& name, const QString& detail);
+    void updateRepair(const QString& key, int pct, const QString& detail);
+    void finishRepair(const QString& key, bool ok, const QString& detail);
 
     // ── Crash analysis state ──
     QStringList m_pendingOutput;   // last output of the crashed game

@@ -115,6 +115,8 @@ class ShadowBackend : public QObject {
     Q_PROPERTY(bool launchFailed READ launchFailed NOTIFY launchPipelineChanged)
     Q_PROPERTY(QString launchFailReason READ launchFailReason NOTIFY launchPipelineChanged)
     Q_PROPERTY(bool launchFinishedOk READ launchFinishedOk NOTIFY launchPipelineChanged)
+    // A2「准备运行环境」：自动补全任务行（Java / authlib），空数组表示本次无需补全
+    Q_PROPERTY(QVariantList launchRepairs READ launchRepairs NOTIFY launchRepairsChanged)
 
     // ── Resource ──
     Q_PROPERTY(bool downloading READ isResourceDownloading NOTIFY resourceDownloadStateChanged)
@@ -474,6 +476,8 @@ public:
                        int maxMemory, const QString& jvmArgs, const QString& gameArgs,
                        bool highPerfGpu);
     Q_INVOKABLE void killGameProcess();
+    // 仅用于开发核对「准备运行环境」卡片排版（--ui-demo-repair 也走这个）
+    Q_INVOKABLE void demoLaunchRepairs();
     Q_INVOKABLE void killMinecraft();
     Q_INVOKABLE void killGameByPid(qint64 pid);
     Q_INVOKABLE QVariantList runningGames();
@@ -755,6 +759,7 @@ signals:
     void launchProgressChanged(int progress, const QString& status);
     void launchStateChanged();
     void launchPipelineChanged();
+    void launchRepairsChanged();
     void minecraftStarted();
     void minecraftStopped();
     // ── Crash detection ──
@@ -892,6 +897,7 @@ public:
     bool launchFailed() const;
     QString launchFailReason() const;
     bool launchFinishedOk() const;
+    QVariantList launchRepairs() const;
     ResourceBackend* resource() const { return m_resource; }
     Q_INVOKABLE StatsBackend* statsBackend() const { return m_stats; }
     // 注意：QML 暴露必须用 Q_PROPERTY(QObject*) 模式——Q_INVOKABLE 返回具体类型指针

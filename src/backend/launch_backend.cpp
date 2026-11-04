@@ -527,10 +527,13 @@ void LaunchBackend::startJavaAutoInstall(int requiredMajor)
         // 进度回调（JavaRuntimeInstaller 下载进度 → toast）
         [this, requiredMajor](int pct, const QString& status) {
             if (m_cancelled) return;
-            if (pct > 0)
+            if (pct > 0) {
                 emit launchCheckProgress(tr("正在下载 Java %1 (%2%)...").arg(requiredMajor).arg(pct));
-            else if (!status.isEmpty())
+                updateRepair(QStringLiteral("java"), pct, status);
+            } else if (!status.isEmpty()) {
                 emit launchCheckProgress(status);
+                updateRepair(QStringLiteral("java"), -1, status);
+            }
         },
         // 完成回调
         [this, requiredMajor](bool ok, const QString& err, const QString& javaExe) {
@@ -544,12 +547,14 @@ void LaunchBackend::startJavaAutoInstall(int requiredMajor)
                 m_javaInstallFailed = true;
                 qCWarning(logLaunch) << QStringLiteral("[启动] 自动安装 Java %1 失败: %2").arg(requiredMajor).arg(err);
                 emit logMessage(tr("[失败] Java %1 自动安装失败: %2").arg(requiredMajor).arg(err));
+                finishRepair(QStringLiteral("java"), false, tr("下载安装失败"));
                 abortCheck(tr("Java 自动安装"), tr("Java %1 下载安装失败: %2").arg(requiredMajor).arg(err));
                 return;
             }
             qCInfo(logLaunch) << QStringLiteral("[启动] 自动安装 Java %1 完成: %2").arg(requiredMajor).arg(javaExe);
             emit logMessage(tr("[完成] Java %1 已自动安装").arg(requiredMajor));
             emit launchCheckProgress(tr("Java %1 下载完成，正在继续启动...").arg(requiredMajor));
+            finishRepair(QStringLiteral("java"), true, tr("已就绪"));
             // 更新 Java 路径并继续状态机（从 Step 1 的下一个 step 开始）
             m_pendingJavaPath = javaExe;
             if (m_checkTimer) {
@@ -572,8 +577,68 @@ void LaunchBackend::cleanupJavaInstallPoll()
 // 启动阶段管线
 // ============================================================
 
+// ============================================================
+// 自动补全任务（A2「准备运行环境」）
+// 只做一件事：把散落在各个 emit launchCheckProgress 调用点里的
+// "正在下载 X (N%)" 归并成结构化的任务行，QML 才能并排显示多项。
+// ============================================================
+static int repairIndexOf(const QVariantList& list, const QString& key)
+{
+    for (int i = 0; i < list.size(); ++i) {
+        if (list.at(i).toMap().value(QStringLiteral("key")).toString() == key)
+            return i;
+    }
+    return -1;
+}
+
+void LaunchBackend::clearRepairs()
+{
+    if (m_repairs.isEmpty()) return;
+    m_repairs.clear();
+    emit launchRepairsChanged();
+}
+
+void LaunchBackend::beginRepair(const QString& key, const QString& name, const QString& detail)
+{
+    QVariantMap row;
+    row.insert(QStringLiteral("key"), key);
+    row.insert(QStringLiteral("name"), name);
+    row.insert(QStringLiteral("detail"), detail);
+    row.insert(QStringLiteral("progress"), 0);
+    row.insert(QStringLiteral("state"), 1);
+    const int idx = repairIndexOf(m_repairs, key);
+    if (idx >= 0) m_repairs[idx] = row;
+    else m_repairs.append(row);
+    emit launchRepairsChanged();
+}
+
+void LaunchBackend::updateRepair(const QString& key, int pct, const QString& detail)
+{
+    const int idx = repairIndexOf(m_repairs, key);
+    if (idx < 0) return;
+    QVariantMap row = m_repairs.at(idx).toMap();
+    row.insert(QStringLiteral("progress"), qBound(0, pct, 100));
+    if (!detail.isEmpty()) row.insert(QStringLiteral("detail"), detail);
+    row.insert(QStringLiteral("state"), 1);
+    m_repairs[idx] = row;
+    emit launchRepairsChanged();
+}
+
+void LaunchBackend::finishRepair(const QString& key, bool ok, const QString& detail)
+{
+    const int idx = repairIndexOf(m_repairs, key);
+    if (idx < 0) return;
+    QVariantMap row = m_repairs.at(idx).toMap();
+    row.insert(QStringLiteral("state"), ok ? 2 : 3);
+    if (ok) row.insert(QStringLiteral("progress"), 100);
+    if (!detail.isEmpty()) row.insert(QStringLiteral("detail"), detail);
+    m_repairs[idx] = row;
+    emit launchRepairsChanged();
+}
+
 void LaunchBackend::buildLaunchPipeline()
 {
+    clearRepairs();   // 每次启动重新收集，绝不把上一轮的补全任务带进来
     if (!m_pipeline) {
         m_pipeline = new StepPipeline(this);
 
@@ -801,6 +866,49 @@ void LaunchBackend::stopDemo()
     m_launchFailReason.clear();
     m_launchFinishedOk = false;
     m_launching = false;
+    clearRepairs();
+    emit launchStateChanged();
+}
+
+/// 只用于截图核对「准备运行环境」卡片：填两条补全任务并停在 Java 节点，
+/// 不装 Java、不联网、不起进程。生产路径永远不会调它。
+void LaunchBackend::demoRepairs()
+{
+    if (m_demoTimer) m_demoTimer->stop();
+    buildLaunchPipeline();   // 内部会 clearRepairs()
+
+    m_demoStep = 1;
+    m_checkStep = 1;
+    m_cancelled = false;
+    m_launchFailed = false;
+    m_launchFailReason.clear();
+    m_launchFinishedOk = false;
+    m_launching = true;
+
+    if (m_pipeline) {
+        // 演示要看到"第 2 / 6 步 + 17%"，而离线账户的 login 默认隐藏且不计权重。
+        // 这里把 login 显式放出来再标完成，仅影响演示数据。
+        StepNode* login = m_pipeline->step(QStringLiteral("login"));
+        if (login) {
+            login->setHidden(false);
+            login->setCompleted();
+        }
+        StepNode* java = m_pipeline->step(QStringLiteral("java"));
+        if (java) {
+            java->setActive();
+            java->setDetail(tr("见上方「准备运行环境」"));
+        }
+    }
+
+    beginRepair(QStringLiteral("java"), tr("Java 21（本机缺失）"), tr("正在下载并安装"));
+    updateRepair(QStringLiteral("java"), 37, QString());
+    beginRepair(QStringLiteral("authlib"), tr("authlib-injector.jar"), tr("外置登录依赖，正在下载"));
+    updateRepair(QStringLiteral("authlib"), 62, tr("1.2 / 1.9 MB"));
+
+    m_launchProgress = qRound(launchOverallProgress() * 100);
+    m_launchStatus = tr("准备运行环境");
+    emit launchProgressChanged(m_launchProgress, m_launchStatus);
+    emit launchStepsChanged();
     emit launchStateChanged();
 }
 
@@ -1162,6 +1270,9 @@ void LaunchBackend::runNextCheck()
                     qCInfo(logLaunch) << QStringLiteral("[启动] Java 无效，自动安装 Java %1").arg(requiredMajor);
                     emit launchCheckWarning(tr("正在自动下载 Java %1...").arg(requiredMajor));
                     emit launchCheckProgress(tr("正在自动下载 Java %1...").arg(requiredMajor));
+                    beginRepair(QStringLiteral("java"),
+                                tr("Java %1（本机缺失）").arg(requiredMajor),
+                                tr("正在下载并安装"));
                     startJavaAutoInstall(requiredMajor);
                     return;  // 状态机暂停，安装完成回调继续
                 }
@@ -1311,6 +1422,9 @@ void LaunchBackend::runNextCheck()
             if (!QFileInfo::exists(jarPath)) {
                 emit launchCheckWarning(tr("正在下载 authlib-injector.jar..."));
                 emit launchCheckProgress(tr("正在下载 authlib-injector.jar..."));
+                beginRepair(QStringLiteral("authlib"),
+                            tr("authlib-injector.jar"),
+                            tr("外置登录依赖，正在下载"));
 
                 // 尝试从多个镜像下载
                 QStringList urls = {
@@ -1351,6 +1465,9 @@ void LaunchBackend::runNextCheck()
                             if (total > 0) {
                                 int pct = qMin((int)(recv * 100 / total), 100);
                                 emit launchCheckProgress(tr("正在下载 authlib-injector.jar (%1%)...").arg(pct));
+                                updateRepair(QStringLiteral("authlib"), pct,
+                                             tr("%1 / %2 MB").arg(recv / 1048576.0, 0, 'f', 1)
+                                                              .arg(total / 1048576.0, 0, 'f', 1));
                             }
                         });
                         loop2.exec();
@@ -1407,6 +1524,9 @@ void LaunchBackend::runNextCheck()
                                 if (total > 0) {
                                     int pct = qMin((int)(recv * 100 / total), 100);
                                     emit launchCheckProgress(tr("正在下载 authlib-injector.jar (%1%)...").arg(pct));
+                                    updateRepair(QStringLiteral("authlib"), pct,
+                                                 tr("%1 / %2 MB").arg(recv / 1048576.0, 0, 'f', 1)
+                                                                  .arg(total / 1048576.0, 0, 'f', 1));
                                 }
                             });
                             jarLoop.exec();
@@ -1427,6 +1547,9 @@ void LaunchBackend::runNextCheck()
 
                 if (!dlOk) {
                     emit launchCheckWarning(tr("authlib-injector.jar 下载失败，外置登录可能无法正常工作"));
+                    finishRepair(QStringLiteral("authlib"), false, tr("下载失败，外置登录可能不可用"));
+                } else {
+                    finishRepair(QStringLiteral("authlib"), true, tr("已就绪"));
                 }
             }
         }

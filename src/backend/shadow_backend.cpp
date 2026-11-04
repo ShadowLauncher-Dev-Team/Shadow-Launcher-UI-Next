@@ -135,6 +135,11 @@ QVariantList ShadowBackend::launchStepRows() const
     return m_launch ? m_launch->launchStepRows() : QVariantList{};
 }
 
+QVariantList ShadowBackend::launchRepairs() const
+{
+    return m_launch ? m_launch->launchRepairs() : QVariantList{};
+}
+
 bool ShadowBackend::launchFailed() const
 {
     return m_launch ? m_launch->launchFailed() : false;
@@ -615,6 +620,8 @@ ShadowBackend::ShadowBackend(QObject* parent)
             this, &ShadowBackend::crashAnalysisStarted);
     connect(m_launch, &LaunchBackend::crashAnalysisReady,
             this, &ShadowBackend::crashAnalysisReady);
+    connect(m_launch, &LaunchBackend::launchRepairsChanged,
+            this, &ShadowBackend::launchRepairsChanged);
     connect(m_launch, &LaunchBackend::isRunningChanged,
             this, &ShadowBackend::isRunningChanged);
     connect(m_launch, &LaunchBackend::runningCountChanged,
@@ -2887,6 +2894,10 @@ void ShadowBackend::killGameProcess() {
 
 void ShadowBackend::killMinecraft() {
     m_launch->killGameProcess();
+}
+
+void ShadowBackend::demoLaunchRepairs() {
+    if (m_launch) m_launch->demoRepairs();
 }
 
 void ShadowBackend::killGameByPid(qint64 pid) {

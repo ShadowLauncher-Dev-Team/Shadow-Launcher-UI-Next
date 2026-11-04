@@ -24,6 +24,27 @@ Item {
     readonly property string verName: (b && b.selectedVersion) ? b.selectedVersion : ""
     readonly property string userName: b ? (b.username || "") : ""
     readonly property bool debugOverlay: Qt.application.arguments.indexOf("--ui-overlay-debug") >= 0
+    // A2「准备运行环境」的行数据：{key,name,detail,progress,state}，空=本次无需补全
+    readonly property var repairs: b ? b.launchRepairs : []
+    readonly property int repairRowH: 30
+
+    function repairsCardHeight() {
+        return root.repairs.length * root.repairRowH + 60
+    }
+    function repairPendingCount() {
+        var n = 0
+        for (var i = 0; i < root.repairs.length; ++i) {
+            if (root.repairs[i].state !== 2) ++n
+        }
+        return n
+    }
+    function repairValueText(r) {
+        var d = (r.detail === undefined || r.detail === null) ? "" : String(r.detail)
+        if (r.state === 2) return "已就绪"
+        if (r.state === 3) return d.length > 0 ? d : "失败"
+        var pct = Math.round(r.progress)
+        return pct + "%" + (d.length > 0 ? " · " + d : "")
+    }
 
     // 失败 / 完成态也要留在屏幕上：只认 launching 会把错误连同原因一起藏掉
     readonly property bool active: b ? (b.launching || b.launchFailed || b.launchFinishedOk) : false
@@ -184,7 +205,132 @@ Item {
                 }
             }
 
-            Item { width: body.width; height: 16 }
+            // ---- 准备运行环境（A2）----
+            // 启动时如果缺 Java / authlib，这里把"正在替你补什么、补到哪"单独列出来，
+            // 不和下面的检查节点混在一起（节点子行只有 11px，容易被看漏）。
+            Item {
+                width: body.width
+                height: (root.repairs.length > 0 && !root.failed)
+                        ? root.repairsCardHeight() + 16 : 16
+
+                Rectangle {
+                    id: repairsCard
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    visible: root.repairs.length > 0 && !root.failed
+                    height: root.repairsCardHeight()
+                    color: "#0a1219"
+                    border.width: 1
+                    border.color: "#1d2a38"
+                    radius: 2
+
+                    Column {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.leftMargin: 14
+                        anchors.rightMargin: 14
+                        anchors.topMargin: 12
+                        spacing: 0
+
+                        Item {   // 标题行
+                            width: repairsCard.width - 28
+                            height: 18
+                            Rectangle {
+                                width: 3
+                                height: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: "#e0a75e"
+                            }
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "准备运行环境"
+                                color: "#cfd7e3"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 12
+                            }
+                            Text {
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.repairPendingCount() + " 项待补全"
+                                color: "#4f5866"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+                        }
+
+                        Repeater {
+                            model: root.repairs
+                            delegate: Item {
+                                width: repairsCard.width - 28
+                                height: root.repairRowH
+
+                                Text {
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 168
+                                    text: modelData.name
+                                    color: modelData.state === 2 ? "#8b96a4" : "#c3ccd8"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 12
+                                    elide: Text.ElideRight
+                                }
+                                Rectangle {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 176
+                                    anchors.right: valueTx.left
+                                    anchors.rightMargin: 10
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    height: 3
+                                    color: "#12ffffff"
+                                    Rectangle {
+                                        height: 3
+                                        width: parent.width * (modelData.state === 2 ? 1
+                                                               : (modelData.state === 3 ? 1
+                                                                  : modelData.progress / 100))
+                                        color: modelData.state === 2 ? "#4f9d76"
+                                               : (modelData.state === 3 ? "#8a4040" : "#60a5fa")
+                                        Behavior on width {
+                                            NumberAnimation {
+                                                duration: Theme.durBase
+                                                easing.type: Theme.easeStandard
+                                            }
+                                        }
+                                    }
+                                }
+                                Text {
+                                    id: valueTx
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 170
+                                    horizontalAlignment: Text.AlignRight
+                                    text: root.repairValueText(modelData)
+                                    color: modelData.state === 2 ? "#5bbd85"
+                                           : (modelData.state === 3 ? "#e0847f" : "#8fbcf5")
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 11
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
+
+                        Text {
+                            width: repairsCard.width - 28
+                            height: 18
+                            verticalAlignment: Text.AlignVCenter
+                            text: root.repairPendingCount() > 0
+                                  ? "下载完成后会自动继续启动"
+                                  : "补全完成，正在继续启动"
+                            color: "#6f8fb3"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+                    }
+                }
+            }
 
             // ---- 节点清单 ----
             // 用 ListView 而不是 Repeater：Repeater 的委托是被塞进父 Column 的 children 里的，
