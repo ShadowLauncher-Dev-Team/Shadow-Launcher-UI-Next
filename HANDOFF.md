@@ -187,6 +187,22 @@ ee2682a feat(launch-overlay): 启动阶段管线接入后端 StepPipeline；新�
 - 每行记 `mcVersionSource`（排查用）；实测 `Immersive Fight 4.2.4 → 1.20.1`、`RLCraft → 1.12.2`、`Zombie Invade 100 Days → 1.20.1` 都靠 `clientVersion` 认出来的——**整合包改名场景这才是主力**。
 - `QZipReader` 来自 `<QtCore/private/qzipreader_p.h>`；项目早已链接 `Qt6::CorePrivate`（`userdata_backend.cpp` 就在用），不引入新依赖。
 
+#### 3.6.3 用户验收后的改造（2026-11-04 20:xx）
+
+用户验收提出 5 条 + 1 个新功能，已全部落地：
+
+| # | 意见 | 处理 |
+|---|---|---|
+| 1 | 大标题应显示版本号 | 大标题 = **版本名**（`sel.id`），副标题 = `MC 版本 · 加载器`；此前反了（大标题是 MC 版本） |
+| 2 | 删「复制版本」 | 已删（版本选择界面不做管理动作） |
+| 3 | 右上「打开游戏目录」多余 | 已删 |
+| 4 | 不支持直接启动，右下改「确定」 | **改成选择器语义**：点列表只改 `pendingId`，「确定」才 `setSelectedVersion` 并返回；「返回」= 取消（不提交） |
+| 5 | 「按发布时间」无实际作用 | 文案已删（排序仍按发布时间倒序，只是不再显示） |
+| + | 补「切换游戏文件夹」 | 顶栏文件夹 chip + 下拉面板（`backend.mcFolder`：`folders` / `setActiveFolder` / `revertToDefault` / `pickFolderDialog` / `addGameFolder`）；切换后自动重扫 `versionDetails` |
+
+- 调试参数新增 `--ui-folder-menu`（直接展开文件夹面板，截图/验证用）。
+- 注意：`--ui-versions` 进版本页仍保留；两者可叠加。
+
 ---
 
 ## 7. 遗留问题

@@ -16,7 +16,10 @@ Item {
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     readonly property var details: (b && b.versionDetails) ? b.versionDetails : []
-    readonly property string selId: (b && b.selectedVersion) ? b.selectedVersion : ""
+    // 选择器语义：点列表只改「待选」，点「确定」才写回 selectedVersion；返回 = 取消
+    property string pendingId: (b && b.selectedVersion) ? b.selectedVersion : ""
+    readonly property string currentId: (b && b.selectedVersion) ? b.selectedVersion : ""
+    property bool folderMenuOpen: false
     readonly property bool busy: b ? b.launching : false
     property string query: ""
     property string hint: ""
@@ -52,8 +55,47 @@ Item {
         rev
         var list = rows
         for (var i = 0; i < list.length; i++)
-            if (list[i] && list[i].id === selId) return list[i]
+            if (list[i] && list[i].id === page.pendingId) return list[i]
         return list.length > 0 ? list[0] : null
+    }
+
+    // ── 游戏文件夹（多个 .minecraft 之间切换）──
+    readonly property var mcFolder: (b && b.mcFolder) ? b.mcFolder : null
+    readonly property var folders: {
+        page.rev
+        return page.mcFolder ? (page.mcFolder.folders || []) : []
+    }
+    readonly property string folderLabel: {
+        page.rev
+        var fs = page.folders
+        for (var i = 0; i < fs.length; ++i)
+            if (fs[i] && fs[i].active) return fs[i].name || fs[i].path
+        return (page.b && page.b.gameDir) ? page.b.gameDir : "游戏文件夹"
+    }
+    function switchFolder(path, isDefault) {
+        if (!page.mcFolder || !page.b) return
+        page.folderMenuOpen = false
+        if (isDefault) page.mcFolder.revertToDefault()
+        else page.mcFolder.setActiveFolder(path)
+        page.b.refreshVersionDetails()
+        page.rev++
+        page.flash(isDefault ? "已切回默认游戏目录" : "已切换游戏文件夹")
+    }
+    function addFolder() {
+        if (!page.mcFolder) return
+        var p = page.mcFolder.pickFolderDialog()
+        if (!p || p.length === 0) return
+        var nm = String(p).replace(/\\/g, "/").split("/").pop()
+        page.mcFolder.addGameFolder(p, nm)
+        page.mcFolder.refreshFolders()
+        page.folderMenuOpen = false
+        page.flash("已添加文件夹 " + nm)
+    }
+    function commit() {
+        if (!page.b || !page.sel) return
+        if (page.pendingId !== page.currentId)
+            page.b.setSelectedVersion(page.pendingId)
+        page.close()
     }
 
     // ── 格式化 ──
@@ -119,6 +161,10 @@ Item {
     Component.onCompleted: {
         page.rev++
         if (page.b) page.b.refreshVersionDetails()
+        if (page.mcFolder) page.mcFolder.refreshFolders()
+        // 调试/截图用：--ui-folder-menu 直接展开文件夹选择面板
+        if (Qt.application.arguments.indexOf("--ui-folder-menu") >= 0)
+            page.folderMenuOpen = true
     }
 
     Connections {
@@ -154,7 +200,7 @@ Item {
             anchors.left: parent.left
             anchors.leftMargin: page.narrow ? 108 : 120
             anchors.verticalCenter: parent.verticalCenter
-            text: "版本管理"
+            text: "选择版本"
             color: "#ffffff"
             font.family: Theme.fontFamily
             font.pixelSize: 15
@@ -176,6 +222,37 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
 
+            // 游戏文件夹切换（决定版本列表来自哪个 .minecraft）
+            Rectangle {
+                id: folderChip
+                height: 32
+                radius: 2
+                color: "#11141b"
+                border.width: 1
+                border.color: Theme.line2
+                width: Math.min(210, folderChipRow.implicitWidth + 22)
+                Row {
+                    id: folderChipRow
+                    anchors.centerIn: parent
+                    spacing: 6
+                    SIcon { name: "folder"; size: 13; color: Theme.fg2 }
+                    Text {
+                        text: page.folderLabel
+                        color: "#cfd6e0"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                        elide: Text.ElideRight
+                        width: Math.min(140, implicitWidth)
+                    }
+                    SIcon { name: "chevron-down"; size: 12; color: Theme.fg3 }
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: page.folderMenuOpen = !page.folderMenuOpen
+                }
+            }
+
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: page.hint.length > 0
@@ -196,14 +273,6 @@ Item {
                     page.b.refreshVersionList()
                     page.flash("已刷新版本列表")
                 }
-            }
-            SButton {
-                kind: 1
-                radius: 2
-                height: 32
-                iconName: "external-link"
-                text: "打开游戏目录"
-                onClicked: { if (page.b) page.b.openGameDir("") }
             }
         }
     }
@@ -255,9 +324,8 @@ Item {
                 anchors.right: parent.right
                 anchors.rightMargin: page.narrow ? 16 : 20
                 anchors.verticalCenter: listTitle.verticalCenter
-                text: page.rows.length !== page.details.length
-                      ? (page.rows.length + " / " + page.details.length)
-                      : "按发布时间"
+                visible: page.rows.length !== page.details.length
+                text: page.rows.length + " / " + page.details.length
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -332,7 +400,7 @@ Item {
                 // 打开页面时把当前选中版本滚进视野（列表按发布时间排序，选中项可能不在首屏）
                 function scrollToCurrent() {
                     for (var i = 0; i < page.rows.length; ++i) {
-                        if (page.rows[i] && page.rows[i].id === page.selId) {
+                        if (page.rows[i] && page.rows[i].id === page.pendingId) {
                             positionViewAtIndex(i, ListView.Contain)
                             return
                         }
@@ -345,7 +413,7 @@ Item {
                     id: row
                     width: vlist.width
                     height: 60
-                    readonly property bool cur: !!modelData && modelData.id === page.selId
+                    readonly property bool cur: !!modelData && modelData.id === page.pendingId
 
                     Rectangle {
                         anchors.fill: parent
@@ -402,8 +470,8 @@ Item {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (page.b && modelData && modelData.id)
-                                page.b.setSelectedVersion(modelData.id)
+                            if (modelData && modelData.id)
+                                page.pendingId = modelData.id
                         }
                     }
                 }
@@ -469,7 +537,7 @@ Item {
 
                     Text {
                         width: parent.width
-                        text: page.selTitle
+                        text: page.sel ? (page.sel.id || "—") : "—"
                         color: "#ffffff"
                         font.family: Theme.fontFamily
                         font.pixelSize: page.narrow ? 24 : 30
@@ -479,7 +547,7 @@ Item {
                     }
                     Text {
                         width: parent.width
-                        text: page.sel ? page.loaderOf(page.sel) : ""
+                        text: page.sel ? page.subOf(page.sel) : ""
                         color: "#9fb4cf"
                         font.family: Theme.fontFamily
                         font.pixelSize: 13
@@ -575,19 +643,6 @@ Item {
                         text: "打开目录"
                         onClicked: { if (page.b && page.sel) page.b.openVersionDir(page.sel.id) }
                     }
-                    SButton {
-                        kind: 1
-                        radius: 2
-                        height: 34
-                        iconName: "copy"
-                        text: "复制版本"
-                        onClicked: {
-                            if (!page.b || !page.sel) return
-                            var before = page.details.length
-                            page.b.cloneVersion(page.sel.id)
-                            page.flash("已复制 " + page.sel.id + "（完成后会出现在列表里）")
-                        }
-                    }
                 }
 
                 SButton {
@@ -596,14 +651,113 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     kind: 0
                     height: 40
-                    iconName: page.busy ? "x" : "play"
-                    text: page.busy ? "取消启动" : "启动游戏"
-                    busy: page.busy
+                    iconName: "check"
+                    text: "确定"
                     dimmed: !page.sel
-                    onClicked: {
-                        if (!page.b || !page.sel) return
-                        if (page.busy) { page.b.cancelLaunch(); return }
-                        page.b.launch(page.sel.id, page.b.isOnline)
+                    onClicked: page.commit()
+                }
+            }
+        }
+    }
+
+    // ---------- 游戏文件夹选择（覆盖层，点外部关闭） ----------
+    Item {
+        id: folderPop
+        anchors.fill: parent
+        visible: page.folderMenuOpen
+        z: 300
+
+        MouseArea { anchors.fill: parent; onClicked: page.folderMenuOpen = false }
+
+        Rectangle {
+            id: folderPanel
+            anchors.right: parent.right
+            anchors.rightMargin: page.narrow ? 18 : 24
+            anchors.top: parent.top
+            anchors.topMargin: 60
+            width: Math.min(380, page.width - 36)
+            height: Math.min(page.height - 76, 16 + Math.max(1, page.folders.length) * 46 + 44)
+            radius: 2
+            color: "#0c0f14"
+            border.width: 1
+            border.color: "#262d38"
+
+            MouseArea { anchors.fill: parent }
+
+            Column {
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 2
+
+                Repeater {
+                    model: page.folders
+                    delegate: Item {
+                        width: parent.width
+                        height: 44
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 8
+                            color: (modelData && modelData.active) ? "#151a23" : "transparent"
+                        }
+                        Column {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 10
+                            anchors.right: parent.right
+                            anchors.rightMargin: 56
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 2
+                            Text {
+                                width: parent.width
+                                text: (modelData && modelData.name && modelData.name.length > 0)
+                                      ? modelData.name : ((modelData && modelData.path) ? modelData.path : "")
+                                color: "#e3e8ef"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 13
+                                elide: Text.ElideRight
+                            }
+                            Text {
+                                width: parent.width
+                                text: modelData ? (modelData.path || "") : ""
+                                color: Theme.fg3
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                                elide: Text.ElideMiddle
+                            }
+                        }
+                        Text {
+                            visible: modelData && modelData.active
+                            anchors.right: parent.right
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "使用中"
+                            color: Theme.accent
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: page.switchFolder(modelData.path, modelData.isDefault === true)
+                        }
+                    }
+                }
+
+                Item {
+                    width: parent.width
+                    height: 40
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "浏览其他文件夹…"
+                        color: "#9fb4cf"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 13
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: page.addFolder()
                     }
                 }
             }
