@@ -25,6 +25,7 @@
 #include "../utils/types.h"
 #include "../session/download_session.h"
 #include "../core/http_client.h"
+#include "../core/loader_plan.h"
 
 namespace ShadowLauncher {
 
@@ -433,6 +434,11 @@ private:
     /// 返回会话指针（不会为空；空则返回 nullptr）。
     DownloadSession* prepareMergedSession(const QString& installName, const QString& mcVersion,
                                           const QString& loaderType, const QString& loaderVersion);
+    /// 加载器安装的公共起步（C 项：唯一入口）：准备会话 → 按 plan 建步骤 → 激活第 0 步 →
+    /// 进入安装态。三条路径共用；返回会话指针（nullptr 表示会话创建失败）。
+    DownloadSession* beginLoaderInstall(const QString& installName, const QString& mcVersion,
+                                        const QString& loaderType, const QString& loaderVersion,
+                                        const ShadowLauncher::LoaderPlan::Plan& plan);
     MergedInstallContext* mergedContext(const QString& installId) const { return m_mergedContexts.value(installId, nullptr); }
     /// 是否仍有「活跃」（未终态失败）的合并上下文（失败保留的上下文不计入，见 installFailed）
     bool hasActiveMergedContexts() const;

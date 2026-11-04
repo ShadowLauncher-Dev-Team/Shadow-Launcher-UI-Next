@@ -5438,33 +5438,12 @@ void VersionBackend::installModLoader(const QString& mcVersion, const QString& l
 
     // ── Merged install: always MC + loader ──
     qDebug() << "[install] Merged install: MC" << mcVersion << "+" << loaderType << loaderVersion;
-    auto* ds = prepareMergedSession(installName, mcVersion, loaderType, loaderVersion);
+    // 步骤时序（2026-08-15 现网确认）：主文件(4) → 校验(5) → 安装器库(6) → 安装(7)，
+    // 由 LoaderPlan 保证顺序；起步动作统一走 beginLoaderInstall。
+    const auto plan = ShadowLauncher::LoaderPlan::make(
+        loaderType, loaderType == QStringLiteral("fabric") && !fabricApiUrl.isEmpty());
+    auto* ds = beginLoaderInstall(installName, mcVersion, loaderType, loaderVersion, plan);
     if (!ds) return;
-
-    // Build step list
-    QString loaderLabel = QStringLiteral("Forge");
-    if (loaderType == QStringLiteral("neoforge")) loaderLabel = QStringLiteral("NeoForge");
-    else if (loaderType == QStringLiteral("fabric")) loaderLabel = QStringLiteral("Fabric");
-
-    if (loaderType == QStringLiteral("fabric")) {
-        // 步骤清单/权重/显隐统一由 LoaderPlan 提供（含 Fabric API 可选步骤）
-        const auto plan = ShadowLauncher::LoaderPlan::make(
-            QStringLiteral("fabric"), !fabricApiUrl.isEmpty());
-        rebuildStepsByKeys(installName, plan.keys, plan.weights, plan.shows, plan.loaderLabel);
-    } else {
-        // ── 2026-08-15：顺序换回 校验(5) → 安装器库(6) ──
-        // 用户确认 NeoForge 实际时序：主文件下载 → SHA1 校验(verify) → 安装器库下载 → 安装。
-        // 上一版把安装器库排在校验前，UI 步骤顺序与真实执行顺序相反（日志实测
-        // 23:52:02.404 idx=6 校验 completed 先于 idx=5 安装器库 active）。
-        // 真实顺序：主文件(4) → 校验(5) → 安装器库(6) → 安装(7)。
-        const auto plan = ShadowLauncher::LoaderPlan::make(loaderType);
-        rebuildStepsByKeys(installName, plan.keys, plan.weights, plan.shows, plan.loaderLabel);
-    }
-
-    updateStep(installName, 0, QStringLiteral("active"), 0);
-    updateCardFromSession(installName, installName, QStringLiteral("mod_loader"));
-    ds->loadedStep = 1;
-    setInstalling(true);
 
     // ── Start MC download ──
     installVersion(mcVersion);
@@ -5822,21 +5801,12 @@ void VersionBackend::installOptifine(const QString& mcVersion, const QString& op
         ctx->installer->setModsDir(QString());
     }
 
-    // 公共准备（C 项：与 Forge 路径共用同一段会话复位逻辑）
-    auto* ds = prepareMergedSession(installName, mcVersion, QStringLiteral("optifine"), optifineVersion);
+    // 公共起步（C 项）：会话复位 + 按 plan 建步骤 + 激活首步 + 进入安装态
+    const auto plan = ShadowLauncher::LoaderPlan::make(QStringLiteral("optifine"));
+    auto* ds = beginLoaderInstall(installName, mcVersion, QStringLiteral("optifine"), optifineVersion, plan);
     if (!ds) return;
     ds->bmclType = bmclType;
     ds->bmclPatch = bmclPatch;
-
-    {
-        const auto plan = ShadowLauncher::LoaderPlan::make(QStringLiteral("optifine"));
-        rebuildStepsByKeys(installName, plan.keys, plan.weights, plan.shows, plan.loaderLabel);
-    }
-
-    updateStep(installName, 0, QStringLiteral("active"), 0);
-    ds->loadedStep = 1;
-    setInstalling(true);
-    setInstallPhase(tr("下载中..."));
 
     ds->optifineJarParallel = true;
     installVersion(mcVersion);
@@ -9345,6 +9315,23 @@ DownloadSession* VersionBackend::prepareMergedSession(const QString& installName
     ds->mlFileTotal = 0;
     for (int i = 0; i < 3; i++) { ds->mcStepDone[i] = 0; ds->mcStepTotal[i] = 0; }
     ds->mcFileAdded.clear();
+    return ds;
+}
+
+DownloadSession* VersionBackend::beginLoaderInstall(const QString& installName,
+                                                   const QString& mcVersion,
+                                                   const QString& loaderType,
+                                                   const QString& loaderVersion,
+                                                   const ShadowLauncher::LoaderPlan::Plan& plan)
+{
+    auto* ds = prepareMergedSession(installName, mcVersion, loaderType, loaderVersion);
+    if (!ds) return nullptr;
+    rebuildStepsByKeys(installName, plan.keys, plan.weights, plan.shows, plan.loaderLabel);
+    updateStep(installName, 0, QStringLiteral("active"), 0);
+    updateCardFromSession(installName, installName, QStringLiteral("mod_loader"));
+    ds->loadedStep = 1;
+    setInstalling(true);
+    setInstallPhase(tr("下载中..."));
     return ds;
 }
 
