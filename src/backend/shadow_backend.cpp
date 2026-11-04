@@ -6,6 +6,7 @@
 #include "../core/step_keys.h"
 #include "../core/source_policy.h"
 #include "../core/file_downloader.h"
+#include "../core/download_accept.h"
 #include "../core/step_pipeline.h"
 #include "../core/step_node.h"
 #include "../core/resource_fetch_engine.h"
@@ -3122,6 +3123,25 @@ QString ShadowBackend::downloadSelfcheck()
         if (a) { a->setPercentage(150); if (a->percentage() != 100) fails << QStringLiteral("clamp high=%1").arg(a->percentage()); }
         auto* b = pipe.addStep(QStringLiteral("t.lo"), QStringLiteral("l"), 1.0);
         if (b) { b->setPercentage(-20); if (b->percentage() != 0) fails << QStringLiteral("clamp low=%1").arg(b->percentage()); }
+    }
+
+    // ── 4.5) 兜底重试的数据接受判定（www 无 sha1 的文件也要能被救回）
+    {
+        using ShadowDownloader::acceptFallbackPayload;
+        if (!acceptFallbackPayload(true, true, 100, 100, false))
+            fails << QStringLiteral("accept: sha1 match rejected");
+        if (acceptFallbackPayload(true, false, 100, 50, false))
+            fails << QStringLiteral("accept: sha1 mismatch + short data accepted");
+        if (!acceptFallbackPayload(true, false, 100, 100, false))
+            fails << QStringLiteral("accept: sha1 mismatch + full size rejected");
+        if (!acceptFallbackPayload(false, false, 100, 100, false))
+            fails << QStringLiteral("accept: no-sha1 + full size rejected");
+        if (acceptFallbackPayload(false, false, 100, 50, false))
+            fails << QStringLiteral("accept: no-sha1 + short data accepted");
+        if (!acceptFallbackPayload(false, false, -1, 4096, true))
+            fails << QStringLiteral("accept: no-sha1 + unknown size + non-empty rejected");
+        if (acceptFallbackPayload(false, false, -1, 0, true))
+            fails << QStringLiteral("accept: no-sha1 + unknown size + empty accepted");
     }
 
     // ── 5) 源策略映射（版本列表源域）

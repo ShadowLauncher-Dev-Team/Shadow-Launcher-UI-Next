@@ -61,6 +61,8 @@ struct FileDownload {
     QString localName;
     qint64 fileSize = -2;      // -2=unknown, -1=cannot determine
     bool isUnknownSize = false;
+    /// fileSize 是占位值（如未知大小时的 10MB 假值）：不能拿它做完整性判定。
+    bool sizeIsPlaceholder = false;
     bool isNoSplit = false;    // files < 50MB, single range
     int state = 0;             // 0=waiting,1=connecting,2=downloading,3=merging,4=finished,5=failed
     QStringList orderedSources;

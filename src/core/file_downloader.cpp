@@ -13,6 +13,7 @@
 //   - Removed static s_lastProgressEmitMs race condition
 
 #include "core/file_downloader.h"
+#include "download_accept.h"
 #include "../utils/hash_utils.h"
 #include "core/engine_identity.h"
 #include "utils/logger.h"
@@ -547,7 +548,11 @@ std::shared_ptr<DownloadThread> FileDownloader::tryStartFirstThread(
     std::shared_ptr<FileDownload> file)
 {
     if (file->orderedSources.isEmpty()) return nullptr;
-    if (file->fileSize <= 0 && !file->isUnknownSize) file->fileSize = 10LL * 1024 * 1024;
+    if (file->fileSize <= 0 && !file->isUnknownSize) {
+        // 未知大小的占位值：只为让分片逻辑有分母，**不能**用于完整性判定
+        file->fileSize = 10LL * 1024 * 1024;
+        file->sizeIsPlaceholder = true;
+    }
     if (file->fileSize <= 0) { file->isUnknownSize = true; file->isNoSplit = true; }
 
     // Pick a healthy source
@@ -1276,8 +1281,10 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
     // Last resort retry（主流启动器 SourcesOnce 语义：全部源重新逐个尝试一轮，
     // 每源 1 次——兼容多源中部分源返回错误/部分源多线程下抽风的情况）
     // 模组专项已用 modRetriedOnce 覆盖，跳过
-    if (!sourceOk && !m_modpackMode && !file->expectedSha1.isEmpty()
-        && file->orderedSources.size() > 0) {
+    // 2026-11-05：以前这里还要求 expectedSha1 非空 —— CurseForge 的文件大多没有 sha1，
+    // 于是一旦常规尝试耗尽就再也不会被兜底救回（"失败后永远不恢复"的直接原因之一）。
+    // 现在按"有 sha1 用 sha1，没 sha1 用大小"接受数据（见 download_accept.h）。
+    if (!sourceOk && !m_modpackMode && file->orderedSources.size() > 0) {
         qCInfo(logDownload) << QStringLiteral("[夸父] 最终兜底：全部源逐个重试一轮 %1").arg(file->localName);
         for (int si = 0; si < file->orderedSources.size() && !sourceOk; ++si) {
             const QString url = file->orderedSources[si];
@@ -1397,17 +1404,26 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             }
 
             bool isFullDownload = file->isNoSplit || file->isUnknownSize;
-            if (isFullDownload && !file->expectedSha1.isEmpty()) {
-                const QString dlHash = sha1Hex(data);
-                if (dlHash == QString::fromLatin1(file->expectedSha1)) {
+            if (isFullDownload) {
+                const bool hasSha1 = !file->expectedSha1.isEmpty();
+                const bool sha1Match = hasSha1
+                    && (sha1Hex(data) == QString::fromLatin1(file->expectedSha1));
+                // 占位大小（10MB 假值）不得当作"期望大小"，否则真实 2MB 的数据会被判不合格
+                const qint64 expectedForCheck = file->sizeIsPlaceholder ? -1 : file->fileSize;
+                const bool unknownForCheck = file->isUnknownSize || file->sizeIsPlaceholder;
+                if (!acceptFallbackPayload(hasSha1, sha1Match, expectedForCheck,
+                                           data.size(), unknownForCheck)) {
+                    qCWarning(logDownload)
+                        << QStringLiteral("[夸父] 最终兜底数据不合格 URL=%1 大小=%2 期望=%3 有SHA1=%4")
+                               .arg(url).arg(data.size()).arg(file->fileSize).arg(hasSha1);
+                    sourceOk = false;
+                    continue;
+                }
+                if (hasSha1 && sha1Match) {
                     qCInfo(logDownload) << QStringLiteral("[夸父] 最终兜底 SHA1匹配 URL=%1").arg(url);
                 } else {
-                    if (file->fileSize > 0 && data.size() >= file->fileSize) {
-                        qCInfo(logDownload) << QStringLiteral("[夸父] 最终兜底 大小匹配，信任数据 URL=%1").arg(url);
-                    } else {
-                        sourceOk = false;
-                        continue;
-                    }
+                    qCInfo(logDownload) << QStringLiteral("[夸父] 最终兜底 大小匹配，信任数据 URL=%1 (SHA1=%2)")
+                                               .arg(url, hasSha1 ? QStringLiteral("不匹配") : QStringLiteral("缺失"));
                 }
                 sourceOk = true;
                 if (file->isNoSplit) {
@@ -1422,6 +1438,11 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                     if (f.open(QIODevice::WriteOnly)) { f.write(data); f.close(); }
                 }
                 th->state = 3;
+                // 兜底成功也要发一次进度：否则 UI 上这个文件"一声不响地完成"
+                // （实测：兜底救回的文件 lastRecv 一直是 0）。
+                emit progressChanged(m_completedFiles.loadRelaxed(), m_totalFiles.loadRelaxed(),
+                                     m_downloadedBytes.loadRelaxed(), m_totalBytes.loadRelaxed());
+                emit fileProgress(url, file->localName, data.size(), data.size(), file->localPath);
                 goto worker_done;
             }
             }

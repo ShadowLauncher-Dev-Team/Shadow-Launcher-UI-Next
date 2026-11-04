@@ -223,6 +223,7 @@ DownloadTask（任务：步骤模型 + 进度 + 状态机 + 取消）
 | 整合包批次重试/状态复位/停滞看门狗/部分失败 | ✅ 代码 | `7c0b6d4` | 代码审查 + 五路径状态推演；实测需真机导入整合包，待补 |
 | 版本列表源真正生效 | ✅ | `d8ab617` | `/eval` 实测：listSource=0→主源 bmclapi；=1/2→launchermeta；`backend.downloadSourceSummary()` 现场可读 |
 | 版本 JSON / 资源索引 / 加载器列表的源优先级 | ⏳ 未接 | — | 目前仍是"双源竞速先成功者赢"，listSource 不参与；要接需改"优先源先发 + 兜底延迟" |
+| 429/503 按 Retry-After 退避 | ✅ 实测 | `878a84d` | 本机服务实测：一次 429(RA=1)→1191ms 后成功；永远 429→6659ms 收敛不挂死；同源连续 5 次限流判该源不可用 |
 | S1 单例 QNAM / 共享连接池 | ⏳ | — | 每个 worker 各自 QNAM（file_downloader.cpp:684 附近） |
 | S2 文件级重试预算全局化 | ⏳ | — | 目前只有模组链路有（file_downloader.cpp:1275 附近） |
 | S4 进度单调（active 步骤百分比可下降） | ⏳ | — | updateStep 允许 active 步骤的 pct 回退 |
