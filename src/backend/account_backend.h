@@ -164,6 +164,9 @@ private:
         QString clientToken;   // mode 2
     };
     QString accountsFilePath() const;
+    /// 每个账号的头像快照路径（切换/登录后把当前头像存一份，列表里每个账号都能显示）
+    QString accountAvatarPath(const StoredAccount &a) const;
+    void saveCurrentAvatarSnapshot();
     void loadAccounts();
     void saveAccounts();
     void upsertAccount(const StoredAccount &a, bool makeCurrent = true);

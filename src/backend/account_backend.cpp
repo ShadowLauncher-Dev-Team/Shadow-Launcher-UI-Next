@@ -63,6 +63,10 @@ AccountBackend::AccountBackend(QObject *parent)
         }
     }
 
+    // 头像就绪时给当前账号存一份快照（列表用；非当前账号也能显示头像）
+    connect(this, &AccountBackend::skinReady, this, &AccountBackend::saveCurrentAvatarSnapshot);
+    connect(this, &AccountBackend::offlineSkinReady, this, &AccountBackend::saveCurrentAvatarSnapshot);
+
     // Pre-render Steve and Alex offline heads (once, persistent)
     initOfflineHeads();
 
@@ -154,20 +158,21 @@ void AccountBackend::offlineLogin(const QString &username)
     }
     saveOfflineHistory();
 
-    emit accountChanged();
-    emit offlineHistoryChanged();
-    // Skin: always use offline head render (Steve/Alex by UUID hash)
-    // Writes to m_offlineSkinPath (dedicated, never touches m_skinPath)
-    updateOfflineSkin(name);
-
     {
-        // 登记到多账号列表（离线账号只有名字与派生 UUID）
+        // 先登记到多账号列表并把 current 指过来（离线账号只有名字与派生 UUID），
+        // 再渲染皮肤：否则 offlineSkinReady 触发时 current 还是上一个账号，
+        // 头像快照会存到上一个账号头上。
         StoredAccount sa;
         sa.mode = 1;
         sa.name = name;
         sa.uuid = m_offlineUuid;
         upsertAccount(sa, true);
     }
+    emit accountChanged();
+    emit offlineHistoryChanged();
+    // Skin: always use offline head render (Steve/Alex by UUID hash)
+    // Writes to m_offlineSkinPath (dedicated, never touches m_skinPath)
+    updateOfflineSkin(name);
     qCInfo(logAccount) << QStringLiteral("离线登录: ") << name << QStringLiteral(" UUID:") << m_offlineUuid;
     emit logMessage(tr("离线登录: %1").arg(name));
 
@@ -1366,6 +1371,10 @@ QVariantList AccountBackend::accounts() const
         const bool needsRelogin = (a.mode == 0 && a.refreshToken.isEmpty())
                                || (a.mode == 2 && a.accessToken.isEmpty());
         m[QStringLiteral("needsRelogin")] = needsRelogin;
+        // 头像快照：每个账号登录/切换时各存一份，列表里不会只剩当前那个有头像
+        const QString avatarPath = accountAvatarPath(a);
+        m[QStringLiteral("avatar")] = QFileInfo::exists(avatarPath)
+            ? (QStringLiteral("file:///") + avatarPath) : QString();
         out.append(m);
     }
     return out;
@@ -1383,6 +1392,38 @@ QVariantMap AccountBackend::accountAt(int index) const
     m[QStringLiteral("accessToken")] = a.accessToken;
     m[QStringLiteral("clientToken")] = a.clientToken;
     return m;
+}
+
+QString AccountBackend::accountAvatarPath(const StoredAccount &a) const
+{
+    // 账号名可能带空格/中文，做一次轻量清洗，避免非法文件名
+    QString safe;
+    for (const QChar &ch : a.name) {
+        if (ch.isLetterOrNumber() || ch == QLatin1Char('_') || ch == QLatin1Char('-'))
+            safe.append(ch);
+        else
+            safe.append(QLatin1Char('_'));
+    }
+    if (safe.isEmpty()) safe = QStringLiteral("account");
+    return m_dataDir + QStringLiteral("/assets/accounts/%1_%2.png").arg(a.mode).arg(safe);
+}
+
+void AccountBackend::saveCurrentAvatarSnapshot()
+{
+    if (m_currentAccount < 0 || m_currentAccount >= m_accounts.size()) return;
+    const StoredAccount &a = m_accounts.at(m_currentAccount);
+    const QString srcUrl = (a.mode == 0) ? m_skinPath : m_offlineSkinPath;
+    if (srcUrl.isEmpty()) return;
+    const QString srcPath = QUrl(srcUrl).toLocalFile();
+    if (srcPath.isEmpty() || !QFileInfo::exists(srcPath)) return;
+
+    const QString dst = accountAvatarPath(a);
+    QDir().mkpath(QFileInfo(dst).absolutePath());
+    if (QFileInfo::exists(dst)) QFile::remove(dst);
+    if (QFile::copy(srcPath, dst)) {
+        qCInfo(logAccount) << QStringLiteral("账号头像快照已保存: ") << dst;
+        emit accountsChanged();
+    }
 }
 
 void AccountBackend::saveAccounts()
@@ -1512,6 +1553,8 @@ void AccountBackend::switchAccount(int index)
     if (index == m_currentAccount) return;
     const StoredAccount a = m_accounts.at(index);
 
+    // 切走之前先把当前账号的头像存下来，否则旧账号会丢头像
+    saveCurrentAvatarSnapshot();
     clearActiveIdentity();
     m_currentAccount = index;
 
@@ -1547,6 +1590,7 @@ bool AccountBackend::removeAccount(int index)
 {
     if (index < 0 || index >= m_accounts.size()) return false;
     const StoredAccount gone = m_accounts.takeAt(index);
+    QFile::remove(accountAvatarPath(gone));
 
     if (index == m_currentAccount) {
         clearActiveIdentity();

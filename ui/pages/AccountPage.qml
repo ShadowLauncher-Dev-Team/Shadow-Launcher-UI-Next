@@ -129,6 +129,8 @@ Item {
             height: 32
             iconName: "arrow-left"
             text: (page.hasAccount && page.loginPanel) ? "返回账户" : "返回"
+            // 登录期间禁止离开本页：避免登录回调与页面切换互相踩
+            dimmed: page.busy
             onClicked: {
                 // 添加账号/换号态下，"返回"先退回账户详情。
                 // 以前无论什么状态都直接 close()，进了添加账号就只剩"回主页"一条路，
@@ -272,8 +274,10 @@ Item {
                             x: 10
                             anchors.verticalCenter: parent.verticalCenter
                             size: 34
-                            rawSource: acctRow.cur ? page.rawHeadSource : ""
-                            source: acctRow.cur ? page.headSource : ""
+                            // 每个账号在登录/切换时都存了头像快照；没有快照才退回首字母
+                            source: (modelData && modelData.avatar && modelData.avatar.length > 0)
+                                    ? modelData.avatar
+                                    : (acctRow.cur ? page.headSource : "")
                             fallbackText: modelData ? modelData.name : ""
                         }
                         Column {
@@ -305,6 +309,7 @@ Item {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
+                            enabled: !page.busy
                             onClicked: {
                                 if (!page.b || !modelData) return
                                 // 凭据已作废（登出过）：直接打开对应的登录表单重新验证，
@@ -518,15 +523,38 @@ Item {
                         width: parent.width; height: 40
                         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#101319" }
                         Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "UUID"; color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
+                        // UUID 完整显示（以前截成 8…4，等于看不全），右侧给一键复制
                         Text {
-                            anchors.left: parent.left; anchors.leftMargin: 104; anchors.verticalCenter: parent.verticalCenter
-                            text: {
-                                if (!page.b) return "—"
+                            id: uuidValue
+                            readonly property string value: {
+                                if (!page.b) return ""
                                 var u = page.hasOnline ? page.b.accountUuid : page.b.offlineUuid
-                                if (!u || u.length === 0) return "—"
-                                return u.length > 12 ? (u.substring(0, 8) + "…" + u.substring(u.length - 4)) : u
+                                return u ? u : ""
                             }
-                            color: "#d8dde5"; font.family: Theme.fontFamily; font.pixelSize: 13
+                            anchors.left: parent.left
+                            anchors.leftMargin: 104
+                            anchors.right: copyUuid.left
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: value.length > 0 ? value : "—"
+                            color: "#d8dde5"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                        }
+                        SButton {
+                            id: copyUuid
+                            kind: 1
+                            radius: 2
+                            height: 26
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "复制"
+                            visible: uuidValue.value.length > 0
+                            onClicked: {
+                                if (!page.b) return
+                                page.b.copyToClipboard(uuidValue.value)
+                                page.flash("已复制 UUID")
+                            }
                         }
                     }
                     Item {
@@ -557,30 +585,14 @@ Item {
 
                 Row {
                     spacing: 10
-                    SButton {
-                        kind: 1
-                        radius: 2
-                        height: 34
-                        iconName: "log-out"
-                        text: "退出登录"
-                        danger: true
-                        // 离线账号没有凭据，"退出登录"等于只是从列表里移除——
-                        // 那就只剩「移除此账号」一个按钮，不再给两个几乎一样的出口。
-                        visible: page.hasOnline || page.hasExternal
-                        onClicked: {
-                            if (!page.b) return
-                            if (page.yg && page.yg.loggedIn) page.yg.logout()
-                            page.b.logout()
-                            page.flash("已退出登录")
-                        }
-                    }
-                    // 从账号列表里彻底移除（退出登录只是清当前身份，列表里还留着）
+                    // 只保留"移除此账号"：退出登录与它语义重叠，用户明确要求合并
                     SButton {
                         kind: 1
                         radius: 2
                         height: 34
                         iconName: "x"
                         text: "移除此账号"
+                        danger: true
                         visible: page.b && page.b.accounts && page.b.accounts.length > 0 && page.b.currentAccount >= 0
                         onClicked: {
                             if (!page.b) return

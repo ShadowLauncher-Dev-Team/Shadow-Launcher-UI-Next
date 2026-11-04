@@ -93,23 +93,61 @@ void MicrosoftAuth::startLogin(const QString& clientId) {
 
     connect(m_localServer, &QTcpServer::newConnection, this, [this]() {
         auto* socket = m_localServer->nextPendingConnection();
-        socket->waitForReadyRead(500);
-        QByteArray data = socket->readAll();
-        QString request = QString::fromUtf8(data);
-        socket->write("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n"
-            "<html><body><h2>登录成功</h2><p>请返回启动器</p></body></html>");
-        socket->close();
-        socket->deleteLater();
-        m_localServer->close();
+        socket->waitForReadyRead(1000);
+        const QByteArray data = socket->readAll();
+        const QString request = QString::fromUtf8(data);
+        const QString firstLine = request.section(QStringLiteral("\r\n"), 0, 0);
+        qCInfo(logAccount) << QStringLiteral("[MSA] 回调请求: ") << firstLine.left(240);
 
-        int codeIdx = request.indexOf("code=");
-        if (codeIdx == -1) { emit loginFailed(tr("浏览器回调中未找到验证码")); m_busy = false; return; }
-        QString code = request.mid(codeIdx + 5);
-        int ampIdx = code.indexOf('&');
-        if (ampIdx != -1) code = code.left(ampIdx);
-        int spaceIdx = code.indexOf(' ');
-        if (spaceIdx != -1) code = code.left(spaceIdx);
-        code = QUrl::fromPercentEncoding(code.toUtf8());
+        // 从请求行里取 path?query，用 QUrl 正规解析（以前是字符串 indexOf("code=") 硬切）
+        const int sp1 = firstLine.indexOf(QLatin1Char(' '));
+        const int sp2 = firstLine.indexOf(QLatin1Char(' '), sp1 + 1);
+        const QString target = (sp1 > 0 && sp2 > sp1)
+                ? firstLine.mid(sp1 + 1, sp2 - sp1 - 1) : QString();
+        const QUrl callbackUrl(QStringLiteral("http://localhost") + target);
+        const QUrlQuery cbQuery(callbackUrl);
+
+        // 非回调请求（favicon、探测请求等）：回个 204 但**保持监听**，
+        // 不能像以前那样把第一条连接当回调、发现没有 code 就直接判失败。
+        if (!target.startsWith(QLatin1Char('/')) || target.startsWith(QStringLiteral("/favicon"))) {
+            socket->write("HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n");
+            socket->close();
+            socket->deleteLater();
+            return;
+        }
+
+        auto respondAndStop = [this, socket](const char* body) {
+            QByteArray html = "<html><body><h2>" + QByteArray(body)
+                    + "</h2><p>请返回启动器</p></body></html>";
+            socket->write("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"
+                          "Connection: close\r\n\r\n" + html);
+            socket->close();
+            socket->deleteLater();
+            if (m_localServer) { m_localServer->close(); m_localServer->deleteLater(); m_localServer = nullptr; }
+        };
+
+        // 微软把错误也重定向回来（AADSTSxxxx / access_denied 等）：把真实原因显示出来，
+        // 否则只会看到"未找到验证码"，完全不知道该改什么。
+        if (cbQuery.hasQueryItem(QStringLiteral("error"))) {
+            const QString err = cbQuery.queryItemValue(QStringLiteral("error"));
+            QString desc = cbQuery.queryItemValue(QStringLiteral("error_description"), QUrl::FullyDecoded);
+            if (desc.isEmpty()) desc = err;
+            const QString shortDesc = desc.left(180);
+            qCWarning(logAccount) << QStringLiteral("[MSA] 回调报错: ") << err << shortDesc;
+            respondAndStop("登录失败，请在启动器内查看原因");
+            m_busy = false;
+            emit loginFailed(tr("微软回调报错：%1（%2）").arg(err, shortDesc));
+            return;
+        }
+
+        const QString code = QUrlQuery(callbackUrl).queryItemValue(QStringLiteral("code"), QUrl::FullyDecoded);
+        if (code.isEmpty()) {
+            respondAndStop("登录失败：回调里没有授权码");
+            m_busy = false;
+            emit loginFailed(tr("浏览器回调里没有授权码，请重试"));
+            return;
+        }
+        respondAndStop("登录成功");
         emit loginProgress(tr("获取授权码"), code.left(15) + u"..."_s);
         exchangeCode(code, m_localRedirectUri);
     });
@@ -127,6 +165,14 @@ void MicrosoftAuth::startLogin(const QString& clientId) {
 
     emit loginProgress(tr("打开浏览器"), url.toString().left(80));
     QDesktopServices::openUrl(url);
+
+    // 5 分钟没拿到回调就主动失败，避免 UI 永远停在"打开浏览器"
+    QTimer::singleShot(5 * 60 * 1000, this, [this]() {
+        if (!m_busy || m_embeddedMode) return;
+        if (m_localServer) { m_localServer->close(); m_localServer->deleteLater(); m_localServer = nullptr; }
+        m_busy = false;
+        emit loginFailed(tr("登录超时（5 分钟未完成浏览器登录），请重试"));
+    });
 }
 
 // ═══════════════════════════════════════════════════

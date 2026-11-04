@@ -51,24 +51,6 @@ Item {
             }
         }
 
-        // 启动中的进度线（不确定进度 → 流动片段，不假装百分比）
-        Rectangle {
-            id: prog
-            visible: root.busy
-            height: 2
-            width: parent.width * 0.28
-            y: parent.height - 2
-            color: "#ffffff"
-            opacity: 0.85
-            NumberAnimation on x {
-                running: root.busy
-                from: -prog.width
-                to: bg.width
-                duration: Theme.marquee
-                loops: Animation.Infinite
-            }
-        }
-
         scale: press.pressed ? 0.985 : 1.0
         Behavior on scale { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
         Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
