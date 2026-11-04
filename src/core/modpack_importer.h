@@ -81,6 +81,10 @@ public:
     Q_INVOKABLE void dismissResult();  // Called from QML after user dismisses success
     /// 加载器失败后手动重试（MC+模组已保留，只重跑加载器）
     Q_INVOKABLE void retryLoader();
+    /// 「补下失败项」：只重下上次失败的文件（已完成的不动）。返回是否真的进入了补下。
+    Q_INVOKABLE bool retryFailedModDownloads();
+    /// 上次导入因部分文件下载失败而告终时的失败清单（供 UI 显示"补下 N 个文件"）。
+    Q_INVOKABLE QStringList failedModFiles() const;
 
     /// 整合包图标 URL（下载 tab 传入；外部导入无来源留空 → 占位图）
     Q_INVOKABLE void setPackIcon(const QString& iconUrl);

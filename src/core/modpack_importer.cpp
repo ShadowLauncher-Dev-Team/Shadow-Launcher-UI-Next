@@ -132,6 +132,23 @@ void ModpackImporter::cancelImport()
     m_task->cancel();
 }
 
+bool ModpackImporter::retryFailedModDownloads()
+{
+    if (!m_task) return false;
+    if (m_busy) return false;
+    const bool started = m_task->retryFailedModFiles();
+    if (started) {
+        m_busy = true;
+        emit busyChanged();
+    }
+    return started;
+}
+
+QStringList ModpackImporter::failedModFiles() const
+{
+    return m_task ? m_task->failedModFiles() : QStringList();
+}
+
 void ModpackImporter::retryLoader()
 {
     if (!m_busy || !m_task) return;

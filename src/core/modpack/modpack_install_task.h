@@ -66,6 +66,9 @@ public:
     /// 部分下载失败时暴露的失败文件清单（文件名），供后续「补下失败项」入口使用。
     /// 只有任务以「部分失败」收尾时非空；已完成文件一律保留，不回滚。
     QStringList failedModFiles() const { return m_failedModFiles; }
+    /// 「补下失败项」：只重下 status=="fail" 的文件，已完成的文件不再碰。
+    /// 返回 true 表示已重新进入下载阶段；false 表示没有可补下的文件或当前正在跑。
+    bool retryFailedModFiles();
 
 signals:
     void stepChanged(const QString& stepName);

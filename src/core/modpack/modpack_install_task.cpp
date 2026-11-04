@@ -1116,6 +1116,45 @@ void ModpackInstallTask::failPartial(const QString& error)
     emit finished(false, {}, error);
 }
 
+bool ModpackInstallTask::retryFailedModFiles()
+{
+    if (m_cancel) return false;
+    if (m_downloader && m_downloader->isRunning()) return false;
+
+    int retryCount = 0;
+    for (ModpackRemoteFile& rf : m_meta.files) {
+        if (rf.status == QLatin1String("fail")) {
+            rf.status.clear();
+            rf.error.clear();
+            ++retryCount;
+        }
+    }
+    if (retryCount == 0) {
+        emit logLine(tr("没有可补下的失败文件"));
+        return false;
+    }
+
+    // 复位任务级失败态（allow 再次收尾）
+    m_failedModFiles.clear();
+    m_pendingFailSet = false;
+    m_pendingFailKeepFiles = false;
+    m_pendingFail.clear();
+    m_modsDone = false;
+    m_cardDone = false;
+    m_busy = true;
+    m_modFrac = 0.0;
+    m_cardSpeed = 0;
+    m_phase = Phase::Download;
+    setCardStep(2, QStringLiteral("active"), 0);
+    setProgress(kParseWeight + kExtractWeight,
+                tr("正在补下 %1 个失败的文件…").arg(retryCount));
+    emit logLine(tr("↻ 补下失败项：%1 个文件").arg(retryCount));
+    emit stepChanged(tr("正在下载模组"));
+    m_attachSyncTimer->start();
+    m_downloader->start(m_includeOptional, /*resumeFailedOnly*/ true);
+    return true;
+}
+
 void ModpackInstallTask::finishCancelled()
 {
     if (!m_busy) return;

@@ -67,7 +67,8 @@ public:
 
     // 启动：先解析 CF 下载地址，再经 ModDownloadEngine 引擎并发下载。
     // includeOptional=true 时连可选文件一起下。
-    void start(bool includeOptional);
+    /// resumeFailedOnly=true 时跳过 status 已是 done/skipped 的文件（只补下失败的）。
+    void start(bool includeOptional, bool resumeFailedOnly = false);
     void cancel();
     bool isRunning() const { return m_running; }
     /// 当前下载速度（MB/s）：转发动机全局 EMA（基于全局已下载字节，带平滑与衰减）。

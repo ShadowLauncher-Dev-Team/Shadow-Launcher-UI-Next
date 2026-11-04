@@ -163,7 +163,7 @@ ModpackDownloader::ModpackDownloader(QObject* parent)
     connect(m_stallTimer, &QTimer::timeout, this, &ModpackDownloader::checkStall);
 }
 
-void ModpackDownloader::start(bool includeOptional)
+void ModpackDownloader::start(bool includeOptional, bool resumeFailedOnly)
 {
     if (!m_files) return;
     ++m_generation;   // 作废上一轮遗留的延迟回调（批次重试定时器等）
@@ -220,6 +220,13 @@ void ModpackDownloader::start(bool includeOptional)
     for (int i = 0; i < m_total; ++i) {
         m_items[i].index = i;
         const ModpackRemoteFile& rf = m_files->at(i);
+        // ── 增量补下：已完成/已跳过的文件直接标 finished，不再下载 ──
+        if (resumeFailedOnly
+            && (rf.status == QLatin1String("done") || rf.status == QLatin1String("skipped"))) {
+            m_items[i].finished = true;
+            m_items[i].urls.clear();
+            continue;
+        }
         m_items[i].fileName = rf.fileName;
         if (rf.source == QLatin1String("modrinth")) {
             m_items[i].savePath = m_targetDir + QLatin1Char('/') + rf.relPath;
