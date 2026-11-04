@@ -564,6 +564,9 @@ Item {
                         iconName: "log-out"
                         text: "退出登录"
                         danger: true
+                        // 离线账号没有凭据，"退出登录"等于只是从列表里移除——
+                        // 那就只剩「移除此账号」一个按钮，不再给两个几乎一样的出口。
+                        visible: page.hasOnline || page.hasExternal
                         onClicked: {
                             if (!page.b) return
                             if (page.yg && page.yg.loggedIn) page.yg.logout()
