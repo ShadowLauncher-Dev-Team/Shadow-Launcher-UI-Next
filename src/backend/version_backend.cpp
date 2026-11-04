@@ -1612,10 +1612,18 @@ void VersionBackend::cancelVersionInstall(const QString& versionId)
     // destroyMergedContext deletes temp dir only when last user goes.
     if (m_mergedContexts.contains(versionId)) {
         QString mcVer;
+        QString ctxTempDir;   // 先把目录抄出来：installer->cancel() 可能同步触发 finished 销毁 ctx
         auto* ctx = m_mergedContexts.value(versionId, nullptr);
         if (ctx) {
             mcVer = ctx->mcVersion;
+            ctxTempDir = ctx->tempDir;
+            qCWarning(logVersion).noquote()
+                << QStringLiteral("[追踪] merged 取消前 ctx=%1 tempDir=%2")
+                       .arg(versionId, ctxTempDir);
             if (ctx->installer) ctx->installer->cancel();
+            qCWarning(logVersion).noquote()
+                << QStringLiteral("[追踪] installer->cancel() 返回后 ctx 仍存在=%1")
+                       .arg(m_mergedContexts.contains(versionId) ? QStringLiteral("yes") : QStringLiteral("no"));
             if (!mcVer.isEmpty()) abortPendingJson(mcVer);
             // ── Abort in-flight loader/API downloads BEFORE any destroy ──
             // 它们的完成回调 capture 裸 ctx*，ctx 一旦 delete 即悬垂崩溃。
@@ -1669,6 +1677,54 @@ void VersionBackend::cancelVersionInstall(const QString& versionId)
         }
 
         if (!mcStillNeeded) {
+            // ── 取消后临时目录兜底清理（覆盖本块所有分支：下载中 / 同步安装 / 已装完）──
+            // 旧逻辑只在某些分支里销毁上下文，实测整合包取消会留下 ~670MB。
+            // 这里不依赖 ctx（可能已被销毁），只用抄出来的路径；800ms 一轮，最多 40 轮。
+            if (!ctxTempDir.isEmpty()) {
+                const QString id = versionId;
+                const QString dir = ctxTempDir;
+                auto tries = std::make_shared<int>(0);
+                auto* t = new QTimer(this);
+                t->setInterval(800);
+                connect(t, &QTimer::timeout, this, [this, t, id, dir, mcVer, tries]() {
+                    ++(*tries);
+                    // MC 下载器如果一直不退出（实测整合包取消后会永远留在 m_downloaders 里），
+                    // 上下文就永远不敢销毁，目录也删不掉。这里做强制收敛：
+                    //   第 6 轮（≈4.8s）再 cancel 一次；第 12 轮（≈9.6s）直接摘掉并 deleteLater。
+                    if (!mcVer.isEmpty() && m_downloaders.contains(mcVer)) {
+                        if (*tries == 6) {
+                            if (auto* d = m_downloaders.value(mcVer, nullptr)) d->cancel();
+                        } else if (*tries >= 12) {
+                            if (auto* d = m_downloaders.take(mcVer)) {
+                                d->disconnect();
+                                d->deleteLater();
+                                qCWarning(logVersion)
+                                    << QStringLiteral("[追踪] 强制摘除未退出的 MC 下载器: %1").arg(mcVer);
+                            }
+                        }
+                    }
+                    const bool mcBusy = !mcVer.isEmpty() && m_downloaders.contains(mcVer);
+                    if (!mcBusy && m_mergedContexts.contains(id))
+                        destroyMergedContext(id);
+                    if (!m_mergedContexts.contains(id) && QDir(dir).exists()) {
+                        QDir d(dir);
+                        if (d.removeRecursively() && !QDir(dir).exists()) {
+                            TempTracker::forget(dir);
+                            qCInfo(logVersion) << QStringLiteral("[追踪] 取消后临时目录已清理: %1").arg(dir);
+                        }
+                    }
+                    const bool done = !m_mergedContexts.contains(id) && !QDir(dir).exists();
+                    if (done || *tries > 40) {
+                        if (!done)
+                            qCWarning(logVersion)
+                                << QStringLiteral("[追踪] 取消后临时目录未清干净（留给下次启动）: %1").arg(dir);
+                        t->stop();
+                        t->deleteLater();
+                    }
+                });
+                t->start();
+            }
+
             // ── This is the last context using this MC version — stop the download ──
             if (!mcVer.isEmpty())
                 m_userCancelledIds.insert(mcVer);
