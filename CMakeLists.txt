@@ -392,6 +392,7 @@ qt6_add_resources(ShadowLauncher "icon_resources"
         icons/lucide/lock.svg
         icons/lucide/user.svg
         icons/lucide/chevron-down.svg
+        icons/lucide/chevron-up.svg
         icons/lucide/log-out.svg
         icons/lucide/play.svg
         icons/lucide/list.svg

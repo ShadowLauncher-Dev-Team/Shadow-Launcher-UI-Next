@@ -187,15 +187,50 @@ Item {
                 page.b.launch(page.ver, page.b.isOnline)   // 允许多开：再开一个该版本
             }
         }
-        SButton {
+        // 只留箭头、不画方框：方框和主按钮圆角/边框都不是一套，怎么摆都像错位。
+        // 点击区仍然是 32x48（够大），但视觉上只有一枚会翻转的箭头。
+        Item {
             id: procBtn
-            kind: 1
             visible: page.runningList.length > 0
-            // Row 是顶部对齐的：不给高度就会用 ghost 的 34，和主按钮 48 错位
-            width: 44
+            width: 32
             height: launchBtn.height
-            iconName: "chevron-down"
-            onClicked: page.procOpen = !page.procOpen
+
+            // 不用 rotation 翻转：SIcon 内部是 MultiEffect 离屏着色，转父项会把图层裁一半。
+            // 改用 up/down 两张图标交叉淡入，观感等价且不会裁切。
+            SIcon {
+                id: chevDown
+                anchors.centerIn: parent
+                name: "chevron-down"
+                size: 15
+                color: procHover.containsMouse ? Theme.fg : Theme.fg3
+                opacity: page.procOpen ? 0 : 1
+                Behavior on color {
+                    ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                }
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                }
+            }
+            SIcon {
+                anchors.centerIn: parent
+                name: "chevron-up"
+                size: 15
+                color: procHover.containsMouse ? Theme.fg : Theme.fg3
+                opacity: page.procOpen ? 1 : 0
+                Behavior on color {
+                    ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                }
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                }
+            }
+            MouseArea {
+                id: procHover
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: page.procOpen = !page.procOpen
+            }
         }
         SButton { kind: 1; text: "版本"; iconName: "list"; onClicked: page.openVersions() }
         SButton { kind: 1; text: "设置"; iconName: "settings"; onClicked: console.info("[ui] settings") }
