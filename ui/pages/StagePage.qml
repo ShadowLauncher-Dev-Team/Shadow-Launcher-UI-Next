@@ -33,6 +33,7 @@ Item {
     readonly property int padL: narrow ? 28 : Theme.padL
     readonly property int padR: narrow ? 24 : 64
 
+
     // "1.20.1-Fabric_0.16.9" → 主 [1.20.1] / 副 [Fabric 0.16.9]
     readonly property var verParts: {
         if (ver.length === 0) return ["", ""]
@@ -188,7 +189,7 @@ Item {
         font.family: Theme.fontFamily
         font.pixelSize: page.narrow ? 34 : 58
         font.weight: Font.Bold
-        font.letterSpacing: page.narrow ? -0.6 : -1.2
+        font.letterSpacing: page.narrow ? -0.6 : -1.6
     }
 
     // ---------- 上：状态（常态不显示） ----------
