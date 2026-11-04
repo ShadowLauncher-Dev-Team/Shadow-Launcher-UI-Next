@@ -16,7 +16,9 @@ function Add-Problem([string]$file, [int]$line, [string]$msg) {
 
 foreach ($f in $files) {
     $rel = $f.FullName.Substring($UiDir.Length).TrimStart([char]92)
-    $lines = Get-Content -LiteralPath $f.FullName
+    # 必须显式按 UTF-8 读：PS5.1 的 Get-Content 默认按系统 ANSI(GBK) 解码无 BOM 的
+    # UTF-8 文件，中文注释会被解成乱码字节，随机命中"emoji/符号"规则 → 假失败。
+    $lines = Get-Content -LiteralPath $f.FullName -Encoding UTF8
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $ln = $i + 1
         $t = $lines[$i]
@@ -26,7 +28,9 @@ foreach ($f in $files) {
         if ($t -match 'appVersion\s*\+') { Add-Problem $rel $ln 'appVersion 被拼接/装饰，应原样显示' }
 
         # 2) emoji / 符号当图标（项目铁律：图标只用 lucide SVG）
-        if ($t -match '[\uD800-\uDFFF]' -or $t -match '[\u2190-\u21FF\u2600-\u27BF\u2B00-\u2BFF]') {
+        #    只查真正的 QML 代码行：注释里的箭头和符号不是图标，不该被这条规则误伤
+        $isComment = $t.TrimStart().StartsWith('//')
+        if (-not $isComment -and ($t -match '[\uD800-\uDFFF]' -or $t -match '[\u2190-\u21FF\u2600-\u27BF\u2B00-\u2BFF]')) {
             Add-Problem $rel $ln '疑似 emoji/符号做图标，图标须用 qml/icons/lucide 下的 SVG'
         }
 

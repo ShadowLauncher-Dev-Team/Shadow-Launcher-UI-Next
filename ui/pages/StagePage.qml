@@ -8,7 +8,9 @@ Item {
     property Window hostWindow: null
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
-    readonly property bool narrow: width < 900
+    // narrow 必须由整窗宽度决定（StageShell 注入）。页面自己的 width 是"内容区宽"
+    // （已扣掉侧栏），拿它和 900 比会让 1100 宽的窗口被判成窄窗、标题从 58 掉到 34。
+    property bool narrow: false
     readonly property string ver: (b && b.selectedVersion) ? b.selectedVersion : ""
     readonly property string userName: b ? (b.isOnline ? (b.username || "") : (b.offlineUsername || "")) : ""
     // 演示态：--ui-demo-launch 由后端假状态机驱动真实浮层组件（不检测 Java、不拉文件、
@@ -193,7 +195,9 @@ Item {
         anchors.leftMargin: page.padL
         anchors.bottomMargin: 15
         spacing: 9
-        visible: page.launching || page.running || page.statusText.length > 0
+        // 只在"启动中 / 游戏中"说话：启动结束后残留的"启动完成"是状态噪音（README 第 6 条），
+        // 失败原因由浮层负责展示，不在这里留尾巴。
+        visible: page.launching || page.running
 
         Rectangle {
             anchors.verticalCenter: parent.verticalCenter

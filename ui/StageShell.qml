@@ -29,6 +29,7 @@ Item {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         hostWindow: root.hostWindow
+        narrow: root.narrow
     }
 
     // 启动浮层（页面内，不新开窗口）
