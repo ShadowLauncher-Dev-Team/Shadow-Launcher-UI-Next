@@ -3281,8 +3281,35 @@ QString ShadowBackend::downloadSelfcheck()
             fails << QStringLiteral("primary == fallback");
     }
 
+    // ── 7) 步骤显示名唯一来源（同一 key 只有一种文案；四条路径共用）
+    {
+        const QStringList keys = {
+            StepKeys::baseJson(), StepKeys::baseLibraries(), StepKeys::baseAssets(),
+            StepKeys::baseVerify(), StepKeys::baseJar(),
+            StepKeys::loaderInstaller(), StepKeys::loaderVerify(), StepKeys::loaderLibs(),
+            StepKeys::loaderInstall(), StepKeys::fabricConfig(), StepKeys::fabricLibs(),
+            StepKeys::fabricInstall(), StepKeys::fabricApi(), StepKeys::optifineJar(),
+            StepKeys::optifineInstall(), StepKeys::metaResolve(), StepKeys::metaOverrides(),
+            StepKeys::modsDownload(), StepKeys::modsVerify(), StepKeys::javaCheck(),
+            StepKeys::javaInstall(), StepKeys::userdataImport()
+        };
+        for (const QString& k : keys) {
+            const QString n = StepKeys::displayName(k);
+            if (n.isEmpty() || n == k)
+                fails << QStringLiteral("displayName missing for key=%1").arg(k);
+            if (n.contains(QStringLiteral("%1")))
+                fails << QStringLiteral("displayName(%1) left %%1 unreplaced: %2").arg(k, n);
+        }
+        if (StepKeys::displayName(StepKeys::loaderInstaller(), QStringLiteral("Forge"))
+            != QStringLiteral("下载 Forge 安装器"))
+            fails << QStringLiteral("loaderLabel substitution broken");
+        if (StepKeys::displayName(StepKeys::baseVerify())
+            != StepKeys::displayName(StepKeys::baseVerify(), QStringLiteral("Forge")))
+            fails << QStringLiteral("base.verify text should not depend on loader label");
+    }
+
     if (fails.isEmpty())
-        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=6")
+        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=7")
             .arg(allKeys.size()).arg(legacyCases.size());
     return QStringLiteral("FAIL(%1): ").arg(fails.size()) + fails.join(QStringLiteral(" | "));
 }

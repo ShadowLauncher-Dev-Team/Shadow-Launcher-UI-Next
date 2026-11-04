@@ -44,6 +44,43 @@ inline QString javaCheck()      { return QStringLiteral("java.check"); }
 inline QString javaInstall()    { return QStringLiteral("java.install"); }
 inline QString userdataImport() { return QStringLiteral("userdata.import"); }
 
+/// ── 显示名（唯一来源）──
+/// 契约：同一个 key 只有一种文案；四条安装路径不再各写一份中文。
+/// %1 会被替换成加载器名（Forge/NeoForge/Fabric），无参时退化为通用说法。
+inline QString displayName(const QString& key, const QString& loaderLabel = QString())
+{
+    QString s;
+    if (key == baseJson())             s = QStringLiteral("下载版本信息");
+    else if (key == baseLibraries())   s = QStringLiteral("下载游戏库");
+    else if (key == baseAssets())      s = QStringLiteral("下载游戏资源");
+    else if (key == baseVerify())      s = QStringLiteral("校验游戏文件");
+    else if (key == baseJar())         s = QStringLiteral("下载客户端");
+    else if (key == loaderInstaller()) s = QStringLiteral("下载 %1 安装器");
+    else if (key == loaderVerify())    s = QStringLiteral("校验 %1 安装器");
+    else if (key == loaderLibs())      s = QStringLiteral("下载 %1 依赖库");
+    else if (key == loaderInstall())   s = QStringLiteral("安装 %1");
+    else if (key == fabricConfig())    s = QStringLiteral("下载 Fabric 配置");
+    else if (key == fabricLibs())      s = QStringLiteral("下载 Fabric 依赖库");
+    else if (key == fabricInstall())   s = QStringLiteral("安装 Fabric");
+    else if (key == fabricApi())       s = QStringLiteral("下载 Fabric API");
+    else if (key == optifineJar())     s = QStringLiteral("下载 OptiFine 主文件");
+    else if (key == optifineInstall()) s = QStringLiteral("安装 OptiFine");
+    else if (key == modsDownload())    s = QStringLiteral("下载模组");
+    else if (key == modsVerify())      s = QStringLiteral("校验模组");
+    else if (key == metaResolve())     s = QStringLiteral("解析下载地址");
+    else if (key == metaOverrides())   s = QStringLiteral("解压整合包资源");
+    else if (key == javaCheck())       s = QStringLiteral("检查 Java");
+    else if (key == javaInstall())     s = QStringLiteral("安装 Java");
+    else if (key == userdataImport())  s = QStringLiteral("导入用户数据");
+    else return key;   // 未知 key 原样返回，便于发现词表漏项
+
+    if (s.contains(QStringLiteral("%1"))) {
+        const QString label = loaderLabel.isEmpty() ? QStringLiteral("加载器") : loaderLabel;
+        s = s.arg(label);
+    }
+    return s;
+}
+
 /// 旧中文步骤名 → key（迁移期桥接；新代码不要用）
 inline QString keyForLegacyName(const QString& name)
 {

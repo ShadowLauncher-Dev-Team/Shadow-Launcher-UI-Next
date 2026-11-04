@@ -736,13 +736,11 @@ void VersionBackend::installVersion(const QString& versionId)
         if (!isMergedMc) {
             auto* ds = ensureSession(versionId);
             if (ds) {
-                rebuildSteps(versionId,
+                rebuildStepsByKeys(versionId,
                     {StepKeys::baseJson(), StepKeys::baseLibraries(),
                      StepKeys::baseAssets(), StepKeys::baseVerify()},
-                    {tr("下载版本JSON"), tr("下载支持库"), tr("下载资源文件"), tr("校验游戏资源完整性")},
-                    {1.0, 3.0, 5.0, 1.0},  // weights
-                    {false, true, true, true}  // JSON step hidden before download, others visible
-                );
+                    {1.0, 3.0, 5.0, 1.0},
+                    {false, true, true, true});
                 // Show card immediately — don't wait for first HTTP byte (progressUpdated signal)
                 updateCardFromSession(versionId, versionId, QStringLiteral("version"));
             }
@@ -5466,48 +5464,30 @@ void VersionBackend::installModLoader(const QString& mcVersion, const QString& l
             StepKeys::baseVerify(), StepKeys::fabricConfig(), StepKeys::fabricLibs(),
             StepKeys::fabricInstall()
         };
-        QStringList stepNames = {
-            tr("下载原版 JSON 文件"),
-            tr("下载原版支持库文件"),
-            tr("下载原版资源文件"),
-            tr("校验游戏资源完整性"),
-            tr("下载 Fabric 配置"),
-            tr("下载 Fabric 依赖库"),
-            tr("安装 Fabric")
-        };
         QVector<qreal> weights = {3.0, 8.0, 5.0, 0.5, 0.1, 2.0, 0.5};
         QVector<bool> shows = {true, true, true, true, true, true, true};
         if (!fabricApiUrl.isEmpty()) {
             stepKeys.append(StepKeys::fabricApi());
-            stepNames.append(tr("下载 Fabric API"));
             weights.append(0.05);
             // 2026-08-10 修：原 shows=false（hidden）→ weightedProgress 跳过 hidden 步骤 →
             // Fabric API 下载不计入总进度 → 26.2+Fabric 完成瞬间可见步骤全完成=1.0 → 卡片变绿
             // （API 下载中 99.7%，完成后才真正 100%）。改为显示 + 参与加权。
             shows.append(true);
         }
-        rebuildSteps(installName, stepKeys, stepNames, weights, shows);
+        rebuildStepsByKeys(installName, stepKeys, weights, shows);
     } else {
         // ── 2026-08-15：顺序换回 校验(5) → 安装器库(6) ──
         // 用户确认 NeoForge 实际时序：主文件下载 → SHA1 校验(verify) → 安装器库下载 → 安装。
         // 上一版把安装器库排在校验前，UI 步骤顺序与真实执行顺序相反（日志实测
         // 23:52:02.404 idx=6 校验 completed 先于 idx=5 安装器库 active）。
         // 真实顺序：主文件(4) → 校验(5) → 安装器库(6) → 安装(7)。
-        rebuildSteps(installName,
+        rebuildStepsByKeys(installName,
             {StepKeys::baseJson(), StepKeys::baseLibraries(), StepKeys::baseAssets(),
              StepKeys::baseVerify(), StepKeys::loaderInstaller(), StepKeys::loaderVerify(),
              StepKeys::loaderLibs(), StepKeys::loaderInstall()},
-            {
-            tr("下载原版 JSON 文件"),
-            tr("下载原版支持库文件"),
-            tr("下载原版资源文件"),
-            tr("校验游戏资源完整性"),
-            tr("下载 %1 主文件").arg(loaderLabel),
-            tr("校验 %1 完整性").arg(loaderLabel),
-            tr("下载 %1 安装器库").arg(loaderLabel),
-            tr("安装 %1").arg(loaderLabel)
-        }, {3.0, 8.0, 5.0, 0.5, 6.0, 0.5, 4.0, 6.0},
-         {true, true, true, true, true, true, true, true});
+            {3.0, 8.0, 5.0, 0.5, 6.0, 0.5, 4.0, 6.0},
+            {true, true, true, true, true, true, true, true},
+            loaderLabel);
     }
 
     updateStep(installName, 0, QStringLiteral("active"), 0);
@@ -5885,17 +5865,11 @@ void VersionBackend::installOptifine(const QString& mcVersion, const QString& op
     for (int i = 0; i < 3; i++) { ds->mcStepDone[i] = 0; ds->mcStepTotal[i] = 0; }
     ds->mcFileAdded.clear();
 
-    rebuildSteps(installName,
+    rebuildStepsByKeys(installName,
         {StepKeys::baseJson(), StepKeys::baseLibraries(), StepKeys::baseAssets(),
          StepKeys::optifineJar(), StepKeys::optifineInstall()},
-        {
-        tr("下载原版 JSON 文件"),
-        tr("下载原版支持库文件"),
-        tr("下载原版资源文件"),
-        tr("下载 OptiFine 主文件"),
-        tr("安装 OptiFine")
-    }, {1.0, 8.0, 5.0, 3.0, 1.0},
-     {true, true, true, true, true});
+        {1.0, 8.0, 5.0, 3.0, 1.0},
+        {true, true, true, true, true});
 
     updateStep(installName, 0, QStringLiteral("active"), 0);
     ds->loadedStep = 1;
@@ -6916,6 +6890,18 @@ void VersionBackend::rebuildSteps(const QString& installId, const QStringList& n
     QStringList keys;
     keys.reserve(names.size());
     for (int i = 0; i < names.size(); i++) keys.append(QString::number(i));
+    rebuildSteps(installId, keys, names, weights, showFlags);
+}
+
+void VersionBackend::rebuildStepsByKeys(const QString& installId, const QStringList& keys,
+                                          const QVector<qreal>& weights,
+                                          const QVector<bool>& showFlags,
+                                          const QString& loaderLabel)
+{
+    QStringList names;
+    names.reserve(keys.size());
+    for (const QString& k : keys)
+        names << StepKeys::displayName(k, loaderLabel);
     rebuildSteps(installId, keys, names, weights, showFlags);
 }
 

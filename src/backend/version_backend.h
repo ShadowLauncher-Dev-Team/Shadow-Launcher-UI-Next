@@ -463,6 +463,11 @@ private:
     /// 供"按 key 找步骤"使用；旧的数字 key 版本保留给尚未迁移的调用点。
     void rebuildSteps(const QString& installId, const QStringList& keys, const QStringList& names,
                       const QVector<qreal>& weights, const QVector<bool>& showFlags);
+    /// 只给 key：显示名由 StepKeys::displayName() 统一提供（契约：同一 key 只有一种文案）。
+    /// loaderLabel 用于替换 "%1"（Forge/NeoForge/Fabric），其余路径传空。
+    void rebuildStepsByKeys(const QString& installId, const QStringList& keys,
+                            const QVector<qreal>& weights, const QVector<bool>& showFlags,
+                            const QString& loaderLabel = {});
     void updateStep(const QString& installId, int index, const QString& status, int percentage, qint64 bytesRecv = 0, qint64 bytesTotal = 0);
     void showStep(const QString& installId, int index);  // Make a hidden step visible and active
     /// 按 key 查找步骤索引（契约首选）；未找到返回 -1
