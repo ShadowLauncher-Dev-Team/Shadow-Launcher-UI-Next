@@ -11,6 +11,8 @@
 
 
 #include "version_backend.h"
+
+#include "../core/step_keys.h"
 #include "../utils/hash_utils.h"
 
 #include "shadow_backend.h"
@@ -732,6 +734,8 @@ void VersionBackend::installVersion(const QString& versionId)
             auto* ds = ensureSession(versionId);
             if (ds) {
                 rebuildSteps(versionId,
+                    {StepKeys::baseJson(), StepKeys::baseLibraries(),
+                     StepKeys::baseAssets(), StepKeys::baseVerify()},
                     {tr("下载版本JSON"), tr("下载支持库"), tr("下载资源文件"), tr("校验游戏资源完整性")},
                     {1.0, 3.0, 5.0, 1.0},  // weights
                     {false, true, true, true}  // JSON step hidden before download, others visible
@@ -1041,11 +1045,11 @@ void VersionBackend::installVersion(const QString& versionId)
 
                                 }
 
-                                // Show MC verify step (index 3, initially hidden)
+                                // Show MC verify step (按 key 找，不再假设 index 3)
 
-                                int verifyIdx = 3;
+                                int verifyIdx = stepIndexByKey(sit.key(), StepKeys::baseVerify());
 
-                                if (verifyIdx < d->steps.size()) {
+                                if (verifyIdx >= 0 && verifyIdx < d->steps.size()) {
 
                                     showStep(sit.key(), verifyIdx);
 
@@ -2016,8 +2020,8 @@ void VersionBackend::onVersionDownloadFinished(bool success,
         // ── Pure MC: mark verify step as completed ──
         auto* pureFinishDs = dlSession(finishedId);
         if (pureFinishDs && !pureFinishDs->isMerged()) {
-            int verifyIdx = 3;
-            if (verifyIdx < pureFinishDs->steps.size())
+            int verifyIdx = stepIndexByKey(finishedId, StepKeys::baseVerify());
+            if (verifyIdx >= 0 && verifyIdx < pureFinishDs->steps.size())
                 updateStep(finishedId, verifyIdx, QStringLiteral("completed"), 100);
         }
 
@@ -2150,8 +2154,10 @@ void VersionBackend::onVersionDownloadFinished(bool success,
                 sessionDs->mcBytesDl = sessionDs->mcBytesAll;
                 for (int i = 0; i < 3 && i < sessionDs->steps.size(); i++)
                     updateStep(ctx->installId, i, QStringLiteral("completed"), 100);
-                int verifyIdx = 3;
-                if (verifyIdx < sessionDs->steps.size() && !sessionDs->optifineJarParallel)
+                // OptiFine 这一路根本没有 base.verify 步骤 —— 旧代码硬编码 idx=3 会把
+                // "下载 OptiFine 主文件"当校验步骤标完成，本次改成按 key 查（查不到就跳过）。
+                int verifyIdx = stepIndexByKey(ctx->installId, StepKeys::baseVerify());
+                if (verifyIdx >= 0 && verifyIdx < sessionDs->steps.size() && !sessionDs->optifineJarParallel)
                     updateStep(ctx->installId, verifyIdx, QStringLiteral("completed"), 100);
             }
 
@@ -5350,6 +5356,11 @@ void VersionBackend::installModLoader(const QString& mcVersion, const QString& l
     else if (loaderType == QStringLiteral("fabric")) loaderLabel = QStringLiteral("Fabric");
 
     if (loaderType == QStringLiteral("fabric")) {
+        QStringList stepKeys = {
+            StepKeys::baseJson(), StepKeys::baseLibraries(), StepKeys::baseAssets(),
+            StepKeys::baseVerify(), StepKeys::fabricConfig(), StepKeys::fabricLibs(),
+            StepKeys::fabricInstall()
+        };
         QStringList stepNames = {
             tr("下载原版 JSON 文件"),
             tr("下载原版支持库文件"),
@@ -5362,6 +5373,7 @@ void VersionBackend::installModLoader(const QString& mcVersion, const QString& l
         QVector<qreal> weights = {3.0, 8.0, 5.0, 0.5, 0.1, 2.0, 0.5};
         QVector<bool> shows = {true, true, true, true, true, true, true};
         if (!fabricApiUrl.isEmpty()) {
+            stepKeys.append(StepKeys::fabricApi());
             stepNames.append(tr("下载 Fabric API"));
             weights.append(0.05);
             // 2026-08-10 修：原 shows=false（hidden）→ weightedProgress 跳过 hidden 步骤 →
@@ -5369,14 +5381,18 @@ void VersionBackend::installModLoader(const QString& mcVersion, const QString& l
             // （API 下载中 99.7%，完成后才真正 100%）。改为显示 + 参与加权。
             shows.append(true);
         }
-        rebuildSteps(installName, stepNames, weights, shows);
+        rebuildSteps(installName, stepKeys, stepNames, weights, shows);
     } else {
         // ── 2026-08-15：顺序换回 校验(5) → 安装器库(6) ──
         // 用户确认 NeoForge 实际时序：主文件下载 → SHA1 校验(verify) → 安装器库下载 → 安装。
         // 上一版把安装器库排在校验前，UI 步骤顺序与真实执行顺序相反（日志实测
         // 23:52:02.404 idx=6 校验 completed 先于 idx=5 安装器库 active）。
         // 真实顺序：主文件(4) → 校验(5) → 安装器库(6) → 安装(7)。
-        rebuildSteps(installName, {
+        rebuildSteps(installName,
+            {StepKeys::baseJson(), StepKeys::baseLibraries(), StepKeys::baseAssets(),
+             StepKeys::baseVerify(), StepKeys::loaderInstaller(), StepKeys::loaderVerify(),
+             StepKeys::loaderLibs(), StepKeys::loaderInstall()},
+            {
             tr("下载原版 JSON 文件"),
             tr("下载原版支持库文件"),
             tr("下载原版资源文件"),
@@ -5764,7 +5780,10 @@ void VersionBackend::installOptifine(const QString& mcVersion, const QString& op
     for (int i = 0; i < 3; i++) { ds->mcStepDone[i] = 0; ds->mcStepTotal[i] = 0; }
     ds->mcFileAdded.clear();
 
-    rebuildSteps(installName, {
+    rebuildSteps(installName,
+        {StepKeys::baseJson(), StepKeys::baseLibraries(), StepKeys::baseAssets(),
+         StepKeys::optifineJar(), StepKeys::optifineInstall()},
+        {
         tr("下载原版 JSON 文件"),
         tr("下载原版支持库文件"),
         tr("下载原版资源文件"),
@@ -6777,8 +6796,25 @@ void VersionBackend::updateCardFromSession(const QString& installId, const QStri
 
 
 
-void VersionBackend::rebuildSteps(const QString& installId, const QStringList& names, const QVector<qreal>& weights,
+void VersionBackend::rebuildSteps(const QString& installId, const QStringList& names,
+                                   const QVector<qreal>& weights,
+                                   const QVector<bool>& showFlags) {
+    // 兼容入口：没有 key 的调用点沿用"数字 key"
+    QStringList keys;
+    keys.reserve(names.size());
+    for (int i = 0; i < names.size(); i++) keys.append(QString::number(i));
+    rebuildSteps(installId, keys, names, weights, showFlags);
+}
 
+int VersionBackend::stepIndexByKey(const QString& installId, const QString& key)
+{
+    auto* ds = dlSession(installId);
+    if (!ds || !ds->pipeline()) return -1;
+    return ds->pipeline()->indexOf(key);
+}
+
+void VersionBackend::rebuildSteps(const QString& installId, const QStringList& keys,
+                                   const QStringList& names, const QVector<qreal>& weights,
                                    const QVector<bool>& showFlags) {
 
     auto* ds = ensureSession(installId);
@@ -6792,8 +6828,11 @@ void VersionBackend::rebuildSteps(const QString& installId, const QStringList& n
         bool show = (i < showFlags.size()) ? showFlags[i] : true;
 
         // ── Create StepNode via pipeline ──
+        // key 来自契约词表（base.json / base.libraries / …），业务逻辑按 key 找步骤
+        const QString stepKey = (i < keys.size() && !keys[i].isEmpty())
+                                    ? keys[i] : QString::number(i);
         auto* node = ds->pipeline()->addStep(
-            QString::number(i), names[i], w
+            stepKey, names[i], w
         );
         if (node) node->setHidden(!show);
 
