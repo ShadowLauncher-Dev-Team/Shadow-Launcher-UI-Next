@@ -187,11 +187,24 @@ DownloadTask（任务：步骤模型 + 进度 + 状态机 + 取消）
    → **已定（2026-11-05 影）**：采用"**下次下载生效**"。设置页每项旁标注这句，
    不做令牌桶热更新；任务开始时统一读一次配置快照即可。
 
+### 源策略的三个域（2026-11-05 影澄清，禁止混用）
+
+「版本列表源」**只指 MC 版本清单**，不能拿去管模组列表。三个域的源完全不同：
+
+| 域 | 官方 | 镜像 | 谁管 | 设置项 |
+|---|---|---|---|---|
+| **MC 版本清单** | Mojang `launchermeta/piston-meta`、`version_manifest` | BMCLAPI `bmclapi2.bangbang93.com` | `VersionBackend` 列表/JSON/资源索引 + 加载器元数据（Forge/Fabric/NeoForge/OptiFine meta，`shadow_backend.cpp:4002/4102/4262/4463`） | **`listDownloadSource`（版本列表源）→ 接这里** |
+| **模组/光影平台** | Modrinth API、CurseForge API | MCIM `mod.mcimirror.top` | `ResourceFetchEngine` / `CfApi` / `ModpackDownloader` | **不加用户设置**：MCIM 稳定性不足，用户选它=自己踩坑。改成内部策略：官方优先，MCIM 仅作并发探测/失败降级 |
+| **文件 CDN** | Mojang `libraries.minecraft.net`、CF edge 域名 | BMCLAPI files、MCIM `/files` | `FileDownloader` / `AssetDownloader` / `ModDownloadEngine` | `fileDownloadSource`（文件下载源）→ MC 文件；模组文件走"官方 CDN 变体自动展开"（`expandCfDownloadUrls`），也不加设置 |
+
+**现状问题（要在 S1 一并处理）**：模组搜索目前是**硬编码 MCIM 优先**（`resource_backend.cpp:613` 起十余处全是 `mod.mcimirror.top/modrinth/v2/search`，`cf_api.cpp:25` 同样镜像优先）→ MCIM 一挂，搜索整块不可用。改为"官方优先 + MCIM 降级"，并加 30s 健康探测缓存，避免每次请求都先撞一次镜像。
+
 ### S1/S2 必须接的线
 
 - 限速真正作用于 FileDownloader（令牌桶或按窗口 sleep，别只存变量）；
 - `setSourcePolicy` 接到精卫（模组 / 整合包）；
-- `listSource`：要么接给列表类请求（Modrinth/CF 列表与图标），要么从设置页**删掉**；
+- `listSource`：**接给 MC 版本清单域**（version_manifest / 版本 JSON / 资源索引 / 各加载器 meta）；
+- 模组平台源：改为内部"官方优先 + MCIM 降级 + 健康缓存"，**不暴露给用户**；
 - 线程数上限与契约并发上限对齐（默认 16，允许调到 24），并让精卫也读；
 - 每项设置补一条自检（见第 8 节验收用例，扩展为 6/7/8 条）。
 
