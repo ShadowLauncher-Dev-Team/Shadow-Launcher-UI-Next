@@ -34,6 +34,7 @@
 #include <QMutex>
 #include <QThread>
 #include <QtConcurrent>
+#include <QtCore/private/qzipreader_p.h>   // 读 jar 内 version.json（MC 版本的最终兜底）
 #include <QRegularExpression>
 #include <functional>
 #include "account_backend.h"
@@ -1313,20 +1314,43 @@ void ShadowBackend::refreshVersionDetails()
         QVariantMap detail;
         detail[QStringLiteral("id")] = versionId;
 
-        // ── Determine base MC version（认不出就留空，绝不拿目录名冒充）──
-        // ① 加载器版本：inheritsFrom 才是真实 MC 版本
-        // ② 原版/无 inheritsFrom：用 JSON 的 id，但必须长得像版本号
-        //    （用户能把版本目录改成 "1"，此时 json 的 id 也变成 "1"，单段数字不是 MC 版本）
-        // ③ 都不成立 → 空串，QML 显示"未识别"而不是编一个
+        // ── Determine base MC version（多路取证，认不出就留空，绝不拿目录名冒充）──
+        // ① inheritsFrom：加载器版本的标准写法，最可靠
+        // ② clientVersion：版本 JSON 里记录的基础客户端版本（拍平/改名后仍常被保留，本机 "1" 就是靠它）
+        // ③ JSON 的 id：原版版本用，但必须长得像版本号（用户能把目录改成 "1"，id 也随之变成 "1"）
+        // ④ jar 内 version.json 的 id：原版 jar 自带的版本描述（字段 id 就是真实 MC 版本），
+        //    兜底给"json 被写坏但不带 inheritsFrom/clientVersion"的情况（需 Qt CorePrivate 的 QZipReader）
+        // ⑤ 全都不成立 → 空串，QML 显示"未识别"，不编
         QString baseMcVersion;
+        QString baseMcSource;
+        static const QRegularExpression mcVerRe(QStringLiteral(R"(^\d+\.\d+(\.\d+)?$)"));
         if (!verJson.isEmpty()) {
             const QString inherits = verJson.value(QStringLiteral("inheritsFrom")).toString();
+            const QString clientVer = verJson.value(QStringLiteral("clientVersion")).toString();
+            const QString jsonId = verJson.value(QStringLiteral("id")).toString();
             if (!inherits.isEmpty()) {
                 baseMcVersion = inherits;
-            } else {
-                const QString jsonId = verJson.value(QStringLiteral("id")).toString();
-                static const QRegularExpression mcVerRe(QStringLiteral(R"(^\d+\.\d+(\.\d+)?$)"));
-                if (mcVerRe.match(jsonId).hasMatch()) baseMcVersion = jsonId;
+                baseMcSource = QStringLiteral("inheritsFrom");
+            } else if (mcVerRe.match(clientVer).hasMatch()) {
+                baseMcVersion = clientVer;
+                baseMcSource = QStringLiteral("clientVersion");
+            } else if (mcVerRe.match(jsonId).hasMatch()) {
+                baseMcVersion = jsonId;
+                baseMcSource = QStringLiteral("jsonId");
+            }
+        }
+        if (baseMcVersion.isEmpty() && !jarPath.isEmpty()) {
+            QZipReader jarZip(jarPath);
+            if (jarZip.status() == QZipReader::NoError) {
+                const QByteArray jarVerBytes = jarZip.fileData(QStringLiteral("version.json"));
+                if (!jarVerBytes.isEmpty()) {
+                    const QString jarVer = QJsonDocument::fromJson(jarVerBytes).object()
+                                             .value(QStringLiteral("id")).toString();
+                    if (mcVerRe.match(jarVer).hasMatch()) {
+                        baseMcVersion = jarVer;
+                        baseMcSource = QStringLiteral("jarVersionJson");
+                    }
+                }
             }
         }
 
@@ -1339,6 +1363,7 @@ void ShadowBackend::refreshVersionDetails()
         QRegularExpressionMatch loaderMatch = loaderIdPattern.match(versionId);
         if (loaderMatch.hasMatch()) {
             baseMcVersion = loaderMatch.captured(1);
+            baseMcSource = QStringLiteral("dirName");
             loaderVersion = loaderMatch.captured(3);
         }
 
@@ -1417,6 +1442,7 @@ void ShadowBackend::refreshVersionDetails()
         // 基础 MC 版本：版本目录名是用户可自定义的（本机就叫 "1"），
         // 不能靠 QML 拆 id，必须把解析出来的 baseMcVersion 一起带出去。
         detail[QStringLiteral("mcVersion")] = baseMcVersion;
+        detail[QStringLiteral("mcVersionSource")] = baseMcSource;  // inheritsFrom / clientVersion / jsonId / jarVersionJson / dirName
 
         // ── Version type: use base MC version for manifest lookup ──
         QString vtype = knownTypes.value(baseMcVersion, QString());

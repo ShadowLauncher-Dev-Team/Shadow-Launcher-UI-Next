@@ -172,9 +172,20 @@ ee2682a feat(launch-overlay): 启动阶段管线接入后端 StepPipeline；新�
 1. `mcVersion`（之前根本没写进 detail，QML 只能拆目录名）：优先 `inheritsFrom`，否则 JSON 的 `id` 必须匹配 `^\d+\.\d+(\.\d+)?$` 才采用，**认不出就留空**。
 2. `lastPlayedLabelFor(versionId)`（Q_INVOKABLE）：逐版本「上次游玩」文案，复用 `last-played.json`。
 
-#### 3.6.2 一个真实数据坑（本机复现）
-本机版本 `1` 的 JSON 被拍平了：**没有 `inheritsFrom`、没有 `net.fabricmc:intermediary`、assetIndex id 是数字 `32`**，所以后端确实推不出 MC 版本 → 页面显示「MC 版本：未识别」（刻意不拿目录名"1"冒充）。
-要彻底解决只能读 `versions/<id>/<id>.jar` 里的 `version.json`（原版 client.jar 内含，字段 id 就是真实 MC 版本）——需要 zip 读取能力，留作后续。
+#### 3.6.2 MC 版本怎么认出来的（多路取证，五级降级）
+本机版本 `1` 的 JSON 被拍平过：**没有 `inheritsFrom`、没有 `net.fabricmc:intermediary`、assetIndex id 是数字 `32`**。最初只认 `inheritsFrom` + `id`，于是显示"未识别"。后来补成五级，**15 个版本全部认出来了**：
+
+| 级 | 来源 | 说明 | 本机命中 |
+|---|---|---|---|
+| 1 | `inheritsFrom` | 加载器版本的标准写法，最可靠 | 0 |
+| 2 | **`clientVersion`** | 版本 JSON 记录的基础客户端版本；拍平/改名后**仍常被保留** | 10 |
+| 3 | JSON 的 `id` | 原版版本用，但必须匹配 `^\d+\.\d+(\.\d+)?$` | 4 |
+| 4 | **jar 内 `version.json` 的 `id`** | 原版 jar 自带的版本描述（1.14+ 必有），用 `QZipReader` 只读这一个条目，不解压整个 jar | 0 |
+| 5 | 目录名正则拆 `XX.X-loader-YY` | `26.2-fabric-0.19.5` 这类命名 | 1 |
+
+- 全都不成立 → 空串，QML 显示「未识别」，**绝不拿目录名冒充**。
+- 每行记 `mcVersionSource`（排查用）；实测 `Immersive Fight 4.2.4 → 1.20.1`、`RLCraft → 1.12.2`、`Zombie Invade 100 Days → 1.20.1` 都靠 `clientVersion` 认出来的——**整合包改名场景这才是主力**。
+- `QZipReader` 来自 `<QtCore/private/qzipreader_p.h>`；项目早已链接 `Qt6::CorePrivate`（`userdata_backend.cpp` 就在用），不引入新依赖。
 
 ---
 
