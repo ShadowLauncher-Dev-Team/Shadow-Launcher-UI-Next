@@ -102,19 +102,6 @@ Item {
         }
     }
 
-    // ---------- 拖拽（最底层） ----------
-    MouseArea {
-        anchors.fill: parent
-        acceptedButtons: Qt.LeftButton
-        property point pressPos
-        onPressed: (m) => { pressPos = Qt.point(m.x, m.y) }
-        onPositionChanged: (m) => {
-            if (!pressed || !page.hostWindow) return
-            page.hostWindow.x += m.x - pressPos.x
-            page.hostWindow.y += m.y - pressPos.y
-        }
-    }
-
     // ---------- 顶栏：账户 ----------
     SAcctChip {
         anchors.right: parent.right

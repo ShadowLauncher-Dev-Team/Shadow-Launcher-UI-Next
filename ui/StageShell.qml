@@ -55,6 +55,26 @@ Item {
         }
     }
 
+    // 拖动带（2026-11-05）：只有窗口上部一条可以拖。
+    // 放在 SideBar 之后、页面之前：页面里的按钮/输入框都在这层之上，
+    // 点到它们不会误触拖动；顶部空白处才拖动窗口。
+    // 放在外壳层而不是启动页，是为了让版本页/账户页这些全屏页也能拖。
+    MouseArea {
+        id: dragBand
+        anchors.left: sideBar.right
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: Theme.topH
+        acceptedButtons: Qt.LeftButton
+        property point pressPos
+        onPressed: (m) => { pressPos = Qt.point(m.x, m.y) }
+        onPositionChanged: (m) => {
+            if (!pressed || !root.hostWindow) return
+            root.hostWindow.x += m.x - pressPos.x
+            root.hostWindow.y += m.y - pressPos.y
+        }
+    }
+
     // 启动页：始终在原地（被全屏页盖住），只关掉交互
     StagePage {
         anchors.left: sideBar.right
