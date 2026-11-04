@@ -17,6 +17,9 @@ Item {
     property bool versionsOpen: false
     property bool accountOpen: false
     readonly property bool fullOpen: versionsOpen || accountOpen
+    readonly property var b: (typeof backend !== "undefined") ? backend : null
+    // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
+    readonly property bool loading: b ? b.microsoftLoginBusy : false
 
     Component.onCompleted: {
         if (Qt.application.arguments.indexOf("--ui-versions") >= 0) root.versionsOpen = true
@@ -26,6 +29,15 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: Theme.bg
+    }
+
+    // 顶部加载条（Material / Google 线性风格）：压在窗口最上沿
+    SLoadingBar {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        z: 1000
+        running: root.loading
     }
 
     // 侧栏：宽度动画收放，内容裁掉不溢出

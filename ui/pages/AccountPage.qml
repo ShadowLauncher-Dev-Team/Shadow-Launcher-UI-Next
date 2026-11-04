@@ -660,7 +660,9 @@ Item {
                         id: statusCard
                         width: parent.width
                         height: statusCol.implicitHeight + 22
-                        visible: page.busy
+                        // busy 之外还要看 statusLine：开始登录的一瞬间 busy 可能还没翻过来，
+                        // 但后端已经推了"打开浏览器"这类步骤文案
+                        visible: page.busy || page.statusLine.length > 0
                         radius: 8
                         color: "#0f3b82f6"   // QML 不认 CSS 的 rgba()，用 ARGB 十六进制
                         border.width: 1
@@ -690,7 +692,7 @@ Item {
                             spacing: 3
                             Text {
                                 width: parent.width
-                                text: "正在登录 Microsoft 账号"
+                                text: page.busy ? "正在登录 Microsoft 账号" : "登录状态"
                                 color: "#dbe6f5"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12

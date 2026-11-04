@@ -240,6 +240,7 @@ set_source_files_properties(ui/controls/SButton.qml PROPERTIES QT_RESOURCE_ALIAS
 set_source_files_properties(ui/controls/SWindowButton.qml PROPERTIES QT_RESOURCE_ALIAS controls/SWindowButton.qml)
 set_source_files_properties(ui/controls/SAcctChip.qml PROPERTIES QT_RESOURCE_ALIAS controls/SAcctChip.qml)
 set_source_files_properties(ui/controls/SMinecraftHead.qml PROPERTIES QT_RESOURCE_ALIAS controls/SMinecraftHead.qml)
+set_source_files_properties(ui/controls/SLoadingBar.qml PROPERTIES QT_RESOURCE_ALIAS controls/SLoadingBar.qml)
 set_source_files_properties(ui/ToastHost.qml PROPERTIES QT_RESOURCE_ALIAS ToastHost.qml)
 
 qt_add_qml_module(ShadowLauncher
@@ -261,6 +262,7 @@ qt_add_qml_module(ShadowLauncher
         ui/controls/SWindowButton.qml
         ui/controls/SAcctChip.qml
         ui/controls/SMinecraftHead.qml
+        ui/controls/SLoadingBar.qml
         ui/ToastHost.qml
 )
 

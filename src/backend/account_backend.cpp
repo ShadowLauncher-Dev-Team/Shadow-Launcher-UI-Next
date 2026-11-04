@@ -527,6 +527,10 @@ void AccountBackend::microsoftLogin()
         qCInfo(logAccount) << QStringLiteral("使用本地回调登录");
         m_msAuth->startLogin(clientId);
     }
+    // 上面那次 emit 发生在 startLogin() 之前，此时 isBusy() 还是 false，
+    // QML 绑定的 microsoftLoginBusy 读到的仍是 false —— 于是"登录过程"完全不显示。
+    // 真正开了流程之后再发一次。
+    emit microsoftLoginBusyChanged();
 }
 
 void AccountBackend::cancelMicrosoftLogin()
