@@ -498,6 +498,10 @@ public:
     /// 取消验证：跑 cancelAfterMs 后 cancel()，再观察 600ms 字节是否继续增长。
     /// 期望：cancelled 后 bytes 不再变化（契约 §5：取消必须中止在途请求）。
     Q_INVOKABLE QString downloadProbeCancel(const QString& url, int cancelAfterMs);
+
+    /// 多文件探针：同一 URL 下 count 个文件（不同落盘路径），用于验收 QNAM 复用
+    /// （创建次数应 ≈ 线程数，而不是 ≈ 文件数）。
+    Q_INVOKABLE QString downloadProbeMulti(const QString& url, int count, int timeoutMs);
     Q_INVOKABLE void killMinecraft();
     Q_INVOKABLE void killGameByPid(qint64 pid);
     Q_INVOKABLE QVariantList runningGames();

@@ -337,6 +337,22 @@ void FileDownloader::removeInFlightReply(QNetworkReply* reply) {
     m_inflightReplies.removeOne(reply);
 }
 
+// ── 线程局部 QNAM（见 runWorker 注释）──
+// 计数用于验收：下载 N 个文件时 QNAM 创建次数应 ≈ 线程数，而不是 ≈ 文件数。
+static QAtomicInt g_qnamCreatedCount{0};
+
+int FileDownloader::qnamCreatedTotal() { return g_qnamCreatedCount.loadRelaxed(); }
+
+static QNetworkAccessManager* workerQnam()
+{
+    static thread_local QNetworkAccessManager* nam = nullptr;
+    if (!nam) {
+        nam = new QNetworkAccessManager();   // 进程级生命周期（线程池线程复用）
+        g_qnamCreatedCount.fetchAndAddRelaxed(1);
+    }
+    return nam;
+}
+
 // ── 429/503：解析 Retry-After（秒数；HTTP 日期形式忽略，退化为默认值）──
 static int retryAfterSeconds(QNetworkReply* reply, int fallbackSec)
 {
@@ -780,10 +796,13 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
     if (!ShadowLauncher::suppressUrlLog())
         emit logMessage(QStringLiteral("[夸父] 开始下载 %1 源=%2").arg(file->localName).arg(th->sourceUrl));
 
-    // Per-worker QNAM — each worker thread creates its own.
-    // QNetworkAccessManager is reentrant but NOT thread-safe:
-    // a single instance MUST NOT be used from multiple threads.
-    QNetworkAccessManager mgr;
+    // ── 线程局部 QNAM（契约 S1：传输层收敛）──
+    // QNetworkAccessManager 是"可重入但不线程安全"的：不能跨线程共享一个实例。
+    // 但旧实现是"每个 worker 每次 runWorker（= 每个文件）新建一个" ——
+    // 连接池、DNS 缓存、Cookie、代理配置全部随之作废，同一线程下连续下载 N 个文件
+    // 就要重建 N 次 TCP/TLS 握手（这是"十几兆/s 却慢"的隐性来源之一）。
+    // 现在改成 thread_local：每个 QThreadPool 线程一个、跨文件复用；线程安全边界不变。
+    QNetworkAccessManager& mgr = *workerQnam();
 
     bool sourceOk = false;
     bool modRetriedOnce = false;   // 模组专项：全部源耗尽后重置源列表整体重试一轮（PCL Retried 同款）

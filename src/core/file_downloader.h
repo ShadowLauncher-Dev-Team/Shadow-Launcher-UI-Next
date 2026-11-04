@@ -134,6 +134,8 @@ public:
     int activeThreads() const { return m_activeThreads.loadRelaxed(); }
 
     double currentSpeedMBps() const;
+    /// 进程内已创建的 QNAM 数量（验收用：应为"线程数量级"，不是"文件数量级"）
+    static int qnamCreatedTotal();
     /// 引擎当前速度（bytes/s）。单一来源：本引擎的窗口加权值（speedTick 计算）。
     /// 上层只允许格式化显示，**不得再做二次平滑/相加/减半**（DOWNLOAD_CONTRACT §4）。
     qint64 currentSpeedBps() const;

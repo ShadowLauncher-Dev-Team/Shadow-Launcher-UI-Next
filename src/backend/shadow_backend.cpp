@@ -2959,6 +2959,45 @@ QString ShadowBackend::downloadProbe(const QString& url, int limitKBps, int time
         .arg(avgMBps, 0, 'f', 2).arg(limitKBps);
 }
 
+QString ShadowBackend::downloadProbeMulti(const QString& url, int count, int timeoutMs)
+{
+    ShadowDownloader::FileDownloader fd;
+    fd.setMaxThreads(4);
+
+    QStringList paths;
+    const int n = qBound(1, count, 16);
+    for (int i = 0; i < n; ++i) {
+        const QString p = QDir::tempPath() + QStringLiteral("/shadow_probe_multi_%1.bin").arg(i);
+        QFile::remove(p);
+        paths.append(p);
+        fd.addFile(p, QStringLiteral("probe_multi_%1.bin").arg(i), {url}, -1, QByteArray(),
+                   false, true);
+    }
+
+    const int qnamBefore = ShadowDownloader::FileDownloader::qnamCreatedTotal();
+    QElapsedTimer t;
+    t.start();
+    int okCount = 0;
+    QEventLoop loop;
+    QObject::connect(&fd, &ShadowDownloader::FileDownloader::fileFinished,
+                     [&okCount](const QString&, bool ok) { if (ok) ++okCount; });
+    QObject::connect(&fd, &ShadowDownloader::FileDownloader::allFinished, [&]() { loop.quit(); });
+    QTimer::singleShot(timeoutMs > 0 ? timeoutMs : 30000, &loop, &QEventLoop::quit);
+    fd.start();
+    loop.exec();
+    fd.cancel();
+
+    int existing = 0;
+    qint64 totalBytes = 0;
+    for (const QString& p : paths) {
+        if (QFileInfo::exists(p)) { ++existing; totalBytes += QFileInfo(p).size(); }
+        QFile::remove(p);
+    }
+    const int qnamDelta = ShadowDownloader::FileDownloader::qnamCreatedTotal() - qnamBefore;
+    return QStringLiteral("files=%1 ok=%2 onDisk=%3 bytes=%4 ms=%5 qnamCreated=%6")
+        .arg(n).arg(okCount).arg(existing).arg(totalBytes).arg(t.elapsed()).arg(qnamDelta);
+}
+
 QString ShadowBackend::downloadProbeCancel(const QString& url, int cancelAfterMs)
 {
     ShadowDownloader::FileDownloader fd;
