@@ -45,6 +45,11 @@ class AccountBackend : public QObject {
     Q_PROPERTY(QVariantList capes READ capes NOTIFY capesReady)
     Q_PROPERTY(QString skinVariant READ skinVariant NOTIFY skinVariantChanged)
     Q_PROPERTY(QStringList offlineUsernames READ offlineUsernames NOTIFY offlineHistoryChanged)
+    // ── 多账号列表（2026-11-04）──
+    // 结构：[{mode:0/1/2, name, uuid, current:bool, typeText}]
+    // 只有当前账号有真实皮肤/令牌，其余条目只存"身份"，切换时才装载。
+    Q_PROPERTY(QVariantList accounts READ accounts NOTIFY accountsChanged)
+    Q_PROPERTY(int currentAccount READ currentAccount NOTIFY accountsChanged)
     Q_PROPERTY(bool microsoftLoginBusy READ isMicrosoftLoginBusy NOTIFY microsoftLoginBusyChanged)
     Q_PROPERTY(bool embeddedLoginEnabled READ embeddedLoginEnabled WRITE setEmbeddedLoginEnabled NOTIFY embeddedLoginChanged)
 
@@ -77,6 +82,21 @@ public:
     Q_INVOKABLE void updateOfflineSkin(const QString &username);
     Q_INVOKABLE void removeOfflineUsername(const QString &username);
     Q_INVOKABLE void logout();
+
+    // ── 多账号 ──
+    QVariantList accounts() const;
+    int currentAccount() const { return m_currentAccount; }
+    /// 切到列表第 index 个账号（会清理当前身份再装载；外置模式只清本地态，
+    /// 真正的外置会话由 ShadowBackend 交给 YggdrasilBackend 恢复）
+    Q_INVOKABLE void switchAccount(int index);
+    /// 从列表移除第 index 个账号；移除的是当前账号则切到剩下的第一个（没有就清空登录态）
+    Q_INVOKABLE bool removeAccount(int index);
+    /// 外置登录成功后由 ShadowBackend 写入列表
+    Q_INVOKABLE void upsertExternalAccount(const QString &name, const QString &uuid,
+                                           const QString &apiRoot, const QString &accessToken,
+                                           const QString &clientToken);
+    /// 外置账号切换用：取某条目的字段（找不到返回空 map）
+    Q_INVOKABLE QVariantMap accountAt(int index) const;
     Q_INVOKABLE bool isMicrosoftLoginBusy() const { return m_msAuth && m_msAuth->isBusy(); }
     bool embeddedLoginEnabled() const { return m_embeddedLoginEnabled; }
     void setEmbeddedLoginEnabled(bool v);
@@ -102,6 +122,7 @@ public:
 signals:
     void embeddedLoginChanged();
     void accountChanged();
+    void accountsChanged();   // 多账号列表变化
     void skinReady();
     void offlineSkinReady();
     void capeReady();
@@ -131,6 +152,24 @@ private:
     void saveMicrosoftSession();
     void loadMicrosoftSession();
     void deleteMicrosoftSession();
+
+    // ── 多账号持久化 ──
+    struct StoredAccount {
+        int mode = 0;          // 0 正版 / 1 离线 / 2 外置
+        QString name;
+        QString uuid;
+        QString refreshToken;  // mode 0
+        QString apiRoot;       // mode 2
+        QString accessToken;   // mode 2
+        QString clientToken;   // mode 2
+    };
+    QString accountsFilePath() const;
+    void loadAccounts();
+    void saveAccounts();
+    void upsertAccount(const StoredAccount &a, bool makeCurrent = true);
+    void clearActiveIdentity();
+    QList<StoredAccount> m_accounts;
+    int m_currentAccount = -1;
     QString generateOfflineUuid(const QString &username) const;
     QString skinCachePath(const QString &username) const;
     QString capeCachePath(const QString &username) const;

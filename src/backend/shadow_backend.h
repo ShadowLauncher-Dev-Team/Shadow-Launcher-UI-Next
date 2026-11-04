@@ -59,6 +59,9 @@ class ShadowBackend : public QObject {
     Q_PROPERTY(QString skinTexturePath READ skinTexturePath NOTIFY skinReady)
     Q_PROPERTY(QString offlineSkinPath READ offlineSkinPath NOTIFY offlineSkinReady)
     Q_PROPERTY(QStringList offlineUsernames READ offlineUsernames NOTIFY offlineHistoryChanged)
+    // ── 多账号列表（2026-11-04）──
+    Q_PROPERTY(QVariantList accounts READ accounts NOTIFY accountsChanged)
+    Q_PROPERTY(int currentAccount READ currentAccount NOTIFY accountsChanged)
     // 账户页需要：登录中状态 + 后端推送的当前步骤文案（account_backend 有，这里转发）
     Q_PROPERTY(bool microsoftLoginBusy READ microsoftLoginBusy NOTIFY microsoftLoginBusyChanged)
     Q_PROPERTY(QString msStatus READ msStatus NOTIFY microsoftLoginProgress)
@@ -218,6 +221,8 @@ public:
     QString skinTexturePath() const;
     QString offlineSkinPath() const;
     QStringList offlineUsernames() const;
+    QVariantList accounts() const;
+    int currentAccount() const;
     bool microsoftLoginBusy() const;
     QString msStatus() const;
     int lastLoginMode() const;
@@ -420,6 +425,9 @@ public:
     Q_INVOKABLE void microsoftLogin();
     Q_INVOKABLE void cancelMicrosoftLogin();
     Q_INVOKABLE void logout();
+    /// 切到多账号列表第 index 个（外置账号会交给 YggdrasilBackend 恢复会话）
+    Q_INVOKABLE void switchAccount(int index);
+    Q_INVOKABLE bool removeAccount(int index);
     Q_INVOKABLE QVariantList scanJavaInstallations();
     Q_INVOKABLE QString autoSelectJava();
     Q_INVOKABLE QString detectJava();
@@ -702,6 +710,7 @@ signals:
     /// QML 弹常驻 toast 引导用户重启）
     void updateReadyForRestart(const QString& version);
     void accountChanged();
+    void accountsChanged();
     void microsoftLoginProgress(const QString& step, const QString& detail);
     void microsoftLoginSuccess(const QString& username, const QString& uuid);
     void microsoftLoginFailed(const QString& error);

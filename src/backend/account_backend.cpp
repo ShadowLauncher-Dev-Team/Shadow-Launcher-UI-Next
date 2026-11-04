@@ -46,6 +46,22 @@ AccountBackend::AccountBackend(QObject *parent)
 
     loadOfflineHistory();
     loadMicrosoftSession();
+    loadAccounts();
+    // 已登录的正版会话若不在列表里（从旧版本升级上来），补登记一次；
+    // 否则左列账号列表是空的、右侧却在显示某个账号。
+    if (m_loggedIn && m_isOnline && !m_username.isEmpty()) {
+        bool knownAccount = false;
+        for (const StoredAccount &a : m_accounts)
+            if (a.mode == 0 && a.name.compare(m_username, Qt::CaseInsensitive) == 0) { knownAccount = true; break; }
+        if (!knownAccount) {
+            StoredAccount sa;
+            sa.mode = 0;
+            sa.name = m_username;
+            sa.uuid = m_uuid;
+            sa.refreshToken = m_msRefreshToken;
+            upsertAccount(sa, true);
+        }
+    }
 
     // Pre-render Steve and Alex offline heads (once, persistent)
     initOfflineHeads();
@@ -74,6 +90,15 @@ AccountBackend::AccountBackend(QObject *parent)
         qCInfo(logAccount) << QStringLiteral("正版登录成功: ") << username << uuid
                            << "refreshToken:" << (refreshToken.isEmpty() ? QStringLiteral("EMPTY!") : QStringLiteral("present"));
         saveMicrosoftSession();
+        {
+            StoredAccount sa;
+            sa.mode = 0;
+            sa.name = m_username;
+            sa.uuid = m_uuid;
+            sa.refreshToken = m_msRefreshToken;
+            // 续期刷新不应改变"当前账号"，只有真正的互动登录才置为当前
+            upsertAccount(sa, !m_refreshingToken);
+        }
         startBackgroundRefresh();
         if (m_refreshingToken) {
             m_refreshingToken = false;
@@ -135,6 +160,14 @@ void AccountBackend::offlineLogin(const QString &username)
     // Writes to m_offlineSkinPath (dedicated, never touches m_skinPath)
     updateOfflineSkin(name);
 
+    {
+        // 登记到多账号列表（离线账号只有名字与派生 UUID）
+        StoredAccount sa;
+        sa.mode = 1;
+        sa.name = name;
+        sa.uuid = m_offlineUuid;
+        upsertAccount(sa, true);
+    }
     qCInfo(logAccount) << QStringLiteral("离线登录: ") << name << QStringLiteral(" UUID:") << m_offlineUuid;
     emit logMessage(tr("离线登录: %1").arg(name));
 
@@ -1275,4 +1308,244 @@ void AccountBackend::refreshMicrosoftToken()
     });
 }
 
+} // namespace ShadowLauncher
+
+namespace ShadowLauncher {
+
+// ════════════════════════════════════════════════════════════
+// 多账号列表（2026-11-04）
+// 设计：只持久化"身份 + 各模式自己的凭据"，同一时刻只有一个活动账号。
+//   mode 0 正版：refreshToken（加密），切回来时用它续期
+//   mode 1 离线：只有名字，切回来直接离线登录
+//   mode 2 外置：apiRoot + accessToken + clientToken，切回来交给 YggdrasilBackend
+// 皮肤/披风不进列表：非当前账号没有真实皮肤，UI 用名字首字母占位，
+// 不拿别人的头像冒充（不造假数据）。
+// ════════════════════════════════════════════════════════════
+
+QString AccountBackend::accountsFilePath() const
+{
+    return m_dataDir + QStringLiteral("/accounts.json");
+}
+
+static QString accountTypeText(int mode)
+{
+    if (mode == 0) return QStringLiteral("正版");
+    if (mode == 2) return QStringLiteral("外置");
+    return QStringLiteral("离线");
+}
+
+QVariantList AccountBackend::accounts() const
+{
+    QVariantList out;
+    for (int i = 0; i < m_accounts.size(); ++i) {
+        const StoredAccount &a = m_accounts.at(i);
+        QVariantMap m;
+        m[QStringLiteral("index")] = i;
+        m[QStringLiteral("mode")] = a.mode;
+        m[QStringLiteral("name")] = a.name;
+        m[QStringLiteral("uuid")] = a.uuid;
+        m[QStringLiteral("typeText")] = accountTypeText(a.mode);
+        m[QStringLiteral("current")] = (i == m_currentAccount);
+        out.append(m);
+    }
+    return out;
+}
+
+QVariantMap AccountBackend::accountAt(int index) const
+{
+    if (index < 0 || index >= m_accounts.size()) return {};
+    const StoredAccount &a = m_accounts.at(index);
+    QVariantMap m;
+    m[QStringLiteral("mode")] = a.mode;
+    m[QStringLiteral("name")] = a.name;
+    m[QStringLiteral("uuid")] = a.uuid;
+    m[QStringLiteral("apiRoot")] = a.apiRoot;
+    m[QStringLiteral("accessToken")] = a.accessToken;
+    m[QStringLiteral("clientToken")] = a.clientToken;
+    return m;
+}
+
+void AccountBackend::saveAccounts()
+{
+    QJsonArray arr;
+    for (const StoredAccount &a : m_accounts) {
+        QJsonObject o;
+        o[QStringLiteral("mode")] = a.mode;
+        o[QStringLiteral("name")] = a.name;
+        o[QStringLiteral("uuid")] = TokenCrypto::encrypt(a.uuid);
+        if (!a.refreshToken.isEmpty())
+            o[QStringLiteral("refreshToken")] = TokenCrypto::encrypt(a.refreshToken);
+        if (!a.apiRoot.isEmpty())
+            o[QStringLiteral("apiRoot")] = a.apiRoot;
+        if (!a.accessToken.isEmpty())
+            o[QStringLiteral("accessToken")] = TokenCrypto::encrypt(a.accessToken);
+        if (!a.clientToken.isEmpty())
+            o[QStringLiteral("clientToken")] = TokenCrypto::encrypt(a.clientToken);
+        arr.append(o);
+    }
+    QJsonObject root;
+    root[QStringLiteral("current")] = m_currentAccount;
+    root[QStringLiteral("list")] = arr;
+
+    QDir().mkpath(m_dataDir);
+    QFile f(accountsFilePath());
+    if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        f.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+        f.close();
+    }
+}
+
+void AccountBackend::loadAccounts()
+{
+    QFile f(accountsFilePath());
+    if (!f.open(QIODevice::ReadOnly)) return;
+    const QJsonObject root = QJsonDocument::fromJson(f.readAll()).object();
+    f.close();
+
+    m_accounts.clear();
+    const QJsonArray arr = root[QStringLiteral("list")].toArray();
+    for (const QJsonValue &v : arr) {
+        const QJsonObject o = v.toObject();
+        StoredAccount a;
+        a.mode = o[QStringLiteral("mode")].toInt(1);
+        a.name = o[QStringLiteral("name")].toString();
+        if (a.name.isEmpty()) continue;
+        a.uuid = TokenCrypto::decrypt(o[QStringLiteral("uuid")].toString());
+        a.refreshToken = TokenCrypto::decrypt(o[QStringLiteral("refreshToken")].toString());
+        a.apiRoot = o[QStringLiteral("apiRoot")].toString();
+        a.accessToken = TokenCrypto::decrypt(o[QStringLiteral("accessToken")].toString());
+        a.clientToken = TokenCrypto::decrypt(o[QStringLiteral("clientToken")].toString());
+        m_accounts.append(a);
+    }
+    m_currentAccount = root[QStringLiteral("current")].toInt(-1);
+    if (m_currentAccount >= m_accounts.size()) m_currentAccount = -1;
+    qCInfo(logAccount) << QStringLiteral("账号列表已加载: ") << m_accounts.size()
+                       << QStringLiteral(" 当前=") << m_currentAccount;
+}
+
+void AccountBackend::upsertAccount(const StoredAccount &a, bool makeCurrent)
+{
+    if (a.name.isEmpty()) return;
+    int found = -1;
+    for (int i = 0; i < m_accounts.size(); ++i) {
+        if (m_accounts.at(i).mode == a.mode && m_accounts.at(i).name.compare(a.name, Qt::CaseInsensitive) == 0) {
+            found = i;
+            break;
+        }
+    }
+    if (found >= 0) {
+        StoredAccount &dst = m_accounts[found];
+        if (!a.uuid.isEmpty()) dst.uuid = a.uuid;
+        if (!a.refreshToken.isEmpty()) dst.refreshToken = a.refreshToken;
+        if (!a.apiRoot.isEmpty()) dst.apiRoot = a.apiRoot;
+        if (!a.accessToken.isEmpty()) dst.accessToken = a.accessToken;
+        if (!a.clientToken.isEmpty()) dst.clientToken = a.clientToken;
+    } else {
+        m_accounts.append(a);
+        found = m_accounts.size() - 1;
+    }
+    if (makeCurrent) m_currentAccount = found;
+    saveAccounts();
+    emit accountsChanged();
+}
+
+void AccountBackend::upsertExternalAccount(const QString &name, const QString &uuid,
+                                           const QString &apiRoot, const QString &accessToken,
+                                           const QString &clientToken)
+{
+    StoredAccount a;
+    a.mode = 2;
+    a.name = name;
+    a.uuid = uuid;
+    a.apiRoot = apiRoot;
+    a.accessToken = accessToken;
+    a.clientToken = clientToken;
+    upsertAccount(a, true);
+}
+
+void AccountBackend::clearActiveIdentity()
+{
+    m_username.clear();
+    m_uuid.clear();
+    m_offlineUsername.clear();
+    m_offlineUuid.clear();
+    m_skinPath.clear();
+    m_offlineSkinPath.clear();
+    m_capePath.clear();
+    m_activeCapeAlias.clear();
+    m_capes.clear();
+    m_msMcToken.clear();
+    secureWipe(m_msRefreshToken);
+    m_msTokenObtainedAt = 0;
+    m_msTokenExpiresIn = 0;
+    m_loggedIn = false;
+    m_isOnline = false;
+    if (m_refreshTimer) m_refreshTimer->stop();
+    emit accountChanged();
+    emit skinReady();
+    emit offlineSkinReady();
+}
+
+void AccountBackend::switchAccount(int index)
+{
+    if (index < 0 || index >= m_accounts.size()) return;
+    if (index == m_currentAccount) return;
+    const StoredAccount a = m_accounts.at(index);
+
+    clearActiveIdentity();
+    m_currentAccount = index;
+
+    if (a.mode == 1) {
+        // 离线：直接重新登录，会写 offlineUsername/offlineUuid
+        offlineLogin(a.name);
+    } else if (a.mode == 0) {
+        // 正版：先装载身份并用 refreshToken 续期（失败会走 microsoftLoginFailed，
+        // UI 提示"已过期，请重新登录"，但账号仍留在列表里）
+        m_username = a.name;
+        m_uuid = a.uuid;
+        m_msRefreshToken = a.refreshToken;
+        m_loggedIn = true;
+        m_isOnline = true;
+        saveMicrosoftSession();
+        emit accountChanged();
+        startBackgroundRefresh();
+        downloadSkin(a.name);
+        if (!m_msRefreshToken.isEmpty()) refreshMicrosoftToken();
+        else emit microsoftLoginFailed(tr("这个正版账号没有可用的登录凭据，请重新登录"));
+    } else {
+        // 外置：本地身份已清空，真正的会话由 ShadowBackend 调 YggdrasilBackend 恢复
+        emit accountChanged();
+    }
+
+    saveAccounts();
+    emit accountsChanged();
+    qCInfo(logAccount) << QStringLiteral("已切换账号: ") << a.name << QStringLiteral(" mode=") << a.mode;
+    emit logMessage(tr("已切换到 %1").arg(a.name));
+}
+
+bool AccountBackend::removeAccount(int index)
+{
+    if (index < 0 || index >= m_accounts.size()) return false;
+    const StoredAccount gone = m_accounts.takeAt(index);
+
+    if (index == m_currentAccount) {
+        clearActiveIdentity();
+        m_currentAccount = -1;
+        if (!m_accounts.isEmpty()) {
+            // 还有别的账号：切到第一个
+            const int next = 0;
+            saveAccounts();
+            emit accountsChanged();
+            switchAccount(next);
+            return true;
+        }
+        deleteMicrosoftSession();
+    } else if (index < m_currentAccount) {
+        --m_currentAccount;
+    }
+    saveAccounts();
+    emit accountsChanged();
+    emit logMessage(tr("已移除账号 %1").arg(gone.name));
+    return true;
+}
 } // namespace ShadowLauncher

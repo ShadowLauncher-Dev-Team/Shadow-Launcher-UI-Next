@@ -348,6 +348,17 @@ ShadowBackend::ShadowBackend(QObject* parent)
             this, &ShadowBackend::accountChanged);
     connect(m_account, &AccountBackend::accountChanged,
             this, &ShadowBackend::syncPlayerName);
+    connect(m_account, &AccountBackend::accountsChanged,
+            this, &ShadowBackend::accountsChanged);
+    // 外置登录成功 → 写入多账号列表（YggdrasilBackend 自己不知道账号列表现存结构）
+    if (auto *ygg = static_cast<YggdrasilBackend*>(m_yggdrasil)) {
+        connect(ygg, &YggdrasilBackend::loginSuccess, this, [this]() {
+            auto *y = static_cast<YggdrasilBackend*>(m_yggdrasil);
+            if (!y || !m_account) return;
+            m_account->upsertExternalAccount(y->username(), y->uuid(), y->apiRoot(),
+                                             y->accessToken(), y->clientToken());
+        });
+    }
     connect(m_account, &AccountBackend::skinReady,
             this, &ShadowBackend::skinReady);
     connect(m_account, &AccountBackend::offlineSkinReady,
@@ -1703,6 +1714,37 @@ void ShadowBackend::cancelMicrosoftLogin() {
 
 void ShadowBackend::logout() {
     m_account->logout();
+}
+
+// ── 多账号 ──
+QVariantList ShadowBackend::accounts() const { return m_account ? m_account->accounts() : QVariantList(); }
+int ShadowBackend::currentAccount() const { return m_account ? m_account->currentAccount() : -1; }
+
+void ShadowBackend::switchAccount(int index) {
+    if (!m_account) return;
+    const QVariantMap a = m_account->accountAt(index);
+    if (a.isEmpty()) return;
+    const int mode = a.value(QStringLiteral("mode")).toInt();
+    auto *ygg = static_cast<YggdrasilBackend*>(m_yggdrasil);
+    if (mode == 2) {
+        // 外置：AccountBackend 只负责清掉本地正版/离线态，会话交给 YggdrasilBackend
+        m_account->switchAccount(index);
+        if (ygg) {
+            ygg->restoreSession(a.value(QStringLiteral("apiRoot")).toString(),
+                                a.value(QStringLiteral("accessToken")).toString(),
+                                a.value(QStringLiteral("clientToken")).toString(),
+                                a.value(QStringLiteral("name")).toString(),
+                                a.value(QStringLiteral("uuid")).toString());
+        }
+    } else {
+        // 切回本地账号：先退出外置会话，避免两套身份同时在线
+        if (ygg && ygg->loggedIn()) ygg->logout();
+        m_account->switchAccount(index);
+    }
+}
+
+bool ShadowBackend::removeAccount(int index) {
+    return m_account && m_account->removeAccount(index);
 }
 
 // ============================================================

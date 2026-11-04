@@ -25,8 +25,10 @@ Item {
     readonly property bool narrow: width < 900
     readonly property int leftW: narrow ? 240 : 300
     readonly property bool hasOnline: b ? b.isOnline : false
+    readonly property bool hasExternal: (yg && yg.loggedIn) ? true : false
     readonly property bool hasOffline: (b && b.offlineUsername) ? b.offlineUsername.length > 0 : false
-    readonly property bool hasAccount: hasOnline || hasOffline
+    readonly property bool hasAccount: hasOnline || hasOffline || hasExternal
+    readonly property int accountCount: (b && b.accounts) ? b.accounts.length : 0
     readonly property bool busy: b ? b.microsoftLoginBusy : false
     readonly property string statusLine: (b && b.msStatus) ? b.msStatus : ""
 
@@ -40,6 +42,7 @@ Item {
     readonly property string displayName: {
         if (!b) return "未登录"
         if (b.isOnline && b.username) return b.username
+        if (hasExternal && yg && yg.username) return yg.username
         if (b.offlineUsername) return b.offlineUsername
         return "未登录"
     }
@@ -47,6 +50,7 @@ Item {
         // 正在登录（换号）时不显示当前账号类型，避免顶栏写着"已登录"而正文在登录
         if (loginPanel) return ""
         if (b && b.isOnline) return "Microsoft 正版账户"
+        if (hasExternal) return "外置账户"
         if (hasOffline) return "离线账户"
         return "未登录"
     }
@@ -216,7 +220,7 @@ Item {
                 anchors.leftMargin: page.narrow ? 16 : 20
                 anchors.top: parent.top
                 anchors.topMargin: 16
-                text: page.hasAccount && !page.loginPanel ? "当前账户" : "登录方式"
+                text: page.hasAccount && !page.loginPanel ? "账户" : "登录方式"
                 color: "#ffffff"
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
@@ -233,53 +237,77 @@ Item {
                 anchors.rightMargin: 8
                 spacing: 2
 
-                // 已登录且不在切换态：显示当前账号
-                Rectangle {
-                    visible: page.hasAccount && !page.loginPanel
-                    width: menu.width
-                    height: 56
-                    radius: 8
-                    color: "#161c26"
-                    border.width: 1
-                    border.color: "#232c3a"
-                    // 左侧强调条：表明「当前正在使用」
-                    Rectangle {
-                        width: 2
-                        height: parent.height - 18
-                        radius: 1
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.left: parent.left
-                        color: Theme.accent
-                    }
-                    SMinecraftHead {
-                        x: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        size: 34
-                        rawSource: page.rawHeadSource
-                        source: page.headSource
-                        fallbackText: page.displayName
-                    }
-                    Column {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 54
-                        anchors.right: parent.right
-                        anchors.rightMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 3
-                        Text {
-                            width: parent.width
-                            text: page.displayName
-                            color: "#ffffff"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 13
-                            elide: Text.ElideRight
+                // 账号列表：一行一个已保存账号，当前账号高亮 + 左侧强调条。
+                // 非当前账号没有真实皮肤（不缓存别人的头像），用名字首字母占位。
+                Repeater {
+                    model: (page.b && page.b.accounts) ? page.b.accounts : []
+                    delegate: Item {
+                        id: acctRow
+                        visible: !page.loginPanel
+                        width: menu.width
+                        height: 56
+                        readonly property bool cur: !!modelData && modelData.current === true
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 8
+                            color: acctRow.cur ? "#161c26" : (acctHover.containsMouse ? "#12ffffff" : "transparent")
+                            border.width: acctRow.cur ? 1 : 0
+                            border.color: "#232c3a"
+                            Behavior on color {
+                                ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                            }
                         }
-                        Text {
-                            width: parent.width
-                            text: page.hasOnline ? "正版 · 已登录" : "离线 · 仅本地"
-                            color: page.hasOnline ? Theme.ok : Theme.fg3
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
+                        // 当前账号的强调条
+                        Rectangle {
+                            visible: acctRow.cur
+                            width: 2
+                            height: parent.height - 18
+                            radius: 1
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            color: Theme.accent
+                        }
+                        SMinecraftHead {
+                            x: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            size: 34
+                            rawSource: acctRow.cur ? page.rawHeadSource : ""
+                            source: acctRow.cur ? page.headSource : ""
+                            fallbackText: modelData ? modelData.name : ""
+                        }
+                        Column {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 54
+                            anchors.right: parent.right
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 3
+                            Text {
+                                width: parent.width
+                                text: modelData ? modelData.name : ""
+                                color: acctRow.cur ? "#ffffff" : "#cbd3de"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 13
+                                elide: Text.ElideRight
+                            }
+                            Text {
+                                width: parent.width
+                                text: modelData ? modelData.typeText : ""
+                                color: acctRow.cur ? Theme.ok : Theme.fg3
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+                        }
+                        MouseArea {
+                            id: acctHover
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (!page.b || !modelData) return
+                                if (!modelData.current && page.b.switchAccount) page.b.switchAccount(modelData.index)
+                            }
                         }
                     }
                 }
@@ -288,7 +316,8 @@ Item {
                 // 那个按钮点下去只是回到登录首屏，语义和"退出登录"撞车）
                 Item {
                     id: addAccountRow
-                    visible: page.hasAccount && !page.loginPanel
+                    // 只有在"已有账号列表"时才需要这个入口；空列表时下面直接就是登录方式
+                    visible: !page.loginPanel && page.accountCount > 0
                     width: menu.width
                     height: 38
 
@@ -531,6 +560,22 @@ Item {
                             if (page.yg && page.yg.loggedIn) page.yg.logout()
                             page.b.logout()
                             page.flash("已退出登录")
+                        }
+                    }
+                    // 从账号列表里彻底移除（退出登录只是清当前身份，列表里还留着）
+                    SButton {
+                        kind: 1
+                        radius: 2
+                        height: 34
+                        iconName: "x"
+                        text: "移除此账号"
+                        visible: page.b && page.b.accounts && page.b.accounts.length > 0 && page.b.currentAccount >= 0
+                        onClicked: {
+                            if (!page.b) return
+                            var i = page.b.currentAccount
+                            if (i < 0) return
+                            page.b.removeAccount(i)
+                            page.flash("已移除该账号")
                         }
                     }
                 }

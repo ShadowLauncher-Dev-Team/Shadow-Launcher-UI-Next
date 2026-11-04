@@ -74,6 +74,11 @@ public:
     Q_INVOKABLE void cancelLogin();
     Q_INVOKABLE void fetchSkin();
 
+    /// 从多账号列表恢复一个已存凭据的外置账号（不重新登录，只装回会话 + 校验）
+    Q_INVOKABLE void restoreSession(const QString &apiRoot, const QString &accessToken,
+                                    const QString &clientToken, const QString &username,
+                                    const QString &uuid);
+
     // 持久化 session
     Q_INVOKABLE void saveSession();
     Q_INVOKABLE void loadSession();

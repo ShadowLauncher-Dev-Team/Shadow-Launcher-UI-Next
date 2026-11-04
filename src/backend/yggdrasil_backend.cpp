@@ -313,6 +313,28 @@ QString YggdrasilBackend::sessionFilePath() const
     return yggdrasilDataDir() + QStringLiteral("/session.json");
 }
 
+void YggdrasilBackend::restoreSession(const QString &apiRoot, const QString &accessToken,
+                                     const QString &clientToken, const QString &username,
+                                     const QString &uuid)
+{
+    m_session.apiRoot = apiRoot;
+    m_session.accessToken = accessToken;
+    m_session.clientToken = clientToken;
+    m_session.username = username;
+    m_session.uuid = uuid;
+    m_session.email.clear();
+    m_session.profiles.clear();
+    m_session.selectedProfileIndex = 0;
+    saveSession();
+    m_statusMessage.clear();
+    emit stateChanged();
+    emit statusMessageChanged();
+    qCInfo(logYggBackend) << QStringLiteral("外置账号已从多账号列表恢复: ") << apiRoot << username;
+    // 令牌可能早已过期：恢复后立刻校验（validateSession 内部对不支持的服端回落 refresh）
+    validateSession();
+    fetchSkin();
+}
+
 void YggdrasilBackend::saveSession()
 {
     QJsonObject obj;
