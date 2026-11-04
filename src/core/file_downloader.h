@@ -132,6 +132,9 @@ public:
     int activeThreads() const { return m_activeThreads.loadRelaxed(); }
 
     double currentSpeedMBps() const;
+    /// 引擎当前速度（bytes/s）。单一来源：本引擎的窗口加权值（speedTick 计算）。
+    /// 上层只允许格式化显示，**不得再做二次平滑/相加/减半**（DOWNLOAD_CONTRACT §4）。
+    qint64 currentSpeedBps() const;
     bool isRunning() const { return m_state == Running; }
 
 signals:
@@ -148,6 +151,9 @@ private:
     enum State { Idle, Running, Paused, Cancelled };
     State m_state = Idle;
     QAtomicInt m_cancelled{0};
+    /// 暂停标志：worker 轮询它（50ms 粒度）并在暂停期间原地等待；
+    /// pause() 同时 abort 在途 reply，真正停表（契约 §5：取消/暂停必须中止在途请求）。
+    QAtomicInt m_paused{0};
 
     // ── Config ──
     int m_maxThreads = 12;
@@ -224,6 +230,13 @@ private:
     void onWorkerDone(std::shared_ptr<FileDownload> file);
     void updateStats();
 
+    /// 对全部在途 reply 排队 abort（abort 必须在 reply 所属 worker 线程执行）。
+    void abortInFlightReplies();
+    /// 全局令牌桶限速：worker 每收到一块数据调用一次；超出部分按差额分片 sleep。
+    void applySpeedLimit(qint64 deltaBytes);
+    /// 暂停等待：worker 以 kPausePollMs 粒度轮询，可被 cancel 打断。
+    void waitWhilePaused();
+
     // ── Speed tracking ──
     static constexpr int kMaxSpeedRecords = 30;
     // 主流启动器 速度门限（NetTaskSpeedLimitLow=256KB/s）——但 主流启动器 默认走镜像
@@ -238,8 +251,17 @@ private:
     mutable QMutex m_speedMutex;
     double m_emaMbps = 0.0;
     qint64 m_instantBps = 0;   // 最近一次差分速度（主流启动器 Speed 语义，200ms 采样）——速度门限用
+    QAtomicInteger<qint64> m_currentSpeedBps{0};  // 对外速度单值（bytes/s，speedTick 写入；禁止上层二次平滑）
     QAtomicInteger<qint64> m_speedFloorBps{256 * 1024};
     qint64 m_lastFloorIncreaseMs = 0;
+    // ── 限速（DOWNLOAD_CONTRACT §11：限速必须真正作用于传输层）──
+    // 全局虚拟时钟（不是每 worker 各自限速——否则 N 个 worker 会让实际吞吐变成 N 倍）。
+    // 每个 worker 的 delta 在锁内串行预约“允许完成时刻”，聚合吞吐收敛到 m_speedLimitBps。
+    static constexpr qint64 kSpeedLimitSleepSliceUs = 20 * 1000;  // 差额 sleep 分片（20ms，可被取消/暂停打断）
+    static constexpr int    kPausePollMs = 50;                    // 暂停轮询粒度
+    mutable QMutex m_limitMutex;
+    qint64 m_limitNextSlotUs = 0;   // 下一次允许完成数据的时刻（µs，0 = 未初始化）
+
     static constexpr qint64 kMinSpeedFloorBps = 256 * 1024;
     static constexpr double kFloorRatio = 0.85;        // 速度下限 = 加权均值 × kFloorRatio
     static constexpr qint64 kFloorDecayMs = 5000;      // 下限无增长衰减周期

@@ -345,6 +345,7 @@ void AssetDownloader::cancel()
     m_state = Cancelled;
     m_accelTimer->stop();
     m_watchdogTimer->stop();
+    m_emaBps.storeRelaxed(0);   // 取消即报 0，避免上层读到停表前的陈旧速度
 
     QList<QNetworkReply*> toAbort;
     for (auto it = m_inFlight.cbegin(); it != m_inFlight.cend(); ++it)
@@ -907,6 +908,8 @@ void AssetDownloader::sampleSpeed()
     // Update EMA
     double mbps = bps / (1024.0 * 1024.0);
     m_emaMbps = m_emaMbps * 0.5 + mbps * 0.5;
+    // 对外单值：与展示值同源（bytes/s），上层直接读，禁止再平滑
+    m_emaBps.storeRelaxed(static_cast<qint64>(m_emaMbps * 1024.0 * 1024.0));
 }
 
 void AssetDownloader::updateSpeedFloor()
@@ -949,9 +952,11 @@ void AssetDownloader::finishDownload(const AssetTask& task, bool success)
     if (success) {
         m_completedFiles.fetchAndAddRelaxed(1);
     } else {
+        // 失败不计入完成数（契约 §0.3 / §3）：分母 m_totalFiles 不变，
+        // 结果仍由 checkAllFinished() 按 m_failedCount>0 判 failed；
+        // 进度上限停在“成功数/总数”，不再出现“有失败却 100%”。
         m_failedCount++;
         m_failedFiles.append(task.sha1);
-        m_completedFiles.fetchAndAddRelaxed(1);
     }
 
     // Throttled progress emit
@@ -1390,6 +1395,7 @@ void AssetDownloader::resetSpeedBaseline()
     m_lastSampleBytes.storeRelaxed(
         m_downloadedBytes.loadRelaxed() - m_cacheBytes.loadRelaxed());
     m_emaMbps = 0.0;
+    m_emaBps.storeRelaxed(0);
     {
         QMutexLocker lock(&m_speedMutex);
         m_speedRecords.clear();

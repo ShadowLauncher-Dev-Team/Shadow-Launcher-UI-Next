@@ -76,6 +76,9 @@ public:
     /// Network-only bytes (total - cache).
     qint64 networkBytes() const { return m_downloadedBytes.loadRelaxed() - m_cacheBytes.loadRelaxed(); }
     double currentSpeedMBps() const { return m_emaMbps; }
+    /// 引擎当前速度（bytes/s）。单一来源：本引擎的 EMA 采样值（sampleSpeed 写入）。
+    /// 上层只允许格式化显示，**不得再做二次平滑/相加/减半**（DOWNLOAD_CONTRACT §4）。
+    qint64 currentSpeedBps() const { return m_emaBps.loadRelaxed(); }
 
 signals:
     void progressChanged(int completedFiles, int totalFiles,
@@ -248,7 +251,8 @@ private:
     mutable QMutex m_speedMutex;
     QList<qint64> m_speedRecords;          // B/s, newest first
     QAtomicInteger<qint64> m_speedFloorBps{kMinSpeedFloorBps};
-    double m_emaMbps = 0.0;
+    double m_emaMbps = 0.0;                     // 展示用（MB/s）；保留给既有调用方
+    QAtomicInteger<qint64> m_emaBps{0};         // 对外速度单值（bytes/s，EMA 同源；禁止上层二次平滑）
     double m_speedLimitMB = -1.0;
 
     // ── Per-host tracking ──

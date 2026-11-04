@@ -193,7 +193,14 @@ void FileDownloader::start()
     if (m_state == Running) return;
     m_state = Running;
     m_cancelled.storeRelaxed(0);
+    m_paused.storeRelaxed(0);
     m_phase = PhaseFirstThread;
+
+    // 限速虚拟时钟按“下次任务生效”重置（限速设置本身在 start 前已由调用方写入）
+    {
+        QMutexLocker lock(&m_limitMutex);
+        m_limitNextSlotUs = 0;
+    }
 
     m_speedTimer.start();
     // 初始化 lastSpeedBytes 为当前网络字节：m_downloadedBytes 仅累加真实网络 IO
@@ -246,18 +253,34 @@ void FileDownloader::start()
 
 void FileDownloader::pause()
 {
+    if (m_state != Running) return;
     m_state = Paused;
+    m_paused.storeRelaxed(1);
+    m_currentSpeedBps.storeRelaxed(0);   // 暂停即报 0，避免上层显示“停着的速度”
     m_managerTimer->stop();
     m_speedTimer2->stop();
-    emit logMessage(QString::fromUtf8("[夸父] [暂停] 下载已暂停"));
+
+    // ── 真暂停（契约 §5）──
+    // 旧实现只停定时器：在途 worker 仍在收字节并累加 m_downloadedBytes（假暂停）。
+    // 现在排队 abort 所有在途 reply；worker 退出等待循环后看到 m_paused →
+    // 丢弃本 attempt 数据并等待 resume（不消耗重试次数），恢复后整段重下。
+    abortInFlightReplies();
+
+    emit logMessage(QString::fromUtf8("[夸父] [暂停] 下载已暂停（已在途请求已中止并等待恢复）"));
 }
 
 void FileDownloader::resume()
 {
     if (m_state != Paused) return;
+    m_paused.storeRelaxed(0);
     m_state = Running;
     m_speedTimer.restart();
     m_lastSpeedBytes = m_downloadedBytes.loadRelaxed();   // 网络字节口径（缓存已剔除）
+    // 暂停期间不累计限速账：恢复后重新起算，避免“欠账”一次性补睡
+    {
+        QMutexLocker lock(&m_limitMutex);
+        m_limitNextSlotUs = 0;
+    }
     m_managerTimer->start(kManagerTickMs);
     m_speedTimer2->start(kSpeedTickMs);
     emit logMessage(QStringLiteral("[夸父] 下载已恢复"));
@@ -266,7 +289,9 @@ void FileDownloader::resume()
 void FileDownloader::cancel()
 {
     m_cancelled.storeRelaxed(1);
+    m_paused.storeRelaxed(0);   // 取消优先：暂停等待循环看到 cancelled 立即退出
     m_state = Cancelled;
+    m_currentSpeedBps.storeRelaxed(0);
     m_managerTimer->stop();
     m_speedTimer2->stop();
     m_threadPool.clear();
@@ -276,12 +301,9 @@ void FileDownloader::cancel()
     // thread that owns the reply. Workers run in QThreadPool threads, so we MUST
     // invoke abort() on the worker's event loop via QueuedConnection.
     // Direct reply->abort() from the main thread is UNDEFINED BEHAVIOR.
+    abortInFlightReplies();
     {
         QMutexLocker lock(&m_inflightMutex);
-        for (auto* reply : m_inflightReplies) {
-            // Queue abort() on the worker thread's event loop
-            QMetaObject::invokeMethod(reply, "abort", Qt::QueuedConnection);
-        }
         m_inflightReplies.clear();
     }
 
@@ -312,6 +334,57 @@ void FileDownloader::addInFlightReply(QNetworkReply* reply) {
 void FileDownloader::removeInFlightReply(QNetworkReply* reply) {
     QMutexLocker lock(&m_inflightMutex);
     m_inflightReplies.removeOne(reply);
+}
+
+// ── 取消/暂停：对全部在途 reply 排队 abort ──
+// 必须持锁遍历：worker 在 removeInFlightReply() 之后才 deleteLater()，
+// 持锁期间对象不会被移除/释放；abort() 由 reply 所属 worker 线程的事件循环执行。
+void FileDownloader::abortInFlightReplies()
+{
+    QMutexLocker lock(&m_inflightMutex);
+    for (auto* reply : m_inflightReplies) {
+        if (reply)
+            QMetaObject::invokeMethod(reply, "abort", Qt::QueuedConnection);
+    }
+}
+
+// ── 暂停等待（worker 线程内调用）──
+// QThreadPool worker 允许 sleep；分片轮询保证 cancel 能立刻打断等待。
+void FileDownloader::waitWhilePaused()
+{
+    while (m_paused.loadRelaxed() && !m_cancelled.loadRelaxed())
+        QThread::msleep(static_cast<unsigned long>(kPausePollMs));
+}
+
+// ── 限速：全局虚拟时钟（所有 worker 共享一条时间线）──
+// 速率 = m_speedLimitBps（bytes/s）。每收到 delta 字节，在锁内把“允许完成时刻”
+// 往后推 delta/limit 秒，并 sleep 到该时刻。
+// 关键：预约在锁内串行累加 → N 个 worker 不会各自按 limit 并行（那样实际吞吐 = N×limit）；
+// 聚合吞吐收敛到 limit。
+// sleep 在 worker 线程的读取回调里，阻塞事件循环 → TCP 反压，是真正的传输层限速。
+void FileDownloader::applySpeedLimit(qint64 deltaBytes)
+{
+    const qint64 limitBps = m_speedLimitBps.loadRelaxed();
+    if (limitBps <= 0 || deltaBytes <= 0) return;   // <=0：未设置限速
+
+    qint64 waitUs = 0;
+    {
+        QMutexLocker lock(&m_limitMutex);
+        // 用 µs 计账：1KB @ 20MB/s ≈ 48µs，ms 粒度会把整数余量吃掉导致限速失效
+        const qint64 nowUs = getElapsedMs() * 1000;
+        if (m_limitNextSlotUs < nowUs)
+            m_limitNextSlotUs = nowUs;   // 空闲后不补睡，重新起算
+        m_limitNextSlotUs += deltaBytes * 1000000 / limitBps;
+        waitUs = m_limitNextSlotUs - nowUs;
+    }
+
+    while (waitUs > 0) {
+        if (m_cancelled.loadRelaxed() || m_paused.loadRelaxed())
+            return;   // 取消/暂停立即放弃本次限速等待
+        const qint64 slice = qMin<qint64>(waitUs, kSpeedLimitSleepSliceUs);
+        QThread::usleep(static_cast<unsigned long>(slice));
+        waitUs -= slice;
+    }
 }
 
 // Manager tick — 分阶段调度
@@ -687,6 +760,8 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
     bool modRetriedOnce = false;   // 模组专项：全部源耗尽后重置源列表整体重试一轮（PCL Retried 同款）
     for (int sourceIdx = 0; sourceIdx < file->orderedSources.size() && !sourceOk; ++sourceIdx) {
         if (m_cancelled.loadRelaxed()) goto cleanup;
+        waitWhilePaused();   // 暂停中不发起新请求；cancel 可打断等待
+        if (m_cancelled.loadRelaxed()) goto cleanup;
 
         QString url = file->orderedSources[sourceIdx];
         th->sourceUrl = url;
@@ -706,6 +781,8 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
         const int attemptLimit = modRetriedOnce ? 1 : 6;
         bool prevWatchdogAbort = false;   // 上一次尝试是否因看门狗中止（跳过快速失败守卫）
         for (int attempt = 0; attempt < attemptLimit && !sourceOk; ++attempt) {
+            if (m_cancelled.loadRelaxed()) goto cleanup;
+            waitWhilePaused();
             if (m_cancelled.loadRelaxed()) goto cleanup;
             bool watchdogAbortedThisAttempt = false;   // 本次尝试被看门狗中止
             bool rangeFilled = false;                    // 本线程范围已收满（超额止损 abort，数据完整）
@@ -792,8 +869,16 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
 
             connect(reply, &QNetworkReply::downloadProgress,
                     [&](qint64 received, qint64 total) {
+                // 取消/暂停后不得再计字节、发进度（契约 §5：回调早退）
+                if (m_cancelled.loadRelaxed() || m_paused.loadRelaxed()) return;
                 qint64 delta = received - th->downloadDone;
                 if (delta > 0) {
+                    // 限速真正作用于传输层：阻塞本 worker 读取 → TCP 反压
+                    applySpeedLimit(delta);
+                    // 限速 sleep 期间可能被取消/暂停打断：醒来后再确认一次，绝不写统计
+                    if (m_cancelled.loadRelaxed() || m_paused.loadRelaxed()) return;
+                    // 限速 sleep 会阻塞本线程事件循环：醒来后重置空闲超时，避免被自己的限速误杀
+                    timeout.start(m_modpackMode ? kChunkTimeoutMs : timeoutMs);
                     // 首包数据到达 → 线程进入 downloading（state 2）。
                     // 分片调度（managerTick Phase2）以 state<2=prep / state==2=dl 判断
                     // 是否可加片——6129062 基线仅模组模式置 state=2，MC 模式 prep>dl 恒成立
@@ -888,6 +973,11 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             // QMetaObject::invokeMethod("abort", QueuedConnection) from the main
             // thread triggers reply->abort() on THIS worker thread (the owner).
             addInFlightReply(reply);
+            // 注册与 cancel/pause 的竞态兜底：若旗标已置位，排队中止。
+            // 必须走 QueuedConnection：abort() 可能同步 emit finished()，
+            // 若在 loop.exec() 之前同步触发，quit() 会丢失 → 卡到超时。
+            if (m_cancelled.loadRelaxed() || m_paused.loadRelaxed())
+                QMetaObject::invokeMethod(reply, "abort", Qt::QueuedConnection);
 
             // NOTE: QTimer cancelGuard is NOT used here — QThreadPool threads
             // have no event dispatcher, so QTimer never fires. Instead we rely on:
@@ -904,6 +994,24 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 reply->abort();
                 reply->deleteLater();
                 goto cleanup;
+            }
+
+            // ── 暂停：在途请求已被 pause() abort → 丢弃本 attempt 数据，原地等待恢复后整段重下 ──
+            // 数据只在成功收尾时写盘，本 attempt 尚未写盘；恢复后从 downloadStart 重下该范围。
+            // 暂停不消耗重试次数（--attempt 后循环 ++ 回到同一 attempt）。
+            if (m_paused.loadRelaxed() && !rangeFilled
+                && reply->error() != QNetworkReply::NoError) {
+                reply->abort();
+                reply->deleteLater();
+                th->downloadDone = 0;
+                th->state = 0;            // 回到等待态：恢复后重新计下载量
+                waitWhilePaused();
+                if (m_cancelled.loadRelaxed()) goto cleanup;
+                // 暂停不计入快速失败窗口：恢复后重新起算
+                startTimeMs = getElapsedMs();
+                // 回到同一 attempt（0 → -1 → 循环 ++ 仍为 0）
+                --attempt;
+                continue;
             }
 
             // 超额止损（2026-08-07）：主动 abort 不算失败——数据已收满本线程范围，
@@ -1114,6 +1222,8 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             qCInfo(logDownload) << QStringLiteral("[夸父] 最终兜底重试 URL=%1").arg(url);
         for (int attempt = 0; attempt < 3 && !sourceOk; ++attempt) {
             if (m_cancelled.loadRelaxed()) goto cleanup;
+            waitWhilePaused();
+            if (m_cancelled.loadRelaxed()) goto cleanup;
             if (attempt > 0) QThread::msleep(kRetryBackoffMs);
 
             QUrl qurl2(url); QNetworkRequest req(qurl2);
@@ -1148,8 +1258,16 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
 
             connect(reply, &QNetworkReply::downloadProgress,
                     [&](qint64 received, qint64 total) {
+                // 取消/暂停后不得再计字节、发进度（契约 §5：回调早退）
+                if (m_cancelled.loadRelaxed() || m_paused.loadRelaxed()) return;
                 qint64 delta = received - th->downloadDone;
                 if (delta > 0) {
+                    applySpeedLimit(delta);
+                    // 限速 sleep 期间可能被取消/暂停打断：醒来后再确认一次，绝不写统计
+                    if (m_cancelled.loadRelaxed() || m_paused.loadRelaxed()) return;
+                    // 兜底路径同主路径：醒来后重置空闲超时，避免被限速 sleep 误判超时
+                    timeout.start(m_modpackMode ? kChunkTimeoutMs
+                                                : (attempt == 0 ? kFirstAttemptTimeoutMs : kChunkTimeoutMs));
                     m_downloadedBytes.fetchAndAddRelaxed(delta);
                     th->downloadDone = received;
                 }
@@ -1166,6 +1284,9 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
 
             // Register reply for thread-safe abort on cancel
             addInFlightReply(reply);
+            // 注册与 cancel/pause 的竞态兜底：排队中止（理由同主请求：避免 quit() 丢失）
+            if (m_cancelled.loadRelaxed() || m_paused.loadRelaxed())
+                QMetaObject::invokeMethod(reply, "abort", Qt::QueuedConnection);
 
             loop.exec();
 
@@ -1176,6 +1297,19 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 reply->abort();
                 reply->deleteLater();
                 goto cleanup;
+            }
+
+            // ── 暂停：abort 在途请求后原地等待恢复（不消耗重试次数）──
+            if (m_paused.loadRelaxed() && reply->error() != QNetworkReply::NoError) {
+                reply->abort();
+                reply->deleteLater();
+                th->downloadDone = 0;
+                th->state = 0;
+                waitWhilePaused();
+                if (m_cancelled.loadRelaxed()) goto cleanup;
+                // 回到同一 attempt（0 → -1 → 循环 ++ 仍为 0）
+                --attempt;
+                continue;
             }
 
             if (timedOut || reply->error() != QNetworkReply::NoError) {
@@ -1250,6 +1384,10 @@ cleanup:
     qCInfo(logDownload) << QStringLiteral("[夸父] 线程完成 文件=%1 字节=%2")
         .arg(file->localName).arg(th->downloadDone);
 
+    // ── 取消幂等（契约 §5）：cancel() 之后不得再合并写盘 / 发 fileFinished / 改统计 ──
+    if (m_cancelled.loadRelaxed())
+        return;
+
     // ── Merge on worker thread (avoid main thread disk I/O) ──
     bool allDone = false, anyFailed = false;
     {
@@ -1309,6 +1447,8 @@ cleanup:
         QMetaObject::invokeMethod(this, [self, file, ok, anyFailed]() {
             if (!self) return;
             if (!self) return;
+            // 取消后在途完成的排队回调也不得改统计/发进度（契约 §5）
+            if (self->m_cancelled.loadRelaxed()) return;
             if (anyFailed || !ok) {
                 self->m_failedFiles.fetchAndAddRelaxed(1);
                 for (const auto& s : file->orderedSources)
@@ -1450,6 +1590,8 @@ void FileDownloader::speedTick()
         for (auto rec : m_speedRecords) { weightedSum += rec * w; weightDiv += w; w--; }
     }
     qint64 currentBps = (weightDiv > 0) ? (weightedSum / weightDiv) : actualBps;
+    // 对外单值（契约 §4：整个程序只读这一处；上层禁止二次平滑）
+    m_currentSpeedBps.storeRelaxed(currentBps);
 
     // 展示速度 = 滑动窗口线性加权值（30 条 × 100ms ≈ 3s 窗口）：
     // 停流时窗口内连续 0 采样 → 数值 ~3s 内自然滑落归零（PCL 同款语义），
@@ -1495,6 +1637,7 @@ void FileDownloader::updateStats()
     if (done + fails >= total && total > 0) {
         m_managerTimer->stop();
         m_speedTimer2->stop();
+        m_currentSpeedBps.storeRelaxed(0);   // 任务结束：对外速度归零，避免上层读到陈旧值
         m_state = Idle;
         const qint64 totalDl = m_totalBytes.loadRelaxed();
         // 完成汇总带缓存命中数（2026-08-05 补：缓存复用可见）
@@ -1585,6 +1728,8 @@ void FileDownloader::recordHostResult(const QString& host, bool ok)
 // ═════════════════════════════════════════════════════════════════════════════
 
 double FileDownloader::currentSpeedMBps() const { return m_emaMbps; }
+
+qint64 FileDownloader::currentSpeedBps() const { return m_currentSpeedBps.loadRelaxed(); }
 
 QString FileDownloader::formatSize(qint64 bytes)
 {
