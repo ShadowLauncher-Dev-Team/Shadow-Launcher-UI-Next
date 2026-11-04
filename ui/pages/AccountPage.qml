@@ -121,6 +121,7 @@ Item {
         height: 56
 
         SButton {
+            id: backBtn
             anchors.left: parent.left
             anchors.leftMargin: page.narrow ? 18 : 24
             anchors.verticalCenter: parent.verticalCenter
@@ -140,8 +141,11 @@ Item {
             }
         }
         Text {
-            anchors.left: parent.left
-            anchors.leftMargin: page.narrow ? 108 : 120
+            id: pageTitle
+            // 跟着按钮右边走，别用固定 leftMargin —— "返回账户"比"返回"宽，
+            // 固定值会让它压到标题上（用户实测重叠）
+            anchors.left: backBtn.right
+            anchors.leftMargin: 14
             anchors.verticalCenter: parent.verticalCenter
             text: "账户"
             color: "#ffffff"
@@ -150,8 +154,8 @@ Item {
             font.weight: Font.DemiBold
         }
         Text {
-            anchors.left: parent.left
-            anchors.leftMargin: page.narrow ? 162 : 174
+            anchors.left: pageTitle.right
+            anchors.leftMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             text: page.typeText
             color: Theme.fg3

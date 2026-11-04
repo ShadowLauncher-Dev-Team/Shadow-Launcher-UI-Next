@@ -112,6 +112,9 @@ AccountBackend::AccountBackend(QObject *parent)
             emit microsoftLoginSuccess(username, uuid);
         }
         emit accountChanged();
+        // 登录成功后 busy 已变 false，但成功路径以前没有发这个信号 →
+        // 顶部加载条与进度卡会一直挂着（用户实测：登录完成后加载条还在）。
+        emit microsoftLoginBusyChanged();
         emit logMessage(tr("正版登录成功: %1").arg(username));
         downloadSkin(username);
     });
