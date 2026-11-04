@@ -51,17 +51,6 @@ Item {
             }
         }
 
-        // 毛边高光
-        Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            height: 1
-            radius: parent.radius
-            visible: root.kind === 0 && !root.busy && !root.dimmed && !root.muted
-            color: "#33ffffff"
-        }
-
         // 启动中的进度线（不确定进度 → 流动片段，不假装百分比）
         Rectangle {
             id: prog

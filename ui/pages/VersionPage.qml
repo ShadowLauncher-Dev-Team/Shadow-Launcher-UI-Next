@@ -62,6 +62,28 @@ Item {
         return list.length > 0 ? list[0] : null
     }
 
+    // ---- 右侧信息的"显示态" ----
+    // pendingId 一变，文本绑定会当场换成新内容；如果这时才去播"压暗→淡回"，
+    // 看到的就是新内容先亮一下再闪一下（用户形容为"向上抽搐"）。
+    // 所以拆成 shownId：先淡出 → 在透明时换 shownId → 再淡入，全程不闪。
+    property string shownId: ""
+    readonly property var shownSel: {
+        rev
+        var list = rows
+        for (var i = 0; i < list.length; i++)
+            if (list[i] && list[i].id === page.shownId) return list[i]
+        return list.length > 0 ? list[0] : null
+    }
+
+    // 切文件夹后后端会重扫版本列表，原来选中的 id 可能不存在了 ——
+    // 这时后端会退回"列表第一个"，但 QML 的 pendingId 还是旧 id，
+    // 于是右侧显示第一个版本、左侧却一根选中条都没有。这里跟着同步。
+    function syncPendingFromList() {
+        if (page.rows.length === 0) return
+        if (page.rowIndex(page.pendingId) >= 0) return
+        page.pendingId = page.rows[0].id
+    }
+
     // ── 游戏文件夹（多个 .minecraft 之间切换）──
     readonly property var mcFolder: (b && b.mcFolder) ? b.mcFolder : null
     readonly property var folders: {
@@ -180,9 +202,16 @@ Item {
         page.rev++
         if (page.b) page.b.refreshVersionDetails()
         if (page.mcFolder) page.mcFolder.refreshFolders()
+        page.shownId = page.pendingId
         // 调试/截图用：--ui-folder-menu 直接展开文件夹选择面板
         if (Qt.application.arguments.indexOf("--ui-folder-menu") >= 0)
             page.folderMenuOpen = true
+        Qt.callLater(page.syncPendingFromList)
+    }
+
+    Connections {
+        target: page
+        function onRowsChanged() { Qt.callLater(page.syncPendingFromList) }
     }
 
     Connections {
@@ -559,21 +588,33 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
 
-            // 换版本时右侧信息不能硬切：先 120ms 压暗，再 180ms 淡回 + 6px 上浮，
-            // 观感是"内容翻了一页"，而不是文字逐行闪一下。
+            // 换版本：淡出（120ms）→ 在完全透明时换 shownId → 淡入 + 6px 上浮（180ms）。
+            // 不能在内容已经换掉之后才压暗，那样会"新文字先亮一下再闪一下"。
             Connections {
                 target: page
-                function onPendingIdChanged() { infoSwap.restart() }
+                function onPendingIdChanged() {
+                    if (page.shownId === page.pendingId) return
+                    infoSwap.restart()
+                }
             }
             SequentialAnimation {
                 id: infoSwap
-                ParallelAnimation {
-                    NumberAnimation { targets: [coverInfo, infoCol]; property: "opacity"; to: 0.25; duration: Theme.durFast; easing.type: Theme.easeExit }
-                    NumberAnimation { target: infoShift; property: "y"; to: 6; duration: Theme.durFast; easing.type: Theme.easeExit }
+                NumberAnimation {
+                    targets: [coverInfo, infoCol]
+                    property: "opacity"; to: 0
+                    duration: Theme.durFast; easing.type: Theme.easeExit
                 }
+                ScriptAction { script: page.shownId = page.pendingId }
                 ParallelAnimation {
-                    NumberAnimation { targets: [coverInfo, infoCol]; property: "opacity"; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
-                    NumberAnimation { target: infoShift; property: "y"; to: 0; duration: Theme.durBase; easing.type: Theme.easeEnter }
+                    NumberAnimation {
+                        targets: [coverInfo, infoCol]
+                        property: "opacity"; from: 0; to: 1
+                        duration: Theme.durBase; easing.type: Theme.easeEnter
+                    }
+                    NumberAnimation {
+                        target: infoShift; property: "y"; from: 6; to: 0
+                        duration: Theme.durBase; easing.type: Theme.easeEnter
+                    }
                 }
             }
 
@@ -613,7 +654,7 @@ Item {
 
                     Text {
                         width: parent.width
-                        text: page.sel ? (page.sel.id || "—") : "—"
+                        text: page.shownSel ? (page.shownSel.id || "—") : "—"
                         color: "#ffffff"
                         font.family: Theme.fontFamily
                         font.pixelSize: page.narrow ? 24 : 30
@@ -623,7 +664,7 @@ Item {
                     }
                     Text {
                         width: parent.width
-                        text: page.sel ? page.subOf(page.sel) : ""
+                        text: page.shownSel ? page.subOf(page.shownSel) : ""
                         color: "#9fb4cf"
                         font.family: Theme.fontFamily
                         font.pixelSize: 13
@@ -645,7 +686,7 @@ Item {
 
                 Repeater {
                     model: {
-                        var s = page.sel
+                        var s = page.shownSel
                         if (!s) return []
                         var lp = page.lastPlayedOf(s)
                         return [

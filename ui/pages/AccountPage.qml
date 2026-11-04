@@ -124,8 +124,14 @@ Item {
             radius: 2
             height: 32
             iconName: "arrow-left"
-            text: "返回"
-            onClicked: page.close()
+            text: (page.hasAccount && page.loginPanel) ? "返回账户" : "返回"
+            onClicked: {
+                // 添加账号/换号态下，"返回"先退回账户详情。
+                // 以前无论什么状态都直接 close()，进了添加账号就只剩"回主页"一条路，
+                // 观感上就是"卡死在登录页"。
+                if (page.hasAccount && page.loginPanel) { page.loginPanel = false; return }
+                page.close()
+            }
         }
         Text {
             anchors.left: parent.left
@@ -578,33 +584,60 @@ Item {
                         busy: page.busy
                         onClicked: { if (page.busy) page.cancelMicrosoft(); else page.startMicrosoft() }
                     }
-                    Item {
+                    // 登录进度卡：以前是 42px 空盒子塞一行被截断的后端文案，
+                    // 长文案（如"授权个人信息: ..."）只剩半句，看着像没做完的表单。
+                    // 现在拆成「标题 + 明细（最多 3 行换行）」+ 呼吸点，高度随内容。
+                    Rectangle {
+                        id: statusCard
                         width: parent.width
-                        height: 42
-                        visible: page.busy || page.statusLine.length > 0
+                        height: statusCol.implicitHeight + 22
+                        visible: page.busy
+                        radius: 8
+                        color: "#0f3b82f6"   // QML 不认 CSS 的 rgba()，用 ARGB 十六进制
+                        border.width: 1
+                        border.color: "#263140"
+
                         Rectangle {
-                            anchors.fill: parent
-                            radius: 8
-                            color: "#0f3b82f6"   // QML 不认 CSS 的 rgba()，用 ARGB 十六进制
-                            border.width: 1
-                            border.color: "#263140"
-                        }
-                        Rectangle {
-                            x: 14; anchors.verticalCenter: parent.verticalCenter
+                            id: statusDot
+                            x: 14
+                            y: statusCol.y + 5
                             width: 8; height: 8; radius: 4
                             color: Theme.accent
+                            // 呼吸点：登录中才动（marquee 是循环周期，不是过渡时长）
+                            SequentialAnimation on opacity {
+                                running: page.busy
+                                loops: Animation.Infinite
+                                NumberAnimation { from: 1.0; to: 0.35; duration: Theme.marquee }
+                                NumberAnimation { from: 0.35; to: 1.0; duration: Theme.marquee }
+                            }
                         }
-                        Text {
+                        Column {
+                            id: statusCol
                             anchors.left: parent.left
-                            anchors.leftMargin: 32
                             anchors.right: parent.right
-                            anchors.rightMargin: 14
+                            anchors.leftMargin: 32
+                            anchors.rightMargin: 16
                             anchors.verticalCenter: parent.verticalCenter
-                            text: page.statusLine.length > 0 ? page.statusLine : "正在打开浏览器…"
-                            color: "#bcd0e8"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 12
-                            elide: Text.ElideRight
+                            spacing: 3
+                            Text {
+                                width: parent.width
+                                text: "正在登录 Microsoft 账号"
+                                color: "#dbe6f5"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                            }
+                            Text {
+                                width: parent.width
+                                visible: page.statusLine.length > 0
+                                text: page.statusLine
+                                color: "#93a9c6"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                                wrapMode: Text.WordWrap
+                                maximumLineCount: 3
+                                elide: Text.ElideRight
+                            }
                         }
                     }
                 }
