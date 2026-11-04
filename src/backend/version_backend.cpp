@@ -1556,6 +1556,11 @@ void VersionBackend::cancelVersionInstall(const QString& versionId)
 {
 
     qCDebug(logVersion).noquote() << "[cancelInstall] ENTER versionId=" << versionId;
+    // 诊断（临时）：确认 merged 上下文是否存在、键是什么。取消后 670MB 残留就卡在这里。
+    qCWarning(logVersion).noquote()
+        << QStringLiteral("[追踪] cancelVersionInstall id=%1 mergedKeys=[%2] mergedCount=%3")
+               .arg(versionId, QStringList(m_mergedContexts.keys()).join(QLatin1Char(',')).left(200))
+               .arg(m_mergedContexts.size());
 
 
 
@@ -1680,6 +1685,43 @@ void VersionBackend::cancelVersionInstall(const QString& versionId)
                 // all workers have actually stopped).
                 if (!mcVer.isEmpty())
                     cancelActiveDownload(mcVer);
+
+                // ── 取消后临时目录兜底清理（2026-11-05 实测：这里留下 ~670MB）──
+                // 旧逻辑把清理完全交给 onVersionDownloadFinished 的延迟销毁；整合包取消
+                // 路径上这条链没有跑完（mergedKeys 里有 id，但 destroyMergedContext 从未执行），
+                // 结果 %TEMP%/shadow-merged-* 一直留到下次启动。
+                // 现在：每 800ms 检查一次，MC 下载器停了就正常销毁；上下文没了但目录还在就直接删。
+                {
+                    const QString dir = ctx->tempDir;
+                    const QString id = versionId;
+                    auto tries = std::make_shared<int>(0);
+                    auto* t = new QTimer(this);
+                    t->setInterval(800);
+                    connect(t, &QTimer::timeout, this, [this, t, id, dir, mcVer, tries]() {
+                        ++(*tries);
+                        const bool mcBusy = !mcVer.isEmpty() && m_downloaders.contains(mcVer);
+                        if (!mcBusy && m_mergedContexts.contains(id))
+                            destroyMergedContext(id);
+                        if (!dir.isEmpty() && !m_mergedContexts.contains(id) && QDir(dir).exists()) {
+                            QDir d(dir);
+                            if (d.removeRecursively() && !QDir(dir).exists()) {
+                                TempTracker::forget(dir);
+                                qCInfo(logVersion)
+                                    << QStringLiteral("[追踪] 取消后临时目录已清理: %1").arg(dir);
+                            }
+                        }
+                        const bool done = !m_mergedContexts.contains(id)
+                            && (dir.isEmpty() || !QDir(dir).exists());
+                        if (done || *tries > 40) {
+                            if (!done)
+                                qCWarning(logVersion)
+                                    << QStringLiteral("[追踪] 取消后临时目录未清干净（留给下次启动）: %1").arg(dir);
+                            t->stop();
+                            t->deleteLater();
+                        }
+                    });
+                    t->start();
+                }
             } else if (ctx->installer && ctx->installer->syncInstallRunning()) {
                 // installLegacy2/1 正在主线程同步执行（QEventLoop 等驿道下载）：
                 // 不能立即 destroy——installer 的 finished 信号还连着，取消后它会

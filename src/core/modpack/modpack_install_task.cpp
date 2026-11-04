@@ -1016,6 +1016,8 @@ void ModpackInstallTask::cancel()
         // ⚠ 必须传会话 id（merged=targetName / vanilla=mcVersion）：纯原版路径
         //   传 targetName 命中不到 vanilla 下载器（其 id 是 mcVersion），MC 下载不会停。
         emit logLine(tr("→ 正在终止版本安装（会话 %1）…").arg(m_mcSessionId));
+        qCWarning(logMod).noquote() << QStringLiteral("[追踪] 整合包取消 → cancelVersionInstall 会话=%1")
+                                            .arg(m_mcSessionId);
         m_vb->cancelVersionInstall(m_mcSessionId);
     }
     if (!dlRunning && !mcRunning) {
