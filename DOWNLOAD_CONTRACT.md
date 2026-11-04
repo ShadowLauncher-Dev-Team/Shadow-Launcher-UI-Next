@@ -199,6 +199,18 @@ DownloadTask（任务：步骤模型 + 进度 + 状态机 + 取消）
 
 **现状问题（要在 S1 一并处理）**：模组搜索目前是**硬编码 MCIM 优先**（`resource_backend.cpp:613` 起十余处全是 `mod.mcimirror.top/modrinth/v2/search`，`cf_api.cpp:25` 同样镜像优先）→ MCIM 一挂，搜索整块不可用。改为"官方优先 + MCIM 降级"，并加 30s 健康探测缓存，避免每次请求都先撞一次镜像。
 
+### 四项设置的消费点与验收（2026-11-05 实测版）
+
+| 设置 | 真实消费点 | 验收方法 | 状态 |
+|---|---|---|---|
+| 文件下载源 `fileSource` | `VersionDownloader` 选镜像对象（jar/libs/assets 的 host）；加载器安装器库下载 | 改档后 `backend.downloadSourceSummary()` 的 preferOfficial 变化；装一次原版看日志 host | ✅ 已接（既有），未逐档实测 |
+| 版本列表源 `listSource` | `VersionManager` 版本清单主源/兜底源；整合包导入的 MC 版本清单 | `/eval`：`backend.listDownloadSource=0` → 主源 bmclapi；=1/2 → launchermeta | ✅ 实测（`d8ab617`） |
+| 下载限速 `speedLimitMB` | `FileDownloader::applySpeedLimit()`（全局虚拟时钟）；`AssetDownloader` 的并发门控 | `backend.downloadProbe(url, limitKBps, ms)` 实测：1MB/s 档 0.99MB/s、4MB/s 档 3.84MB/s | ✅ 实测（`686ceb6`） |
+| 并发线程 `threadLimit` | `FileDownloader::setMaxThreads`（夹 1..24）→ `AssetDownloader` 并发 | `/eval`：残留 64 → 24、set 64 → 24、set 0 → 1 | ✅ 实测（`686ceb6`） |
+
+**注**：精卫（模组下载引擎）固定 12 并发，刻意不跟 `threadLimit` 走 —— MCIM 18+ 会限流饿死连接；
+若要让它可配，必须先做主机级限流，否则「设置调大 → 下载反而挂死」。
+
 ### 施工进度与验收记录（2026-11-05 夜）
 
 | 切片 | 状态 | 提交 | 验收方式（可复现） |
