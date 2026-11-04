@@ -97,7 +97,8 @@ public:
                                            const QString &clientToken);
     /// 外置账号切换用：取某条目的字段（找不到返回空 map）
     Q_INVOKABLE QVariantMap accountAt(int index) const;
-    Q_INVOKABLE bool isMicrosoftLoginBusy() const { return m_msAuth && m_msAuth->isBusy(); }
+    // 只把"用户主动登录"算作忙碌：后台静默续期不点亮顶部加载条
+    Q_INVOKABLE bool isMicrosoftLoginBusy() const { return m_msAuth && m_msAuth->isUserBusy(); }
     bool embeddedLoginEnabled() const { return m_embeddedLoginEnabled; }
     void setEmbeddedLoginEnabled(bool v);
     QString msRefreshToken() const { return m_msRefreshToken; }

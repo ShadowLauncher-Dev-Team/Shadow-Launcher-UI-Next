@@ -118,6 +118,18 @@ AccountBackend::AccountBackend(QObject *parent)
         emit logMessage(tr("正版登录成功: %1").arg(username));
         downloadSkin(username);
     });
+    connect(m_msAuth, &MicrosoftAuth::silentRefreshFailed, this, [this](const QString& error) {
+        // 后台续期失败：不弹"登录失败"、不点亮加载条，只交给启动重试逻辑判断
+        m_msStatus.clear();
+        if (m_refreshingToken) {
+            m_refreshingToken = false;
+            m_refreshStartedAtMs = 0;
+            emit tokenRefreshed(false);
+            emit tokenRefreshFailed(false, error);
+        }
+        qCWarning(logAccount) << QStringLiteral("后台令牌续期失败(静默): %1").arg(error);
+        emit microsoftLoginBusyChanged();
+    });
     connect(m_msAuth, &MicrosoftAuth::loginFailed, this, [this](const QString& error) {
         m_msStatus.clear();
         if (m_refreshingToken) {
@@ -519,6 +531,8 @@ void AccountBackend::microsoftLogin()
         emit logMessage(tr("Microsoft 登录已在进行中"));
         return;
     }
+    // 上一次登录留下的状态文案不能带进新的登录流程
+    if (!m_msStatus.isEmpty()) { m_msStatus.clear(); emit microsoftLoginProgress(QString(), QString()); }
     emit microsoftLoginBusyChanged();
     // 微软登录应用标识（Azure App ID）：真实值由 src/secrets_local.h 注入（git 忽略），
     // 仓库内为占位符（src/secrets.h）。
@@ -540,6 +554,11 @@ void AccountBackend::cancelMicrosoftLogin()
 {
     if (!m_msAuth) return;
     m_msAuth->cancelLogin();
+    // 取消后残留的步骤文案会让"登录状态"卡片继续挂着（用户实测）
+    if (!m_msStatus.isEmpty()) {
+        m_msStatus.clear();
+        emit microsoftLoginProgress(QString(), QString());
+    }
     emit microsoftLoginBusyChanged();
 }
 

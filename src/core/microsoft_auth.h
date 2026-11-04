@@ -30,12 +30,19 @@ public:
     Q_INVOKABLE void cancelLogin();
     /// msRefreshToken：刷新流程新得到的刷新令牌（可选）。透传后 loginSuccess 始终携带
     /// 最新刷新令牌，避免 AccountBackend 因无法区分“互动登录 / 后台刷新”而丢弃它。
+    /// silent=true 为"后台静默续期"：不发进度、不算用户登录（顶部加载条不亮）。
     Q_INVOKABLE void refreshMcChain(const QString& msAccessToken,
-                                    const QString& msRefreshToken = QString());
+                                    const QString& msRefreshToken = QString(),
+                                    bool silent = true);
     bool isBusy() const { return m_busy; }
+    /// 用户主动登录（需要显示进度 / 加载条）是否在进行
+    bool isUserBusy() const { return m_busy && !m_silent; }
+    bool isSilent() const { return m_silent; }
 
 signals:
     void loginProgress(const QString& step, const QString& detail);
+    /// 后台静默续期失败：只用于内部重试判断，UI 不弹"登录失败"
+    void silentRefreshFailed(const QString& error);
     void loginSuccess(const QString& minecraftToken, const QString& username,
                       const QString& uuid, const QString& refreshToken, int expiresIn = 86400);
     void loginFailed(const QString& error);
@@ -45,7 +52,17 @@ signals:
     void _internalTokenReady(const QString& accessToken);
 
 private:
+    // 统一的忙碌/失败收尾：先复位再发信号。
+    // 以前失败分支写成"emit loginFailed(...) 然后 m_busy=false"，
+    // UI 收到信号时读到的 isBusy() 仍是 true，之后再没有通知 → 顶部加载条永久卡住。
+    void beginBusy(bool silent);
+    void finishBusy();
+    void fail(const QString& error);
+    void emitProgress(const QString& step, const QString& detail = QString());
+
     bool m_busy = false;
+    bool m_silent = false;
+    QTimer* m_watchdog = nullptr;
     QString m_clientId;
     QString m_localRedirectUri;
     QString m_msAccessToken;
