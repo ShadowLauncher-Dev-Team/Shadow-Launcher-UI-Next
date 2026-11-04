@@ -486,6 +486,9 @@ public:
     /// 下载基线自检（离线、无网络）：步骤词表一致性 + StepNode 状态机/百分比钳制。
     /// 返回 "PASS ..." 或 "FAIL: ..." 字符串；供 /eval 与人工验收使用。
     Q_INVOKABLE QString downloadSelfcheck();
+
+    /// 源策略现状摘要（供人工验收）：四项下载设置当前值 + 版本清单实际会用的主源/兜底源。
+    Q_INVOKABLE QString downloadSourceSummary();
     Q_INVOKABLE void killMinecraft();
     Q_INVOKABLE void killGameByPid(qint64 pid);
     Q_INVOKABLE QVariantList runningGames();

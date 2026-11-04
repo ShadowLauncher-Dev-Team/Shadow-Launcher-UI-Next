@@ -255,6 +255,9 @@ public:
     /// 全局下载源策略：true=官方源优先（fileSource==PreferOfficial|AutoSwitch）。
     /// 供加载器安装/整合包导入/版本清单等子流程读取源路由。
     bool downloadPreferOfficial() const;
+    /// 版本清单域策略：true=官方源优先（listSource==PreferOfficial|AutoSwitch）。
+    /// 「版本列表源」只作用于 MC 版本清单；文件下载走 downloadPreferOfficial()。
+    bool listPreferOfficial() const;
     Q_INVOKABLE void installOptifine(const QString& mcVersion, const QString& optifineVersion,
                                        const QString& forgeVersion, const QString& installName,
                                        const QString& bmclType = QString(), const QString& bmclPatch = QString());

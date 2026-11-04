@@ -13,6 +13,7 @@
 #include "version_backend.h"
 
 #include "../core/step_keys.h"
+#include "../core/source_policy.h"
 #include "../utils/hash_utils.h"
 
 #include "shadow_backend.h"
@@ -195,7 +196,9 @@ VersionBackend::VersionBackend(QObject* parent)
     // ── VersionManager: fetch + cache version manifest ──
 
     m_versionMgr = new VersionManager(this);
-    m_versionMgr->setPreferOfficial(downloadPreferOfficial());   // 版本清单跟随全局源策略
+    // 版本清单跟随「版本列表源」（listSource），不再跟着「文件下载源」——
+    // 之前 listSource 完全没人读，用户在设置里改它毫无效果（契约 §11 审计结论）。
+    m_versionMgr->setPreferOfficial(listPreferOfficial());
 
     
 
@@ -6188,6 +6191,14 @@ void VersionBackend::installOptifineJar(const QString& mcVersion, const QString&
 }
 
 
+
+bool VersionBackend::listPreferOfficial() const
+{
+    auto* sb = qobject_cast<ShadowBackend*>(parent());
+    if (!sb) return SourcePolicy::preferOfficial(DownloadSourcePolicy::PreferOfficial);
+    return SourcePolicy::preferOfficial(
+        static_cast<DownloadSourcePolicy>(sb->listDownloadSource()));
+}
 
 bool VersionBackend::downloadPreferOfficial() const
 {

@@ -826,7 +826,8 @@ void ModpackInstallTask::ensureVersionJsonFallback(int attempt)
     // 按全局源策略排序：官方优先时 launchermeta 在前（另一源兜底）
     static const char* kMirrorManifest = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json";
     static const char* kOfficialManifest = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
-    const bool preferOfficial = m_vb && m_vb->downloadPreferOfficial();
+    // 版本清单属「版本列表源」域（listSource），不跟文件下载源走
+    const bool preferOfficial = m_vb && m_vb->listPreferOfficial();
     const char* kManifestUrls[2] = {
         preferOfficial ? kOfficialManifest : kMirrorManifest,
         preferOfficial ? kMirrorManifest : kOfficialManifest

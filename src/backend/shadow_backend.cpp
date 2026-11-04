@@ -4,6 +4,7 @@
 #include "../secrets.h"
 #include "../core/http_client.h"
 #include "../core/step_keys.h"
+#include "../core/source_policy.h"
 #include "../core/step_pipeline.h"
 #include "../core/step_node.h"
 #include "../core/resource_fetch_engine.h"
@@ -2919,6 +2920,22 @@ void ShadowBackend::demoLaunchRepairs() {
 }
 
 /// 只用于核对 B1 失败面板：造一份崩溃诊断 + 让管线停在失败态。
+QString ShadowBackend::downloadSourceSummary()
+{
+    const auto listPolicy = static_cast<DownloadSourcePolicy>(listDownloadSource());
+    const auto filePolicy = static_cast<DownloadSourcePolicy>(fileDownloadSource());
+    return QStringLiteral("listSource=%1(listPreferOfficial=%2, primary=%3) "
+                          "fileSource=%4(preferOfficial=%5) "
+                          "limitMB=%6 threads=%7")
+        .arg(listDownloadSource())
+        .arg(SourcePolicy::preferOfficial(listPolicy) ? QStringLiteral("yes") : QStringLiteral("no"),
+             SourcePolicy::mcManifestPrimary(listPolicy))
+        .arg(fileDownloadSource())
+        .arg(SourcePolicy::preferOfficial(filePolicy) ? QStringLiteral("yes") : QStringLiteral("no"))
+        .arg(downloadSpeedLimitMB())
+        .arg(maxDownloadThreads());
+}
+
 QString ShadowBackend::downloadSelfcheck()
 {
     QStringList fails;
@@ -3002,8 +3019,28 @@ QString ShadowBackend::downloadSelfcheck()
         if (b) { b->setPercentage(-20); if (b->percentage() != 0) fails << QStringLiteral("clamp low=%1").arg(b->percentage()); }
     }
 
+    // ── 5) 源策略映射（版本列表源域）
+    {
+        using namespace ShadowLauncher;
+        const int officialCount =
+            (SourcePolicy::preferOfficial(DownloadSourcePolicy::PreferOfficial) ? 1 : 0)
+            + (SourcePolicy::preferOfficial(DownloadSourcePolicy::AutoSwitch) ? 1 : 0)
+            + (SourcePolicy::preferOfficial(DownloadSourcePolicy::PreferMirror) ? 0 : 1);
+        if (officialCount != 3)
+            fails << QStringLiteral("preferOfficial mapping wrong (%1/3)").arg(officialCount);
+        if (!SourcePolicy::mcManifestPrimary(DownloadSourcePolicy::PreferMirror)
+                 .contains(QStringLiteral("bmclapi")))
+            fails << QStringLiteral("mirror policy primary is not bmclapi");
+        if (!SourcePolicy::mcManifestPrimary(DownloadSourcePolicy::PreferOfficial)
+                 .contains(QStringLiteral("launchermeta")))
+            fails << QStringLiteral("official policy primary is not launchermeta");
+        if (SourcePolicy::mcManifestPrimary(DownloadSourcePolicy::PreferMirror)
+            == SourcePolicy::mcManifestFallback(DownloadSourcePolicy::PreferMirror))
+            fails << QStringLiteral("primary == fallback");
+    }
+
     if (fails.isEmpty())
-        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=4")
+        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=5")
             .arg(allKeys.size()).arg(legacyCases.size());
     return QStringLiteral("FAIL(%1): ").arg(fails.size()) + fails.join(QStringLiteral(" | "));
 }
