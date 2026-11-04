@@ -191,7 +191,9 @@ Item {
             id: procBtn
             kind: 1
             visible: page.runningList.length > 0
+            // Row 是顶部对齐的：不给高度就会用 ghost 的 34，和主按钮 48 错位
             width: 44
+            height: launchBtn.height
             iconName: "chevron-down"
             onClicked: page.procOpen = !page.procOpen
         }
@@ -210,8 +212,24 @@ Item {
 
     Rectangle {
         id: procPanel
-        visible: page.procOpen
         z: 110
+        visible: opacity > 0.01
+        opacity: page.procOpen ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Theme.durFast
+                easing.type: page.procOpen ? Theme.easeEnter : Theme.easeExit
+            }
+        }
+        transform: Translate {
+            y: page.procOpen ? 0 : 6
+            Behavior on y {
+                NumberAnimation {
+                    duration: Theme.durFast
+                    easing.type: page.procOpen ? Theme.easeEnter : Theme.easeExit
+                }
+            }
+        }
         anchors.left: actionsRow.left
         anchors.bottom: actionsRow.top
         anchors.bottomMargin: 10
@@ -287,18 +305,6 @@ Item {
             Item {
                 width: procCol.width
                 height: 42
-                SButton {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: 28
-                    kind: 1
-                    text: "再开一个该版本"
-                    onClicked: {
-                        page.procOpen = false
-                        if (page.b && page.ver.length > 0) page.b.launch(page.ver, page.b.isOnline)
-                    }
-                }
                 SButton {
                     anchors.right: parent.right
                     anchors.rightMargin: 10

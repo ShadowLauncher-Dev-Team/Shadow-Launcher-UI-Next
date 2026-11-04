@@ -195,10 +195,33 @@ Item {
             Item {
                 width: body.width
                 height: 20
+                Rectangle {
+                    id: failMark
+                    width: 12
+                    height: 12
+                    visible: root.failed
+                    color: "transparent"
+                    border.width: 1.5
+                    border.color: "#ef4444"
+                    anchors.left: parent.left
+                    anchors.verticalCenter: titleTx.verticalCenter
+                    Rectangle {
+                        width: 1.5
+                        height: 5
+                        anchors.centerIn: parent
+                        color: "#ef4444"
+                    }
+                }
                 Text {
                     id: titleTx
+                    // 失败时给左侧留出感叹号方块的位置
                     anchors.left: parent.left
-                    text: "启动 " + root.verName
+                    anchors.leftMargin: root.failed ? 19 : 0
+                    Behavior on anchors.leftMargin {
+                        NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                    }
+                    text: root.failed ? ("启动失败 · " + root.verName)
+                                      : ("启动 " + root.verName)
                     color: "#ffffff"
                     font.family: Theme.fontFamily
                     font.pixelSize: 14
@@ -235,9 +258,18 @@ Item {
             }
 
             // ---- 总进度（阶段级） ----
+            // 失败后收起：失败态的信息是"原因/建议"，进度条只会挤地方（B1 稿）。
             Item {
                 width: body.width
-                height: 38
+                height: root.failed ? 0 : 38
+                opacity: root.failed ? 0 : 1
+                clip: true
+                Behavior on height {
+                    NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard }
+                }
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                }
                 Text {
                     anchors.left: parent.left
                     anchors.top: parent.top
@@ -279,6 +311,11 @@ Item {
                 width: body.width
                 height: (root.repairs.length > 0 && !root.failed)
                         ? root.repairsCardHeight() + 16 : 16
+                // 有任务时从 16 长开：卡片是 top 锚定的，clip 后就是"向下展开"的观感
+                clip: true
+                Behavior on height {
+                    NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter }
+                }
 
                 Rectangle {
                     id: repairsCard
@@ -360,6 +397,9 @@ Item {
                                                                   : modelData.progress / 100))
                                         color: modelData.state === 2 ? "#4f9d76"
                                                : (modelData.state === 3 ? "#8a4040" : "#60a5fa")
+                                        Behavior on color {
+                                            ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                                        }
                                         Behavior on width {
                                             NumberAnimation {
                                                 duration: Theme.durBase
@@ -377,6 +417,9 @@ Item {
                                     text: root.repairValueText(modelData)
                                     color: modelData.state === 2 ? "#5bbd85"
                                            : (modelData.state === 3 ? "#e0847f" : "#8fbcf5")
+                                    Behavior on color {
+                                        ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                                    }
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 11
                                     elide: Text.ElideRight
@@ -403,10 +446,23 @@ Item {
             // 用 ListView 而不是 Repeater：Repeater 的委托是被塞进父 Column 的 children 里的，
             // 模型整体替换时重建的委托会改变 Column 的子项顺序 → 底部元素跑到顶部（2026-11-04 实测）。
             // ListView 自己在内部管模型，Column 只看见它一个子项，顺序永远稳定。
-            ListView {
-                id: stepList
+            // 失败后节点清单收起：B1 的失败面板只留"原因 + 建议"
+            Item {
                 width: body.width
-                height: root.rowsHeight()
+                height: root.failed ? 0 : root.rowsHeight()
+                opacity: root.failed ? 0 : 1
+                clip: true
+                Behavior on height {
+                    NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard }
+                }
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                }
+
+                ListView {
+                    id: stepList
+                    width: parent.width
+                    height: root.rowsHeight()
                 interactive: false
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
@@ -471,6 +527,7 @@ Item {
                         font.pixelSize: 11
                     }
                 }
+                }
             }
 
             // ---- 失败诊断（B1）----
@@ -479,7 +536,20 @@ Item {
             Item {
                 width: body.width
                 height: root.failed ? root.crashCardHeight() + 10 : 0
-                visible: root.failed
+                visible: opacity > 0.01
+                opacity: root.failed ? 1 : 0
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter }
+                }
+                Behavior on height {
+                    NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard }
+                }
+                transform: Translate {
+                    y: root.failed ? 0 : 8
+                    Behavior on y {
+                        NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter }
+                    }
+                }
 
                 Column {
                     id: crashCol
@@ -601,8 +671,9 @@ Item {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - (root.failed ? 300 : 110)
+                    // 失败态只显示导出结果；没有结果就保持空，不塞无关文案
                     text: root.failed
-                          ? (root.exportHint.length > 0 ? root.exportHint : "诊断仅在本机进行，不会上传")
+                          ? root.exportHint
                           : (root.done ? "游戏已启动" : "正在按阶段推进，取消后可重新启动")
                     color: root.failed ? "#8a6a6a" : "#4f5866"
                     font.family: Theme.fontFamily
