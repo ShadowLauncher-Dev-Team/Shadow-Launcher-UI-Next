@@ -101,6 +101,11 @@ class ShadowBackend : public QObject {
     Q_PROPERTY(qreal launchOverallProgress READ launchOverallProgress NOTIFY launchPipelineChanged)
     Q_PROPERTY(int launchStepCount READ launchStepCount NOTIFY launchPipelineChanged)
     Q_PROPERTY(int launchStepNumber READ launchStepNumber NOTIFY launchPipelineChanged)
+    // 浮层行数据 + 失败/完成态（同样是转发，QML 只认 backend 一个入口）
+    Q_PROPERTY(QVariantList launchStepRows READ launchStepRows NOTIFY launchPipelineChanged)
+    Q_PROPERTY(bool launchFailed READ launchFailed NOTIFY launchPipelineChanged)
+    Q_PROPERTY(QString launchFailReason READ launchFailReason NOTIFY launchPipelineChanged)
+    Q_PROPERTY(bool launchFinishedOk READ launchFinishedOk NOTIFY launchPipelineChanged)
 
     // ── Resource ──
     Q_PROPERTY(bool downloading READ isResourceDownloading NOTIFY resourceDownloadStateChanged)
@@ -440,6 +445,9 @@ public:
     Q_INVOKABLE void retryVersionInstall(const QString& installId);
     Q_INVOKABLE void launch(const QString& versionId, bool online);
     Q_INVOKABLE void cancelLaunch();
+    /// 开发期安全演示（只画浮层，不启动游戏）：mode 0=失败，1=成功
+    Q_INVOKABLE void demoLaunch(int mode);
+    Q_INVOKABLE void stopDemo();
     /// launch() 后半段：auth 注入 + 启动（Java 自动安装完成由 LaunchBackend 状态机继续）
     void proceedLaunch(const QString& versionId, bool online, const QString& javaPath,
                        int maxMemory, const QString& jvmArgs, const QString& gameArgs,
@@ -856,6 +864,10 @@ public:
     qreal launchOverallProgress() const;
     int launchStepCount() const;
     int launchStepNumber() const;
+    QVariantList launchStepRows() const;
+    bool launchFailed() const;
+    QString launchFailReason() const;
+    bool launchFinishedOk() const;
     ResourceBackend* resource() const { return m_resource; }
     Q_INVOKABLE StatsBackend* statsBackend() const { return m_stats; }
     // 注意：QML 暴露必须用 Q_PROPERTY(QObject*) 模式——Q_INVOKABLE 返回具体类型指针

@@ -27,6 +27,13 @@ class LaunchBackend : public QObject {
     Q_PROPERTY(qreal launchOverallProgress READ launchOverallProgress NOTIFY launchStepsChanged)
     Q_PROPERTY(int launchStepCount READ launchStepCount NOTIFY launchStepsChanged)
     Q_PROPERTY(int launchStepNumber READ launchStepNumber NOTIFY launchStepsChanged)
+    // 浮层用的行数据（QVariantList）：{key,name,detail,status,isLast}。
+    // 2026-11-04：QML 直接吃 QAbstractItemModel 路径在本工程里从未真正跑通过
+    // （版本下载卡片一直用 QVariantList 手工构建），浮层改用同一套已验证的模式。
+    Q_PROPERTY(QVariantList launchStepRows READ launchStepRows NOTIFY launchStepsChanged)
+    Q_PROPERTY(bool launchFailed READ launchFailed NOTIFY launchStepsChanged)
+    Q_PROPERTY(QString launchFailReason READ launchFailReason NOTIFY launchStepsChanged)
+    Q_PROPERTY(bool launchFinishedOk READ launchFinishedOk NOTIFY launchStepsChanged)
 
 public:
     explicit LaunchBackend(QObject* parent = nullptr);
@@ -38,9 +45,18 @@ public:
     bool isRunning() const { return !m_runningLaunchers.isEmpty(); }
     int runningCount() const { return m_runningLaunchers.size(); }
     QObject* launchPipeline() const;
-    qreal launchOverallProgress() const;
+    qreal launchOverallProgress() const;  // 阶段级 = 已完成可见节点 / 可见节点总数
     int launchStepCount() const;   // 可见节点数（离线时不含 login）
     int launchStepNumber() const;  // 当前第几步（1 基）
+    QVariantList launchStepRows() const;  // 浮层行数据，只含可见节点
+    bool launchFailed() const { return m_launchFailed; }
+    QString launchFailReason() const { return m_launchFailReason; }
+    bool launchFinishedOk() const { return m_launchFinishedOk; }
+
+    // ── 开发期安全演示（--ui-demo-launch / --ui-demo-fail）──
+    // 只驱动阶段管线走假数据，绝不触碰真实启动流程（不检测 Java、不拉文件、不起进程）。
+    Q_INVOKABLE void demoLaunch(int mode);  // mode 0=在 Java 节点失败，1=全流程成功
+    Q_INVOKABLE void stopDemo();
 
     // ---- Slots ----
     Q_INVOKABLE void launch(const QString& versionId, const QString& username,
@@ -179,7 +195,11 @@ private:
     void syncPipelineStep(int step); // 按当前 m_checkStep 推进节点状态
     void completePipeline();         // 全部完成
     void failPipelineStep(const QString& reason);
+    void demoTick();                 // 演示：推进一格
     StepPipeline* m_pipeline = nullptr;
+    bool m_launchFailed = false;
+    QString m_launchFailReason;
+    bool m_launchFinishedOk = false;
 
     AccountBackend* m_account = nullptr;
     Launcher* m_activeLauncher = nullptr;  // only accept progress from this launcher
@@ -223,6 +243,13 @@ private:
     QTimer* m_checkTimer = nullptr;
     QTimer* m_refreshTimeoutTimer = nullptr;  // Cancel on crash to avoid stale abort
     int m_checkStep = 0;
+
+    // ── 演示状态机（仅 --ui-demo-* 使用；生产路径永不启动）──
+    QTimer* m_demoTimer = nullptr;
+    int m_demoStep = 0;
+    bool m_demoFailMode = false;
+    bool m_demoForceOnline = false;
+    bool m_demoFailPending = false;
     QString m_pendingVersionId;
     QString m_resolvedJsonPath;  // flexible json path (set during check step 2)
     QString m_resolvedJarPath;   // flexible jar path

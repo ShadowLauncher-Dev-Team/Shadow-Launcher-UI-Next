@@ -129,6 +129,26 @@ int ShadowBackend::launchStepNumber() const
     return m_launch ? m_launch->launchStepNumber() : 0;
 }
 
+QVariantList ShadowBackend::launchStepRows() const
+{
+    return m_launch ? m_launch->launchStepRows() : QVariantList{};
+}
+
+bool ShadowBackend::launchFailed() const
+{
+    return m_launch ? m_launch->launchFailed() : false;
+}
+
+QString ShadowBackend::launchFailReason() const
+{
+    return m_launch ? m_launch->launchFailReason() : QString();
+}
+
+bool ShadowBackend::launchFinishedOk() const
+{
+    return m_launch ? m_launch->launchFinishedOk() : false;
+}
+
 ShadowBackend::ShadowBackend(QObject* parent)
     : QObject(parent)
 {
@@ -2590,6 +2610,15 @@ void ShadowBackend::proceedLaunch(const QString& versionId, bool online, const Q
 void ShadowBackend::cancelLaunch() {
     // Java 自动安装在 LaunchBackend 状态机内（cancelLaunch 内部会清理安装状态）
     m_launch->cancelLaunch();
+}
+
+void ShadowBackend::demoLaunch(int mode) {
+    Q_UNUSED(m_settings);
+    m_launch->demoLaunch(mode);
+}
+
+void ShadowBackend::stopDemo() {
+    m_launch->stopDemo();
 }
 
 int ShadowBackend::requiredJavaMajor(const QString& versionId)

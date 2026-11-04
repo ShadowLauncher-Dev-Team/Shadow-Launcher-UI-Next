@@ -11,24 +11,15 @@ Item {
     readonly property bool narrow: width < 900
     readonly property string ver: (b && b.selectedVersion) ? b.selectedVersion : ""
     readonly property string userName: b ? (b.isOnline ? (b.username || "") : (b.offlineUsername || "")) : ""
-    // 演示态：只在带 --ui-demo-launch 时启用，用于截图/试交互，绝不真启动游戏
+    // 演示态：--ui-demo-launch 由后端假状态机驱动真实浮层组件（不检测 Java、不拉文件、
+    // 不起进程），--ui-demo-fail 走失败分支。演示走的是与真机同一条管线代码路径。
     readonly property bool demoMode: Qt.application.arguments.indexOf("--ui-demo-launch") >= 0
-    property bool demoBusy: true
-    property int demoStage: 0
-    readonly property var demoStages: ["正在校验游戏文件", "正在准备运行环境", "正在加载模组与配置"]
+    readonly property bool demoFail: Qt.application.arguments.indexOf("--ui-demo-fail") >= 0
+    readonly property bool demoOnline: Qt.application.arguments.indexOf("--ui-demo-online") >= 0
 
-    readonly property bool launching: demoMode ? demoBusy : (b ? b.launching : false)
-    readonly property bool running: demoMode ? false : (b ? b.isRunning : false)
-    readonly property string statusText: demoMode
-        ? (demoBusy ? demoStages[demoStage] : "")
-        : (b ? (b.launchStatus || "") : "")
-
-    Timer {
-        interval: 2400
-        repeat: true
-        running: page.demoMode && page.demoBusy
-        onTriggered: page.demoStage = (page.demoStage + 1) % page.demoStages.length
-    }
+    readonly property bool launching: b ? b.launching : false
+    readonly property bool running: b ? b.isRunning : false
+    readonly property string statusText: b ? (b.launchStatus || "") : ""
 
     readonly property int padL: narrow ? 28 : Theme.padL
     readonly property int padR: narrow ? 24 : 64
@@ -43,7 +34,11 @@ Item {
         return [ver.substring(0, i), ver.substring(i + 1).split("_").join(" ")]
     }
 
-    Component.onCompleted: console.info("[ui] StagePage size", width, "x", height, "narrow=", narrow)
+    Component.onCompleted: {
+        console.info("[ui] StagePage size", width, "x", height, "narrow=", narrow)
+        if (page.demoMode && page.b)
+            page.b.demoLaunch((page.demoFail ? 1 : 0) + (page.demoOnline ? 2 : 0))
+    }
 
     // ---------- 底色 ----------
     Rectangle {
@@ -157,7 +152,6 @@ Item {
             text: page.launching ? "取消启动" : (page.running ? "游戏中" : "启动游戏")
             iconName: page.launching ? "x" : "play"
             onClicked: {
-                if (page.demoMode) { page.demoBusy = !page.demoBusy; return }
                 if (!page.b) return
                 if (page.launching) { page.b.cancelLaunch(); return }
                 if (page.running) return

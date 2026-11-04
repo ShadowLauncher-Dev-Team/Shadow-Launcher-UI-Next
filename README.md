@@ -30,6 +30,8 @@ cmake --build build --config Release --parallel
 
 - 默认启动：`build\Release\ShadowLauncher.exe`（跑旧 UI）
 - 新 UI：`build\Release\ShadowLauncher.exe --ui-next`
+- 启动浮层安全演示（不启动游戏）：`launch-ui-demo.bat`，或
+  `pwsh tools/overlay-demo.ps1 -Mode online -Out shot.png`（`-Mode fail` 看失败态，`-Size 800x550` 看窄窗）
 - 截图：`pwsh tools/capture.ps1 -Exe build\Release\ShadowLauncher.exe -Out shot.png -W 1375 -H 897`
 
 ## UI 硬规则（踩过的坑，别再踩）

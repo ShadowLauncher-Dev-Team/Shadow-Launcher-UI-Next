@@ -90,6 +90,11 @@ LaunchBackend::LaunchBackend(QObject* parent)
     : QObject(parent)
 {
     qCInfo(logLaunch) << QStringLiteral("[启动] 启动模块已初始化");
+
+    // 浮层显隐依赖 launching / launchFailed / launchFinishedOk 三者，
+    // 任何状态翻转都要让 QML 重读行数据，否则浮层会停在不该停的样子。
+    connect(this, &LaunchBackend::launchStateChanged,
+            this, &LaunchBackend::launchStepsChanged);
 }
 
 LaunchBackend::~LaunchBackend()
@@ -137,6 +142,9 @@ void LaunchBackend::launch(const QString& versionId, const QString& username,
     }
 
     m_launching = true;
+    m_launchFailed = false;
+    m_launchFailReason.clear();
+    m_launchFinishedOk = false;
     qCInfo(logUI) << QStringLiteral("启动游戏: ") << versionId << username;
     m_cancelled = false;
     m_launchProgress = 0;
@@ -182,6 +190,13 @@ void LaunchBackend::cancelLaunch()
 {
     qCDebug(logLaunch) << "[PROCESS] cancelLaunch() called";
     m_cancelled = true;
+    if (m_demoTimer) m_demoTimer->stop();
+    m_demoFailMode = false;
+    m_demoForceOnline = false;
+    m_demoFailPending = false;
+    m_launchFailed = false;
+    m_launchFailReason.clear();
+    m_launchFinishedOk = false;
     if (m_checkTimer) m_checkTimer->stop();
     if (m_refreshTimeoutTimer) m_refreshTimeoutTimer->stop();
     cleanupJavaInstallPoll();
@@ -591,7 +606,9 @@ void LaunchBackend::buildLaunchPipeline()
     m_pipeline->addStep(QStringLiteral("process"), tr("启动游戏进程"));
 
     // 离线账户不校验登录：该节点标记为跳过并隐藏（不计入总进度权重）
-    const bool needLogin = m_authIsOnline || m_yggdrasilMode;
+    // m_demoForceOnline 只在 --ui-demo-launch 的在线演示模式下为真，
+    // 用来验证"正版/外置 6 节点"这条分支的排版，生产路径恒为 false。
+    const bool needLogin = m_authIsOnline || m_yggdrasilMode || m_demoForceOnline;
     if (!needLogin) {
         if (StepNode* node = m_pipeline->step(QStringLiteral("login"))) {
             node->setSkipped();
@@ -633,7 +650,9 @@ void LaunchBackend::completePipeline()
                 node->setCompleted();
         }
     }
+    m_launchFinishedOk = true;
     emit launchStepsChanged();
+    emit launchStateChanged();
 }
 
 void LaunchBackend::failPipelineStep(const QString& reason)
@@ -641,8 +660,16 @@ void LaunchBackend::failPipelineStep(const QString& reason)
     if (!m_pipeline) return;
     if (StepNode* node = m_pipeline->stepNode(m_checkStep)) {
         node->setFailed(reason);
+        // 子行必须给"具体原因"，否则用户只看到红色的"失败"两个字，
+        // 不知道去哪修——而失败态是唯一能看到错误的地方。
+        if (!reason.isEmpty()) node->setDetail(reason);
     }
+    // 失败态必须常驻到用户处理：浮层用 m_launchFailed 而不是 m_launching 判可见，
+    // 否则 abortCheck 里 m_launching=false 会把错误连同原因一起藏起来。
+    m_launchFailed = true;
+    m_launchFailReason = reason;
     emit launchStepsChanged();
+    emit launchStateChanged();
 }
 
 QObject* LaunchBackend::launchPipeline() const
@@ -652,7 +679,47 @@ QObject* LaunchBackend::launchPipeline() const
 
 qreal LaunchBackend::launchOverallProgress() const
 {
-    return m_pipeline ? m_pipeline->weightedProgress() : 0.0;
+    // 阶段级进度：已完成可见节点 / 可见节点总数。
+    // 不能用 weightedProgress()——它把节点内的字节百分比也混进来（依赖文件下到 60%
+    // 会让总进度条走到 76%），属于"编造百分比"，与设计契约第 3 节冲突。
+    if (!m_pipeline) return 0.0;
+    int total = 0;
+    int done = 0;
+    for (int i = 0; i < m_pipeline->totalSteps(); ++i) {
+        StepNode* node = m_pipeline->stepNode(i);
+        if (!node || node->isHidden()) continue;
+        ++total;
+        if (node->status() == StepStatus::Completed) ++done;
+    }
+    return total > 0 ? qreal(done) / qreal(total) : 0.0;
+}
+
+QVariantList LaunchBackend::launchStepRows() const
+{
+    QVariantList rows;
+    if (!m_pipeline) return rows;
+
+    const int total = m_pipeline->totalSteps();
+    int visible = 0;
+    for (int i = 0; i < total; ++i) {
+        StepNode* node = m_pipeline->stepNode(i);
+        if (node && !node->isHidden()) ++visible;
+    }
+
+    int emitted = 0;
+    for (int i = 0; i < total; ++i) {
+        StepNode* node = m_pipeline->stepNode(i);
+        if (!node || node->isHidden()) continue;
+        ++emitted;
+        QVariantMap row;
+        row.insert(QStringLiteral("key"), node->key());
+        row.insert(QStringLiteral("name"), node->name());
+        row.insert(QStringLiteral("detail"), node->detail());
+        row.insert(QStringLiteral("status"), node->statusInt());
+        row.insert(QStringLiteral("isLast"), emitted == visible);
+        rows.append(row);
+    }
+    return rows;
 }
 
 int LaunchBackend::launchStepCount() const
@@ -678,6 +745,125 @@ int LaunchBackend::launchStepNumber() const
         }
     }
     return qMax(1, num);
+}
+
+// ============================================================
+// 开发期安全演示（--ui-demo-launch / --ui-demo-fail）
+// ============================================================
+// 只驱动阶段管线：不刷新 Java 列表、不读版本文件、不创建进程。
+// 用的是与真机同一条 buildLaunchPipeline() → syncPipelineStep() →
+// failPipelineStep()/completePipeline() 代码路径，所以演示里画得出来，
+// 真机上就是同一套数据；反过来，演示里画不出来的，真机也一定有 bug。
+
+void LaunchBackend::demoLaunch(int mode)
+{
+    if (m_demoTimer) m_demoTimer->stop();
+    if (m_checkTimer) m_checkTimer->stop();
+
+    // mode: bit0 = 失败演示，bit1 = 假装在线（显示 login 节点，验证 6 节点布局）
+    m_demoFailMode = (mode & 1) != 0;
+    m_demoForceOnline = (mode & 2) != 0;
+    m_demoFailPending = false;
+    m_demoStep = 0;
+    m_checkStep = 0;
+    m_cancelled = false;
+    m_launchFailed = false;
+    m_launchFailReason.clear();
+    m_launchFinishedOk = false;
+    m_launching = true;
+    m_launchProgress = 0;
+    m_launchStatus = tr("正在准备...");
+
+    buildLaunchPipeline();
+    emit launchProgressChanged(0, m_launchStatus);
+    emit launchStateChanged();
+
+    if (!m_demoTimer) {
+        m_demoTimer = new QTimer(this);
+        m_demoTimer->setInterval(1000);
+        connect(m_demoTimer, &QTimer::timeout, this, &LaunchBackend::demoTick);
+    }
+    m_demoTimer->start();
+    demoTick();
+}
+
+void LaunchBackend::stopDemo()
+{
+    if (m_demoTimer) m_demoTimer->stop();
+    m_demoStep = 0;
+    m_demoFailMode = false;
+    m_demoForceOnline = false;
+    m_demoFailPending = false;
+    m_launchFailed = false;
+    m_launchFailReason.clear();
+    m_launchFinishedOk = false;
+    m_launching = false;
+    emit launchStateChanged();
+}
+
+void LaunchBackend::demoTick()
+{
+    if (!m_pipeline) { stopDemo(); return; }
+    const int count = m_pipeline->totalSteps();
+
+    auto finish = [this]() {
+        if (m_demoTimer) m_demoTimer->stop();
+        m_launchProgress = 100;
+        m_launchStatus = tr("启动完成");
+        completePipeline();
+        m_launching = false;
+        emit launchProgressChanged(100, m_launchStatus);
+        emit launchStateChanged();
+        // 完成态停留 2.2s 再收起（与真机 handleLaunchStarted 的收起节奏一致）
+        QTimer::singleShot(2200, this, [this]() {
+            m_launchFinishedOk = false;
+            emit launchStepsChanged();
+            emit launchStateChanged();
+        });
+    };
+
+    // 离线时 login 是隐藏节点，不该占一拍
+    while (m_demoStep < count) {
+        StepNode* n = m_pipeline->stepNode(m_demoStep);
+        if (n && !n->isHidden()) break;
+        ++m_demoStep;
+    }
+    if (m_demoStep >= count) { finish(); return; }
+
+    m_checkStep = m_demoStep;
+    syncPipelineStep(m_demoStep);
+
+    StepNode* node = m_pipeline->stepNode(m_demoStep);
+    const QString key = node ? node->key() : QString();
+    if (node) {
+        if (key == QLatin1String("login"))        node->setDetail(tr("正在刷新正版登录令牌"));
+        else if (key == QLatin1String("java"))    node->setDetail(tr("正在检测 Java 环境"));
+        else if (key == QLatin1String("version")) node->setDetail(tr("检查版本文件"));
+        else if (key == QLatin1String("deps"))    node->setDetail(tr("正在下载 libraries 12 / 48"));
+        else if (key == QLatin1String("memory"))  node->setDetail(tr("检查内存分配"));
+        else                                      node->setDetail(tr("正在启动游戏进程"));
+    }
+
+    // 失败演示：Java 节点先亮一拍"进行中"，下一拍再转红（与真机观感一致）
+    if (m_demoFailMode && key == QLatin1String("java")) {
+        if (!m_demoFailPending) {
+            m_demoFailPending = true;
+            emit launchStepsChanged();
+            return;
+        }
+        if (m_demoTimer) m_demoTimer->stop();
+        m_launching = false;
+        m_launchStatus = tr("启动失败");
+        failPipelineStep(tr("启动失败：未找到 Java 21，可在版本设置中指定"));
+        emit launchProgressChanged(0, m_launchStatus);
+        emit launchStateChanged();
+        return;
+    }
+
+    ++m_demoStep;
+    m_launchProgress = qRound(launchOverallProgress() * 100);
+    emit launchProgressChanged(m_launchProgress, m_launchStatus);
+    emit launchStepsChanged();
 }
 
 void LaunchBackend::abortCheck(const QString& phase, const QString& reason)
