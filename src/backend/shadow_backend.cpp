@@ -3009,12 +3009,15 @@ QString ShadowBackend::downloadSourceSummary()
 {
     const auto listPolicy = static_cast<DownloadSourcePolicy>(listDownloadSource());
     const auto filePolicy = static_cast<DownloadSourcePolicy>(fileDownloadSource());
-    return QStringLiteral("listSource=%1(listPreferOfficial=%2, primary=%3) "
-                          "fileSource=%4(preferOfficial=%5) "
-                          "limitMB=%6 threads=%7")
+    return QStringLiteral("listSource=%1(listPreferOfficial=%2, primary=%3, 资源索引=%4) "
+                          "fileSource=%5(preferOfficial=%6) "
+                          "limitMB=%7 threads=%8")
         .arg(listDownloadSource())
         .arg(SourcePolicy::preferOfficial(listPolicy) ? QStringLiteral("yes") : QStringLiteral("no"),
-             SourcePolicy::mcManifestPrimary(listPolicy))
+             SourcePolicy::mcManifestPrimary(listPolicy),
+             SourcePolicy::preferOfficial(listPolicy)
+                 ? QStringLiteral("官方优先(镜像延迟 800ms 兜底)")
+                 : QStringLiteral("镜像优先(双源同时发)"))
         .arg(fileDownloadSource())
         .arg(SourcePolicy::preferOfficial(filePolicy) ? QStringLiteral("yes") : QStringLiteral("no"))
         .arg(downloadSpeedLimitMB())

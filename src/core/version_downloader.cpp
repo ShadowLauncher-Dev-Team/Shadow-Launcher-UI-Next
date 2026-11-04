@@ -6,6 +6,7 @@
 // multi-file downloads and HttpClient for single-file asset index retrieval.
 
 #include "version_downloader.h"
+#include "source_policy.h"
 #include "engine_identity.h"
 #include "file_downloader.h"
 #include "asset_downloader.h"
@@ -606,11 +607,12 @@ void VersionDownloader::downloadAssetIndexRace(const QString& idxUrl, const QStr
         done();
     };
 
-    // ── 镜像路：单连接 + 跟随重定向（2026-08-05 修复）──
-    // 旧代码未设 RedirectPolicy：bmclapi2 返回 302 被当失败 → 镜像在竞速中从未赢过，
-    // 实际退化为官方单源（官方慢时 assets 启动被拖 10s+）。
-    // 现在跟随 302 到签名 CDN 节点，镜像真正参与抢答。
-    if (mirror != official) {
+    // ── 资源索引的源优先级（契约「三个域」：版本列表源管 MC 清单域）──
+    // 以前两个源**同时**发，谁先回谁赢 → 用户选"官方优先"时镜像照样可能先赢，
+    // 设置形同虚设。现在：官方优先时镜像延迟 800ms 进场（官方正常就独占，
+    // 官方慢/失败才由镜像兜底）；镜像优先时保持同时发（镜像本来就在国内更快）。
+    auto launchMirror = [this, mirror, won, failBoth, win, idxPath, official]() {
+        if (*won) return;
         auto* nam = new QNetworkAccessManager(this);
         const QUrl reqUrl(mirror);
         QNetworkRequest req(reqUrl);
@@ -644,6 +646,15 @@ void VersionDownloader::downloadAssetIndexRace(const QString& idxUrl, const QStr
             }
             failBoth();
         });
+    };
+    if (mirror != official) {
+        const bool preferOfficial =
+            SourcePolicy::preferOfficial(m_downloadCfg.listSource);
+        if (preferOfficial) {
+            QTimer::singleShot(800, this, [launchMirror]() { launchMirror(); });
+        } else {
+            launchMirror();
+        }
     }
 
     // ── 官方路：探测 total → 分片并行（2026-08-05 新增）──
