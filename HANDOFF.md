@@ -314,3 +314,31 @@ ee2682a feat(launch-overlay): 启动阶段管线接入后端 StepPipeline；新�
   日志证据：22:45:54 有一次成功，22:53 两次失败都是"回调中未找到验证码"→ 抢第一条连接的老 bug。
 - 删 SButton 忙态进度条；登录中禁用返回/列表/添加账号。
 
+
+## 12. 2026-11-05 凌晨：启动态三件事的事实核对 + 设计稿
+
+**触发**：影问"Java/authlib 自动补全会显示吗 / 崩溃会弹窗吗 / 支持多开和强制结束吗"。
+要求：先不修，先在网页端出样式给他选。
+
+### 事实（读代码核对，别凭印象）
+| 能力 | 后端 | 新 UI（ui/） |
+|---|---|---|
+| Java 缺失自动装 | `LaunchBackend` java 节点 + `installJavaForLaunch()` + 轮询 | 只有节点子行 "正在下载 Java 21 (37%)..."（11px 灰蓝），看不出是"替你补" |
+| authlib 缺失自动下载 | `deps` 节点内下载 | 下载中同上；**失败只发 `launchCheckWarning`，新 UI 无监听 → 完全静默** |
+| 崩溃诊断 | `CrashDetector::analyzeCrash` 后台线程，51 规则 / 疑似模组 / 建议 / 导出 zip | **没有弹窗**，只有节点转红 + 查看日志 |
+| 多开/强杀/监控 | `runningGames()`、`runningCount`、`killGameByPid`、`killGameProcess`、detach/adopt | **完全没有界面** |
+
+补充事实：
+- 6 节点管线 key：login / java / version / deps / memory / process；离线账户隐藏 login。
+- 子行文字来源：`launchCheckProgress` 信号 → `buildLaunchPipeline()` 里写进 `stepNode(m_checkStep)->setDetail()`。
+- 崩溃触发点有三条，但**进程在窗口出现前 3 秒内死掉只发 `launchCheckFailed` + toast，不做分析**（漏洞）。
+- 预检失败构造 `type=precheck` 报告后直接 `emit crashDetected`；正常失败发 `crashAnalysisReady`。两条路信号不同，接 UI 时要统一。
+- `crashAnalysisStarted` / `crashAnalysisReady` / `launchCheckWarning` 都已经在 ShadowBackend 上转发，QML 能直接接。
+- `runningGames()` 只有 version/pid/displayVersion，**没有 startedAt**（要显示"运行时长"必须补后端字段）。
+- `Launcher::start()` 的 `isRunning()` 守卫是**单个 Launcher 实例**的判断，LaunchBackend 每次 new Launcher，实际不拦多开。
+
+### 交付
+- `design/launch-states-mockup.html`：A1/A2/A3（自动修复怎么显）、B1/B2/B3（崩溃怎么弹）、
+  C1/C2/C3（进程监控放哪），每张带"优点 / 代价 / 需要后端改什么"，可点击选中。
+- 等影选择后再动 C++；后端预计先补三样：`startedAt`、`launchRepairs`（补全任务列表）、warning 可读属性。
+

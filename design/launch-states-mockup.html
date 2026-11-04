@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Shadow Launcher · 启动态三组样式方案</title>
+<style>
+  :root{
+    --bg:#070a0e; --panel:#0c0f14; --panel2:#0e1218; --line:#262d38; --line2:#161b22;
+    --text:#e6ebf2; --dim:#7b8593; --dim2:#4f5866; --dim3:#3f4754;
+    --blue:#3b82f6; --blueL:#8fbcf5; --blueD:#24405f;
+    --green:#5bbd85; --red:#ef4444; --redT:#ff9a94; --amber:#e0a75e;
+    --font:"Microsoft YaHei UI","Microsoft YaHei","Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#05070a;color:var(--text);font-family:var(--font);font-size:13px;line-height:1.6}
+  .page{max-width:1360px;margin:0 auto;padding:40px 24px 120px}
+  h1{font-size:22px;font-weight:600;margin:0 0 8px}
+  h2{font-size:16px;font-weight:600;margin:0 0 4px}
+  h3{font-size:13px;font-weight:600;margin:0 0 10px;color:#cfd7e3}
+  .sub{color:var(--dim);font-size:12.5px;margin:0 0 22px}
+  .lead{color:#aab4c2;font-size:12.5px;margin:0 0 20px;max-width:1080px}
+  section{margin:0 0 56px}
+  .secHead{display:flex;align-items:baseline;gap:12px;margin:0 0 6px;border-top:1px solid var(--line2);padding-top:22px}
+  .secHead .q{font-size:11px;color:var(--dim2);letter-spacing:1px}
+  .secDesc{color:var(--dim);font-size:12.5px;margin:0 0 24px;max-width:1120px}
+
+  /* ---------- 事实表 ---------- */
+  table.facts{width:100%;border-collapse:collapse;font-size:12px;margin:0 0 8px}
+  table.facts th,table.facts td{border:1px solid var(--line2);padding:8px 10px;text-align:left;vertical-align:top}
+  table.facts th{background:#0b0e13;color:var(--dim);font-weight:500;font-size:11px;letter-spacing:.4px}
+  table.facts code{background:#11151c;border:1px solid #1d232d;border-radius:2px;padding:1px 4px;font-size:11px;color:#b9c6d6}
+  .yes{color:var(--green)} .no{color:var(--redT)} .part{color:var(--amber)}
+
+  /* ---------- 应用外壳 ---------- */
+  .variants{display:flex;flex-wrap:wrap;gap:34px}
+  .variant{width:1240px}
+  .vhead{display:flex;align-items:center;gap:10px;margin:0 0 8px}
+  .vtag{font-size:11px;color:#05070a;background:#cfd7e3;border-radius:2px;padding:1px 6px;font-weight:600}
+  .vname{font-size:13px;font-weight:600}
+  .vpick{margin-left:auto;font-size:11.5px;color:var(--dim);border:1px solid var(--line);border-radius:2px;padding:4px 10px;cursor:pointer;background:#0b0e13}
+  .variant.picked .vpick{background:#173654;border-color:#2d6ea8;color:#dbe9f7}
+  .variant.picked{outline:1px solid #2d6ea8;outline-offset:3px}
+  .app{position:relative;width:1240px;height:700px;background:#0a0c10;overflow:hidden;border:1px solid #1b212b;border-radius:2px}
+  .side{position:absolute;left:0;top:0;bottom:0;width:200px;background:#0b0d11;border-right:1px solid #141922;padding:18px 0;font-size:12.5px}
+  .logo{font-size:15px;letter-spacing:3px;font-weight:700;color:#fff;padding:0 20px 16px}
+  .nav{color:#8e99a8;padding:7px 20px;display:flex;align-items:center;gap:10px}
+  .nav.on{background:#141922;color:#fff;border-left:2px solid #3b82f6;padding-left:18px}
+  .nav .ic{width:14px;height:14px;border:1px solid currentColor;border-radius:2px;opacity:.7}
+  .stage{position:absolute;left:200px;right:0;top:0;bottom:0;
+    background:
+      radial-gradient(70% 55% at 62% 12%, rgba(60,220,170,.20), transparent 70%),
+      radial-gradient(50% 40% at 30% 30%, rgba(30,180,150,.14), transparent 70%),
+      radial-gradient(60% 60% at 80% 70%, rgba(20,90,120,.18), transparent 70%),
+      linear-gradient(170deg,#08131a 0%,#0a1a22 40%,#08121a 65%,#060a0e 100%);}
+  .topbar{position:absolute;left:0;right:0;top:0;height:52px}
+  .winbtns{position:absolute;right:14px;top:14px;display:flex;gap:14px;color:#8e99a8;font-size:12px}
+
+  /* ---------- 浮层 ---------- */
+  .overlay{position:absolute;inset:0;background:rgba(6,8,12,.64);display:flex;align-items:center;justify-content:center}
+  .panel{width:600px;background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:20px 22px}
+  .pTitle{display:flex;align-items:baseline;gap:10px}
+  .pTitle .t{font-size:14px;font-weight:600}
+  .pTitle .u{font-size:11px;color:var(--dim2)}
+  .pTitle .step{margin-left:auto;font-size:11px;color:var(--dim2)}
+  .progWrap{margin:14px 0 0}
+  .progTop{display:flex;justify-content:space-between;font-size:11px;color:var(--dim)}
+  .progTop .pct{color:#cbd5e3;font-size:12px}
+  .track{height:4px;background:rgba(255,255,255,.08);margin-top:6px;position:relative}
+  .track > i{position:absolute;left:0;top:0;bottom:0;background:var(--blue);display:block}
+  .track > i.red{background:var(--red)}
+  .nodes{margin:16px 0 0}
+  .node{position:relative;padding:0 0 0 20px;min-height:38px}
+  .node .line{position:absolute;left:3px;top:14px;bottom:-4px;width:1px;background:#1c222c}
+  .node .dot{position:absolute;left:0;top:4px;width:8px;height:8px;background:var(--dim3)}
+  .node.done .dot{background:var(--blue)} .node.done .line{background:var(--blueD)}
+  .node.act .dot{background:#60a5fa}
+  .node.fail .dot{background:var(--red)}
+  .node .name{font-size:13px;color:#5f6875}
+  .node.done .name{color:#8b96a4}
+  .node.act .name{color:#fff;font-weight:600}
+  .node.fail .name{color:#ffb4b0}
+  .node .st{position:absolute;right:0;top:1px;font-size:11px;color:var(--dim3)}
+  .node.done .st{color:var(--green)} .node.act .st{color:var(--blueL)} .node.fail .st{color:var(--redT)}
+  .node .det{font-size:11px;color:#7fa8e0;margin-top:2px;font-variant-numeric:tabular-nums}
+  .node.fail .det{color:#e0847f}
+  .foot{margin-top:18px;border-top:1px solid var(--line2);padding-top:14px;display:flex;align-items:center;gap:8px;min-height:46px}
+  .foot .hint{font-size:11px;color:var(--dim2);flex:1}
+  .btn{border:1px solid #2a3340;background:#12161d;color:#d7dfea;font-size:12px;padding:7px 14px;border-radius:2px;font-family:var(--font)}
+  .btn.pri{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+  .btn.dgr{border-color:#5a2626;color:#ffb4b0;background:#1a1113}
+  .btn.ghost{background:transparent}
+  .btn.sm{font-size:11.5px;padding:5px 10px}
+
+  /* 变化标记：设计稿里把"新增元素"描出来 */
+  .newbox{outline:1px dashed #4a7fb5;outline-offset:4px;position:relative}
+  .newTag{position:absolute;right:-6px;top:-16px;font-size:10px;color:#8fbcf5;letter-spacing:.5px}
+
+  /* ---------- A2 修复卡 ---------- */
+  .fixCard{margin:16px 0 0;border:1px solid #1d2a38;background:#0a1219;border-radius:2px;padding:12px 14px}
+  .fixCard .hd{display:flex;align-items:center;gap:8px;font-size:12px;color:#cfd7e3}
+  .fixCard .hd .bar{width:3px;height:12px;background:#e0a75e}
+  .fixCard .hd .cnt{margin-left:auto;font-size:11px;color:var(--dim2)}
+  .fixRow{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:12px}
+  .fixRow .nm{width:172px;color:#c3ccd8}
+  .fixRow .mini{flex:1;height:3px;background:rgba(255,255,255,.07);position:relative}
+  .fixRow .mini > i{position:absolute;left:0;top:0;bottom:0;background:#60a5fa}
+  .fixRow .val{width:120px;text-align:right;font-size:11px;color:#8fbcf5;font-variant-numeric:tabular-nums}
+  .fixRow .val.done{color:var(--green)}
+  .fixCard .more{margin-top:10px;font-size:11px;color:#6f8fb3}
+  .badge{font-size:10px;color:#e0c08a;border:1px solid #4a3a22;background:#191308;padding:1px 5px;border-radius:2px;margin-left:8px}
+
+  /* ---------- A3 提示条 ---------- */
+  .notice{margin:14px 0 0;display:flex;align-items:center;gap:8px;background:#0d1620;border:1px solid #1d2a38;padding:8px 12px;font-size:11.5px;color:#9fb4c9}
+  .notice .link{margin-left:auto;color:#7fa8e0}
+
+  /* ---------- B 崩溃 ---------- */
+  .failHead{display:flex;align-items:center;gap:10px}
+  .failHead .ic{width:14px;height:14px;border:1.5px solid var(--red);border-radius:2px;position:relative}
+  .failHead .ic:after{content:"";position:absolute;left:50%;top:2px;bottom:2px;width:1.5px;margin-left:-.75px;background:var(--red)}
+  .reason{margin:12px 0 0;font-size:13px;color:#ffc9c5;background:#150d0f;border-left:2px solid #7a2f2f;padding:8px 10px;font-family:Consolas,monospace}
+  .kv{display:flex;gap:8px;font-size:11.5px;margin-top:10px;color:var(--dim)}
+  .kv .k{width:64px;color:var(--dim2)}
+  .kv .v{color:#b9c6d6}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{font-size:11px;border:1px solid #24303e;background:#0d1319;color:#9fb4c9;padding:2px 7px;border-radius:2px}
+  .sug{margin:14px 0 0}
+  .sug .h{font-size:11px;color:var(--dim2);letter-spacing:1px;margin-bottom:6px}
+  .sug .item{font-size:12px;color:#c3ccd8;padding:3px 0 3px 14px;position:relative}
+  .sug .item:before{content:"";position:absolute;left:0;top:9px;width:5px;height:5px;background:#3b4a5c}
+
+  /* B2 弹窗 */
+  .modal{width:760px;background:var(--panel2);border:1px solid #2b3441;border-radius:2px;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+  .modal .mh{padding:14px 18px;border-bottom:1px solid #1c232d;display:flex;align-items:center;gap:10px}
+  .modal .mh .t{font-size:13.5px;font-weight:600}
+  .modal .mh .x{margin-left:auto;color:#7b8593;font-size:14px}
+  .modal .mb{display:flex;gap:0}
+  .modal .col{padding:16px 18px}
+  .modal .col.l{width:300px;border-right:1px solid #1c232d}
+  .modal .col.r{flex:1}
+  .modal .mf{padding:12px 18px;border-top:1px solid #1c232d;display:flex;gap:8px;align-items:center}
+  .logFold{font-size:11.5px;color:#7fa8e0;margin-top:10px}
+  .logBox{margin-top:8px;background:#080b10;border:1px solid #1a212b;padding:8px 10px;font-family:Consolas,monospace;font-size:10.5px;color:#8b96a4;line-height:1.55;max-height:88px;overflow:hidden}
+
+  /* 通用弹窗骨架（B2/B3 共用，别只绑在 .modal 上） */
+  .mb{display:flex;gap:0}
+  .col{padding:16px 18px}
+  .col.l{width:300px;border-right:1px solid #1c232d}
+  .col.r{flex:1}
+  .mf{padding:12px 18px;border-top:1px solid #1c232d;display:flex;gap:8px;align-items:center}
+
+  /* B3 独立窗口 */
+  .window{width:760px;background:var(--panel2);border:1px solid #2b3441;border-radius:3px;box-shadow:0 30px 80px rgba(0,0,0,.75)}
+  .window .wbar{height:34px;display:flex;align-items:center;gap:8px;background:#0b0f15;border-bottom:1px solid #1a212b;padding:0 12px;font-size:11.5px;color:#8e99a8}
+  .window .wbar .dots{display:flex;gap:6px;margin-left:auto;color:#5b6573}
+
+  /* ---------- C 多进程 ---------- */
+  .runSec{margin-top:auto;position:absolute;left:0;right:0;bottom:44px;padding:0 12px}
+  .runHead{display:flex;align-items:center;gap:6px;font-size:11px;color:#8e99a8;padding:6px 8px;background:#10151c;border:1px solid #1a212b;border-radius:2px}
+  .runHead .dotlive{width:6px;height:6px;background:var(--green);border-radius:50%}
+  .runHead .n{margin-left:auto;color:#6f7b8a}
+  .runItem{display:flex;align-items:center;gap:8px;padding:7px 8px;border:1px solid #1a212b;border-top:none;background:#0c1117;font-size:11.5px}
+  .runItem .vn{color:#d7dfea;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .runItem .pid{font-size:10.5px;color:#5f6875;font-variant-numeric:tabular-nums}
+  .runItem .kill{border:1px solid #3a2626;color:#e0a0a0;font-size:10.5px;padding:1px 6px;border-radius:2px}
+  .runFoot{font-size:10.5px;color:#5f6875;padding:6px 8px;border:1px solid #1a212b;border-top:none;background:#0a0e13;display:flex;align-items:center}
+  .runItem > div > .vn{font-size:11.5px;color:#d7dfea;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .runItem > div > .pid{font-size:10px;color:#5f6875;margin-top:1px}
+  .sidebarWrap{position:absolute;left:0;top:0;bottom:0;width:200px;display:flex;flex-direction:column;background:#0b0d11;border-right:1px solid #141922;padding:18px 0 12px}
+
+  .floatPanel{position:absolute;right:18px;bottom:18px;width:300px;background:#0c0f14;border:1px solid #262d38;border-radius:2px;box-shadow:0 14px 40px rgba(0,0,0,.55)}
+  .floatPanel .fh{display:flex;align-items:center;gap:6px;padding:9px 12px;border-bottom:1px solid #1c232d;font-size:11.5px;color:#cfd7e3}
+  .floatPanel .fh .n{margin-left:auto;color:#6f7b8a}
+  .floatPanel .fr{display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:11.5px;border-bottom:1px solid #141a22}
+  .floatPanel .fr:last-of-type{border-bottom:none}
+  .floatPanel .ff{padding:8px 12px;border-top:1px solid #1c232d;display:flex;gap:6px;justify-content:flex-end}
+
+  .launchRow{position:absolute;left:calc(200px + 60px);bottom:110px;display:flex;gap:10px;align-items:flex-start}
+  .launchBtn{display:flex;align-items:center;gap:10px;background:#1d4ed8;color:#fff;padding:12px 26px;font-size:14px;border-radius:2px;font-weight:600}
+  .launchBtn.live{background:#122a3f;border:1px solid #2b5675;color:#cfe3f3}
+  .launchBtn .cnt{background:#0c1a24;color:#7fc3ea;font-size:11px;padding:1px 6px;border-radius:2px}
+  .dropList{width:320px;background:#0c0f14;border:1px solid #262d38;border-radius:2px;box-shadow:0 16px 44px rgba(0,0,0,.6)}
+  .dropList .dh{padding:8px 12px;border-bottom:1px solid #1c232d;font-size:11px;color:#7b8593}
+  .dropList .dr{display:flex;align-items:center;gap:8px;padding:9px 12px;font-size:12px;border-bottom:1px solid #141a22}
+  .dropList .dr .vn{flex:1;color:#d7dfea}
+  .dropList .dr .pid{font-size:10.5px;color:#5f6875}
+  .dropList .df{padding:9px 12px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#e0a0a0}
+
+  /* ---------- 说明卡 ---------- */
+  .notes{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0 0;max-width:1240px}
+  .note{border:1px solid var(--line2);background:#0a0e13;padding:12px 14px;font-size:11.5px;color:#9aa6b4;line-height:1.72}
+  .note b{color:#cfd7e3;font-weight:600;display:block;margin-bottom:4px;font-size:11.5px}
+  .note .need{color:#d8b98a}
+  .pickbar{position:fixed;left:0;right:0;bottom:0;background:#0a0d12;border-top:1px solid #1d232d;padding:12px 24px;display:flex;align-items:center;gap:14px;font-size:12.5px;z-index:9}
+  .pickbar .k{color:var(--dim)}
+  .pickbar .v{color:#8fbcf5}
+  .pickbar .tip{margin-left:auto;color:var(--dim2);font-size:11.5px}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <h1>启动前自动修复 / 崩溃诊断 / 多进程监控 —— 三组样式方案</h1>
+  <p class="sub">样式全部对齐现有 Next UI：面板 #0c0f14、边框 #262d38、直角 2px、蓝 #3b82f6 / 绿 #5bbd85 / 红 #ef4444，无圆角嵌套、无 emoji。</p>
+
+  <h3>C++ 现状核对（先看这张表，再选样式）</h3>
+  <table class="facts">
+    <tr><th style="width:150px">能力</th><th style="width:230px">后端实现</th><th style="width:300px">新 UI（ui/）现状</th><th>结论</th></tr>
+    <tr>
+      <td>Java 缺失自动补全</td>
+      <td><code>LaunchBackend</code> 的 <code>java</code> 节点；<code>installJavaForLaunch()</code> + 安装器轮询</td>
+      <td>只在「检查 Java 环境」节点的子行显示 <code>正在下载 Java 21 (37%)...</code>，11px 灰蓝小字</td>
+      <td class="part">会显示，但和普通检查文字混在一起，看不出"这是在替你补 Java"</td>
+    </tr>
+    <tr>
+      <td>authlib-injector.jar 缺失自动下载</td>
+      <td><code>deps</code> 节点内下载，成功/失败都有信号</td>
+      <td>下载中同样只有子行小字；<b>下载失败只发 <code>launchCheckWarning</code>，新 UI 没有任何监听</b></td>
+      <td class="no">下载中勉强可见；失败完全静默，用户以为外置登录可用</td>
+    </tr>
+    <tr>
+      <td>崩溃分析</td>
+      <td><code>CrashDetector::analyzeCrash()</code> 后台线程：crash-reports / hs_err / latest.log / debug.log，51 条规则、疑似模组、建议、导出 zip</td>
+      <td><b>新 UI 没有崩溃弹窗</b>，只有浮层节点转红 + 「查看日志」。旧 UI 有 <code>qml/CrashDialog.qml</code></td>
+      <td class="no">不会弹窗。分析结果算了但没人显示</td>
+    </tr>
+    <tr>
+      <td>多开 / 强制结束 / 进程监控</td>
+      <td><code>runningGames()</code>、<code>runningCount</code>、<code>killGameByPid()</code>、<code>killGameProcess()</code>、退出 detach / 重启 adopt</td>
+      <td><b>新 UI 完全没有界面</b>；旧 UI 在 MainWindow 里有「运行中 (n)」列表 + KillButton</td>
+      <td class="no">能力齐备但无入口。另外"运行时长"后端没有字段，需要补 <code>startedAt</code></td>
+    </tr>
+  </table>
+  <p class="lead">
+    另有两个后端缺口，选哪套方案都要补：① 预检失败（如 Java 缺失）只发 <code>crashDetected</code>，成功/失败两种"启动失败"路径发的是不同信号，新 UI 要统一；② 进程启动后 3 秒内死掉的路径只发 <code>launchCheckFailed</code> + toast，<b>不做崩溃分析</b>，这条最容易漏。
+  </p>
+</header>
+
+<!-- ================= A ================= -->
+<section>
+  <div class="secHead"><h2>A. 启动前"自动修复"要不要显式化</h2><span class="q">JAVA / AUTHLIB / LIBRARIES</span></div>
+  <p class="secDesc">三套都基于同一个真实管线（6 节点：登录 / Java / 版本文件 / 依赖文件 / 内存 / 进程），差别只在"自动补全"这件事有没有自己的位置。</p>
+
+  <div class="variants">
+
+    <!-- A1 -->
+    <div class="variant" data-variant="A1">
+      <div class="vhead"><span class="vtag">A1</span><span class="vname">子行升级：给节点加「自动修复」角标 + 细进度条</span><span class="vpick">选这个</span></div>
+      <div class="app">
+        <div class="side">
+          <div class="logo">SHADOW</div>
+          <div class="nav on"><span class="ic"></span>启动</div>
+          <div class="nav"><span class="ic"></span>下载</div>
+          <div class="nav"><span class="ic"></span>联机</div>
+          <div class="nav"><span class="ic"></span>统计</div>
+          <div class="nav"><span class="ic"></span>设置</div>
+        </div>
+        <div class="stage">
+          <div class="winbtns"><span>—</span><span>□</span><span>×</span></div>
+          <div class="overlay">
+            <div class="panel">
+              <div class="pTitle"><span class="t">启动 26.2 Forge 65.1.1</span><span class="u">xiaole1173</span><span class="step">第 2 / 6 步</span></div>
+              <div class="progWrap">
+                <div class="progTop"><span>总进度</span><span class="pct">17%</span></div>
+                <div class="track"><i style="width:17%"></i></div>
+              </div>
+              <div class="nodes">
+                <div class="node done"><span class="line"></span><span class="dot"></span><span class="name">检查登录状态</span><span class="st">完成</span></div>
+                <div class="node act"><span class="line"></span><span class="dot"></span><span class="name">检查 Java 环境<span class="badge">自动修复</span></span><span class="st">进行中</span>
+                  <div class="det">正在下载 Java 21 · 37% · 38 / 103 MB</div>
+                  <div class="track" style="width:calc(100% - 20px);margin:6px 0 0"><i style="width:37%"></i></div>
+                </div>
+                <div class="node"><span class="line"></span><span class="dot"></span><span class="name">检查版本文件</span><span class="st"></span></div>
+                <div class="node"><span class="line"></span><span class="dot"></span><span class="name">检查依赖文件</span><span class="st"></span></div>
+                <div class="node"><span class="line"></span><span class="dot"></span><span class="name">检查内存分配</span><span class="st"></span></div>
+                <div class="node"><span class="dot"></span><span class="name">启动游戏进程</span><span class="st"></span></div>
+              </div>
+              <div class="foot"><span class="hint">本机没有匹配的 Java 21，正在自动下载。取消后可改为手动指定。</span><button class="btn">取消启动</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note"><b>优点</b>改动最小：仍然只有一个面板、一个位置；节点既有语义不变；用户注意力还停在"当前在做什么"。</div>
+        <div class="note"><b>代价 / 需要后端</b>下载体积与百分比要真实（Java 有 pct 与字节数；authlib 有 pct 无总量）。<span class="need">需补：<code>launchCheckWarning</code> → 可显示属性（失败提示要落地）。</span></div>
+      </div>
+    </div>
+
+    <!-- A2 -->
+    <div class="variant" data-variant="A2">
+      <div class="vhead"><span class="vtag">A2</span><span class="vname">独立「准备运行环境」卡片：修复和检查分开</span><span class="vpick">选这个</span></div>
+      <div class="app">
+        <div class="side">
+          <div class="logo">SHADOW</div>
+          <div class="nav on"><span class="ic"></span>启动</div>
+          <div class="nav"><span class="ic"></span>下载</div>
+          <div class="nav"><span class="ic"></span>联机</div>
+          <div class="nav"><span class="ic"></span>统计</div>
+          <div class="nav"><span class="ic"></span>设置</div>
+        </div>
+        <div class="stage">
+          <div class="winbtns"><span>—</span><span>□</span><span>×</span></div>
+          <div class="overlay">
+            <div class="panel" style="width:640px">
+              <div class="pTitle"><span class="t">启动 26.2 Forge 65.1.1</span><span class="u">xiaole1173</span><span class="step">第 2 / 6 步</span></div>
+              <div class="progWrap">
+                <div class="progTop"><span>总进度</span><span class="pct">17%</span></div>
+                <div class="track"><i style="width:17%"></i></div>
+              </div>
+
+              <div class="fixCard newbox"><span class="newTag">新增：自动修复区</span>
+                <div class="hd"><span class="bar"></span>准备运行环境<span class="cnt">2 项待补全</span></div>
+                <div class="fixRow"><span class="nm">Java 21（本机缺失）</span><span class="mini"><i style="width:37%"></i></span><span class="val">37% · 38/103 MB</span></div>
+                <div class="fixRow"><span class="nm">authlib-injector.jar</span><span class="mini"><i style="width:62%"></i></span><span class="val">62% · 1.2/1.9 MB</span></div>
+                <div class="more">自动下载完成后会继续启动 · 改为手动指定 Java</div>
+              </div>
+
+              <div class="nodes" style="margin-top:16px">
+                <div class="node done"><span class="line"></span><span class="dot"></span><span class="name">检查登录状态</span><span class="st">完成</span></div>
+                <div class="node act"><span class="line"></span><span class="dot"></span><span class="name">检查 Java 环境</span><span class="st">进行中</span><div class="det">见上方「准备运行环境」</div></div>
+                <div class="node"><span class="line"></span><span class="dot"></span><span class="name">检查版本文件</span><span class="st"></span></div>
+                <div class="node"><span class="line"></span><span class="dot"></span><span class="name">检查依赖文件</span><span class="st"></span></div>
+                <div class="node"><span class="line"></span><span class="dot"></span><span class="name">检查内存分配</span><span class="st"></span></div>
+                <div class="node"><span class="dot"></span><span class="name">启动游戏进程</span><span class="st"></span></div>
+              </div>
+              <div class="foot"><span class="hint">首次启动会自动准备缺失的运行时与依赖，之后不再出现这一块。</span><button class="btn">取消启动</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note"><b>优点</b>把"我正在动你的硬盘/网络"和"我在做检查"分开，用户第一次启动能看懂发生了什么；多个缺失项并列，能一眼看到各补全项的进度；可放"改为手动指定 Java"。</div>
+        <div class="note"><b>代价 / 需要后端</b>需要后端出一个"补全任务列表"（name / progress / total / state），现在这些信息散在若干 <code>launchCheckProgress</code> 字符串里。<span class="need">需补：<code>launchRepairs: QVariantList</code> + 状态机。</span>改动量中等。</div>
+      </div>
+    </div>
+
+    <!-- A3 -->
+    <div class="variant" data-variant="A3">
+      <div class="vhead"><span class="vtag">A3</span><span class="vname">最轻：底部一行「已自动补全 N 项」，点开看明细</span><span class="vpick">选这个</span></div>
+      <div class="app">
+        <div class="side">
+          <div class="logo">SHADOW</div>
+          <div class="nav on"><span class="ic"></span>启动</div>
+          <div class="nav"><span class="ic"></span>下载</div>
+          <div class="nav"><span class="ic"></span>联机</div>
+          <div class="nav"><span class="ic"></span>统计</div>
+          <div class="nav"><span class="ic"></span>设置</div>
+        </div>
+        <div class="stage">
+          <div class="winbtns"><span>—</span><span>□</span><span>×</span></div>
+          <div class="overlay">
+            <div class="panel">
+              <div class="pTitle"><span class="t">启动 26.2 Forge 65.1.1</span><span class="u">xiaole1173</span><span class="step">第 2 / 6 步</span></div>
+              <div class="progWrap">
+                <div class="progTop"><span>总进度</span><span class="pct">17%</span></div>
+                <div class="track"><i style="width:17%"></i></div>
+              </div>
+              <div class="nodes">
+                <div class="node done"><span class="line"></span><span class="dot"></span><span class="name">检查登录状态</span><span class="st">完成</span></div>
+                <div class="node act"><span class="line"></span><span class="dot"></span><span class="name">检查 Java 环境</span><span class="st">进行中</span><div class="det">正在下载 Java 21 (37%)...</div></div>
+                <div class="node"><span class="line"></span><span class="dot"></span><span class="name">检查版本文件</span><span class="st"></span></div>
+                <div class="node"><span class="line"></span><span class="dot"></span><span class="name">检查依赖文件</span><span class="st"></span></div>
+                <div class="node"><span class="line"></span><span class="dot"></span><span class="name">检查内存分配</span><span class="st"></span></div>
+                <div class="node"><span class="dot"></span><span class="name">启动游戏进程</span><span class="st"></span></div>
+              </div>
+              <div class="notice newbox"><span class="newTag">新增：一行提示</span>已为你自动补全 <b style="color:#cfd7e3">2</b> 项（Java 21、authlib-injector.jar）<span class="link">查看明细</span></div>
+              <div class="foot"><span class="hint">补全明细展开后显示每一项的体积与耗时。</span><button class="btn">取消启动</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note"><b>优点</b>几乎不动现有布局，加一行就够；适合"多数用户其实有 Java，偶尔才补全"的情况。</div>
+        <div class="note"><b>代价 / 需要后端</b>进度仍靠子行文字，补全项多于 2 个时信息会挤；展开明细是个小浮层，移动端/窄窗口要另算。<span class="need">需补：同 A2 的任务列表（只读、不显示进度条）。</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ================= B ================= -->
+<section>
+  <div class="secHead"><h2>B. 崩溃 / 启动失败怎么呈现</h2><span class="q">CRASH DIALOG</span></div>
+  <p class="secDesc">后端已经能给出：类型（precheck / jvm / minecraft）、原因、描述、建议列表、疑似模组、收集到的日志、JVM 输出、导出 zip。<b>新 UI 目前一个都没用上。</b></p>
+
+  <div class="variants">
+
+    <!-- B1 -->
+    <div class="variant" data-variant="B1">
+      <div class="vhead"><span class="vtag">B1</span><span class="vname">原地变身：启动浮层直接变成失败面板（不新开窗）</span><span class="vpick">选这个</span></div>
+      <div class="app">
+        <div class="side"><div class="logo">SHADOW</div><div class="nav on"><span class="ic"></span>启动</div><div class="nav"><span class="ic"></span>下载</div><div class="nav"><span class="ic"></span>联机</div><div class="nav"><span class="ic"></span>统计</div><div class="nav"><span class="ic"></span>设置</div></div>
+        <div class="stage">
+          <div class="winbtns"><span>—</span><span>□</span><span>×</span></div>
+          <div class="overlay">
+            <div class="panel" style="width:620px">
+              <div class="failHead"><span class="ic"></span><span class="t" style="font-size:14px;font-weight:600">启动失败 · 26.2 Forge 65.1.1</span><span class="step" style="margin-left:auto;font-size:11px;color:var(--dim2)">崩溃报告已生成</span></div>
+              <div class="reason">java.lang.OutOfMemoryError: Java heap space</div>
+              <div class="kv"><span class="k">类型</span><span class="v">jvm · Java 虚拟机崩溃</span></div>
+              <div class="kv"><span class="k">时间</span><span class="v">2026-11-05 00:12:38</span></div>
+              <div class="kv" style="align-items:flex-start"><span class="k">疑似</span><span class="v">create · immersive_engineering</span></div>
+              <div class="sug">
+                <div class="h">建议</div>
+                <div class="item">把最大内存从 4096 MB 提到 8192 MB（本模块组实测需要 8G+）</div>
+                <div class="item">减少 OptiFine 与 Embeddium 的同时启用</div>
+                <div class="item">导出日志后可附在反馈里</div>
+              </div>
+              <div class="foot"><span class="hint">诊断报告 41 KB · 已包含 crash-reports 与 latest.log</span>
+                <button class="btn sm">导出日志</button><button class="btn sm">调大内存</button><button class="btn pri sm">重试</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note"><b>优点</b>不打断、不叠窗；失败后还能看到是第几步失败的；可以直接给"调大内存"这种可执行动作。</div>
+        <div class="note"><b>代价 / 需要后端</b>空间有限，长原因要换行截断；"崩溃 vs 预检失败"要用同一套版式承载两种数据。<span class="need">需补：把建议里的动作映射成具体设置项（内存建议 → 直接改该版本内存）。</span></div>
+      </div>
+    </div>
+
+    <!-- B2 -->
+    <div class="variant" data-variant="B2">
+      <div class="vhead"><span class="vtag">B2</span><span class="vname">独立诊断弹窗：左概要 + 右建议，可折叠日志</span><span class="vpick">选这个</span></div>
+      <div class="app">
+        <div class="side"><div class="logo">SHADOW</div><div class="nav on"><span class="ic"></span>启动</div><div class="nav"><span class="ic"></span>下载</div><div class="nav"><span class="ic"></span>联机</div><div class="nav"><span class="ic"></span>统计</div><div class="nav"><span class="ic"></span>设置</div></div>
+        <div class="stage">
+          <div class="winbtns"><span>—</span><span>□</span><span>×</span></div>
+          <div class="overlay">
+            <div class="modal">
+              <div class="mh"><span class="ic" style="width:13px;height:13px;border:1.5px solid var(--red);border-radius:2px"></span><span class="t">崩溃诊断</span><span style="font-size:11px;color:var(--dim2)">26.2 Forge 65.1.1 · 2026-11-05 00:12</span><span class="x">×</span></div>
+              <div class="mb">
+                <div class="col l">
+                  <h3>概要</h3>
+                  <div class="kv"><span class="k">类型</span><span class="v">JVM 崩溃</span></div>
+                  <div class="kv"><span class="k">阶段</span><span class="v">启动游戏进程</span></div>
+                  <div class="kv"><span class="k">规则</span><span class="v">内存不足</span></div>
+                  <div class="kv" style="align-items:flex-start"><span class="k">原因</span><span class="v" style="font-family:Consolas,monospace;font-size:11px;color:#ffc9c5">java.lang.OutOfMemoryError<br>Java heap space</span></div>
+                  <div class="kv" style="align-items:flex-start"><span class="k">疑似模组</span><span class="v"><div class="chips"><span class="chip">create</span><span class="chip">immersive_engineering</span></div></span></div>
+                  <div class="kv" style="align-items:flex-start"><span class="k">日志</span><span class="v">3 个文件 · 41 KB</span></div>
+                  <div class="logFold">展开 JVM 输出（末尾 12 行）</div>
+                  <div class="logBox">[00:12:29] [main/INFO] Loading 214 mods<br>[00:12:33] [Render thread/WARN] Memory: 4096 MB<br>[00:12:38] [Render thread/ERROR] java.lang.OutOfMemoryError: Java heap space<br>  at net.minecraft.client.Minecraft.run(Minecraft.java:841)<br>[00:12:38] [Render thread/ERROR] Game crashed</div>
+                </div>
+                <div class="col r">
+                  <h3>建议</h3>
+                  <div class="sug" style="margin-top:0">
+                    <div class="item">把最大内存提到 8192 MB</div>
+                    <div class="item">关闭 OptiFine，改用 Embeddium 单件</div>
+                    <div class="item">检查是否重复安装了同一模组的两个版本</div>
+                    <div class="item">仍然崩溃时，导出日志到反馈区</div>
+                  </div>
+                  <h3 style="margin-top:18px">下一步</h3>
+                  <div style="font-size:11.5px;color:#9aa6b4;line-height:1.75">
+                    「调大内存」会直接改这个版本的内存设置为 8192 MB，然后自动重试一次。<br>
+                    导出会打包 crash-reports、latest.log、启动器日志与本报告。
+                  </div>
+                </div>
+              </div>
+              <div class="mf"><span style="font-size:11px;color:var(--dim2);flex:1">诊断仅在本机进行，不上传</span>
+                <button class="btn sm">导出日志</button><button class="btn sm">忽略</button><button class="btn sm">调大内存并重试</button><button class="btn pri sm">重试</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note"><b>优点</b>信息量最大：概要/建议/日志三块各就各位，和主流启动器的崩溃窗口同构；老用户找"导出日志"有肌肉记忆。</div>
+        <div class="note"><b>代价 / 需要后端</b>多数信息后端已有，主要工作在 QML；要处理"预检失败"没有 JVM 输出时的空态。<span class="need">需补：<code>crashAnalysisReady</code> 接线（信号已在 ShadowBackend 上）。</span></div>
+      </div>
+    </div>
+
+    <!-- B3 -->
+    <div class="variant" data-variant="B3">
+      <div class="vhead"><span class="vtag">B3</span><span class="vname">独立窗口：从覆盖层里出来，独立标题栏、可移动</span><span class="vpick">选这个</span></div>
+      <div class="app">
+        <div class="side"><div class="logo">SHADOW</div><div class="nav on"><span class="ic"></span>启动</div><div class="nav"><span class="ic"></span>下载</div><div class="nav"><span class="ic"></span>联机</div><div class="nav"><span class="ic"></span>统计</div><div class="nav"><span class="ic"></span>设置</div></div>
+        <div class="stage">
+          <div class="winbtns"><span>—</span><span>□</span><span>×</span></div>
+          <div class="overlay" style="align-items:flex-start;padding-top:88px">
+            <div class="window">
+              <div class="wbar"><span style="width:8px;height:8px;background:#ef4444;display:inline-block"></span><span>崩溃诊断 — 26.2 Forge 65.1.1</span><span class="dots">— □ ×</span></div>
+              <div class="mb">
+                <div class="col l">
+                  <h3>发生了什么</h3>
+                  <div class="reason" style="margin-top:0">java.lang.OutOfMemoryError: Java heap space</div>
+                  <div class="kv"><span class="k">类型</span><span class="v">JVM 崩溃</span></div>
+                  <div class="kv"><span class="k">时间</span><span class="v">2026-11-05 00:12:38</span></div>
+                  <div class="kv" style="align-items:flex-start"><span class="k">疑似</span><span class="v"><div class="chips"><span class="chip">create</span><span class="chip">immersive_engineering</span></div></span></div>
+                </div>
+                <div class="col r">
+                  <h3>建议</h3>
+                  <div class="sug" style="margin-top:0">
+                    <div class="item">最大内存提到 8192 MB</div>
+                    <div class="item">关掉 OptiFine 改用 Embeddium</div>
+                    <div class="item">导出日志后附在反馈里</div>
+                  </div>
+                </div>
+              </div>
+              <div class="mf"><span style="font-size:11px;color:var(--dim2);flex:1">独立窗口可以拖到第二个屏幕，启动器还能继续用</span>
+                <button class="btn sm">导出日志</button><button class="btn sm">忽略</button><button class="btn pri sm">重试</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note"><b>优点</b>不挡启动器，用户可以边看报告边去改设置；多屏/截图分享方便。</div>
+        <div class="note"><b>代价 / 需要后端</b>多一个 <code>Window</code> 生命周期与主题同步（任务栏、置顶、最小化行为都要定），比 B2 复杂；小屏幕上容易和主窗打架。</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ================= C ================= -->
+<section>
+  <div class="secHead"><h2>C. 多开 / 强制结束 / 多进程监控</h2><span class="q">PROCESS MONITOR</span></div>
+  <p class="secDesc">后端已有 <code>runningGames()</code>（版本名 + PID + displayVersion）、<code>runningCount</code>、按 PID 结束、全部结束、退出分离、启动器重启后回收。缺的是入口和"运行时长"字段。</p>
+
+  <div class="variants">
+
+    <!-- C1 -->
+    <div class="variant" data-variant="C1">
+      <div class="vhead"><span class="vtag">C1</span><span class="vname">侧栏「运行中」区：常驻、不打扰主页</span><span class="vpick">选这个</span></div>
+      <div class="app">
+        <div class="sidebarWrap">
+          <div class="logo">SHADOW</div>
+          <div class="nav on"><span class="ic"></span>启动</div>
+          <div class="nav"><span class="ic"></span>下载</div>
+          <div class="nav"><span class="ic"></span>联机</div>
+          <div class="nav"><span class="ic"></span>统计</div>
+          <div class="nav"><span class="ic"></span>设置</div>
+          <div class="runSec newbox"><span class="newTag">新增：运行中</span>
+            <div class="runHead"><span class="dotlive"></span>运行中<span class="n">2</span></div>
+            <div class="runItem">
+              <div style="flex:1;min-width:0"><div class="vn">26.2 Forge 65.1.1</div><div class="pid">PID 12480 · 12 分钟</div></div>
+              <span class="kill">结束</span>
+            </div>
+            <div class="runItem">
+              <div style="flex:1;min-width:0"><div class="vn">1.21.1 Fabric</div><div class="pid">PID 9904 · 3 分钟</div></div>
+              <span class="kill">结束</span>
+            </div>
+            <div class="runFoot"><span>全部结束</span><span style="margin-left:auto">退出启动器不影响游戏</span></div>
+          </div>
+          <div style="margin-top:auto;padding:0 20px;font-size:11px;color:#3f4754">v1.0.4</div>
+        </div>
+        <div class="stage">
+          <div class="winbtns"><span>—</span><span>□</span><span>×</span></div>
+          <div style="position:absolute;left:60px;bottom:110px">
+            <div style="font-size:12px;color:#7b8593;margin-bottom:8px">上次游玩 · 今天 23:31</div>
+            <div style="font-size:44px;font-weight:700;color:#e8eef6;letter-spacing:-.5px">26.2 Forge 65.1.1</div>
+            <div style="display:flex;gap:10px;margin-top:18px">
+              <div class="launchBtn">启动游戏</div>
+              <div class="btn" style="padding:12px 18px">版本</div>
+              <div class="btn" style="padding:12px 18px">设置</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note"><b>优点</b>永远在视野里，不占主区；和"下载进度"那一块可以并成同一个"活动区"；结束时只影响那一行。</div>
+        <div class="note"><b>代价 / 需要后端</b>侧栏空间有限，多于 3 个实例要滚动或折叠。<span class="need">需补：<code>runningGames()</code> 增加 <code>startedAt</code>（算运行时长）与 <code>state</code>（启动中 / 运行中 / 退出中）。</span></div>
+      </div>
+    </div>
+
+    <!-- C2 -->
+    <div class="variant" data-variant="C2">
+      <div class="vhead"><span class="vtag">C2</span><span class="vname">右下角悬浮进程面板：默认收起成一条</span><span class="vpick">选这个</span></div>
+      <div class="app">
+        <div class="side"><div class="logo">SHADOW</div><div class="nav on"><span class="ic"></span>启动</div><div class="nav"><span class="ic"></span>下载</div><div class="nav"><span class="ic"></span>联机</div><div class="nav"><span class="ic"></span>统计</div><div class="nav"><span class="ic"></span>设置</div></div>
+        <div class="stage">
+          <div class="winbtns"><span>—</span><span>□</span><span>×</span></div>
+          <div style="position:absolute;left:60px;bottom:110px">
+            <div style="font-size:12px;color:#7b8593;margin-bottom:8px">上次游玩 · 今天 23:31</div>
+            <div style="font-size:44px;font-weight:700;color:#e8eef6;letter-spacing:-.5px">26.2 Forge 65.1.1</div>
+            <div style="display:flex;gap:10px;margin-top:18px"><div class="launchBtn">启动游戏</div><div class="btn" style="padding:12px 18px">版本</div><div class="btn" style="padding:12px 18px">设置</div></div>
+          </div>
+          <div class="floatPanel newbox"><span class="newTag">新增：悬浮面板</span>
+            <div class="fh"><span class="dotlive" style="width:6px;height:6px;background:#5bbd85;border-radius:50%"></span>运行中的游戏<span class="n">2</span></div>
+            <div class="fr"><span style="flex:1;color:#d7dfea">26.2 Forge 65.1.1</span><span style="font-size:10.5px;color:#5f6875">PID 12480</span><span class="kill" style="border:1px solid #3a2626;color:#e0a0a0;font-size:10.5px;padding:1px 6px;border-radius:2px">结束</span></div>
+            <div class="fr"><span style="flex:1;color:#d7dfea">1.21.1 Fabric</span><span style="font-size:10.5px;color:#5f6875">PID 9904</span><span class="kill" style="border:1px solid #3a2626;color:#e0a0a0;font-size:10.5px;padding:1px 6px;border-radius:2px">结束</span></div>
+            <div class="ff"><button class="btn sm dgr">全部结束</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note"><b>优点</b>不侵入主区；游戏跑起来后启动器常常在后台，回来一眼就能看到还剩几个；可折叠到只剩"运行中 2"一行。</div>
+        <div class="note"><b>代价 / 需要后端</b>右下角会和 Toast 抢位置（Toast 现在就在右下，bottomMargin 56），需要错开或合并成同一个栈。<span class="need">需补：同 C1（startedAt / state）。</span></div>
+      </div>
+    </div>
+
+    <!-- C3 -->
+    <div class="variant" data-variant="C3">
+      <div class="vhead"><span class="vtag">C3</span><span class="vname">启动按钮状态化：按钮本身变成「运行中 2」并下拉进程列表</span><span class="vpick">选这个</span></div>
+      <div class="app">
+        <div class="side"><div class="logo">SHADOW</div><div class="nav on"><span class="ic"></span>启动</div><div class="nav"><span class="ic"></span>下载</div><div class="nav"><span class="ic"></span>联机</div><div class="nav"><span class="ic"></span>统计</div><div class="nav"><span class="ic"></span>设置</div></div>
+        <div class="stage">
+          <div class="winbtns"><span>—</span><span>□</span><span>×</span></div>
+          <div style="position:absolute;left:60px;bottom:250px">
+            <div style="font-size:12px;color:#7b8593;margin-bottom:8px">上次游玩 · 今天 23:31</div>
+            <div style="font-size:44px;font-weight:700;color:#e8eef6;letter-spacing:-.5px">26.2 Forge 65.1.1</div>
+            <div class="newbox" style="display:inline-block;margin-top:18px"><span class="newTag">新增：按钮状态化</span>
+              <div style="display:flex;gap:10px;align-items:center">
+                <div class="launchBtn live">运行中<span class="cnt">2</span><span style="font-size:11px;opacity:.7">▾</span></div>
+                <div class="btn" style="padding:12px 18px">版本</div>
+                <div class="btn" style="padding:12px 18px">设置</div>
+              </div>
+              <div class="dropList" style="position:absolute;left:0;top:calc(100% + 10px)">
+                <div class="dh">正在运行的实例</div>
+                <div class="dr"><span class="vn">26.2 Forge 65.1.1</span><span class="pid">PID 12480 · 12 分钟</span><span class="kill" style="border:1px solid #3a2626;color:#e0a0a0;font-size:10.5px;padding:1px 6px;border-radius:2px">结束</span></div>
+                <div class="dr"><span class="vn">1.21.1 Fabric</span><span class="pid">PID 9904 · 3 分钟</span><span class="kill" style="border:1px solid #3a2626;color:#e0a0a0;font-size:10.5px;padding:1px 6px;border-radius:2px">结束</span></div>
+                <div class="df"><span>再开一个该版本</span><span>全部结束</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note"><b>优点</b>零新增常驻区域；"多开"这个动作变得自然（按钮下拉里就有"再开一个"），用户不用找入口。</div>
+        <div class="note"><b>代价 / 需要后端</b>只有回到主页才看得到；按钮语义从"启动"变成"运行中"，需要明确"点主体=再开一个，点箭头=看列表"。<span class="need">需补：同 C1；另外要多开按钮是否默认允许（现在 <code>Launcher</code> 内部有 isRunning 守卫，实际不拦）。</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <h3>落地顺序建议</h3>
+  <p class="lead" style="margin-bottom:0">
+    选定后我按这个顺序做：① 后端补字段（<code>startedAt</code> / <code>launchRepairs</code> / warning 属性）→ ② 启动浮层改造（A 方案）→ ③ 崩溃面板（B 方案）→ ④ 进程监控（C 方案）。<br>
+    每一轮都只动一处，出包给你验；不会一次全改完再丢给你。
+  </p>
+</footer>
+
+</div>
+
+<div class="pickbar">
+  <span class="k">已选：</span><span class="v" id="picked">（还没选）</span>
+  <span class="tip">点每张方案右上角的「选这个」，再告诉我 A / B / C 各选哪个</span>
+</div>
+
+<script>
+  const picked = {};
+  document.querySelectorAll('.variant').forEach(function(v){
+    v.querySelector('.vpick').addEventListener('click', function(){
+      const id = v.dataset.variant;
+      const sec = id[0];
+      Object.keys(picked).forEach(function(k){ if(k[0]===sec) delete picked[k]; });
+      document.querySelectorAll('.variant').forEach(function(x){ if(x.dataset.variant[0]===sec) x.classList.remove('picked'); });
+      picked[id] = true;
+      v.classList.add('picked');
+      const keys = Object.keys(picked).sort();
+      document.getElementById('picked').textContent = keys.length ? keys.join('  /  ') : '（还没选）';
+    });
+  });
+</script>
+</body>
+</html>
