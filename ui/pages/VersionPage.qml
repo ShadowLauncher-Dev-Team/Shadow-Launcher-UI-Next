@@ -100,8 +100,11 @@ Item {
     }
     function commit() {
         if (!page.b || !page.sel) return
-        if (page.pendingId !== page.currentId)
+        if (page.pendingId !== page.currentId) {
             page.b.setSelectedVersion(page.pendingId)
+            // 页面随即关闭，Toast 是唯一的"确实换了"的确认
+            page.flash("已切换到 " + page.pendingId)
+        }
         page.close()
     }
 
