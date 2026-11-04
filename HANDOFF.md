@@ -272,3 +272,34 @@ ee2682a feat(launch-overlay): 启动阶段管线接入后端 StepPipeline；新�
 
 **顺带修**：`icons/lucide/lock.svg` 没进 CMake 资源列表（`qml/icons` 有、`icons/` 没有），启动日志一直报 icon missing；已补文件 + 资源条目。
 
+
+---
+
+## 10. 2026-11-04 深夜：第二轮实测问题 + 多账号列表
+
+### 第二轮 5 条问题（commit 5a5cbf0）
+1. **换版本"向上抽搐"** —— 顺序错了：上一版在内容已经换成新内容之后才播"压暗→淡回"，
+   看到的是新文字先亮一下再闪一下。改为 shownId：淡出 → 在完全透明时换内容 → 淡入 +6px 上浮。
+   **规则：交叉淡入必须先隐藏再换内容。**
+2. **主按钮顶部白条** —— SButton 里 1px 的 `#33ffffff` 毛边高光，深色底上就是一道白线，已删。
+3. **正版登录状态不美观** —— 后端 msStatus 文案长（"授权个人信息: ..."），旧卡片 42px 固定高 + elide
+   只剩半句。改成标题 + 最多 3 行明细 + 呼吸点，高度随内容，只在登录中显示。
+4. **点"添加账号"后卡死** —— 顶栏"返回"无条件 close()。现在登录表单态下文案变"返回账户"，
+   点击 `loginPanel=false`。
+5. **切文件夹后左侧无选中** —— 后端重扫后 selectedVersion 可能为空/失效，pendingId 还是旧 id，
+   右侧用 rows[0] 兜底、左侧没有条。新增 `syncPendingFromList()`，rows 变化时校验并跟随 rows[0]。
+
+### 多账号列表（commit 0a3367e）
+- **存储**：`<AppData>/shadow/accounts.json`，条目 {mode, name, uuid, refreshToken, apiRoot, accessToken, clientToken}，
+  凭据字段用 TokenCrypto 加密（和微软会话同一套）。**同一时刻只有一个活动账号。**
+- **切换**：先 `clearActiveIdentity()`，再按 mode 装载：
+  0 正版 → 装 refreshToken + `refreshMicrosoftToken()` 续期（失败提示重新登录，账号保留）；
+  1 离线 → `offlineLogin(name)`；2 外置 → `YggdrasilBackend::restoreSession()`（装会话 + 落盘 + validate + 取皮肤）。
+  切回本地账号前先 `ygg->logout()`，避免两套身份同时在线。
+- **写入时机**：正版/离线登录成功、外置登录成功（ShadowBackend 连 YggdrasilBackend::loginSuccess）、
+  启动时补登记已登录但不在列表里的正版会话。
+- **UI**：左列 = 账号列表（当前项高亮 + 蓝条；非当前项只显示名字首字母，不伪造皮肤），
+  点即切换；右列"移除此账号"（退出登录只清身份，不移出列表）。
+- **已知限制**：非当前账号没有缓存皮肤；正版账号若 refreshToken 失效需重新登录；
+  外置切换会打一次 validate 接口，慢网下要等一会儿。
+

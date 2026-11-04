@@ -293,8 +293,9 @@ Item {
                             }
                             Text {
                                 width: parent.width
-                                text: modelData ? modelData.typeText : ""
-                                color: acctRow.cur ? Theme.ok : Theme.fg3
+                                readonly property bool relog: !!modelData && modelData.needsRelogin === true
+                                text: relog ? "需重新登录" : (modelData ? modelData.typeText : "")
+                                color: relog ? Theme.warn : (acctRow.cur ? Theme.ok : Theme.fg3)
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                             }
@@ -306,7 +307,15 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 if (!page.b || !modelData) return
-                                if (!modelData.current && page.b.switchAccount) page.b.switchAccount(modelData.index)
+                                // 凭据已作废（登出过）：直接打开对应的登录表单重新验证，
+                                // 而不是 switchAccount —— 那样只会静默失败
+                                if (modelData.needsRelogin === true) {
+                                    page.loginPanel = true
+                                    page.tab = modelData.mode
+                                    return
+                                }
+                                if (!modelData.current && page.b.switchAccount)
+                                    page.b.switchAccount(modelData.index)
                             }
                         }
                     }

@@ -458,6 +458,22 @@ void AccountBackend::logout()
     m_msTokenExpiresIn = 0;
     deleteMicrosoftSession();
 
+    // 多账号：账号条目保留（名字/UUID 还在列表里），但凭据一律作废。
+    // 不作废的话，"退出登录"后再点列表里那一行会立刻用 refreshToken 静默登录回去，
+    // 等于根本没退出——这也是"退出登录"和"移除此账号"看起来一样的根源。
+    if (m_currentAccount >= 0 && m_currentAccount < m_accounts.size()) {
+        StoredAccount &a = m_accounts[m_currentAccount];
+        secureWipe(a.refreshToken);
+        a.refreshToken.clear();
+        a.accessToken.clear();
+        a.clientToken.clear();
+    }
+    // 登出后没有任何账号处于活动状态：条目全部保留，但谁都不是"当前"，
+    // 否则左侧还会高亮一个其实已经退出的账号。
+    m_currentAccount = -1;
+    saveAccounts();
+    emit accountsChanged();
+
     // Stop background refresh timer
     if (m_refreshTimer) {
         m_refreshTimer->stop();
@@ -1346,6 +1362,10 @@ QVariantList AccountBackend::accounts() const
         m[QStringLiteral("uuid")] = a.uuid;
         m[QStringLiteral("typeText")] = accountTypeText(a.mode);
         m[QStringLiteral("current")] = (i == m_currentAccount);
+        // 凭据被登出作废后，条目还在但需要重新验证；UI 据此把点击行为改成"打开登录表单"
+        const bool needsRelogin = (a.mode == 0 && a.refreshToken.isEmpty())
+                               || (a.mode == 2 && a.accessToken.isEmpty());
+        m[QStringLiteral("needsRelogin")] = needsRelogin;
         out.append(m);
     }
     return out;
