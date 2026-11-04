@@ -460,6 +460,8 @@ private:
     void showStep(const QString& installId, int index);  // Make a hidden step visible and active
     /// 按 key 查找步骤索引（契约首选）；未找到返回 -1
     int stepIndexByKey(const QString& installId, const QString& key);
+    /// 按 key 列表依次查找（同一语义在不同加载器路径下 key 不同时用）：返回第一个命中
+    int stepIndexByKeys(const QString& installId, const QStringList& keys);
     /// 按步骤名（子串匹配）查找步骤索引；未找到返回 -1（2026-08-14，迁移期保留）
     int findStepByName(const QString& installId, const QString& namePart);
     /// 精确查找 loader 校验步骤（"校验 X 完整性"，排除"校验游戏资源完整性"），

@@ -41,8 +41,12 @@ public:
     // ── 状态管理 ──
     StepStatus status() const { return m_status; }
     int statusInt() const { return static_cast<int>(m_status); }
+    /// 契约（DOWNLOAD_CONTRACT §2）：终态（completed/failed/skipped）不可回退到 pending/active。
+    /// 需要复位（重试用）时必须显式调用 forceStatus()，让"复位"在代码里可审计。
     void setStatus(StepStatus s);
     void setStatus(const QString& s);  // convenience: "pending"|"active"|"completed"|"failed"
+    /// 强制复位（仅限重试/重建等确知要回退的路径）
+    void forceStatus(StepStatus s);
 
     void setActive() { setStatus(StepStatus::Active); }
     void setCompleted() { setStatus(StepStatus::Completed); if (m_percentage < 100) setPercentage(100); }

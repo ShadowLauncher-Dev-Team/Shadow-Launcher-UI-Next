@@ -482,6 +482,10 @@ public:
     // 仅用于开发核对「准备运行环境」卡片排版（--ui-demo-repair 也走这个）
     Q_INVOKABLE void demoLaunchRepairs();
     Q_INVOKABLE void demoLaunchFailure();
+
+    /// 下载基线自检（离线、无网络）：步骤词表一致性 + StepNode 状态机/百分比钳制。
+    /// 返回 "PASS ..." 或 "FAIL: ..." 字符串；供 /eval 与人工验收使用。
+    Q_INVOKABLE QString downloadSelfcheck();
     Q_INVOKABLE void killMinecraft();
     Q_INVOKABLE void killGameByPid(qint64 pid);
     Q_INVOKABLE QVariantList runningGames();

@@ -2909,7 +2909,7 @@ void VersionBackend::resetLoaderStepsForRetry(const QString& installId)
             s[QStringLiteral("status")] = QStringLiteral("completed");
             s[QStringLiteral("percentage")] = 100;
         } else {
-            if (node) node->setStatus(StepStatus::Pending);
+            if (node) node->forceStatus(StepStatus::Pending);
             s[QStringLiteral("status")] = QStringLiteral("pending");
             s[QStringLiteral("percentage")] = 0;
         }
@@ -2918,14 +2918,18 @@ void VersionBackend::resetLoaderStepsForRetry(const QString& installId)
 
     // 主文件已缓存（安装阶段失败）→ 主文件/校验/库保持完成，安装步骤重新激活
     if (ctx && ctx->loaderJarReady) {
-        int mi = findStepByName(installId, QStringLiteral("主文件"));
+        int mi = stepIndexByKeys(installId, {StepKeys::loaderInstaller(),
+                                             StepKeys::optifineJar(),
+                                             StepKeys::fabricConfig()});
         if (mi >= 0) updateStep(installId, mi, QStringLiteral("completed"), 100);
-        int vi = findLoaderVerifyStep(installId);
+        int vi = stepIndexByKey(installId, StepKeys::loaderVerify());
         if (vi >= 0) updateStep(installId, vi, QStringLiteral("completed"), 100);
-        int li = findLoaderLibsStep(installId);
+        int li = stepIndexByKeys(installId, {StepKeys::loaderLibs(), StepKeys::fabricLibs()});
         if (li >= 0) updateStep(installId, li, QStringLiteral("completed"), 100);
     }
-    const int ii = findLoaderInstallStep(installId);
+    const int ii = stepIndexByKeys(installId, {StepKeys::loaderInstall(),
+                                                StepKeys::fabricInstall(),
+                                                StepKeys::optifineInstall()});
     if (ii >= 0 && pipe && pipe->stepNode(ii)) {
         // 直接置 active（updateStep 会因 failed→active 降级而忽略）
         auto* node = pipe->stepNode(ii);
@@ -6813,6 +6817,15 @@ int VersionBackend::stepIndexByKey(const QString& installId, const QString& key)
     return ds->pipeline()->indexOf(key);
 }
 
+int VersionBackend::stepIndexByKeys(const QString& installId, const QStringList& keys)
+{
+    for (const auto& k : keys) {
+        const int idx = stepIndexByKey(installId, k);
+        if (idx >= 0) return idx;
+    }
+    return -1;
+}
+
 void VersionBackend::rebuildSteps(const QString& installId, const QStringList& keys,
                                    const QStringList& names, const QVector<qreal>& weights,
                                    const QVector<bool>& showFlags) {
@@ -7039,7 +7052,7 @@ void VersionBackend::updateStep(const QString& installId, int index, const QStri
         } else if (status == "failed") {
             node->setFailed();
         } else if (status == "pending") {
-            node->setStatus(StepStatus::Pending);
+            node->forceStatus(StepStatus::Pending);
         } else if (status == "error") {
             node->setFailed();
         } else if (status == "skipped") {
@@ -9051,9 +9064,13 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
             // ⚠ findStepByName("安装") 会误命中"下载 X 安装器库"（也含"安装"）。
             int stepIdx = -1;
             if (ds->isMerged()) {
-                if (step <= 1)      stepIdx = findStepByName(installId, QStringLiteral("主文件"));
-                else if (step == 2) stepIdx = findLoaderVerifyStep(installId);
-                else if (step >= 3) stepIdx = findLoaderInstallStep(installId);
+                if (step <= 1)      stepIdx = stepIndexByKeys(installId, {StepKeys::loaderInstaller(),
+                                                                           StepKeys::optifineJar(),
+                                                                           StepKeys::fabricConfig()});
+                else if (step == 2) stepIdx = stepIndexByKey(installId, StepKeys::loaderVerify());
+                else if (step >= 3) stepIdx = stepIndexByKeys(installId, {StepKeys::loaderInstall(),
+                                                                          StepKeys::fabricInstall(),
+                                                                          StepKeys::optifineInstall()});
                 if (stepIdx < 0) stepIdx = (step - 1 + 4);  // fallback 旧逻辑
             } else {
                 stepIdx = step - 1;
@@ -9093,7 +9110,7 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
         [this, installId]() {
             auto* ds = dlSession(installId);
             if (!ds) return;
-            int vi = findLoaderVerifyStep(installId);
+            int vi = stepIndexByKey(installId, StepKeys::loaderVerify());
             if (vi >= 0) {
                 showStep(installId, vi);
                 updateStep(installId, vi, QStringLiteral("active"), 0);
@@ -9103,7 +9120,7 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
         [this, installId](bool ok) {
             auto* ds = dlSession(installId);
             if (!ds) return;
-            int vi = findLoaderVerifyStep(installId);
+            int vi = stepIndexByKey(installId, StepKeys::loaderVerify());
             if (vi >= 0)
                 updateStep(installId, vi, ok ? QStringLiteral("completed")
                                              : QStringLiteral("failed"), ok ? 100 : 0);
@@ -9166,7 +9183,9 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
                     // 否则"安装 NeoForge"进行中安装器库仍显示 active。
                     // ⚠ 2026-08-14 用 nm.startsWith("安装") 匹配——"下载 X 安装器库"
                     // 不以"安装"开头（"下载"在前），但为统一改用精确查找，杜绝歧义。
-                    int installIdx = findLoaderInstallStep(installId);
+                    int installIdx = stepIndexByKeys(installId, {StepKeys::loaderInstall(),
+                                                                 StepKeys::fabricInstall(),
+                                                                 StepKeys::optifineInstall()});
                     if (installIdx >= 0)
                         ds->loaderStepIdx = installIdx;
                     break;

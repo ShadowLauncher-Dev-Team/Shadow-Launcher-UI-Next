@@ -3,6 +3,9 @@
 #include "shadow_backend.h"
 #include "../secrets.h"
 #include "../core/http_client.h"
+#include "../core/step_keys.h"
+#include "../core/step_pipeline.h"
+#include "../core/step_node.h"
 #include "../core/resource_fetch_engine.h"
 #include "../core/mod_manager.h"
 #include "../core/update_manager.h"
@@ -2916,6 +2919,95 @@ void ShadowBackend::demoLaunchRepairs() {
 }
 
 /// 只用于核对 B1 失败面板：造一份崩溃诊断 + 让管线停在失败态。
+QString ShadowBackend::downloadSelfcheck()
+{
+    QStringList fails;
+
+    // ── 1) 旧中文名 → key 映射（迁移期桥接必须准确，否则按名字路由的旧代码会漂移）
+    const QVector<QPair<QString, QString>> legacyCases = {
+        {QStringLiteral("下载版本JSON"),            StepKeys::baseJson()},
+        {QStringLiteral("下载支持库"),              StepKeys::baseLibraries()},
+        {QStringLiteral("下载资源文件"),            StepKeys::baseAssets()},
+        {QStringLiteral("校验游戏资源完整性"),      StepKeys::baseVerify()},
+        {QStringLiteral("下载原版 JSON 文件"),      StepKeys::baseJson()},
+        {QStringLiteral("下载原版支持库文件"),      StepKeys::baseLibraries()},
+        {QStringLiteral("下载原版资源文件"),        StepKeys::baseAssets()},
+        {QStringLiteral("下载 Fabric 配置"),        StepKeys::fabricConfig()},
+        {QStringLiteral("下载 Fabric 依赖库"),      StepKeys::fabricLibs()},
+        {QStringLiteral("安装 Fabric"),             StepKeys::fabricInstall()},
+        {QStringLiteral("下载 Fabric API"),         StepKeys::fabricApi()},
+        {QStringLiteral("下载 Forge 主文件"),       StepKeys::loaderInstaller()},
+        {QStringLiteral("校验 Forge 完整性"),       StepKeys::loaderVerify()},
+        {QStringLiteral("下载 Forge 安装器库"),     StepKeys::loaderLibs()},
+        {QStringLiteral("安装 Forge"),              StepKeys::loaderInstall()},
+    };
+    for (const auto& c : legacyCases) {
+        const QString got = StepKeys::keyForLegacyName(c.first);
+        if (got != c.second) {
+            fails << QStringLiteral("legacy=%1 expected=%2 got=%3")
+                         .arg(c.first, c.second, got.isEmpty() ? QStringLiteral("<empty>") : got);
+        }
+    }
+
+    // ── 2) key 唯一性（词表里不允许两个常量撞同一个字符串）
+    const QStringList allKeys = {
+        StepKeys::baseJson(), StepKeys::baseLibraries(), StepKeys::baseAssets(),
+        StepKeys::baseVerify(), StepKeys::baseJar(),
+        StepKeys::loaderInstaller(), StepKeys::loaderVerify(), StepKeys::loaderLibs(),
+        StepKeys::loaderInstall(), StepKeys::fabricConfig(), StepKeys::fabricLibs(),
+        StepKeys::fabricInstall(), StepKeys::fabricApi(), StepKeys::optifineJar(),
+        StepKeys::optifineInstall(), StepKeys::metaResolve(), StepKeys::metaOverrides(),
+        StepKeys::modsDownload(), StepKeys::modsVerify(), StepKeys::javaCheck(),
+        StepKeys::javaInstall(), StepKeys::userdataImport()
+    };
+    QSet<QString> seen;
+    for (const auto& k : allKeys) {
+        if (k.isEmpty()) { fails << QStringLiteral("empty key in vocabulary"); continue; }
+        if (seen.contains(k)) fails << QStringLiteral("duplicate key=%1").arg(k);
+        seen.insert(k);
+    }
+
+    // ── 3) StepNode 状态机：completed 后百分比不得被拉回
+    {
+        StepPipeline pipe;
+        auto* n = pipe.addStep(QStringLiteral("t.done"), QStringLiteral("t"), 1.0);
+        if (!n) {
+            fails << QStringLiteral("pipeline.addStep returned null");
+        } else {
+            n->setCompleted();
+            if (n->statusInt() != static_cast<int>(StepStatus::Completed))
+                fails << QStringLiteral("setCompleted did not reach Completed");
+            if (n->percentage() != 100)
+                fails << QStringLiteral("completed step percentage=%1 (want 100)").arg(n->percentage());
+            n->setPercentage(40);
+            if (n->percentage() != 100)
+                fails << QStringLiteral("completed step percentage regressed to %1").arg(n->percentage());
+            // 字节进度回写也不能把已完成步骤拉回
+            n->setByteProgress(500, 1000);
+            if (n->percentage() != 100)
+                fails << QStringLiteral("completed step byte-progress regressed to %1").arg(n->percentage());
+            // 非法跳转：completed → active 不应生效
+            n->setActive();
+            if (n->statusInt() != static_cast<int>(StepStatus::Completed))
+                fails << QStringLiteral("completed step degraded to active");
+        }
+    }
+
+    // ── 4) 百分比钳制 0..100
+    {
+        StepPipeline pipe;
+        auto* a = pipe.addStep(QStringLiteral("t.hi"), QStringLiteral("h"), 1.0);
+        if (a) { a->setPercentage(150); if (a->percentage() != 100) fails << QStringLiteral("clamp high=%1").arg(a->percentage()); }
+        auto* b = pipe.addStep(QStringLiteral("t.lo"), QStringLiteral("l"), 1.0);
+        if (b) { b->setPercentage(-20); if (b->percentage() != 0) fails << QStringLiteral("clamp low=%1").arg(b->percentage()); }
+    }
+
+    if (fails.isEmpty())
+        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=4")
+            .arg(allKeys.size()).arg(legacyCases.size());
+    return QStringLiteral("FAIL(%1): ").arg(fails.size()) + fails.join(QStringLiteral(" | "));
+}
+
 void ShadowBackend::demoLaunchFailure() {
     if (!m_launch) return;
     QVariantMap report;
