@@ -336,6 +336,16 @@ void FileDownloader::removeInFlightReply(QNetworkReply* reply) {
     m_inflightReplies.removeOne(reply);
 }
 
+// ── 429/503：解析 Retry-After（秒数；HTTP 日期形式忽略，退化为默认值）──
+static int retryAfterSeconds(QNetworkReply* reply, int fallbackSec)
+{
+    const QByteArray ra = reply->rawHeader("Retry-After").trimmed();
+    bool ok = false;
+    const int sec = ra.toInt(&ok);
+    if (ok && sec > 0) return sec;
+    return fallbackSec;
+}
+
 // ── 取消/暂停：对全部在途 reply 排队 abort ──
 // 必须持锁遍历：worker 在 removeInFlightReply() 之后才 deleteLater()，
 // 持锁期间对象不会被移除/释放；abort() 由 reply 所属 worker 线程的事件循环执行。
@@ -793,6 +803,7 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             QThread::msleep(100);
         // 模组专项：重置重试轮每源仅 1 次尝试（PCL「逐个重新尝试下载」语义）
         const int attemptLimit = modRetriedOnce ? 1 : 6;
+        int rateLimitHits = 0;   // 本源 429/503 命中次数（上限 5，防止"永远 429"把线程锁死）
         bool prevWatchdogAbort = false;   // 上一次尝试是否因看门狗中止（跳过快速失败守卫）
         for (int attempt = 0; attempt < attemptLimit && !sourceOk; ++attempt) {
             if (m_cancelled.loadRelaxed()) goto cleanup;
@@ -1026,6 +1037,43 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 // 回到同一 attempt（0 → -1 → 循环 ++ 仍为 0）
                 --attempt;
                 continue;
+            }
+
+            // ── 429 / 503：服务端限流（契约 §6 第三层：按 Retry-After 退避）──
+            // 旧实现完全不看 HTTP 状态：429 被当成普通失败，退避固定 500ms，且计入
+            // 源失败次数 → 越重试越被禁用（实测镜像在高峰期的"越下越慢/越下越死"）。
+            if (!rangeFilled) {
+                const int httpStatus = reply->attribute(
+                    QNetworkRequest::HttpStatusCodeAttribute).toInt();
+                if (httpStatus == 429 || httpStatus == 503) {
+                    const int waitSec = qBound(1, retryAfterSeconds(reply, httpStatus == 429 ? 2 : 1), 10);
+                    qCWarning(logDownload)
+                        << QStringLiteral("[夸父] 服务端限流 %1 URL=%2 Retry-After=%3s（本源退避后重试，不计失败）")
+                               .arg(httpStatus).arg(url).arg(waitSec);
+                    reply->abort();
+                    reply->deleteLater();
+                    th->downloadDone = 0;
+                    // 退避等待（分片 100ms，取消/暂停可打断）
+                    for (int slice = 0; slice < waitSec * 10; ++slice) {
+                        if (m_cancelled.loadRelaxed()) goto cleanup;
+                        if (m_paused.loadRelaxed()) break;   // 暂停：跳出退避，交给暂停路径
+                        QThread::msleep(100);
+                    }
+                    if (m_cancelled.loadRelaxed()) goto cleanup;
+                    // 上限保护：某源连续 5 次限流 → 视为该源不可用，换下一个源；
+                    // 否则"永远 429"会让 --attempt 无限循环（线程永不返回）。
+                    if (++rateLimitHits > 5) {
+                        qCWarning(logDownload)
+                            << QStringLiteral("[夸父] 源持续限流，放弃本源 URL=%1（已退避 5 次）").arg(url);
+                        if (sourceIdx < file->sourceFailCounts.size())
+                            file->sourceFailCounts[sourceIdx]++;
+                        th->downloadDone = 0;
+                        break;
+                    }
+                    if (m_paused.loadRelaxed()) { --attempt; continue; }
+                    --attempt;   // 限流不消耗尝试次数（否则高峰期 6 次重试全打在限流上）
+                    continue;
+                }
             }
 
             // 超额止损（2026-08-07）：主动 abort 不算失败——数据已收满本线程范围，
