@@ -387,3 +387,63 @@ ee2682a feat(launch-overlay): 启动阶段管线接入后端 StepPipeline；新�
   但"32 位 Java 已限制内存"这类一次性警告还是没有落点。
 - 3 秒内进程死亡路径仍不做崩溃分析（只发 launchCheckFailed + toast）。
 
+---
+
+## 13. 下载基线改造（2026-11-05 夜，已施工 / 待验收）
+
+**范围**：只做后端与自检，不碰 UI 设计（影的要求）。契约见 `DOWNLOAD_CONTRACT.md`（仓库根）。
+
+### 本轮提交（按时间顺序）
+
+| 提交 | 内容 |
+|---|---|
+| `032328e` `38cc45c` | S0：步骤 key 词表（`src/core/step_keys.h`）+ 四条安装路径共用 + 全部按 key 路由；新增自检入口 |
+| `0984cec` | 传输层：限速真正生效、取消/暂停真中止在途、失败不计完成、速度对外单值 |
+| `7c0b6d4` | 整合包：批次级重试（1s/3s 退避）、`start()` 强制复位、60s 停滞看门狗、部分失败不标完成 |
+| `d8ab617` | 「版本列表源」真正生效（此前完全没人读） |
+| `56399ba` | 进度单调：active 不回退、重试复位同时归零 |
+| `686ceb6` | 并发上限 24 / 默认 16（旧配置 64 读时夹回）+ 限速实测校准 |
+| `4037db4` | 取消/失败语义实测 + 契约进度表 |
+| `bd93cdf` | 四项设置的消费点与验收清单 |
+| `878a84d` | 429/503 按 `Retry-After` 退避（此前完全不看 HTTP 状态） |
+| `4be6660` | 无 SHA1 文件也能被兜底重试救回（CF 文件"失败后永不恢复"） |
+| `23139fd` | 安装期资源索引的源优先级跟随「版本列表源」 |
+| `3d82fe0` | QNAM 改线程局部（16 文件只建 6 个，旧实现 ≥16） |
+| `32198eb` | 速度单一来源（删掉整合包路 800ms 减半）+ 失败文件不再报满字节 |
+| `f53fa6b` | 整合包「补下失败项」后端入口（增量补下） |
+
+### 自检抓到的真实 bug（不是推演）
+
+1. **已完成步骤的进度能被拉回 40%、状态能退回 active** —— 旧 UI"绿了又冒三点"的根因；现在终态不可逆，重试复位必须显式 `forceStatus()`。
+2. **重试后进度卡在上次的值** —— `forceStatus(Pending)` 没归零，被单调保护顶住。
+3. **占位大小进校验** —— 未知大小文件被塞 10MB 假 `fileSize`，兜底把真实 2MB 数据判"不完整"。
+4. **限速被 Windows sleep 粒度吃掉 40%** —— 1MB/s 档实测只有 0.64MB/s。
+
+### 验收方法（三步）
+
+1. `cmake --build build --config Release --parallel`（应打印 `UI contract OK (16 files)`）；
+2. 启动后 `POST /eval {"qml":"backend.downloadSelfcheck()"}` → 应 `PASS stepkeys=22 legacy=15 checks=6`；
+3. `backend.downloadSourceSummary()` 看四项设置现状；改 `listDownloadSource` 再读，主源应立即跟着变。
+
+**真机下载实测记录**（本机 `python -m http.server` + 探针 `backend.downloadProbe`）：
+- 限速：1MB/s 档 **0.99MB/s**、4MB/s 档 **3.84MB/s**（不限速 32–42MB/s）；
+- 取消：取消于 17,084,856 字节 → 600ms 后不变（grew=0），取消后无 allFinished；
+- 429：一次 `Retry-After: 1` → 1191ms 后成功；永远 429 → 6659ms 收敛不挂死；
+- 无 SHA1 兜底：前 8 次 500 后 200 → file=2097152（修复前 file=0）；
+- QNAM：16 文件 → 6 个（旧 ≥16）。
+
+### 明确未做 / 未验证（不要当成已完成）
+
+- **整合包真机导入未验证**（本机没有真包）：批次容错、停滞看门狗、部分失败语义、增量补下都是代码级完成。
+- **取消后的半截文件清理**：`.shadow_temp` 临时片已清理，但目标文件可能残留满尺寸（预分配/合并产物），MC 主链未做删除。
+- **版本 JSON 三源竞速 / 加载器版本列表双源**：仍并发抢答，`listSource` 有意不参与（改动需处理 done 计数与取消，缺真机验证风险大）。
+- **步骤显示名未统一**：key 已统一，但中文名仍由后端传（改成 UI 映射属 UI 工作，本轮不做）。
+- 精卫（模组下载引擎）固定 12 并发，刻意不跟 `threadLimit`（MCIM 18+ 会限流饿死连接）。
+
+### 工程约定（本轮新增）
+
+- 日志在 `{exeDir}/logs/shadow_launcher_YYYY-MM-DD.log`，可直接读 `qCInfo` 当验证证据。
+- 下载探针（仅验证用，不参与业务）：`downloadProbe(url, limitKBps, ms)`、`downloadProbeCancel(url, ms)`、`downloadProbeMulti(url, count, ms)`。
+- 临时测试大数据只放 `%TEMP%`；`.gitignore` 已加 `.probe/`（本轮曾误提交 20MB 测试文件，已重写历史清除）。
+
+
