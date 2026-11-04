@@ -70,6 +70,44 @@ Item {
         return "未登录"
     }
 
+    // ---- 右侧详情的"显示态" ----
+    // 详情原来是直接绑后端实时值的：切换账号时新数据在同一次事件里替换旧数据，
+    // 中间没有任何过渡（用户反馈"右侧信息载入无过渡"）。
+    // 这里和版本页同一套：先淡出 → 完全透明时换快照 → 淡入 + 8px 上浮。
+    property var acctView: null
+    // 身份键：只有"换了账号"才播过渡动画。
+    // 切到正版账号后后端还会陆续推 accountsChanged（恢复会话、补皮肤、令牌续期），
+    // 那些事件不该让右侧重新"载入"一次。
+    property string acctKey: ""
+    function acctKeyNow() {
+        if (!page.b) return ""
+        var i = page.b.currentAccount
+        var list = page.b.accounts
+        var mode = "?"
+        var nm = ""
+        if (list && i >= 0 && i < list.length) {
+            mode = String(list[i].mode)
+            nm = String(list[i].name)
+        }
+        return i + "|" + mode + "|" + nm
+    }
+    function buildAcctView() {
+        if (!page.b) return null
+        var online = page.b.isOnline === true
+        var u = online ? page.b.accountUuid : page.b.offlineUuid
+        var skin = page.b.skinPath || ""
+        return {
+            name: page.displayName,
+            typeText: page.typeText,
+            online: online,
+            head: page.headSource,
+            rawHead: page.rawHeadSource,
+            uuid: u ? u : "",
+            skinText: skin.length > 0 ? "已同步" : "未设置"
+        }
+    }
+    onLoginPanelChanged: if (!page.loginPanel) page.acctView = page.buildAcctView()
+
     // 反馈统一走 Toast（顶栏绿色文字会挤动右侧按钮，也留不住）
     function flash(msg) { if (page.toast) page.toast.show(msg) }
     function startMicrosoft() { if (page.b) { page.b.lastLoginMode = 0; page.b.microsoftLogin() } }
@@ -521,9 +559,78 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
 
+            // 账号数据一变（切换 / 登录完成 / 移除）：走一段过渡，而不是原地换字。
+            // 触发点放在这里而不是页面根部，保证和动画同作用域
+            Connections {
+                target: page
+                function onAccRevChanged() {
+                    var key = page.acctKeyNow()
+                    var sameAccount = (key === page.acctKey)
+                    page.acctKey = key
+                    // 首次铺数据 / 在登录面板里：直接铺，不演
+                    if (page.acctView === null || !page.hasAccount || page.loginPanel) {
+                        page.acctView = page.buildAcctView()
+                        return
+                    }
+                    // 同一个账号的后台刷新（皮肤、令牌、uuid）：原地更新文字，不重播载入
+                    if (sameAccount) {
+                        page.acctView = page.buildAcctView()
+                        return
+                    }
+                    detailSwap.restart()
+                }
+            }
+
+            // 换账号：淡出（120ms）→ 在完全透明时换快照 → 淡入 + 8px 上浮（180ms）
+            SequentialAnimation {
+                id: detailSwap
+                NumberAnimation {
+                    target: detailCol; property: "opacity"; to: 0
+                    duration: Theme.durFast; easing.type: Theme.easeExit
+                }
+                ScriptAction { script: page.acctView = page.buildAcctView() }
+                ParallelAnimation {
+                    NumberAnimation {
+                        target: detailCol; property: "opacity"; from: 0; to: 1
+                        duration: Theme.durBase; easing.type: Theme.easeEnter
+                    }
+                    NumberAnimation {
+                        target: detailRise; property: "y"; from: 8; to: 0
+                        duration: Theme.durBase; easing.type: Theme.easeEnter
+                    }
+                }
+            }
+            // 首次出现详情（进页面 / 关掉登录面板回来）
+            ParallelAnimation {
+                id: detailIn
+                NumberAnimation {
+                    target: detailCol; property: "opacity"; from: 0; to: 1
+                    duration: Theme.durBase; easing.type: Theme.easeEnter
+                }
+                NumberAnimation {
+                    target: detailRise; property: "y"; from: 8; to: 0
+                    duration: Theme.durBase; easing.type: Theme.easeEnter
+                }
+            }
+
             // ---- 已登录且不在切换态：账户详情 ----
             Column {
+                id: detailCol
                 visible: page.hasAccount && !page.loginPanel
+                opacity: 0
+                transform: Translate { id: detailRise; y: 0 }
+                onVisibleChanged: if (visible) {
+                    page.acctView = page.buildAcctView()
+                    page.acctKey = page.acctKeyNow()
+                    detailIn.restart()
+                }
+                // 首次进入：先把快照铺上，再淡入。没有这一步的话 acctView 一直是 null，
+                // 第一次切换会走"无快照直接赋值"分支 —— 又变成没有过渡。
+                Component.onCompleted: {
+                    page.acctView = page.buildAcctView()
+                    page.acctKey = page.acctKeyNow()
+                    detailIn.restart()
+                }
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
@@ -536,15 +643,15 @@ Item {
                     spacing: 16
                     SMinecraftHead {
                         size: 56
-                        rawSource: page.rawHeadSource
-                        source: page.headSource
-                        fallbackText: page.displayName
+                        rawSource: page.acctView ? page.acctView.rawHead : ""
+                        source: page.acctView ? page.acctView.head : ""
+                        fallbackText: page.acctView ? page.acctView.name : ""
                     }
                     Column {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 4
                         Text {
-                            text: page.displayName
+                            text: page.acctView ? page.acctView.name : ""
                             color: "#ffffff"
                             font.family: Theme.fontFamily
                             font.pixelSize: 26
@@ -552,7 +659,7 @@ Item {
                         }
                         // 类型徽章：比一行裸文本更有「身份感」，也给头部补一点颜色
                         Rectangle {
-                            visible: page.typeText.length > 0
+                            visible: page.acctView ? page.acctView.typeText.length > 0 : false
                             height: 20
                             width: badgeText.implicitWidth + 18
                             radius: 10
@@ -562,7 +669,7 @@ Item {
                             Text {
                                 id: badgeText
                                 anchors.centerIn: parent
-                                text: page.typeText
+                                text: page.acctView ? page.acctView.typeText : ""
                                 color: "#a9c6f2"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
@@ -577,7 +684,7 @@ Item {
                         width: parent.width; height: 40
                         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#101319" }
                         Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "账号类型"; color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
-                        Text { anchors.left: parent.left; anchors.leftMargin: 104; anchors.verticalCenter: parent.verticalCenter; text: page.typeText; color: "#d8dde5"; font.family: Theme.fontFamily; font.pixelSize: 13 }
+                        Text { anchors.left: parent.left; anchors.leftMargin: 104; anchors.verticalCenter: parent.verticalCenter; text: page.acctView ? page.acctView.typeText : ""; color: "#d8dde5"; font.family: Theme.fontFamily; font.pixelSize: 13 }
                     }
                     Item {
                         width: parent.width; height: 40
@@ -586,11 +693,8 @@ Item {
                         // UUID 完整显示（以前截成 8…4，等于看不全），右侧给一键复制
                         Text {
                             id: uuidValue
-                            readonly property string value: {
-                                if (!page.b) return ""
-                                var u = page.hasOnline ? page.b.accountUuid : page.b.offlineUuid
-                                return u ? u : ""
-                            }
+                            // 取"显示态"的 UUID：切换账号时它只在动画的透明帧里更新
+                            readonly property string value: page.acctView ? page.acctView.uuid : ""
                             anchors.left: parent.left
                             anchors.leftMargin: 104
                             anchors.right: copyUuid.left
@@ -623,12 +727,12 @@ Item {
                         Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "访问令牌"; color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
                         Text {
                             anchors.left: parent.left; anchors.leftMargin: 104; anchors.verticalCenter: parent.verticalCenter
-                            text: page.hasOnline ? "已获取" : "不需要（离线）"
+                            text: (page.acctView && page.acctView.online) ? "已获取" : "不需要（离线）"
                             color: "#d8dde5"; font.family: Theme.fontFamily; font.pixelSize: 13
                         }
                         Text {
                             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                            text: page.hasOnline ? "后台自动续期" : ""
+                            text: (page.acctView && page.acctView.online) ? "后台自动续期" : ""
                             color: "#79828f"; font.family: Theme.fontFamily; font.pixelSize: 11
                         }
                     }
@@ -637,7 +741,7 @@ Item {
                         Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "皮肤"; color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
                         Text {
                             anchors.left: parent.left; anchors.leftMargin: 104; anchors.verticalCenter: parent.verticalCenter
-                            text: (page.b && page.b.skinPath && page.b.skinPath.length > 0) ? "已同步" : "未设置"
+                            text: page.acctView ? page.acctView.skinText : ""
                             color: "#d8dde5"; font.family: Theme.fontFamily; font.pixelSize: 13
                         }
                     }
