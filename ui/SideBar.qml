@@ -10,6 +10,7 @@ Item {
     property Window hostWindow: null
 
     implicitWidth: narrow ? Theme.sideWNarrow : Theme.sideW
+    clip: true
 
     readonly property var mainItems: [
         { ic: "play",        label: "启动",     group: "main" },
@@ -109,14 +110,17 @@ Item {
                 color: row.sel ? "#151a23" : (rowHover.containsMouse ? "#12151c" : "transparent")
                 Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
             }
+            // 选中指示条：高度从 0 长出来，退选时缩回去（不是硬切）
             Rectangle {
-                visible: row.sel
                 width: 2
-                height: parent.height - 20
+                height: row.sel ? parent.height - 20 : 0
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
                 anchors.leftMargin: root.narrow ? -8 : -12
                 color: Theme.accent
+                Behavior on height {
+                    NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
+                }
             }
             RowLayout {
                 anchors.fill: parent

@@ -109,14 +109,30 @@ Item {
         }
     }
 
-    // ghost 悬停底色（独立于 MouseArea，避免 z 序问题）
+    // ghost 悬停底色：用透明度过渡，不再硬切（独立于 MouseArea，避免 z 序问题）
     Rectangle {
         anchors.fill: parent
         radius: root.radius
-        visible: root.kind === 1 && root.hovered && !root.dimmed
+        visible: root.kind === 1 && !root.dimmed
+        opacity: root.hovered ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+        }
         color: root.danger ? "#1aef4444" : "#16ffffff"
         border.width: 1
         border.color: root.danger ? "#8a3333" : "#333a47"
+    }
+
+    // 主按钮 hover 提亮（4% 白覆盖）：只解释"鼠标在这里"，不改变主色
+    Rectangle {
+        anchors.fill: parent
+        radius: root.radius
+        visible: root.kind === 0 && !root.busy && !root.dimmed && !root.muted
+        color: "#0dffffff"
+        opacity: root.hovered ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+        }
     }
 
     MouseArea {

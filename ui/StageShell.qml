@@ -3,8 +3,12 @@ import QtQuick
 import ShadowLauncher.Next
 
 // 外壳：侧栏 + 内容区 + 启动浮层 + 版本页 + 账户页 + 全局窗口按钮
-// 版本/账户都是"隶属启动页的全屏页"：打开时侧栏整体收起、页面 anchors.fill 全窗，
-// 顶部各自带返回。--ui-versions / --ui-account 供截图与调试直接进入。
+// 版本/账户都是"隶属启动页的全屏页"：打开时侧栏整体收起、页面 anchors.fill 全窗。
+//
+// 动效（2026-11-04）：
+//   · 全屏页进出 = 侧栏宽度收到 0（durPage）+ 页面淡入并从右侧 24px 滑入；返回反向
+//   · 位移放在容器的 transform 上，不动页面自身的 anchors，避免和组件内部布局打架
+//   · 关闭时 visible 要等透明度真正降下去才置 false，否则会硬切
 Item {
     id: root
     property Window hostWindow: null
@@ -12,6 +16,7 @@ Item {
     readonly property int sideW: (narrow ? Theme.sideWNarrow : Theme.sideW)
     property bool versionsOpen: false
     property bool accountOpen: false
+    readonly property bool fullOpen: versionsOpen || accountOpen
 
     Component.onCompleted: {
         if (Qt.application.arguments.indexOf("--ui-versions") >= 0) root.versionsOpen = true
@@ -23,23 +28,27 @@ Item {
         color: Theme.bg
     }
 
+    // 侧栏：宽度动画收放，内容裁掉不溢出
     SideBar {
         id: sideBar
-        visible: !root.versionsOpen && !root.accountOpen
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        width: (root.versionsOpen || root.accountOpen) ? 0 : root.sideW
+        width: root.fullOpen ? 0 : root.sideW
         narrow: root.narrow
         hostWindow: root.hostWindow
+        Behavior on width {
+            NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeStandard }
+        }
     }
 
+    // 启动页：始终在原地（被全屏页盖住），只关掉交互
     StagePage {
         anchors.left: sideBar.right
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        visible: !root.versionsOpen && !root.accountOpen
+        enabled: !root.fullOpen
         hostWindow: root.hostWindow
         narrow: root.narrow
         onOpenVersions: root.versionsOpen = true
@@ -54,18 +63,46 @@ Item {
         anchors.bottom: parent.bottom
     }
 
-    // 版本管理（全窗覆盖，侧栏已收起）
-    VersionPage {
+    // 版本管理（全窗覆盖）
+    Item {
+        id: versionsHost
         anchors.fill: parent
-        visible: root.versionsOpen
-        onClose: root.versionsOpen = false
+        visible: root.versionsOpen || opacity > 0.01
+        opacity: root.versionsOpen ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.durPage; easing.type: root.versionsOpen ? Theme.easeEnter : Theme.easeExit }
+        }
+        transform: Translate {
+            x: root.versionsOpen ? 0 : 24
+            Behavior on x {
+                NumberAnimation { duration: Theme.durPage; easing.type: root.versionsOpen ? Theme.easeEnter : Theme.easeExit }
+            }
+        }
+        VersionPage {
+            anchors.fill: parent
+            onClose: root.versionsOpen = false
+        }
     }
 
-    // 账户（全窗覆盖，侧栏已收起）
-    AccountPage {
+    // 账户（全窗覆盖）
+    Item {
+        id: accountHost
         anchors.fill: parent
-        visible: root.accountOpen
-        onClose: root.accountOpen = false
+        visible: root.accountOpen || opacity > 0.01
+        opacity: root.accountOpen ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.durPage; easing.type: root.accountOpen ? Theme.easeEnter : Theme.easeExit }
+        }
+        transform: Translate {
+            x: root.accountOpen ? 0 : 24
+            Behavior on x {
+                NumberAnimation { duration: Theme.durPage; easing.type: root.accountOpen ? Theme.easeEnter : Theme.easeExit }
+            }
+        }
+        AccountPage {
+            anchors.fill: parent
+            onClose: root.accountOpen = false
+        }
     }
 
     // 窗口按钮：所有页面共用（否则进全屏页就丢最小化/关闭）

@@ -483,9 +483,18 @@ Item {
 
                 // 正版
                 Column {
+                    id: tabPanel0
                     visible: page.tab === 0
                     width: parent.width
                     spacing: 14
+                    opacity: 0
+                    transform: Translate { id: tabShift0; y: 8 }
+                    onVisibleChanged: if (visible) tabIn0.restart()
+                    ParallelAnimation {
+                        id: tabIn0
+                        NumberAnimation { target: tabPanel0; property: "opacity"; from: 0; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+                        NumberAnimation { target: tabShift0; property: "y"; from: 8; to: 0; duration: Theme.durBase; easing.type: Theme.easeEnter }
+                    }
                     Text {
                         text: "用 Microsoft 账号登录"
                         color: "#ffffff"
@@ -542,9 +551,18 @@ Item {
 
                 // 离线
                 Column {
+                    id: tabPanel1
                     visible: page.tab === 1
                     width: parent.width
                     spacing: 12
+                    opacity: 0
+                    transform: Translate { id: tabShift1; y: 8 }
+                    onVisibleChanged: if (visible) tabIn1.restart()
+                    ParallelAnimation {
+                        id: tabIn1
+                        NumberAnimation { target: tabPanel1; property: "opacity"; from: 0; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+                        NumberAnimation { target: tabShift1; property: "y"; from: 8; to: 0; duration: Theme.durBase; easing.type: Theme.easeEnter }
+                    }
                     Text {
                         text: "离线账户"
                         color: "#ffffff"
@@ -604,9 +622,18 @@ Item {
 
                 // 外置
                 Column {
+                    id: tabPanel2
                     visible: page.tab === 2
                     width: parent.width
                     spacing: 12
+                    opacity: 0
+                    transform: Translate { id: tabShift2; y: 8 }
+                    onVisibleChanged: if (visible) tabIn2.restart()
+                    ParallelAnimation {
+                        id: tabIn2
+                        NumberAnimation { target: tabPanel2; property: "opacity"; from: 0; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+                        NumberAnimation { target: tabShift2; property: "y"; from: 8; to: 0; duration: Theme.durBase; easing.type: Theme.easeEnter }
+                    }
                     Text {
                         text: "外置登录"
                         color: "#ffffff"

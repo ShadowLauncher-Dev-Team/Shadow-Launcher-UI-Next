@@ -26,7 +26,13 @@ Item {
     readonly property bool debugOverlay: Qt.application.arguments.indexOf("--ui-overlay-debug") >= 0
 
     // 失败 / 完成态也要留在屏幕上：只认 launching 会把错误连同原因一起藏掉
-    visible: b ? (b.launching || b.launchFailed || b.launchFinishedOk) : false
+    readonly property bool active: b ? (b.launching || b.launchFailed || b.launchFinishedOk) : false
+    // 关闭时等透明度真正降下去才隐藏，否则会硬切（/eval 读状态时也更好观察）
+    visible: active || opacity > 0.01
+    opacity: active ? 1 : 0
+    Behavior on opacity {
+        NumberAnimation { duration: Theme.durSlow; easing.type: root.active ? Theme.easeEnter : Theme.easeExit }
+    }
     z: 200
 
     function statusText(s) {
@@ -90,6 +96,13 @@ Item {
         border.width: 1
         border.color: "#262d38"
         radius: 2
+        // 出现时从下方 12px 浮上来
+        transform: Translate {
+            y: root.active ? 0 : 12
+            Behavior on y {
+                NumberAnimation { duration: Theme.durSlow; easing.type: root.active ? Theme.easeEnter : Theme.easeExit }
+            }
+        }
 
         Column {
             id: body

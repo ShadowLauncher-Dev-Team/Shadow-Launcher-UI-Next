@@ -415,19 +415,48 @@ Item {
                     width: vlist.width
                     height: 60
                     readonly property bool cur: !!modelData && modelData.id === page.pendingId
+                    readonly property bool hov: rowHover.containsMouse
 
+                    // 逐条入场：每行按 index 延迟淡入，滚动时新出现的行也会播一次
+                    // 延迟封顶 120ms，避免长列表把整段拖过 300ms
+                    opacity: 0
+                    Component.onCompleted: {
+                        rowDelay.interval = Math.min(index * Theme.staggerStep, 120)
+                        rowDelay.restart()
+                    }
+                    Timer {
+                        id: rowDelay
+                        onTriggered: rowIn.restart()
+                    }
+                    NumberAnimation {
+                        id: rowIn
+                        target: row
+                        property: "opacity"
+                        from: 0
+                        to: 1
+                        duration: Theme.durBase
+                        easing.type: Theme.easeEnter
+                    }
+
+                    // hover / 选中的底色都走过渡，不留硬切
                     Rectangle {
                         anchors.fill: parent
                         radius: 8
-                        color: row.cur ? "#151a23" : "transparent"
+                        color: row.cur ? "#151a23" : (row.hov ? "#101419" : "transparent")
+                        Behavior on color {
+                            ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                        }
                     }
+                    // 选中指示条：从 0 长出来
                     Rectangle {
-                        visible: row.cur
                         width: 2
-                        height: parent.height - 18
+                        height: row.cur ? parent.height - 18 : 0
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.left: parent.left
                         color: Theme.accent
+                        Behavior on height {
+                            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
+                        }
                     }
                     Image {
                         id: rowIcon
@@ -468,7 +497,9 @@ Item {
                         }
                     }
                     MouseArea {
+                        id: rowHover
                         anchors.fill: parent
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (modelData && modelData.id)
