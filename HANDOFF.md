@@ -1,6 +1,6 @@
 # 交接文档 — Shadow Launcher v2 UI 重写
 
-> 更新时间：2026-11-04 21:10（上一版 20:40）
+> 更新时间：2026-11-04 21:45（上一版 21:10）
 > 仓库：`D:\latest-code\shadow-v2`（git，main）
 > 设计稿源：`D:\latest-code\cpp\design-2026-11-04\`（网页原型，不在本仓库 git 里；仓库内 `design/` 是迁移时的一份拷贝）
 
@@ -218,16 +218,15 @@ ee2682a feat(launch-overlay): 启动阶段管线接入后端 StepPipeline；新�
 | 防重复点 | `b.microsoftLoginBusy` 时按钮换「取消登录」，`msStatus` 原文显示在提示条里（不加工、不猜进度）|
 | 调试参数 | `--ui-account` 直接进账户页；`--ui-account-login` 再叠一层：直接展开登录面板（截图未登录态用）|
 
-#### 3.7.1 头像：方形、无框、自己裁脸（用户明确要求）
+#### 3.7.1 头像：方形、无框、用后端 128 头图 + 最近邻
 
 - 用户原话：「MC头像是方形的，QML不要用圆形头像；而且，不需要任何框把头像框住。」→ `SMinecraftHead.qml` 全组件 **无 radius、无 border**。
-- 数据现实（实测，别再踩）：
-  - `backend.skinPath` 指向的是后端 `renderHead3D()` **渲染好的 128×128 头部图**，不是原始皮肤；
-  - `renderHead3D` 对部分皮肤会渲染出错误结果（本机某皮肤渲染成紫色竖条）；
-  - 原始皮肤 64×64 存在 `assets/skins/<md5>.png`，于是新增 `backend.skinTexturePath`（`AccountBackend::skinTexturePath()` → `skinCachePath(username)`）暴露原文纹理。
-- `SMinecraftHead` 优先级：`rawSource`（整张皮肤 → 裁 (8,8,8,8) 放大）> `source`（已渲染头图，直接铺满）> 无图时方形色块 + 首字母。
-- 判断靠 `probe Image` 的 `implicitWidth/implicitHeight`：== 且 ≤64 视为整张皮肤走裁剪，否则当头图。
-- 本机实测：`xiaoole1173` 的皮肤 64×64 modern、1839 字节，脸区本身是深紫配色（**不是渲染 bug**，是皮肤本身如此）；重新下载官方皮肤校验过大小一致，缓存没问题。
+- **数据源**：直接使用 `backend.skinPath` —— 它是后端 `renderHead3D()` 渲染好的 **128×128 完整头部图**（正面 + 侧面的多面渲染，头发/犄角/头饰都在里面）。
+- **不要自己从 64×64 皮肤裁脸 (8,8,8,8)**：那只是脸的正面一格，外层（帽层 40,8、侧面等）会全部丢掉。用户 2026-11-04 的原话是「我的角都不见了」，就是踩了这个。`skinTexturePath` 仍保留在后端，仅作"拿不到头图"时的兜底。
+- **清晰度三件套**（照抄旧 UI `qml/MinecraftHead2D.qml`）：`smooth: false` + `mipmap: false` + **不设 `sourceSize`**。
+  - 之前写 `smooth: true` 会糊成一团；设 `sourceSize` 预缩放到小尺寸再显示等于二次采样，也会糊。这两条是"头像模糊"的两个真因。
+- 排查这类问题的正确姿势：把皮肤按 UV 网格放大标注再判断（`(8,8)`=脸正面、`(40,8)`=帽层正面、`(0,8)/(16,8)`=左右侧面），不要拿缩略图猜哪块是脸。
+- 验收：账户页 56px 与旧 UI 48px 截图放大并排比对，角/面部/配色逐像素一致才算过。
 
 ---
 
