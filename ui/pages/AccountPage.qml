@@ -314,14 +314,27 @@ Item {
                         }
                         readonly property bool cur: !!acct && acct.current === true
 
+                        // 底色只负责"当前账号"，悬停单独一层只动 opacity。
+                        // 以前两者共用一个 color 绑定：切换时要从半透明白（#12ffffff）
+                        // 插值到实心深色（#161c26），ARGB 通道直线插值会经过一段浅灰，
+                        // 观感就是被切到的账号"大亮一下"。
                         Rectangle {
                             anchors.fill: parent
                             radius: 8
-                            color: acctRow.cur ? "#161c26" : (acctHover.containsMouse ? "#12ffffff" : "transparent")
+                            color: acctRow.cur ? "#161c26" : "transparent"
                             border.width: acctRow.cur ? 1 : 0
                             border.color: "#232c3a"
                             Behavior on color {
                                 ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                            }
+                        }
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 8
+                            color: "#ffffff"
+                            opacity: (acctHover.containsMouse && !acctRow.cur) ? 0.07 : 0
+                            Behavior on opacity {
+                                NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
                             }
                         }
                         SMinecraftHead {
