@@ -427,6 +427,12 @@ private:
                                                const QString& loaderType,
                                                const QString& loaderVersion);
     void destroyMergedContext(const QString& installId);
+    /// 合并安装的公共准备（C 项：编排层统一的第一步）：
+    /// 建/取会话、清失败态、标 merged、写入 mcVersion/loader 信息、清零所有字节与分步计数。
+    /// 三条加载器路径（forge / fabric / optifine）共用，避免各自重写一遍。
+    /// 返回会话指针（不会为空；空则返回 nullptr）。
+    DownloadSession* prepareMergedSession(const QString& installName, const QString& mcVersion,
+                                          const QString& loaderType, const QString& loaderVersion);
     MergedInstallContext* mergedContext(const QString& installId) const { return m_mergedContexts.value(installId, nullptr); }
     /// 是否仍有「活跃」（未终态失败）的合并上下文（失败保留的上下文不计入，见 installFailed）
     bool hasActiveMergedContexts() const;

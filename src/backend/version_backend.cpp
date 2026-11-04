@@ -5435,23 +5435,10 @@ void VersionBackend::installModLoader(const QString& mcVersion, const QString& l
     if (!ctx) return;
     ctx->forgeInstallerBranch = forgeInstallerBranch;
 
-    ensureSession(installName);
-    auto* ds = dlSession(installName);
-    if (ds) ds->clearFailure();
-
     // ── Merged install: always MC + loader ──
     qDebug() << "[install] Merged install: MC" << mcVersion << "+" << loaderType << loaderVersion;
-
-    ds->setMerged(true);
-    ds->mcVersion = mcVersion;
-    ds->loaderType = loaderType;
-    ds->loaderVer = loaderVersion;
-
-    // Reset byte accumulators
-    ds->mcBytesDl = 0; ds->mcBytesAll = 0;
-    ds->mlBytesDl = 0; ds->mlBytesAll = 0; ds->mlBytesDone = 0; ds->mlFileTotal = 0;
-    for (int i = 0; i < 3; i++) { ds->mcStepDone[i] = 0; ds->mcStepTotal[i] = 0; }
-    ds->mcFileAdded.clear();
+    auto* ds = prepareMergedSession(installName, mcVersion, loaderType, loaderVersion);
+    if (!ds) return;
 
     // Build step list
     QString loaderLabel = QStringLiteral("Forge");
@@ -9343,6 +9330,29 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
 
     m_mergedContexts[installId] = ctx;
     return ctx;
+}
+
+DownloadSession* VersionBackend::prepareMergedSession(const QString& installName,
+                                                       const QString& mcVersion,
+                                                       const QString& loaderType,
+                                                       const QString& loaderVersion)
+{
+    auto* ds = ensureSession(installName);
+    if (!ds) return nullptr;
+    ds->clearFailure();
+    ds->setMerged(true);
+    ds->mcVersion = mcVersion;
+    ds->loaderType = loaderType;
+    ds->loaderVer = loaderVersion;
+    ds->mcBytesDl = 0;
+    ds->mcBytesAll = 0;
+    ds->mlBytesDl = 0;
+    ds->mlBytesAll = 0;
+    ds->mlBytesDone = 0;
+    ds->mlFileTotal = 0;
+    for (int i = 0; i < 3; i++) { ds->mcStepDone[i] = 0; ds->mcStepTotal[i] = 0; }
+    ds->mcFileAdded.clear();
+    return ds;
 }
 
 int VersionBackend::cleanupOrphanTempDirsIfIdle()
