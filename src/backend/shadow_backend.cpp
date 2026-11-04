@@ -1063,13 +1063,9 @@ QString ShadowBackend::selectedVersion() const {
 // 只用我们自己真正观测到的记录（游戏进程起来那一刻写一次），不去猜文件 mtime：
 // 非隔离版本的 logs/options.txt 是所有版本共用的，拿它当"上次玩这个版本"会撒谎。
 // 没有记录 → 返回空串，QML 整行不显示（宁可没有，也不给假信息）。
-QString ShadowBackend::lastPlayedLabel() const
+QString ShadowBackend::formatLastPlayed(qint64 ms) const
 {
-    const QString vid = selectedVersion();
-    if (vid.isEmpty()) return {};
-    const qint64 ms = m_lastPlayed.value(vid, 0);
     if (ms <= 0) return {};
-
     const QDateTime t = QDateTime::fromMSecsSinceEpoch(ms);
     const QDate today = QDate::currentDate();
     const qint64 days = t.date().daysTo(today);
@@ -1079,6 +1075,18 @@ QString ShadowBackend::lastPlayedLabel() const
     if (days < 7) return tr("%1 天前").arg(days);
     if (t.date().year() == today.year()) return t.toString(QStringLiteral("M 月 d 日"));
     return t.toString(QStringLiteral("yyyy-MM-dd"));
+}
+
+QString ShadowBackend::lastPlayedLabel() const
+{
+    const QString vid = selectedVersion();
+    if (vid.isEmpty()) return {};
+    return formatLastPlayed(m_lastPlayed.value(vid, 0));
+}
+
+QString ShadowBackend::lastPlayedLabelFor(const QString& versionId) const
+{
+    return formatLastPlayed(m_lastPlayed.value(versionId, 0));
 }
 
 void ShadowBackend::recordLastPlayed(const QString& versionId)
@@ -1305,10 +1313,21 @@ void ShadowBackend::refreshVersionDetails()
         QVariantMap detail;
         detail[QStringLiteral("id")] = versionId;
 
-        // ── Determine base MC version from JSON id ──
-        QString baseMcVersion = versionId;
-        if (!verJson.isEmpty() && verJson.contains(QStringLiteral("id"))) {
-            baseMcVersion = verJson.value(QStringLiteral("id")).toString();
+        // ── Determine base MC version（认不出就留空，绝不拿目录名冒充）──
+        // ① 加载器版本：inheritsFrom 才是真实 MC 版本
+        // ② 原版/无 inheritsFrom：用 JSON 的 id，但必须长得像版本号
+        //    （用户能把版本目录改成 "1"，此时 json 的 id 也变成 "1"，单段数字不是 MC 版本）
+        // ③ 都不成立 → 空串，QML 显示"未识别"而不是编一个
+        QString baseMcVersion;
+        if (!verJson.isEmpty()) {
+            const QString inherits = verJson.value(QStringLiteral("inheritsFrom")).toString();
+            if (!inherits.isEmpty()) {
+                baseMcVersion = inherits;
+            } else {
+                const QString jsonId = verJson.value(QStringLiteral("id")).toString();
+                static const QRegularExpression mcVerRe(QStringLiteral(R"(^\d+\.\d+(\.\d+)?$)"));
+                if (mcVerRe.match(jsonId).hasMatch()) baseMcVersion = jsonId;
+            }
         }
 
         // ── 从版本 JSON 内容检测加载器类型 ──
@@ -1395,6 +1414,9 @@ void ShadowBackend::refreshVersionDetails()
         }
         detail[QStringLiteral("loaderType")] = loaderType;
         detail[QStringLiteral("loaderVersion")] = loaderVersion;
+        // 基础 MC 版本：版本目录名是用户可自定义的（本机就叫 "1"），
+        // 不能靠 QML 拆 id，必须把解析出来的 baseMcVersion 一起带出去。
+        detail[QStringLiteral("mcVersion")] = baseMcVersion;
 
         // ── Version type: use base MC version for manifest lookup ──
         QString vtype = knownTypes.value(baseMcVersion, QString());

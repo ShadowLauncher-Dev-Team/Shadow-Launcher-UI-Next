@@ -259,6 +259,8 @@ public:
     // ── Version getters ──
     QString selectedVersion() const;
     QString lastPlayedLabel() const;
+    /// 版本管理页用：任意版本的"上次游玩"文案（无记录返回空串）
+    Q_INVOKABLE QString lastPlayedLabelFor(const QString& versionId) const;
     void recordLastPlayed(const QString& versionId);
     QStringList versionIds() const;
     QVariantList versionList() const;
@@ -949,6 +951,7 @@ private:
     int m_lastLoginMode = 1;
     // versionId -> 上次真正起进程的 epoch 毫秒（dataDir/last-played.json）
     QHash<QString, qint64> m_lastPlayed;
+    QString formatLastPlayed(qint64 epochMs) const;
     QString m_launchVersion;
     QString m_launchUsername;
 

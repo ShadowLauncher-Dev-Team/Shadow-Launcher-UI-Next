@@ -6,6 +6,8 @@ import ShadowLauncher.Next
 Item {
     id: page
     property Window hostWindow: null
+    /// 打开版本管理（由 StageShell 接管：侧栏收起 + 版本页全宽）
+    signal openVersions()
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     // narrow 必须由整窗宽度决定（StageShell 注入）。页面自己的 width 是"内容区宽"
@@ -161,7 +163,7 @@ Item {
                 page.b.launch(page.ver, page.b.isOnline)
             }
         }
-        SButton { kind: 1; text: "版本"; iconName: "list"; onClicked: console.info("[ui] version list") }
+        SButton { kind: 1; text: "版本"; iconName: "list"; onClicked: page.openVersions() }
         SButton { kind: 1; text: "设置"; iconName: "settings"; onClicked: console.info("[ui] settings") }
     }
 

@@ -155,6 +155,27 @@ ee2682a feat(launch-overlay): 启动阶段管线接入后端 StepPipeline；新�
 - **为什么不读版本目录 mtime**：非隔离版本的 `logs/`、`options.txt` 是所有版本共用的，拿它当"上次玩这个版本"会撒谎。没有记录 → 返回空串，QML 整行不显示（宁可没有，不给假信息）。
 - 文案：今天 HH:mm / 昨天 HH:mm / N 天前 / M 月 d 日 / yyyy-MM-dd。
 
+### 3.6 版本管理页（2026-11-04 19:xx，第一版：主从详情）
+
+- **入口**：启动页底部「版本」按钮 → `StagePage.openVersions()` → `StageShell.versionsOpen = true`。
+- **侧栏收起**：`versionsOpen` 时 `SideBar.visible=false` 且 `width=0`，版本页 `anchors.fill` 覆盖整窗；顶部自带「返回」。启动浮层 z=200 仍然压住一切（启动中进不了这一页的交互）。
+- **调试入口**：`--ui-versions` 直接进版本页（配合 `--ui-size 800x550` 看窄窗）。
+- **数据源**：`backend.versionDetails`（后端异步扫 `versions/`，字段见 §3.6.1）；进入页面时主动调 `refreshVersionDetails()`，**后端不会自己扫**。
+- **功能**：选版本（写 `selectedVersion`）/ 启动 / 打开目录 / 复制版本 / 刷新 / 搜索（id+MC+加载器+加载器版本）/ 按发布时间倒序 / 打开页面自动滚到选中项。
+- **图标**：直接用旧 UI 的 MC 方块图标 `qrc:/qt/qml/ShadowLauncher/qml/icons/blocks/*.png`（按 loaderType/versionType 选：Fabric/Anvil/NeoForge/RedstoneBlock/Grass/CommandBlock/CobbleStone，整合包优先用 modpackIconPath）。
+- **未做（下一轮）**：数据表型（第二版，用户要求在验证主从详情后加）、删除/重命名/校验修复、版本设置入口、动效。
+
+#### 3.6.1 versionDetails 字段（后端已给）
+`id / mcVersion / loaderType / loaderVersion / versionType / releaseTimeMs / sizeBytes / modCount / isModpack / modpackIconPath / modpackIcon / jsonPath / jarPath`
+
+本次补的两个：
+1. `mcVersion`（之前根本没写进 detail，QML 只能拆目录名）：优先 `inheritsFrom`，否则 JSON 的 `id` 必须匹配 `^\d+\.\d+(\.\d+)?$` 才采用，**认不出就留空**。
+2. `lastPlayedLabelFor(versionId)`（Q_INVOKABLE）：逐版本「上次游玩」文案，复用 `last-played.json`。
+
+#### 3.6.2 一个真实数据坑（本机复现）
+本机版本 `1` 的 JSON 被拍平了：**没有 `inheritsFrom`、没有 `net.fabricmc:intermediary`、assetIndex id 是数字 `32`**，所以后端确实推不出 MC 版本 → 页面显示「MC 版本：未识别」（刻意不拿目录名"1"冒充）。
+要彻底解决只能读 `versions/<id>/<id>.jar` 里的 `version.json`（原版 client.jar 内含，字段 id 就是真实 MC 版本）——需要 zip 读取能力，留作后续。
+
 ---
 
 ## 7. 遗留问题
@@ -167,7 +188,9 @@ ee2682a feat(launch-overlay): 启动阶段管线接入后端 StepPipeline；新�
 
 ## 8. 下一步建议顺序
 
-1. **版本列表页**（token 密度试金石）——设计稿 `b-library.html` / `shots/b-library-1375.png`；后端已有 `versionList()` / `installedVersions()` / `setSelectedVersion()`
-2. 版本设置页（Java/内存/JVM 参数），对接已有 `ShadowBackend` 的 per-version 接口
-3. 账户面板（`loginMode` 三态严格分离：正版/离线/外置）
-4. 浅色主题
+1. **动效系统**（用户 19:20 明确：动效暂缓，先做版本页；版本页验证通过后再补）——Theme 加 motion token + SAnimate 标准件 + 把 `CheckUiNextContract.cmake` 接进构建
+2. **版本管理第二版：数据表型**（用户已选定 A+B 两种，先验证主从详情，再加数据表）
+3. 版本管理的补齐：删除/重命名/校验修复、版本设置入口
+4. 版本设置页（Java/内存/JVM 参数），对接已有 `ShadowBackend` 的 per-version 接口
+5. 账户面板（`loginMode` 三态严格分离：正版/离线/外置）
+6. 浅色主题
