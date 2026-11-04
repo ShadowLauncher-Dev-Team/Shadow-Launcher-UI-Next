@@ -210,13 +210,19 @@ Item {
                         height: nodeRow.height - 14
                         visible: modelData.isLast !== true
                         color: (modelData.status === 2) ? "#24405f" : "#1c222c"
+                        Behavior on color {
+                            ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard }
+                        }
                     }
-                    Rectangle {   // 8x8 直角方点
+                    Rectangle {   // 8x8 直角方点：状态变化时颜色渐变，节点推进才看得出"又过了一步"
                         x: 0
                         y: 4
                         width: 8
                         height: 8
                         color: root.nodeColor(modelData.status)
+                        Behavior on color {
+                            ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard }
+                        }
                     }
                     Text {   // 节点名
                         x: 20
@@ -224,6 +230,9 @@ Item {
                         width: nodeRow.width - 96
                         text: modelData.name
                         color: root.nodeTextColor(modelData.status)
+                        Behavior on color {
+                            ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard }
+                        }
                         font.family: Theme.fontFamily
                         font.pixelSize: 13
                         font.weight: modelData.status === 1 ? Font.DemiBold : Font.Normal

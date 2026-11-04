@@ -696,7 +696,12 @@ Item {
     Item {
         id: folderPop
         anchors.fill: parent
-        visible: page.folderMenuOpen
+        // 关闭时等淡完再隐藏，否则会硬切
+        visible: page.folderMenuOpen || opacity > 0.01
+        opacity: page.folderMenuOpen ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+        }
         z: 300
 
         MouseArea { anchors.fill: parent; onClicked: page.folderMenuOpen = false }
@@ -711,6 +716,13 @@ Item {
             height: Math.min(page.height - 76, 16 + Math.max(1, page.folders.length) * 46 + 44)
             radius: 2
             color: "#0c0f14"
+            // 下拉面板：从上方 6px 落下
+            transform: Translate {
+                y: page.folderMenuOpen ? 0 : -6
+                Behavior on y {
+                    NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
+                }
+            }
             border.width: 1
             border.color: "#262d38"
 

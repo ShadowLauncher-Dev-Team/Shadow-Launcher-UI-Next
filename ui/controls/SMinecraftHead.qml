@@ -37,6 +37,11 @@ Item {
         cache: false
         mipmap: false
         smooth: false
+        // 加载完成再淡入，避免切换账号时头像"啪"地跳出来
+        opacity: status === Image.Ready ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard }
+        }
     }
 
     // 兜底：只有原始皮肤时裁正面 (8,8)，同样最近邻

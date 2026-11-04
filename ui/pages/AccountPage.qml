@@ -157,7 +157,12 @@ Item {
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                visible: page.hint.length > 0
+                // 提示条淡入淡出，不要硬切（文字内容变化时也顺滑）
+                visible: opacity > 0.01
+                opacity: page.hint.length > 0 ? 1 : 0
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                }
                 text: page.hint
                 color: Theme.ok
                 font.family: Theme.fontFamily
