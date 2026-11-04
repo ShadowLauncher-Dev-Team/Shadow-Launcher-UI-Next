@@ -3308,8 +3308,28 @@ QString ShadowBackend::downloadSelfcheck()
             fails << QStringLiteral("base.verify text should not depend on loader label");
     }
 
+    // ── 8) 取源策略统一决策点（元数据竞速 / MC 文件跟随设置 / 加载器 Maven 镜像优先）
+    {
+        using ShadowLauncher::SourcePolicy::RequestClass;
+        const auto meta = SourcePolicy::routeFor(RequestClass::Metadata,
+                                                 DownloadSourcePolicy::PreferMirror,
+                                                 DownloadSourcePolicy::PreferOfficial);
+        if (!meta.race || !meta.preferOfficial)
+            fails << QStringLiteral("metadata route should race & prefer official per listSource");
+        const auto mcFile = SourcePolicy::routeFor(RequestClass::McFile,
+                                                   DownloadSourcePolicy::PreferMirror,
+                                                   DownloadSourcePolicy::PreferOfficial);
+        if (mcFile.race || mcFile.preferOfficial)
+            fails << QStringLiteral("mc file route should follow fileSource (mirror)");
+        const auto loader = SourcePolicy::routeFor(RequestClass::LoaderArtifact,
+                                                   DownloadSourcePolicy::PreferOfficial,
+                                                   DownloadSourcePolicy::PreferOfficial);
+        if (loader.race || loader.preferOfficial)
+            fails << QStringLiteral("loader artifact route should be mirror-first (documented)");
+    }
+
     if (fails.isEmpty())
-        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=7")
+        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=8")
             .arg(allKeys.size()).arg(legacyCases.size());
     return QStringLiteral("FAIL(%1): ").arg(fails.size()) + fails.join(QStringLiteral(" | "));
 }

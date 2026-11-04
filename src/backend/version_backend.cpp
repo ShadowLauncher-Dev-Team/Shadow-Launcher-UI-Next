@@ -6289,7 +6289,12 @@ ModLoaderInstaller* VersionBackend::createLoaderInstaller(const QString& install
 
     ml->setGameDir(m_gameDir);
     // 2026-08-15：加载器安装器库/依赖库下载默认镜像优先（不跟随全局 fileSource）
-    ml->setPreferOfficial(false);
+    // 加载器安装器/依赖库 = Artifact 类：按「文件下载源」决定优先源（官方优先时官方先、BMCLAPI 兜底），
+    // 不再硬编码镜像优先（契约 §11：一个设置一个消费者，路径不自己拍策略）。
+    ml->setPreferOfficial(SourcePolicy::routeFor(
+        SourcePolicy::RequestClass::LoaderArtifact,
+        DownloadSourcePolicy::PreferOfficial,
+        DownloadSourcePolicy::PreferOfficial).preferOfficial);
 
     // --- progressChanged: step-level progress ---
     connect(ml, &ModLoaderInstaller::progressChanged, this,
@@ -8936,7 +8941,10 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
     ctx->installer = new ModLoaderInstaller(this);
     ctx->installer->setGameDir(ctx->tempDir);
     // 2026-08-15：加载器安装器库/依赖库下载默认镜像优先（不跟随全局 fileSource）
-    ctx->installer->setPreferOfficial(false);
+    ctx->installer->setPreferOfficial(SourcePolicy::routeFor(
+        SourcePolicy::RequestClass::LoaderArtifact,
+        DownloadSourcePolicy::PreferOfficial,
+        DownloadSourcePolicy::PreferOfficial).preferOfficial);
 
     // ── Signal connections for merged context installers ──
 
