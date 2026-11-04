@@ -63,6 +63,8 @@ public:
     Q_INVOKABLE void stopDemo();
     // 只填「准备运行环境」卡片并停在 Java 节点，用于截图核对该卡片的排版。
     Q_INVOKABLE void demoRepairs();
+    // 只把管线推进到失败态，用于核对 B1 失败面板的排版（不启动游戏）。
+    Q_INVOKABLE void demoFailure();
 
     // ---- Slots ----
     Q_INVOKABLE void launch(const QString& versionId, const QString& username,

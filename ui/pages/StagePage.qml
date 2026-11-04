@@ -28,6 +28,24 @@ Item {
 
     readonly property bool launching: b ? b.launching : false
     readonly property bool running: b ? b.isRunning : false
+    // C3：运行中实例列表（多开 / 逐进程结束）。runningCount 变化时整体重取。
+    property var runningList: []
+    property bool procOpen: false
+    property double nowSec: Date.now() / 1000
+
+    function refreshRunningList() {
+        page.runningList = (b && b.runningCount > 0) ? b.runningGames() : []
+        if (page.runningList.length === 0) page.procOpen = false
+    }
+    // startedAt 是后端新补的字段（epoch 秒）；没有就只显示 PID
+    function uptimeText(row) {
+        var st = (row && row.startedAt) ? Number(row.startedAt) : 0
+        if (st <= 0) return ""
+        var s = Math.max(0, Math.floor(page.nowSec - st))
+        if (s < 60) return s + " 秒"
+        if (s < 3600) return Math.floor(s / 60) + " 分钟"
+        return Math.floor(s / 3600) + " 小时 " + Math.floor((s % 3600) / 60) + " 分"
+    }
     readonly property string statusText: b ? (b.launchStatus || "") : ""
 
     readonly property int padL: narrow ? 28 : Theme.padL
@@ -45,8 +63,23 @@ Item {
 
     Component.onCompleted: {
         console.info("[ui] StagePage size", width, "x", height, "narrow=", narrow)
+        page.refreshRunningList()
         if (page.demoMode && page.b)
             page.b.demoLaunch((page.demoFail ? 1 : 0) + (page.demoOnline ? 2 : 0))
+    }
+
+    Connections {
+        target: page.b
+        ignoreUnknownSignals: true
+        function onRunningCountChanged() { page.refreshRunningList() }
+    }
+
+    // 面板开着时每 15 秒刷新一次"运行了多久"
+    Timer {
+        interval: 15000
+        repeat: true
+        running: page.procOpen
+        onTriggered: page.nowSec = Date.now() / 1000
     }
 
     // ---------- 底色 ----------
@@ -134,26 +167,153 @@ Item {
         spacing: 10
 
         SButton {
+            id: launchBtn
             kind: 0
             busy: page.launching
             // 未登录：灰态但可点（点了去登录），不是 dimmed（dimmed 是不可点）
             muted: !page.hasAccount && !page.launching
-            dimmed: page.running || page.ver.length === 0
+            dimmed: page.launching || page.ver.length === 0
+            // C3：有实例在跑时按钮本身变成"运行中 N"，点它=再开一个，
+            // 看/结束具体进程走右边的箭头。
             text: page.launching ? "取消启动"
-                  : (page.running ? "游戏中"
+                  : (page.runningList.length > 0 ? ("运行中 " + page.runningList.length)
                      : (!page.hasAccount ? "先登录" : "启动游戏"))
             iconName: page.launching ? "x" : (!page.hasAccount ? "lock" : "play")
             onClicked: {
                 if (!page.b) return
                 if (page.launching) { page.b.cancelLaunch(); return }
-                if (page.running) return
                 if (!page.hasAccount) { page.openAccount(); return }
                 if (page.ver.length === 0) return
-                page.b.launch(page.ver, page.b.isOnline)
+                page.b.launch(page.ver, page.b.isOnline)   // 允许多开：再开一个该版本
             }
+        }
+        SButton {
+            id: procBtn
+            kind: 1
+            visible: page.runningList.length > 0
+            width: 44
+            iconName: "chevron-down"
+            onClicked: page.procOpen = !page.procOpen
         }
         SButton { kind: 1; text: "版本"; iconName: "list"; onClicked: page.openVersions() }
         SButton { kind: 1; text: "设置"; iconName: "settings"; onClicked: console.info("[ui] settings") }
+    }
+
+    // ---------- C3：运行中进程面板 ----------
+    MouseArea {
+        anchors.fill: parent
+        visible: page.procOpen
+        // 点外部关闭：必须压住标题/按钮，但要让下面的面板（z 更高）继续可点
+        z: 100
+        onClicked: page.procOpen = false
+    }
+
+    Rectangle {
+        id: procPanel
+        visible: page.procOpen
+        z: 110
+        anchors.left: actionsRow.left
+        anchors.bottom: actionsRow.top
+        anchors.bottomMargin: 10
+        width: 330
+        height: procCol.height + 16
+        color: "#0c0f14"
+        border.width: 1
+        border.color: "#262d38"
+        radius: 2
+
+        Column {
+            id: procCol
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.topMargin: 8
+            spacing: 0
+
+            Text {
+                width: procCol.width - 24
+                leftPadding: 12
+                height: 18
+                verticalAlignment: Text.AlignVCenter
+                text: "正在运行的实例"
+                color: "#4f5866"
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+            }
+
+            Repeater {
+                model: page.runningList
+                delegate: Item {
+                    width: procCol.width
+                    height: 44
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 12
+                        anchors.top: parent.top
+                        anchors.topMargin: 5
+                        width: parent.width - 84
+                        text: modelData.displayVersion
+                        color: "#d7dfea"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                        elide: Text.ElideRight
+                    }
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 12
+                        anchors.top: parent.top
+                        anchors.topMargin: 23
+                        text: "PID " + modelData.pid
+                              + (page.uptimeText(modelData).length > 0
+                                 ? " · " + page.uptimeText(modelData) : "")
+                        color: "#5f6875"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                    }
+                    SButton {
+                        anchors.right: parent.right
+                        anchors.rightMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 26
+                        kind: 1
+                        text: "结束"
+                        onClicked: { if (page.b) page.b.killGameByPid(modelData.pid) }
+                    }
+                }
+            }
+
+            Rectangle { width: procCol.width; height: 1; color: "#161b22" }
+
+            Item {
+                width: procCol.width
+                height: 42
+                SButton {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 28
+                    kind: 1
+                    text: "再开一个该版本"
+                    onClicked: {
+                        page.procOpen = false
+                        if (page.b && page.ver.length > 0) page.b.launch(page.ver, page.b.isOnline)
+                    }
+                }
+                SButton {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 28
+                    kind: 1
+                    danger: true
+                    text: "全部结束"
+                    onClicked: {
+                        page.procOpen = false
+                        if (page.b) page.b.killGameProcess()
+                    }
+                }
+            }
+        }
     }
 
     // ---------- 中：标题 ----------

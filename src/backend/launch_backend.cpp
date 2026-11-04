@@ -912,6 +912,34 @@ void LaunchBackend::demoRepairs()
     emit launchStateChanged();
 }
 
+/// 只用于截图核对 B1 失败面板：把节点推到"启动游戏进程失败"，
+/// 不启动任何进程；诊断数据由 ShadowBackend::demoLaunchFailure 填。
+void LaunchBackend::demoFailure()
+{
+    if (m_demoTimer) m_demoTimer->stop();
+    buildLaunchPipeline();
+
+    m_launching = false;
+    m_launchFinishedOk = false;
+    clearRepairs();
+
+    if (m_pipeline) {
+        StepNode* login = m_pipeline->step(QStringLiteral("login"));
+        if (login) {
+            login->setHidden(false);
+            login->setCompleted();
+        }
+        for (int i = 1; i + 1 < m_pipeline->totalSteps(); ++i) {
+            if (StepNode* n = m_pipeline->stepNode(i)) n->setCompleted();
+        }
+        m_checkStep = m_pipeline->totalSteps() - 1;
+    }
+
+    failPipelineStep(tr("java.lang.OutOfMemoryError: Java heap space"));
+    m_launchStatus = tr("启动失败");
+    emit launchProgressChanged(0, m_launchStatus);
+}
+
 void LaunchBackend::demoTick()
 {
     if (!m_pipeline) { stopDemo(); return; }
@@ -1612,6 +1640,8 @@ void LaunchBackend::runNextCheck()
 void LaunchBackend::handleLaunchStarted(Launcher* launcher)
 {
     // Add to running list
+    // C3 进程面板要显示"运行了多久"：启动时刻记在 launcher 上，runningGames() 一起带出去。
+    launcher->setProperty("launchStartedAt", QDateTime::currentSecsSinceEpoch());
     m_runningLaunchers.append(launcher);
     qCDebug(logLaunch) << "[PROCESS] Game added to running list (total:" << m_runningLaunchers.size() << ")";
     emit runningCountChanged();
@@ -2154,6 +2184,9 @@ QVariantList LaunchBackend::runningGames() const
         } else {
             info["displayVersion"] = ver;
         }
+        // C3：进程面板的"运行时长"。0 表示未知（老实例恢复时可能没有）。
+        const qint64 startedAt = m_runningLaunchers[i]->property("launchStartedAt").toLongLong();
+        info["startedAt"] = QVariant::fromValue(startedAt);
         
         list.append(info);
     }

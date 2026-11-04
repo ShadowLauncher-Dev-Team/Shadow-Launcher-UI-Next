@@ -614,12 +614,27 @@ ShadowBackend::ShadowBackend(QObject* parent)
     connect(m_launch, &LaunchBackend::crashDetected,
             this, [this](const QVariantMap& report) {
                 m_lastCrash = report;
+                m_crashAnalyzing = false;
+                emit crashReportChanged();
+                emit crashAnalyzingChanged();
                 emit crashDetected(report);
             });
     connect(m_launch, &LaunchBackend::crashAnalysisStarted,
-            this, &ShadowBackend::crashAnalysisStarted);
+            this, [this]() {
+                // 异步分析要读几 MB 日志：失败面板先显示"正在分析日志"，
+                // 否则用户只看到"启动失败"却没有任何原因，会以为卡住。
+                m_crashAnalyzing = true;
+                emit crashAnalyzingChanged();
+                emit crashAnalysisStarted();
+            });
     connect(m_launch, &LaunchBackend::crashAnalysisReady,
-            this, &ShadowBackend::crashAnalysisReady);
+            this, [this](const QVariantMap& report) {
+                m_lastCrash = report;
+                m_crashAnalyzing = false;
+                emit crashReportChanged();
+                emit crashAnalyzingChanged();
+                emit crashAnalysisReady(report);
+            });
     connect(m_launch, &LaunchBackend::launchRepairsChanged,
             this, &ShadowBackend::launchRepairsChanged);
     connect(m_launch, &LaunchBackend::isRunningChanged,
@@ -2898,6 +2913,31 @@ void ShadowBackend::killMinecraft() {
 
 void ShadowBackend::demoLaunchRepairs() {
     if (m_launch) m_launch->demoRepairs();
+}
+
+/// 只用于核对 B1 失败面板：造一份崩溃诊断 + 让管线停在失败态。
+void ShadowBackend::demoLaunchFailure() {
+    if (!m_launch) return;
+    QVariantMap report;
+    report.insert(QStringLiteral("type"), QStringLiteral("jvm"));
+    report.insert(QStringLiteral("reason"), QStringLiteral("java.lang.OutOfMemoryError: Java heap space"));
+    report.insert(QStringLiteral("description"), QStringLiteral("JVM 在初始化世界时堆内存耗尽"));
+    report.insert(QStringLiteral("isValid"), true);
+    report.insert(QStringLiteral("timestamp"),
+                  QDateTime::currentDateTime().toString(Qt::ISODate));
+    report.insert(QStringLiteral("suspectedMods"),
+                  QStringList{QStringLiteral("create"), QStringLiteral("immersive_engineering")});
+    report.insert(QStringLiteral("suggestions"),
+                  QStringList{QStringLiteral("把最大内存从 4096 MB 提到 8192 MB"),
+                              QStringLiteral("关闭 OptiFine，改用 Embeddium"),
+                              QStringLiteral("导出日志后可附在反馈里")});
+    report.insert(QStringLiteral("collectedLogs"),
+                  QStringList{QStringLiteral("crash-reports/crash-2026-11-05_00.12.38-client.txt")});
+    m_lastCrash = report;
+    m_crashAnalyzing = false;
+    emit crashReportChanged();
+    emit crashAnalyzingChanged();
+    m_launch->demoFailure();
 }
 
 void ShadowBackend::killGameByPid(qint64 pid) {

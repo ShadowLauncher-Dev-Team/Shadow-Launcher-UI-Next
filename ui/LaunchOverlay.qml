@@ -38,6 +38,60 @@ Item {
         }
         return n
     }
+    // B1 失败面板：lastCrash 是后端两份诊断（预检失败 / 崩溃分析完成）的统一出口
+    readonly property var crash: b ? b.lastCrash : ({})
+    readonly property bool crashAnalyzing: b ? b.crashAnalyzing : false
+    readonly property bool crashReady: crash && crash.isValid === true
+    property string exportHint: ""
+
+    function crashTypeText() {
+        var t = (crash && crash.type) ? String(crash.type) : ""
+        if (t === "precheck") return "启动前检查未通过"
+        if (t === "jvm") return "JVM 崩溃"
+        if (t === "minecraft") return "游戏崩溃"
+        if (t.length > 0) return t
+        return root.failReason.length > 0 ? "启动失败" : ""
+    }
+    function crashReasonText() {
+        var r = (crash && crash.reason) ? String(crash.reason) : ""
+        return r.length > 0 ? r : root.failReason
+    }
+    function crashModsText() {
+        var list = (crash && crash.suspectedMods) ? crash.suspectedMods : []
+        if (!list || list.length === 0) return ""
+        var n = Math.min(list.length, 4)
+        var parts = []
+        for (var i = 0; i < n; ++i) parts.push(String(list[i]))
+        var s = parts.join(" · ")
+        if (list.length > n) s += " 等 " + list.length + " 个"
+        return s
+    }
+    function crashKvRows() {
+        var rows = []
+        var t = crashTypeText()
+        if (t.length > 0) rows.push({ k: "类型", v: t })
+        var ts = (crash && crash.timestamp) ? String(crash.timestamp) : ""
+        if (ts.length > 0) rows.push({ k: "时间", v: ts.replace("T", " ") })
+        var m = crashModsText()
+        if (m.length > 0) rows.push({ k: "疑似", v: m })
+        return rows
+    }
+    function crashSuggestions() {
+        var list = (crash && crash.suggestions) ? crash.suggestions : []
+        if (!list) return []
+        var out = []
+        for (var i = 0; i < Math.min(list.length, 3); ++i) out.push(String(list[i]))
+        return out
+    }
+    function crashCardHeight() {
+        var h = 0
+        h += reasonTx.implicitHeight + 16          // 原因条
+        h += 10 + crashKvRows().length * 20        // 键值行
+        var sug = crashSuggestions()
+        if (sug.length > 0) h += 16 + 14 + sug.length * 22
+        return h
+    }
+
     function repairValueText(r) {
         var d = (r.detail === undefined || r.detail === null) ? "" : String(r.detail)
         if (r.state === 2) return "已就绪"
@@ -86,7 +140,9 @@ Item {
     }
     function rowHasDetail(r) {
         var d = rowDetail(r.detail)
-        return d.length > 0 && (r.status === 1 || r.status === 3)
+        // 失败节点的原因现在由下方诊断块统一承载（红色原因条），
+        // 子行再写一遍就是同一句话出现两次，因此只保留"进行中"的子行。
+        return d.length > 0 && r.status === 1
     }
     // 面板高度必须立刻可算：ListView.contentHeight 要等委托建好才准，
     // 会让面板高度慢一拍（实测：6 节点时底部元素上移 18px）。
@@ -160,6 +216,17 @@ Item {
                 Text {
                     anchors.right: parent.right
                     anchors.top: parent.top
+                    visible: root.failed
+                    text: root.crashAnalyzing ? "正在分析日志…"
+                                               : (root.crashReady ? "崩溃报告已生成" : "")
+                    color: root.crashAnalyzing ? "#c9a06a" : "#7b8593"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                }
+                Text {
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    visible: !root.failed
                     text: "第 " + root.stepNo + " / " + root.stepTotal + " 步"
                     color: "#4f5866"
                     font.family: Theme.fontFamily
@@ -389,7 +456,7 @@ Item {
                         y: 20
                         width: nodeRow.width - 96
                         text: root.rowDetail(modelData.detail)
-                        visible: text.length > 0 && (modelData.status === 1 || modelData.status === 3)
+                        visible: text.length > 0 && modelData.status === 1
                         color: modelData.status === 3 ? "#e0847f" : "#7fa8e0"
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -402,6 +469,120 @@ Item {
                         color: root.statusColor(modelData.status)
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
+                    }
+                }
+            }
+
+            // ---- 失败诊断（B1）----
+            // 失败后浮层原地变身：原因 / 类型 / 时间 / 疑似模组 / 建议，
+            // 不另开窗口；诊断还在算的时候显示"正在分析日志…"。
+            Item {
+                width: body.width
+                height: root.failed ? root.crashCardHeight() + 10 : 0
+                visible: root.failed
+
+                Column {
+                    id: crashCol
+                    width: body.width
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    spacing: 0
+
+                    Rectangle {   // 原因条：等宽字体 + 左侧红条，长原因自动换行
+                        width: crashCol.width
+                        height: reasonTx.implicitHeight + 16
+                        color: "#150d0f"
+                        Rectangle {
+                            width: 2
+                            height: parent.height
+                            color: "#7a2f2f"
+                        }
+                        Text {
+                            id: reasonTx
+                            anchors.left: parent.left
+                            anchors.leftMargin: 12
+                            anchors.right: parent.right
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: root.crashAnalyzing ? "正在分析日志，请稍候…" : root.crashReasonText()
+                            color: "#ffc9c5"
+                            font.family: "Consolas, Menlo, monospace"
+                            font.pixelSize: 12
+                            wrapMode: Text.Wrap
+                            lineHeight: 1.35
+                        }
+                    }
+
+                    Item { width: crashCol.width; height: 10 }
+
+                    Repeater {
+                        model: root.crashKvRows()
+                        delegate: Item {
+                            width: crashCol.width
+                            height: 20
+                            Text {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 56
+                                text: modelData.k
+                                color: "#4f5866"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 62
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: modelData.v
+                                color: "#b9c6d6"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                                elide: Text.ElideRight
+                            }
+                        }
+                    }
+
+                    Item {
+                        width: crashCol.width
+                        height: root.crashSuggestions().length > 0 ? 16 : 0
+                    }
+                    Text {
+                        width: crashCol.width
+                        height: 14
+                        visible: root.crashSuggestions().length > 0
+                        verticalAlignment: Text.AlignVCenter
+                        text: "建议"
+                        color: "#4f5866"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+                        font.letterSpacing: 1
+                    }
+                    Repeater {
+                        model: root.crashSuggestions()
+                        delegate: Item {
+                            width: crashCol.width
+                            height: 22
+                            Rectangle {
+                                width: 3
+                                height: 3
+                                anchors.left: parent.left
+                                anchors.top: parent.top
+                                anchors.topMargin: 8
+                                color: "#3b4a5c"
+                            }
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 12
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: modelData
+                                color: "#c3ccd8"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 12
+                                elide: Text.ElideRight
+                            }
+                        }
                     }
                 }
             }
@@ -419,9 +600,9 @@ Item {
                 Text {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - (root.failed ? 190 : 110)
+                    width: parent.width - (root.failed ? 300 : 110)
                     text: root.failed
-                          ? "已停止推进，修正后可重试"
+                          ? (root.exportHint.length > 0 ? root.exportHint : "诊断仅在本机进行，不会上传")
                           : (root.done ? "游戏已启动" : "正在按阶段推进，取消后可重新启动")
                     color: root.failed ? "#8a6a6a" : "#4f5866"
                     font.family: Theme.fontFamily
@@ -435,6 +616,17 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 8
                     visible: root.failed
+                    SButton {
+                        kind: 1
+                        radius: 2
+                        height: 32
+                        text: "导出日志"
+                        onClicked: {
+                            if (!root.b) return
+                            var p = root.b.exportCrashLogs("")
+                            root.exportHint = (p && p.length > 0) ? ("已导出: " + p) : "导出失败，可先查看日志文件夹"
+                        }
+                    }
                     SButton {
                         kind: 1
                         radius: 2

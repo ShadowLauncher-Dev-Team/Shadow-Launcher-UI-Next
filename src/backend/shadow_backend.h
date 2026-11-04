@@ -99,7 +99,9 @@ class ShadowBackend : public QObject {
 
     // ── Launch ──
     Q_PROPERTY(bool launching READ isLaunching NOTIFY launchStateChanged)
-    Q_PROPERTY(QVariantMap lastCrash READ lastCrash NOTIFY crashDetected)
+    // B1 失败面板：最后一份崩溃诊断（precheck 与分析完成两条路径都会写这里）
+    Q_PROPERTY(QVariantMap lastCrash READ lastCrash NOTIFY crashReportChanged)
+    Q_PROPERTY(bool crashAnalyzing READ crashAnalyzing NOTIFY crashAnalyzingChanged)
     Q_PROPERTY(QString launchStatus READ launchStatus NOTIFY launchProgressChanged)
     Q_PROPERTY(bool isRunning READ isRunning NOTIFY isRunningChanged)
     Q_PROPERTY(int runningCount READ runningCount NOTIFY runningCountChanged)
@@ -307,6 +309,7 @@ public:
 
     // ── Crash getters ──
     QVariantMap lastCrash() const { return m_lastCrash; }
+    bool crashAnalyzing() const { return m_crashAnalyzing; }
 
     // ── Resource getters ──
     bool isResourceDownloading() const;
@@ -478,6 +481,7 @@ public:
     Q_INVOKABLE void killGameProcess();
     // 仅用于开发核对「准备运行环境」卡片排版（--ui-demo-repair 也走这个）
     Q_INVOKABLE void demoLaunchRepairs();
+    Q_INVOKABLE void demoLaunchFailure();
     Q_INVOKABLE void killMinecraft();
     Q_INVOKABLE void killGameByPid(qint64 pid);
     Q_INVOKABLE QVariantList runningGames();
@@ -765,6 +769,8 @@ signals:
     // ── Crash detection ──
     void crashDetected(const QVariantMap& report);
     /// 启动失败 → 开始异步分析（QML 弹 toast）
+    void crashReportChanged();
+    void crashAnalyzingChanged();
     void crashAnalysisStarted();
     /// 异步分析完成（完整报告）
     void crashAnalysisReady(const QVariantMap& report);
@@ -986,6 +992,7 @@ private:
     QQmlEngine* m_engine = nullptr;
     QString m_currentLang = QStringLiteral("zh_CN");
     QVariantMap m_lastCrash;
+    bool m_crashAnalyzing = false;
     QString m_verifyReportPath;
     QString m_gameDir;
     QVariantList m_versionDetails;
