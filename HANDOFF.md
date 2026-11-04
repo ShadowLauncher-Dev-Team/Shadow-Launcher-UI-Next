@@ -342,3 +342,31 @@ ee2682a feat(launch-overlay): 启动阶段管线接入后端 StepPipeline；新�
   C1/C2/C3（进程监控放哪），每张带"优点 / 代价 / 需要后端改什么"，可点击选中。
 - 等影选择后再动 C++；后端预计先补三样：`startedAt`、`launchRepairs`（补全任务列表）、warning 可读属性。
 
+### 影选定：A2 / B1 / C3（三个都已落地）
+
+1. **A2「准备运行环境」**（commit 2c389a9）
+   - 后端 `LaunchBackend::launchRepairs`：`{key,name,detail,progress,state}`，
+     state 1 进行中 / 2 完成 / 3 失败；助手 beginRepair / updateRepair / finishRepair / clearRepairs。
+   - 接入 **Java 自动安装**（含安装器 pct 回调）与 **authlib-injector.jar 下载**（两个镜像 + GitHub 兜底，带字节数）。
+   - `buildLaunchPipeline()` 开头 clearRepairs()，不会串到下一次启动。
+   - QML 卡片插在"总进度"和节点清单之间；失败态自动隐藏（交给 B1）。
+   - 演示入口 `backend.demoLaunchRepairs()`（停在 Java 节点，不联网不装 Java）。
+2. **B1 失败面板**（commit 042689c）
+   - `lastCrash` 改 NOTIFY `crashReportChanged`，并让 crashDetected / crashAnalysisReady **两条路都写**；
+     新增 `crashAnalyzing`。老 UI 未引用 lastCrash，无回归。
+   - 失败后原地显示：红色原因条（mono、换行）+ 类型/时间/疑似模组 + 最多 3 条建议；
+     右上角「正在分析日志… / 崩溃报告已生成」；按钮 导出日志 / 查看日志 / 重试。
+   - 失败节点子行不再重复原因（原因交给原因条）。
+   - 演示入口 `backend.demoLaunchFailure()`。
+3. **C3 按钮状态化**（commit 042689c）
+   - `runningGames()` 增加 `startedAt`（启动时记在 launcher 属性上）。
+   - StagePage：`runningList` + `runningCountChanged` 重取；主按钮「运行中 N」（点=再开一个），
+     右侧 chevron 展开进程面板（版本名 / PID / 时长 + 结束 / 全部结束 / 再开一个），点外部关闭。
+   - 面板 z=110、外部点击层 z=100（否则会被页面大标题盖住，实测踩过）。
+   - 面板打开时 Timer 每 15s 刷新时长。
+
+### 仍未接的后端连接（下一步可选）
+- `launchCheckWarning` 仍只有信号没有属性：authlib 失败现在能在 A2 卡片里看到（state=3），
+  但"32 位 Java 已限制内存"这类一次性警告还是没有落点。
+- 3 秒内进程死亡路径仍不做崩溃分析（只发 launchCheckFailed + toast）。
+
