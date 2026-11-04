@@ -15,6 +15,7 @@
 #include "../core/step_keys.h"
 #include "../core/source_policy.h"
 #include "../core/loader_plan.h"
+#include "../core/loader_events.h"
 #include "../utils/hash_utils.h"
 
 #include "shadow_backend.h"
@@ -9144,13 +9145,12 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
             // ⚠ findStepByName("安装") 会误命中"下载 X 安装器库"（也含"安装"）。
             int stepIdx = -1;
             if (ds->isMerged()) {
-                if (step <= 1)      stepIdx = stepIndexByKeys(installId, {StepKeys::loaderInstaller(),
-                                                                           StepKeys::optifineJar(),
-                                                                           StepKeys::fabricConfig()});
-                else if (step == 2) stepIdx = stepIndexByKey(installId, StepKeys::loaderVerify());
-                else if (step >= 3) stepIdx = stepIndexByKeys(installId, {StepKeys::loaderInstall(),
-                                                                          StepKeys::fabricInstall(),
-                                                                          StepKeys::optifineInstall()});
+                // 安装器语义 → 步骤 key：由 LoaderEvents 表决定（C 项：事件与步骤解耦）
+                const auto evMap = ShadowLauncher::LoaderEvents::forLoader(ds->loaderType);
+                if (step <= 1)      stepIdx = stepIndexByKey(installId, evMap.artifactKey);
+                else if (step == 2) stepIdx = evMap.verifyKey.isEmpty()
+                                                 ? -1 : stepIndexByKey(installId, evMap.verifyKey);
+                else if (step >= 3) stepIdx = stepIndexByKey(installId, evMap.installKey);
                 if (stepIdx < 0) stepIdx = (step - 1 + 4);  // fallback 旧逻辑
             } else {
                 stepIdx = step - 1;
@@ -9190,7 +9190,8 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
         [this, installId]() {
             auto* ds = dlSession(installId);
             if (!ds) return;
-            int vi = stepIndexByKey(installId, StepKeys::loaderVerify());
+            const auto evMap = ShadowLauncher::LoaderEvents::forLoader(ds->loaderType);
+            int vi = evMap.verifyKey.isEmpty() ? -1 : stepIndexByKey(installId, evMap.verifyKey);
             if (vi >= 0) {
                 showStep(installId, vi);
                 updateStep(installId, vi, QStringLiteral("active"), 0);
@@ -9200,7 +9201,8 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
         [this, installId](bool ok) {
             auto* ds = dlSession(installId);
             if (!ds) return;
-            int vi = stepIndexByKey(installId, StepKeys::loaderVerify());
+            const auto evMap = ShadowLauncher::LoaderEvents::forLoader(ds->loaderType);
+            int vi = evMap.verifyKey.isEmpty() ? -1 : stepIndexByKey(installId, evMap.verifyKey);
             if (vi >= 0)
                 updateStep(installId, vi, ok ? QStringLiteral("completed")
                                              : QStringLiteral("failed"), ok ? 100 : 0);
@@ -9263,9 +9265,8 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
                     // 否则"安装 NeoForge"进行中安装器库仍显示 active。
                     // ⚠ 2026-08-14 用 nm.startsWith("安装") 匹配——"下载 X 安装器库"
                     // 不以"安装"开头（"下载"在前），但为统一改用精确查找，杜绝歧义。
-                    int installIdx = stepIndexByKeys(installId, {StepKeys::loaderInstall(),
-                                                                 StepKeys::fabricInstall(),
-                                                                 StepKeys::optifineInstall()});
+                    const auto evMap = ShadowLauncher::LoaderEvents::forLoader(ds->loaderType);
+                    int installIdx = stepIndexByKey(installId, evMap.installKey);
                     if (installIdx >= 0)
                         ds->loaderStepIdx = installIdx;
                     break;
