@@ -17,7 +17,11 @@ Item {
         visible: false
         smooth: true
         sourceSize: Qt.size(Math.round(root.size * 2), Math.round(root.size * 2))
-        source: "qrc:/qt/qml/ShadowLauncher/qml/icons/lucide/" + root.name + ".svg"
+        // 空 name 不要拼出 ".../lucide/.svg" 去加载：那是每个空图标一条 Image 错误警告，
+        // 启动日志里连刷 3 条，会盖住真正的 QML 报错。
+        source: root.name.length > 0
+                ? "qrc:/qt/qml/ShadowLauncher/qml/icons/lucide/" + root.name + ".svg"
+                : ""
         onStatusChanged: if (status === Image.Error) console.info("[ui] icon missing:", root.name)
     }
 
