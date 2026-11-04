@@ -12,6 +12,21 @@ Item {
     signal close()
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
+    // 列表行规格：滑动指示条要靠它算步距（和版本页 listRowH/listRowGap 同一个思路）
+    readonly property int acctRowH: 56
+    readonly property int menuGap: 2
+    readonly property int acctStride: acctRowH + menuGap
+    readonly property int tabRowH: 62
+    readonly property int tabStride: tabRowH + menuGap
+    // 账号数据版本号：accounts 数组每次变化都会整体换新对象，
+    // 行列表改用它来"原地重算"，避免 Repeater 把整列销毁重建（那就是切换账号时的闪烁）。
+    property int accRev: 0
+
+    Connections {
+        target: page.b
+        ignoreUnknownSignals: true
+        function onAccountsChanged() { page.accRev++ }
+    }
     readonly property var yg: (b && b.yggdrasil) ? b.yggdrasil : null
 
     property int tab: 0                      // 0 正版 / 1 离线 / 2 外置
@@ -246,13 +261,20 @@ Item {
                 // 账号列表：一行一个已保存账号，当前账号高亮 + 左侧强调条。
                 // 非当前账号没有真实皮肤（不缓存别人的头像），用名字首字母占位。
                 Repeater {
-                    model: (page.b && page.b.accounts) ? page.b.accounts : []
+                    // 模型是"行数"而不是 accounts 数组：数组换新时行不会被销毁重建，
+                    // 内容变化由 accRev 触发重算。切换账号不再整列闪一下。
+                    model: (page.b && page.b.accounts) ? page.b.accounts.length : 0
                     delegate: Item {
                         id: acctRow
                         visible: !page.loginPanel
                         width: menu.width
-                        height: 56
-                        readonly property bool cur: !!modelData && modelData.current === true
+                        height: page.acctRowH
+                        readonly property var acct: {
+                            var rev = page.accRev   // 显式依赖：账号数据变了就重算
+                            if (!page.b || !page.b.accounts) return null
+                            return (index < page.b.accounts.length) ? page.b.accounts[index] : null
+                        }
+                        readonly property bool cur: !!acct && acct.current === true
 
                         Rectangle {
                             anchors.fill: parent
@@ -264,25 +286,15 @@ Item {
                                 ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
                             }
                         }
-                        // 当前账号的强调条
-                        Rectangle {
-                            visible: acctRow.cur
-                            width: 2
-                            height: parent.height - 18
-                            radius: 1
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.left: parent.left
-                            color: Theme.accent
-                        }
                         SMinecraftHead {
                             x: 10
                             anchors.verticalCenter: parent.verticalCenter
                             size: 34
                             // 每个账号在登录/切换时都存了头像快照；没有快照才退回首字母
-                            source: (modelData && modelData.avatar && modelData.avatar.length > 0)
-                                    ? modelData.avatar
+                            source: (acctRow.acct && acctRow.acct.avatar && acctRow.acct.avatar.length > 0)
+                                    ? acctRow.acct.avatar
                                     : (acctRow.cur ? page.headSource : "")
-                            fallbackText: modelData ? modelData.name : ""
+                            fallbackText: acctRow.acct ? acctRow.acct.name : ""
                         }
                         Column {
                             anchors.left: parent.left
@@ -293,7 +305,7 @@ Item {
                             spacing: 3
                             Text {
                                 width: parent.width
-                                text: modelData ? modelData.name : ""
+                                text: acctRow.acct ? acctRow.acct.name : ""
                                 color: acctRow.cur ? "#ffffff" : "#cbd3de"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 13
@@ -301,8 +313,8 @@ Item {
                             }
                             Text {
                                 width: parent.width
-                                readonly property bool relog: !!modelData && modelData.needsRelogin === true
-                                text: relog ? "需重新登录" : (modelData ? modelData.typeText : "")
+                                readonly property bool relog: !!acctRow.acct && acctRow.acct.needsRelogin === true
+                                text: relog ? "需重新登录" : (acctRow.acct ? acctRow.acct.typeText : "")
                                 color: relog ? Theme.warn : (acctRow.cur ? Theme.ok : Theme.fg3)
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
@@ -315,16 +327,17 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             enabled: !page.busy
                             onClicked: {
-                                if (!page.b || !modelData) return
+                                var a = acctRow.acct
+                                if (!page.b || !a) return
                                 // 凭据已作废（登出过）：直接打开对应的登录表单重新验证，
                                 // 而不是 switchAccount —— 那样只会静默失败
-                                if (modelData.needsRelogin === true) {
+                                if (a.needsRelogin === true) {
                                     page.loginPanel = true
-                                    page.tab = modelData.mode
+                                    page.tab = a.mode
                                     return
                                 }
-                                if (!modelData.current && page.b.switchAccount)
-                                    page.b.switchAccount(modelData.index)
+                                if (!a.current && page.b.switchAccount)
+                                    page.b.switchAccount(a.index)
                             }
                         }
                     }
@@ -387,14 +400,6 @@ Item {
                             radius: 8
                             color: parent.sel ? "#151a23" : "transparent"
                         }
-                        Rectangle {
-                            visible: parent.sel
-                            width: 2
-                            height: parent.height - 16
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.left: parent.left
-                            color: Theme.accent
-                        }
                         Text {
                             x: 14
                             y: 12
@@ -453,6 +458,57 @@ Item {
                             onClicked: { page.offlineInput = modelData }
                         }
                     }
+                }
+            }
+
+            // ---- 当前账号指示条（唯一一根）----
+            // 和版本页同一套：换选中项时从旧行滑到新行。
+            // 以前每行各长一根，切换时只是"这根消失、那根出现"，没有移动感。
+            Item {
+                id: acctSelLayer
+                anchors.left: menu.left
+                anchors.top: menu.top
+                width: menu.width
+                height: Math.max(0, page.accountCount * page.acctStride - page.menuGap)
+                visible: !page.loginPanel && page.accountCount > 0
+                         && page.b && page.b.currentAccount >= 0
+                clip: true
+                z: 3
+
+                Rectangle {
+                    property real animIdx: (page.b && page.b.currentAccount >= 0)
+                                              ? page.b.currentAccount : 0
+                    Behavior on animIdx {
+                        NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
+                    }
+                    width: 2
+                    height: 38
+                    radius: 1
+                    color: Theme.accent
+                    y: animIdx * page.acctStride + (page.acctRowH - height) / 2
+                }
+            }
+
+            // ---- 登录方式指示条（同一套做法）----
+            Item {
+                anchors.left: menu.left
+                anchors.top: menu.top
+                width: menu.width
+                height: 3 * page.tabStride - page.menuGap
+                visible: page.loginPanel || !page.hasAccount
+                clip: true
+                z: 3
+
+                Rectangle {
+                    property real animIdx: page.tab
+                    Behavior on animIdx {
+                        NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
+                    }
+                    width: 2
+                    height: 46
+                    radius: 1
+                    color: Theme.accent
+                    y: animIdx * page.tabStride + (page.tabRowH - height) / 2
                 }
             }
         }
