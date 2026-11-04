@@ -45,7 +45,7 @@ Item {
             text: root.name.length > 0 ? root.name : "未登录"
             color: Theme.fg
             font.family: Theme.fontFamily
-            font.pixelSize: 12.5
+            font.pixelSize: 13
         }
     }
 

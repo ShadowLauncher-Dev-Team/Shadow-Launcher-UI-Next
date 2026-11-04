@@ -257,6 +257,7 @@ qt_add_qml_module(ShadowLauncher
 # 启动页背景图（临时内置图；正式版应由用户自定义背景或版本 splash 提供）
 qt6_add_resources(ShadowLauncher "ui_stage_assets"
     PREFIX "/ui"
+    BASE "ui/assets"
     FILES
         ui/assets/stage-aurora.jpg
 )

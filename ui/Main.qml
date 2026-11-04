@@ -8,8 +8,8 @@ Window {
     flags: Qt.FramelessWindowHint | Qt.Window
     minimumWidth: 800
     minimumHeight: 550
-    width: 1375
-    height: 897
+    width: 1100
+    height: 720
     title: "Shadow Launcher"
     color: "transparent"
 

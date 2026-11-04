@@ -1,27 +1,33 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import QtQuick
-import QtQuick.Layouts
 import ShadowLauncher.Next
 
 Item {
     id: root
     property Window hostWindow: null
+    readonly property bool narrow: width < 900
+    readonly property int sideW: narrow ? Theme.sideWNarrow : Theme.sideW
 
-    RowLayout {
+    Rectangle {
         anchors.fill: parent
-        spacing: 0
+        color: Theme.bg
+    }
 
-        SideBar {
-            Layout.preferredWidth: root.width < 900 ? Theme.sideWNarrow : Theme.sideW
-            Layout.fillHeight: true
-            narrow: root.width < 900
-            hostWindow: root.hostWindow
-        }
+    SideBar {
+        id: sideBar
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: root.sideW
+        narrow: root.narrow
+        hostWindow: root.hostWindow
+    }
 
-        StagePage {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            hostWindow: root.hostWindow
-        }
+    StagePage {
+        anchors.left: sideBar.right
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        hostWindow: root.hostWindow
     }
 }
