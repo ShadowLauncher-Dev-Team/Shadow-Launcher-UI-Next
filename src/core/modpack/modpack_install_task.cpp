@@ -65,11 +65,10 @@ ModpackInstallTask::ModpackInstallTask(QObject* parent)
             onMcInstallFinished(true);
             return;
         }
-        // 模组路 EMA 无数据衰减：长时间无字节流入 → 减半回落，不滞留旧速度
-        const qint64 now = QDateTime::currentMSecsSinceEpoch();
-        if (m_lastBytesMs > 0 && now - m_lastBytesMs > 800) {
-            m_modEma = m_modEma > 1024 ? m_modEma / 2 : 0;
-        }
+        // 速度单一来源（契约 §4）：直接读引擎的窗口值。
+        // 旧实现这里还有一层"800ms 无字节 → 减半"的平滑 —— 引擎窗口（30×100ms≈3s）本身
+        // 停流就会滑落归零，再加一层就会让速度出现"突然砍半"的假跳变（用户看到的"速度乱跳"之一）。
+        m_modEma = m_downloader ? qMax<qint64>(0, m_downloader->currentSpeedBps()) : 0;
         m_cardSpeed = m_modEma + m_mcSpeed;
         // 全量同步 MC 原子步骤（PCL 同款细分：JSON/库/资源/校验/loader 主文件/校验/安装）
         syncMcSteps();
@@ -413,7 +412,8 @@ void ModpackInstallTask::runDownload()
         // 模组路速度：直接用引擎全局 EMA（基于全局已下载字节，带平滑与衰减）——
         // 旧实现用单文件 received 瞬时差：分片/多文件切换时 received 跳变 → 虚高；
         // 且停滞时 fileProgress 不再触发 → 旧速度永不下落。
-        m_modEma = qMax<qint64>(0, qint64(m_downloader->currentSpeedMBps() * 1024.0 * 1024.0));
+        // 速度单一来源（契约 §4）：引擎自己的窗口值，不再做 MBps→bps 换算后再平滑
+        m_modEma = m_downloader ? qMax<qint64>(0, m_downloader->currentSpeedBps()) : 0;
         m_lastBytes = received;
         m_lastBytesMs = now;
         // 速度聚合：模组路 EMA + MC 路（并行期两路同跑时显示总和）

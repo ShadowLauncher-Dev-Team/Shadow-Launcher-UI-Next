@@ -50,6 +50,9 @@ public:
     qint64 downloadedBytes() const { return m_downloadedBytes; }
     qint64 totalBytes() const { return m_totalBytes; }
     double currentSpeedMBps() const { return m_emaMbps; }
+    /// 引擎当前速度（bytes/s）。单一来源：本引擎的滑动窗口值，停流时窗口自然滑落。
+    /// 上层只允许格式化显示，**不得再做二次平滑或"无数据减半"**（DOWNLOAD_CONTRACT §4）。
+    qint64 currentSpeedBps() const { return static_cast<qint64>(m_emaMbps * 1024.0 * 1024.0); }
 
     // ── 模组专属配置 ──
     void setMaxThreads(int n) { m_maxThreads = qBound(1, n, 64); }

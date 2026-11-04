@@ -3186,6 +3186,37 @@ QString ShadowBackend::downloadSelfcheck()
             fails << QStringLiteral("accept: no-sha1 + unknown size + empty accepted");
     }
 
+    // ── 4.6) 加权总进度（契约 §3：隐藏步骤不计入分母、权重归一、全完成=1）
+    {
+        StepPipeline pipe;
+        auto* a = pipe.addStep(QStringLiteral("w.a"), QStringLiteral("a"), 1.0);
+        auto* b = pipe.addStep(QStringLiteral("w.b"), QStringLiteral("b"), 1.0);
+        auto* c = pipe.addStep(QStringLiteral("w.c"), QStringLiteral("c"), 5.0);
+        if (a && b && c) {
+            a->setCompleted();     // 50%
+            b->setActive();
+            b->setPercentage(0);
+            c->setHidden(true);    // 隐藏步骤即使完成也不能拉高总进度
+            c->setCompleted();
+            const qreal p1 = pipe.weightedProgress();
+            if (qAbs(p1 - 0.5) > 0.001)
+                fails << QStringLiteral("weightedProgress(1/2 visible done)=%1 want 0.5").arg(p1);
+            b->setPercentage(50);
+            const qreal p2 = pipe.weightedProgress();
+            if (qAbs(p2 - 0.75) > 0.001)
+                fails << QStringLiteral("weightedProgress(50%%+50%%)=%1 want 0.75").arg(p2);
+            b->setCompleted();
+            const qreal p3 = pipe.weightedProgress();
+            if (qAbs(p3 - 1.0) > 0.001)
+                fails << QStringLiteral("weightedProgress(all visible done)=%1 want 1.0").arg(p3);
+            // 权重必须全部为正（0 权重会让分母为 0 → 除零/NaN）
+            for (int i = 0; i < 3; ++i) {
+                if (auto* w = pipe.stepNode(i); w && w->weight() <= 0)
+                    fails << QStringLiteral("step %1 has non-positive weight").arg(i);
+            }
+        }
+    }
+
     // ── 5) 源策略映射（版本列表源域）
     {
         using namespace ShadowLauncher;
@@ -3207,7 +3238,7 @@ QString ShadowBackend::downloadSelfcheck()
     }
 
     if (fails.isEmpty())
-        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=5")
+        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=6")
             .arg(allKeys.size()).arg(legacyCases.size());
     return QStringLiteral("FAIL(%1): ").arg(fails.size()) + fails.join(QStringLiteral(" | "));
 }

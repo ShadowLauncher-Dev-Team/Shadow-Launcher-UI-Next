@@ -827,6 +827,11 @@ double ModpackDownloader::currentSpeedMBps() const
     return m_fd ? m_fd->currentSpeedMBps() : 0.0;
 }
 
+qint64 ModpackDownloader::currentSpeedBps() const
+{
+    return m_fd ? m_fd->currentSpeedBps() : 0;
+}
+
 int ModpackDownloader::findIndexBySavePath(const QString& path) const{
     // 2026-08-12：去掉 !finished 过滤——精卫补位重试成功后会对同一文件再次发
     // fileFinished，旧实现 findIndex 直接 -1 → 重试结果对任务层不可见：文件实际已下好

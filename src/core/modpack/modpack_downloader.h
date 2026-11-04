@@ -73,6 +73,9 @@ public:
     /// 当前下载速度（MB/s）：转发动机全局 EMA（基于全局已下载字节，带平滑与衰减）。
     /// 任务层应以此为准，不要用单文件 received 瞬时差（分片/多文件切换时跳变，会虚高）。
     double currentSpeedMBps() const;
+    /// 引擎当前速度（bytes/s），直接转发引擎窗口值。
+    /// 上层只允许格式化显示，**不得再做二次平滑或"无数据减半"**（DOWNLOAD_CONTRACT §4）。
+    qint64 currentSpeedBps() const;
 
 signals:
     void statusChanged(const QString& text);          // 阶段文案（"正在解析下载地址…"）

@@ -971,7 +971,9 @@ void AssetDownloader::finishDownload(const AssetTask& task, bool success)
 
     emit fileCompleted(task.sha1, success);
 
-    if (!task.mirrors.isEmpty()) {
+    // 只有成功才报"满字节"。旧实现对失败文件也发 size/size，
+    // 上层按 received 聚合出来的字节数会被失败文件虚报满额（进度/速度失真的一个来源）。
+    if (success && !task.mirrors.isEmpty()) {
         emit fileProgress(task.mirrors.first(), task.sha1,
                           task.size, task.size, task.savePath);
     }
