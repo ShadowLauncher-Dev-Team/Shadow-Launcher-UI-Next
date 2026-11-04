@@ -4,6 +4,7 @@
 #include "../secrets.h"
 #include "../core/http_client.h"
 #include "../core/step_keys.h"
+#include "../core/loader_plan.h"
 #include "../core/source_policy.h"
 #include "../core/file_downloader.h"
 #include "../core/download_accept.h"
@@ -3328,8 +3329,36 @@ QString ShadowBackend::downloadSelfcheck()
             fails << QStringLiteral("loader artifact route should be mirror-first (documented)");
     }
 
+    // ── 9) LoaderPlan 形状（步骤清单只在 plan 里定义一次）
+    {
+        using ShadowLauncher::LoaderPlan::make;
+        const auto van = make(QStringLiteral("vanilla"));
+        if (van.keys.size() != 4 || van.weights.size() != 4 || van.shows.size() != 4)
+            fails << QStringLiteral("vanilla plan shape wrong (%1/%2/%3)")
+                         .arg(van.keys.size()).arg(van.weights.size()).arg(van.shows.size());
+        const auto fab = make(QStringLiteral("fabric"), true);
+        if (fab.keys.size() != 8 || fab.loaderLabel != QStringLiteral("Fabric"))
+            fails << QStringLiteral("fabric plan shape wrong (%1)").arg(fab.keys.size());
+        if (!fab.keys.contains(StepKeys::fabricApi()))
+            fails << QStringLiteral("fabric plan missing fabric.api");
+        const auto frg = make(QStringLiteral("forge"));
+        if (frg.keys.size() != 8 || frg.loaderLabel != QStringLiteral("Forge"))
+            fails << QStringLiteral("forge plan shape wrong");
+        const auto neo = make(QStringLiteral("neoforge"));
+        if (neo.loaderLabel != QStringLiteral("NeoForge"))
+            fails << QStringLiteral("neoforge label wrong");
+        const auto ofn = make(QStringLiteral("optifine"));
+        if (ofn.keys.size() != 5 || ofn.loaderLabel != QStringLiteral("OptiFine"))
+            fails << QStringLiteral("optifine plan shape wrong");
+        // 每条 plan 的权重/显隐长度必须一致（否则 rebuildSteps 会静默用默认值）
+        for (const auto& p : {van, fab, frg, neo, ofn}) {
+            if (p.keys.size() != p.weights.size() || p.keys.size() != p.shows.size())
+                fails << QStringLiteral("plan size mismatch label=%1").arg(p.loaderLabel);
+        }
+    }
+
     if (fails.isEmpty())
-        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=8")
+        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=9")
             .arg(allKeys.size()).arg(legacyCases.size());
     return QStringLiteral("FAIL(%1): ").arg(fails.size()) + fails.join(QStringLiteral(" | "));
 }

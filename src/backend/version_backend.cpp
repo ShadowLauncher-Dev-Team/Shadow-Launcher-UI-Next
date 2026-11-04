@@ -14,6 +14,7 @@
 
 #include "../core/step_keys.h"
 #include "../core/source_policy.h"
+#include "../core/loader_plan.h"
 #include "../utils/hash_utils.h"
 
 #include "shadow_backend.h"
@@ -736,11 +737,10 @@ void VersionBackend::installVersion(const QString& versionId)
         if (!isMergedMc) {
             auto* ds = ensureSession(versionId);
             if (ds) {
-                rebuildStepsByKeys(versionId,
-                    {StepKeys::baseJson(), StepKeys::baseLibraries(),
-                     StepKeys::baseAssets(), StepKeys::baseVerify()},
-                    {1.0, 3.0, 5.0, 1.0},
-                    {false, true, true, true});
+                {
+                    const auto plan = ShadowLauncher::LoaderPlan::make(QStringLiteral("vanilla"));
+                    rebuildStepsByKeys(versionId, plan.keys, plan.weights, plan.shows);
+                }
                 // Show card immediately — don't wait for first HTTP byte (progressUpdated signal)
                 updateCardFromSession(versionId, versionId, QStringLiteral("version"));
             }
@@ -5459,35 +5459,18 @@ void VersionBackend::installModLoader(const QString& mcVersion, const QString& l
     else if (loaderType == QStringLiteral("fabric")) loaderLabel = QStringLiteral("Fabric");
 
     if (loaderType == QStringLiteral("fabric")) {
-        QStringList stepKeys = {
-            StepKeys::baseJson(), StepKeys::baseLibraries(), StepKeys::baseAssets(),
-            StepKeys::baseVerify(), StepKeys::fabricConfig(), StepKeys::fabricLibs(),
-            StepKeys::fabricInstall()
-        };
-        QVector<qreal> weights = {3.0, 8.0, 5.0, 0.5, 0.1, 2.0, 0.5};
-        QVector<bool> shows = {true, true, true, true, true, true, true};
-        if (!fabricApiUrl.isEmpty()) {
-            stepKeys.append(StepKeys::fabricApi());
-            weights.append(0.05);
-            // 2026-08-10 修：原 shows=false（hidden）→ weightedProgress 跳过 hidden 步骤 →
-            // Fabric API 下载不计入总进度 → 26.2+Fabric 完成瞬间可见步骤全完成=1.0 → 卡片变绿
-            // （API 下载中 99.7%，完成后才真正 100%）。改为显示 + 参与加权。
-            shows.append(true);
-        }
-        rebuildStepsByKeys(installName, stepKeys, weights, shows);
+        // 步骤清单/权重/显隐统一由 LoaderPlan 提供（含 Fabric API 可选步骤）
+        const auto plan = ShadowLauncher::LoaderPlan::make(
+            QStringLiteral("fabric"), !fabricApiUrl.isEmpty());
+        rebuildStepsByKeys(installName, plan.keys, plan.weights, plan.shows, plan.loaderLabel);
     } else {
         // ── 2026-08-15：顺序换回 校验(5) → 安装器库(6) ──
         // 用户确认 NeoForge 实际时序：主文件下载 → SHA1 校验(verify) → 安装器库下载 → 安装。
         // 上一版把安装器库排在校验前，UI 步骤顺序与真实执行顺序相反（日志实测
         // 23:52:02.404 idx=6 校验 completed 先于 idx=5 安装器库 active）。
         // 真实顺序：主文件(4) → 校验(5) → 安装器库(6) → 安装(7)。
-        rebuildStepsByKeys(installName,
-            {StepKeys::baseJson(), StepKeys::baseLibraries(), StepKeys::baseAssets(),
-             StepKeys::baseVerify(), StepKeys::loaderInstaller(), StepKeys::loaderVerify(),
-             StepKeys::loaderLibs(), StepKeys::loaderInstall()},
-            {3.0, 8.0, 5.0, 0.5, 6.0, 0.5, 4.0, 6.0},
-            {true, true, true, true, true, true, true, true},
-            loaderLabel);
+        const auto plan = ShadowLauncher::LoaderPlan::make(loaderType);
+        rebuildStepsByKeys(installName, plan.keys, plan.weights, plan.shows, plan.loaderLabel);
     }
 
     updateStep(installName, 0, QStringLiteral("active"), 0);
@@ -5865,11 +5848,10 @@ void VersionBackend::installOptifine(const QString& mcVersion, const QString& op
     for (int i = 0; i < 3; i++) { ds->mcStepDone[i] = 0; ds->mcStepTotal[i] = 0; }
     ds->mcFileAdded.clear();
 
-    rebuildStepsByKeys(installName,
-        {StepKeys::baseJson(), StepKeys::baseLibraries(), StepKeys::baseAssets(),
-         StepKeys::optifineJar(), StepKeys::optifineInstall()},
-        {1.0, 8.0, 5.0, 3.0, 1.0},
-        {true, true, true, true, true});
+    {
+        const auto plan = ShadowLauncher::LoaderPlan::make(QStringLiteral("optifine"));
+        rebuildStepsByKeys(installName, plan.keys, plan.weights, plan.shows, plan.loaderLabel);
+    }
 
     updateStep(installName, 0, QStringLiteral("active"), 0);
     ds->loadedStep = 1;
