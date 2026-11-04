@@ -147,19 +147,27 @@ ee2682a feat(launch-overlay): 启动阶段管线接入后端 StepPipeline；新�
 
 ---
 
-## 7. 遗留问题
+### 3.5 上次游玩（已完成，2026-11-04 17:45）
 
-- **`lastPlayed` 字段缺失**：启动页想显示"上次游玩 · 昨天 21:40"，但 `ShadowBackend` 没有这个字段。用户倾向保留这行，需要后端补（读版本目录 mtime 即可）。
+- `ShadowBackend.lastPlayedLabel`（NOTIFY `lastPlayedChanged`）+ `recordLastPlayed()`。
+- **写盘时机**：只有 `LaunchBackend::minecraftStarted`（游戏进程真的起来）才写，检查失败/取消都不写。
+- **存哪**：`<dataDir>/last-played.json`，`{ "<versionId>": <epoch ms> }`。
+- **为什么不读版本目录 mtime**：非隔离版本的 `logs/`、`options.txt` 是所有版本共用的，拿它当"上次玩这个版本"会撒谎。没有记录 → 返回空串，QML 整行不显示（宁可没有，不给假信息）。
+- 文案：今天 HH:mm / 昨天 HH:mm / N 天前 / M 月 d 日 / yyyy-MM-dd。
+
+---
+
+## 7. 遗留问题
 - **版本名过短**：用户机器上版本名叫 `1`，58px 下像页码。已确认这是数据问题不是排版问题，**不要再用"按长度自适应字号"去掩盖**（已 revert）。
-- **侧栏 narrow 判据不一致**：`StageShell` 用窗口宽（1100 → 宽侧栏 208），`StagePage` 用内容区宽（892 → 判成 narrow，标题降到 34px）。两个判据要对齐（内容区宽 + 阈值）。
+- **版本名 `1` 过短** 是数据问题，不是排版问题；接版本列表页后用户可自己改名。
 - 浅色主题：用户已明确"交给后续开发"，当前只做深色。
+- `lastPlayed` 只是"从本版启动器起"的记录；老用户的历史游玩时间不会凭空出现（这是刻意的：不猜）。
 
 ---
 
 ## 8. 下一步建议顺序
 
-1. **版本列表页**（token 密度试金石）——设计稿 `b-library.html` / `shots/b-library-1375.png`
+1. **版本列表页**（token 密度试金石）——设计稿 `b-library.html` / `shots/b-library-1375.png`；后端已有 `versionList()` / `installedVersions()` / `setSelectedVersion()`
 2. 版本设置页（Java/内存/JVM 参数），对接已有 `ShadowBackend` 的 per-version 接口
 3. 账户面板（`loginMode` 三态严格分离：正版/离线/外置）
-4. 补 `lastPlayed`
-5. 侧栏 narrow 判据对齐 + 浅色主题
+4. 浅色主题

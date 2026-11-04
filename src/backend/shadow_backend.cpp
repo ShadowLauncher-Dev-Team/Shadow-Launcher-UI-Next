@@ -432,6 +432,18 @@ ShadowBackend::ShadowBackend(QObject* parent)
             this, &ShadowBackend::activeVersionNamesChanged);
     connect(m_version, &VersionBackend::selectedVersionChanged,
             this, &ShadowBackend::selectedVersionChanged);
+    // 切换版本后 kicker 要跟着换
+    connect(m_version, &VersionBackend::selectedVersionChanged,
+            this, &ShadowBackend::lastPlayedChanged);
+    // 上次游玩记录：启动时读一次 dataDir/last-played.json
+    {
+        QFile f(m_app->dataDir() + QStringLiteral("/last-played.json"));
+        if (f.open(QIODevice::ReadOnly)) {
+            const QJsonObject obj = QJsonDocument::fromJson(f.readAll()).object();
+            for (auto it = obj.begin(); it != obj.end(); ++it)
+                m_lastPlayed.insert(it.key(), qint64(it.value().toDouble()));
+        }
+    }
     connect(m_version, &VersionBackend::selectedVersionChanged, this, [this]() {
         QString vid = m_version->selectedVersion();
         // Persist last selected version (saved on exit, restored on next launch)
@@ -575,6 +587,9 @@ ShadowBackend::ShadowBackend(QObject* parent)
             this, &ShadowBackend::launchStateChanged);
     connect(m_launch, &LaunchBackend::minecraftStarted,
             this, &ShadowBackend::minecraftStarted);
+    // 游戏进程真的起来了才算"玩过"（检查失败/取消都不写）
+    connect(m_launch, &LaunchBackend::minecraftStarted,
+            this, [this]() { recordLastPlayed(selectedVersion()); });
     connect(m_launch, &LaunchBackend::minecraftStopped,
             this, &ShadowBackend::minecraftStopped);
     connect(m_launch, &LaunchBackend::crashDetected,
@@ -1042,6 +1057,52 @@ void ShadowBackend::setLastLoginMode(int mode) {
 
 QString ShadowBackend::selectedVersion() const {
     return m_version->selectedVersion();
+}
+
+// ── 上次游玩 ──────────────────────────────────────────────
+// 只用我们自己真正观测到的记录（游戏进程起来那一刻写一次），不去猜文件 mtime：
+// 非隔离版本的 logs/options.txt 是所有版本共用的，拿它当"上次玩这个版本"会撒谎。
+// 没有记录 → 返回空串，QML 整行不显示（宁可没有，也不给假信息）。
+QString ShadowBackend::lastPlayedLabel() const
+{
+    const QString vid = selectedVersion();
+    if (vid.isEmpty()) return {};
+    const qint64 ms = m_lastPlayed.value(vid, 0);
+    if (ms <= 0) return {};
+
+    const QDateTime t = QDateTime::fromMSecsSinceEpoch(ms);
+    const QDate today = QDate::currentDate();
+    const qint64 days = t.date().daysTo(today);
+    const QString hm = t.toString(QStringLiteral("HH:mm"));
+    if (days <= 0) return tr("今天 %1").arg(hm);
+    if (days == 1) return tr("昨天 %1").arg(hm);
+    if (days < 7) return tr("%1 天前").arg(days);
+    if (t.date().year() == today.year()) return t.toString(QStringLiteral("M 月 d 日"));
+    return t.toString(QStringLiteral("yyyy-MM-dd"));
+}
+
+void ShadowBackend::recordLastPlayed(const QString& versionId)
+{
+    if (versionId.isEmpty() || !m_app) return;
+    const QString path = m_app->dataDir() + QStringLiteral("/last-played.json");
+    // 每次都重读：run/旧实例可能刚写过，别让内存缓存覆盖磁盘上的新值
+    QJsonObject obj;
+    {
+        QFile f(path);
+        if (f.open(QIODevice::ReadOnly))
+            obj = QJsonDocument::fromJson(f.readAll()).object();
+    }
+    obj.insert(versionId, double(QDateTime::currentMSecsSinceEpoch()));
+    QDir().mkpath(m_app->dataDir());
+    QFile out(path);
+    if (out.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        out.write(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+        out.close();
+    }
+    m_lastPlayed.clear();
+    for (auto it = obj.begin(); it != obj.end(); ++it)
+        m_lastPlayed.insert(it.key(), qint64(it.value().toDouble()));
+    emit lastPlayedChanged();
 }
 
 QStringList ShadowBackend::versionIds() const {

@@ -76,6 +76,8 @@ class ShadowBackend : public QObject {
 
     // ── Version ──
     Q_PROPERTY(QString selectedVersion READ selectedVersion NOTIFY selectedVersionChanged)
+    // 上次游玩（真实记录，不猜）：启动页 kicker 用；没有记录就返回空串、QML 整行不显示
+    Q_PROPERTY(QString lastPlayedLabel READ lastPlayedLabel NOTIFY lastPlayedChanged)
     Q_PROPERTY(QStringList versionIds READ versionIds NOTIFY versionListReady)
     Q_PROPERTY(QVariantList versionList READ versionList NOTIFY versionListReady)
     Q_PROPERTY(QStringList releaseVersions READ releaseVersions NOTIFY versionListReady)
@@ -256,6 +258,8 @@ public:
 
     // ── Version getters ──
     QString selectedVersion() const;
+    QString lastPlayedLabel() const;
+    void recordLastPlayed(const QString& versionId);
     QStringList versionIds() const;
     QVariantList versionList() const;
     QStringList releaseVersions() const;
@@ -722,6 +726,7 @@ signals:
     void savesListReady(const QString& versionId, const QVariantList& saves);
     void activeVersionNamesChanged();
     void selectedVersionChanged();
+    void lastPlayedChanged();
     void selectedVersionClearedAfterDelete();
     void currentVersionSummaryChanged();
     void installStateChanged();
@@ -942,6 +947,8 @@ private:
 
     bool m_isolationEnabled = true;
     int m_lastLoginMode = 1;
+    // versionId -> 上次真正起进程的 epoch 毫秒（dataDir/last-played.json）
+    QHash<QString, qint64> m_lastPlayed;
     QString m_launchVersion;
     QString m_launchUsername;
 

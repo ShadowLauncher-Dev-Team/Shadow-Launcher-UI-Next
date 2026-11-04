@@ -188,27 +188,34 @@ Item {
         font.letterSpacing: page.narrow ? -0.6 : -1.6
     }
 
-    // ---------- 上：状态（常态不显示） ----------
+    // ---------- 标题上方那一行（kicker） ----------
+    // 同一处只放一件事，按优先级取第一个有意义的：
+    //   启动中 → 后端当前阶段原串；游戏中 → 游戏运行中；常态 → 上次游玩（真实记录，没有就不显示）
+    // 绝不显示"准备就绪/加载完成"这类状态噪音（README 第 6 条）；失败原因由浮层负责。
+    readonly property string lastPlayed: (b && b.lastPlayedLabel) ? b.lastPlayedLabel : ""
+    readonly property string kicker: {
+        if (page.launching) return page.statusText.length > 0 ? page.statusText : "正在准备启动"
+        if (page.running) return "游戏运行中"
+        if (page.lastPlayed.length > 0) return "上次游玩 · " + page.lastPlayed
+        return ""
+    }
+
     Row {
         anchors.left: parent.left
         anchors.bottom: titleText.top
         anchors.leftMargin: page.padL
         anchors.bottomMargin: 15
         spacing: 9
-        // 只在"启动中 / 游戏中"说话：启动结束后残留的"启动完成"是状态噪音（README 第 6 条），
-        // 失败原因由浮层负责展示，不在这里留尾巴。
-        visible: page.launching || page.running
+        visible: page.kicker.length > 0
 
         Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             width: 22
             height: 1
-            color: page.launching ? Theme.accent : Theme.ok
+            color: page.launching ? Theme.accent : (page.running ? Theme.ok : Theme.fg3)
         }
         Text {
-            text: page.launching
-                  ? (page.statusText.length > 0 ? page.statusText : "正在准备启动")
-                  : (page.running ? "游戏运行中" : page.statusText)
+            text: page.kicker
             color: Theme.fg2
             font.family: Theme.fontFamily
             font.pixelSize: 11
