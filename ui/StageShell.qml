@@ -30,4 +30,12 @@ Item {
         anchors.bottom: parent.bottom
         hostWindow: root.hostWindow
     }
+
+    // 启动浮层（页面内，不新开窗口）
+    LaunchOverlay {
+        anchors.left: sideBar.right
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+    }
 }

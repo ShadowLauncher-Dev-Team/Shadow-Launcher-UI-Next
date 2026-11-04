@@ -109,6 +109,26 @@ static bool isVersionEntryLink(const QFileInfo& fi)
 
 namespace ShadowLauncher {
 
+QObject* ShadowBackend::launchPipeline() const
+{
+    return m_launch ? m_launch->launchPipeline() : nullptr;
+}
+
+qreal ShadowBackend::launchOverallProgress() const
+{
+    return m_launch ? m_launch->launchOverallProgress() : 0.0;
+}
+
+int ShadowBackend::launchStepCount() const
+{
+    return m_launch ? m_launch->launchStepCount() : 0;
+}
+
+int ShadowBackend::launchStepNumber() const
+{
+    return m_launch ? m_launch->launchStepNumber() : 0;
+}
+
 ShadowBackend::ShadowBackend(QObject* parent)
     : QObject(parent)
 {
@@ -131,6 +151,9 @@ ShadowBackend::ShadowBackend(QObject* parent)
     m_version = new VersionBackend(this);
     bp("VersionBackend");
     m_launch = new LaunchBackend(this);
+    // 启动阶段节点变化 → 转发给 QML（启动浮层据此渲染）
+    connect(m_launch, &LaunchBackend::launchStepsChanged,
+            this, &ShadowBackend::launchPipelineChanged);
     bp("LaunchBackend");
     m_resource = new ResourceBackend(this);
     bp("ResourceBackend");

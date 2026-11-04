@@ -28,6 +28,7 @@ QVariant StepModel::data(const QModelIndex& index, int role) const {
     case BytesRecvRole:    return node->bytesRecv();
     case BytesTotalRole:   return node->bytesTotal();
     case HiddenRole:       return node->isHidden();
+    case DetailRole:       return node->detail();
     default:               return {};
     }
 }
@@ -40,7 +41,8 @@ QHash<int, QByteArray> StepModel::roleNames() const {
         {PercentageRole,  "percentage"},
         {BytesRecvRole,   "bytesRecv"},
         {BytesTotalRole,  "bytesTotal"},
-        {HiddenRole,      "hidden"}
+        {HiddenRole,      "hidden"},
+        {DetailRole,      "detail"}
     };
 }
 
@@ -50,6 +52,27 @@ void StepModel::appendStep(StepNode* step) {
     beginInsertRows({}, row, row);
     m_nodes.append(step);
     endInsertRows();
+
+    // 节点自身的状态/进度/详情/显隐变化 → 转成单行 dataChanged，
+    // 否则 QML 里绑定了 statusInt / detail 的委托不会刷新。
+    auto rowOf = [this, step]() { return m_nodes.indexOf(step); };
+    connect(step, &StepNode::statusChanged, this, [this, rowOf]() {
+        const int r = rowOf();
+        if (r >= 0) emit dataChanged(index(r), index(r), {StatusIntRole, DetailRole});
+    });
+    connect(step, &StepNode::progressChanged, this, [this, rowOf]() {
+        const int r = rowOf();
+        if (r >= 0) emit dataChanged(index(r), index(r),
+                                     {PercentageRole, BytesRecvRole, BytesTotalRole});
+    });
+    connect(step, &StepNode::detailChanged, this, [this, rowOf]() {
+        const int r = rowOf();
+        if (r >= 0) emit dataChanged(index(r), index(r), {DetailRole});
+    });
+    connect(step, &StepNode::hiddenChanged, this, [this, rowOf]() {
+        const int r = rowOf();
+        if (r >= 0) emit dataChanged(index(r), index(r), {HiddenRole});
+    });
 }
 
 void StepModel::insertStep(int index, StepNode* step) {

@@ -96,6 +96,11 @@ class ShadowBackend : public QObject {
     Q_PROPERTY(int runningCount READ runningCount NOTIFY runningCountChanged)
     Q_PROPERTY(QString launchVersion READ launchVersion NOTIFY launchStateChanged)
     Q_PROPERTY(QString launchUsername READ launchUsername NOTIFY launchStateChanged)
+    // ── 启动阶段管线（转发自 LaunchBackend，供启动浮层使用）──
+    Q_PROPERTY(QObject* launchPipeline READ launchPipeline NOTIFY launchPipelineChanged)
+    Q_PROPERTY(qreal launchOverallProgress READ launchOverallProgress NOTIFY launchPipelineChanged)
+    Q_PROPERTY(int launchStepCount READ launchStepCount NOTIFY launchPipelineChanged)
+    Q_PROPERTY(int launchStepNumber READ launchStepNumber NOTIFY launchPipelineChanged)
 
     // ── Resource ──
     Q_PROPERTY(bool downloading READ isResourceDownloading NOTIFY resourceDownloadStateChanged)
@@ -717,6 +722,7 @@ signals:
     void installComplete(const QString& installName);
     void launchProgressChanged(int progress, const QString& status);
     void launchStateChanged();
+    void launchPipelineChanged();
     void minecraftStarted();
     void minecraftStopped();
     // ── Crash detection ──
@@ -846,6 +852,10 @@ public:
     CheckBackend* check() const { return m_check; }
     VersionBackend* version() const { return m_version; }
     LaunchBackend* launchBackend() const { return m_launch; }
+    QObject* launchPipeline() const;
+    qreal launchOverallProgress() const;
+    int launchStepCount() const;
+    int launchStepNumber() const;
     ResourceBackend* resource() const { return m_resource; }
     Q_INVOKABLE StatsBackend* statsBackend() const { return m_stats; }
     // 注意：QML 暴露必须用 Q_PROPERTY(QObject*) 模式——Q_INVOKABLE 返回具体类型指针

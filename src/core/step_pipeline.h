@@ -24,7 +24,8 @@ public:
         PercentageRole,
         BytesRecvRole,
         BytesTotalRole,
-        HiddenRole
+        HiddenRole,
+        DetailRole
     };
 
     explicit StepModel(QObject* parent = nullptr);

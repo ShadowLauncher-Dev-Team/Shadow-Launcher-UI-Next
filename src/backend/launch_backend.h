@@ -7,6 +7,7 @@
 #include <QVariantMap>
 #include <QList>
 #include <QtConcurrent>
+#include "core/step_pipeline.h"
 
 namespace ShadowLauncher {
 
@@ -21,6 +22,11 @@ class LaunchBackend : public QObject {
     Q_PROPERTY(QString launchStatus READ launchStatus NOTIFY launchProgressChanged)
     Q_PROPERTY(bool isRunning READ isRunning NOTIFY isRunningChanged)
     Q_PROPERTY(int runningCount READ runningCount NOTIFY runningCountChanged)
+    // ── 启动阶段管线（QML 浮层用）：节点数/节点名完全由后端决定 ──
+    Q_PROPERTY(QObject* launchPipeline READ launchPipeline NOTIFY launchStepsChanged)
+    Q_PROPERTY(qreal launchOverallProgress READ launchOverallProgress NOTIFY launchStepsChanged)
+    Q_PROPERTY(int launchStepCount READ launchStepCount NOTIFY launchStepsChanged)
+    Q_PROPERTY(int launchStepNumber READ launchStepNumber NOTIFY launchStepsChanged)
 
 public:
     explicit LaunchBackend(QObject* parent = nullptr);
@@ -31,6 +37,10 @@ public:
     QString launchStatus() const { return m_launchStatus; }
     bool isRunning() const { return !m_runningLaunchers.isEmpty(); }
     int runningCount() const { return m_runningLaunchers.size(); }
+    QObject* launchPipeline() const;
+    qreal launchOverallProgress() const;
+    int launchStepCount() const;   // 可见节点数（离线时不含 login）
+    int launchStepNumber() const;  // 当前第几步（1 基）
 
     // ---- Slots ----
     Q_INVOKABLE void launch(const QString& versionId, const QString& username,
@@ -126,6 +136,8 @@ public:
 signals:
     void launchProgressChanged(int progress, const QString& status);
     void launchStateChanged();
+    /// 阶段节点集合的内容变化（状态 / 详情 / 显隐 / 总进度）
+    void launchStepsChanged();
     void minecraftStarted();
     void minecraftStopped();
     void crashDetected(const QVariantMap& report);
@@ -161,6 +173,13 @@ private:
     void handleLaunchFinished(Launcher* launcher, bool success, const QString& errorMsg);
     void writeLauncherProfilesJson();  // 写入官方启动器兼容的认证信息
     void runCrashAnalysis();           // async analysis worker (singleShot)
+
+    // ── 启动阶段管线 ──
+    void buildLaunchPipeline();      // 每次启动重建节点（顺序与 runNextCheck 的 case 0..5 对应）
+    void syncPipelineStep(int step); // 按当前 m_checkStep 推进节点状态
+    void completePipeline();         // 全部完成
+    void failPipelineStep(const QString& reason);
+    StepPipeline* m_pipeline = nullptr;
 
     AccountBackend* m_account = nullptr;
     Launcher* m_activeLauncher = nullptr;  // only accept progress from this launcher

@@ -163,6 +163,9 @@ void LaunchBackend::launch(const QString& versionId, const QString& username,
     m_windowHeight = windowHeight;
     m_checkStep = 0;
 
+    // 重建本轮的阶段节点（QML 浮层据此渲染，节点数/名称全由后端决定）
+    buildLaunchPipeline();
+
     if (!m_checkTimer) {
         m_checkTimer = new QTimer(this);
         m_checkTimer->setInterval(300);  // 300ms per step for visible progress
@@ -547,9 +550,140 @@ void LaunchBackend::cleanupJavaInstallPoll()
     }
 }
 
+// ============================================================
+// 启动阶段管线
+// ============================================================
+
+void LaunchBackend::buildLaunchPipeline()
+{
+    if (!m_pipeline) {
+        m_pipeline = new StepPipeline(this);
+
+        // 现有的一行状态文本自动落到"当前节点"的 detail 上
+        // （不改动任何 emit 站点，避免动到真实启动逻辑）
+        connect(this, &LaunchBackend::launchCheckProgress, this, [this](const QString& msg) {
+            if (!m_pipeline) return;
+            if (StepNode* node = m_pipeline->stepNode(m_checkStep)) {
+                if (node->detail() != msg) node->setDetail(msg);
+            }
+            emit launchStepsChanged();
+        });
+
+        if (StepModel* model = m_pipeline->stepModel()) {
+            connect(model, &QAbstractItemModel::dataChanged,
+                    this, [this] { emit launchStepsChanged(); });
+            connect(model, &QAbstractItemModel::modelReset,
+                    this, [this] { emit launchStepsChanged(); });
+            connect(model, &QAbstractItemModel::rowsInserted,
+                    this, [this] { emit launchStepsChanged(); });
+        }
+    }
+
+    m_pipeline->clearSteps();
+    emit launchStepsChanged();   // 管线对象刚创建时也让 QML 重读一次
+
+    // 顺序必须与 runNextCheck() 的 case 0..5 一一对应
+    m_pipeline->addStep(QStringLiteral("login"),   tr("检查登录状态"));
+    m_pipeline->addStep(QStringLiteral("java"),    tr("检查 Java 环境"));
+    m_pipeline->addStep(QStringLiteral("version"), tr("检查版本文件"));
+    m_pipeline->addStep(QStringLiteral("deps"),    tr("检查依赖文件"));
+    m_pipeline->addStep(QStringLiteral("memory"),  tr("检查内存分配"));
+    m_pipeline->addStep(QStringLiteral("process"), tr("启动游戏进程"));
+
+    // 离线账户不校验登录：该节点标记为跳过并隐藏（不计入总进度权重）
+    const bool needLogin = m_authIsOnline || m_yggdrasilMode;
+    if (!needLogin) {
+        if (StepNode* node = m_pipeline->step(QStringLiteral("login"))) {
+            node->setSkipped();
+            node->setHidden(true);
+        }
+    }
+
+    emit launchStepsChanged();
+}
+
+void LaunchBackend::syncPipelineStep(int step)
+{
+    if (!m_pipeline) return;
+    const int count = m_pipeline->totalSteps();
+    if (count == 0) return;
+
+    for (int i = 0; i < count; ++i) {
+        StepNode* node = m_pipeline->stepNode(i);
+        if (!node) continue;
+        const StepStatus st = node->status();
+        if (st == StepStatus::Skipped) continue;
+        if (i < step) {
+            if (st != StepStatus::Completed && st != StepStatus::Failed)
+                node->setCompleted();
+        } else if (i == step) {
+            if (st == StepStatus::Pending)
+                node->setActive();
+        }
+    }
+    emit launchStepsChanged();
+}
+
+void LaunchBackend::completePipeline()
+{
+    if (!m_pipeline) return;
+    for (int i = 0; i < m_pipeline->totalSteps(); ++i) {
+        if (StepNode* node = m_pipeline->stepNode(i)) {
+            if (node->status() != StepStatus::Skipped)
+                node->setCompleted();
+        }
+    }
+    emit launchStepsChanged();
+}
+
+void LaunchBackend::failPipelineStep(const QString& reason)
+{
+    if (!m_pipeline) return;
+    if (StepNode* node = m_pipeline->stepNode(m_checkStep)) {
+        node->setFailed(reason);
+    }
+    emit launchStepsChanged();
+}
+
+QObject* LaunchBackend::launchPipeline() const
+{
+    return m_pipeline;
+}
+
+qreal LaunchBackend::launchOverallProgress() const
+{
+    return m_pipeline ? m_pipeline->weightedProgress() : 0.0;
+}
+
+int LaunchBackend::launchStepCount() const
+{
+    if (!m_pipeline) return 0;
+    int count = 0;
+    for (int i = 0; i < m_pipeline->totalSteps(); ++i) {
+        if (StepNode* node = m_pipeline->stepNode(i)) {
+            if (!node->isHidden()) ++count;
+        }
+    }
+    return count;
+}
+
+int LaunchBackend::launchStepNumber() const
+{
+    if (!m_pipeline) return 0;
+    int num = 0;
+    const int last = qMin(m_checkStep, m_pipeline->totalSteps() - 1);
+    for (int i = 0; i <= last; ++i) {
+        if (StepNode* node = m_pipeline->stepNode(i)) {
+            if (!node->isHidden()) ++num;
+        }
+    }
+    return qMax(1, num);
+}
+
 void LaunchBackend::abortCheck(const QString& phase, const QString& reason)
 {
     qCDebug(logLaunch) << "[PROGRESS] ABORT: " << phase << "—" << reason;
+    failPipelineStep(reason);
     m_launching = false;
     m_activeLauncher = nullptr;
     if (m_checkTimer) {
@@ -732,6 +866,8 @@ void LaunchBackend::runNextCheck()
         m_checkTimer->stop();
         return;
     }
+
+    syncPipelineStep(m_checkStep);
 
     switch (m_checkStep) {
     case 0: {
@@ -1173,6 +1309,7 @@ void LaunchBackend::handleLaunchStarted(Launcher* launcher)
     m_launchStatus = tr("进程已启动，等待窗口...");
     emit launchProgressChanged(80, m_launchStatus);
     qCDebug(logLaunch) << "[PROGRESS] 80% - 进程已启动，等待窗口...";
+    completePipeline();
     emit minecraftStarted();
 
     // After 3s, check if process still alive

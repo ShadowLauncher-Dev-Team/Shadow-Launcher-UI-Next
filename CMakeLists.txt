@@ -232,6 +232,7 @@ set_source_files_properties(ui/Theme.qml PROPERTIES QT_RESOURCE_ALIAS Theme.qml 
 set_source_files_properties(ui/StageShell.qml PROPERTIES QT_RESOURCE_ALIAS StageShell.qml)
 set_source_files_properties(ui/SideBar.qml PROPERTIES QT_RESOURCE_ALIAS SideBar.qml)
 set_source_files_properties(ui/pages/StagePage.qml PROPERTIES QT_RESOURCE_ALIAS pages/StagePage.qml)
+set_source_files_properties(ui/LaunchOverlay.qml PROPERTIES QT_RESOURCE_ALIAS LaunchOverlay.qml)
 set_source_files_properties(ui/controls/SIcon.qml PROPERTIES QT_RESOURCE_ALIAS controls/SIcon.qml)
 set_source_files_properties(ui/controls/SButton.qml PROPERTIES QT_RESOURCE_ALIAS controls/SButton.qml)
 set_source_files_properties(ui/controls/SWindowButton.qml PROPERTIES QT_RESOURCE_ALIAS controls/SWindowButton.qml)
@@ -248,6 +249,7 @@ qt_add_qml_module(ShadowLauncher
         ui/StageShell.qml
         ui/SideBar.qml
         ui/pages/StagePage.qml
+        ui/LaunchOverlay.qml
         ui/controls/SIcon.qml
         ui/controls/SButton.qml
         ui/controls/SWindowButton.qml
