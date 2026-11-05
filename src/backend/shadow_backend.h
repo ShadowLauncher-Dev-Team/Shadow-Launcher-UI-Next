@@ -523,6 +523,8 @@ public:
         const QString& environment, const QString& license,
         int offset, int limit, const QString& source = {});
     Q_INVOKABLE QVariantMap getModCategories();
+    /// 池子运行时状态（诊断 / 分页 hasMore）：kind = mod | shader | resourcepack | modpack | datapack
+    Q_INVOKABLE QVariantMap resourcePoolState(const QString& kind) const;
     // CurseForge 分类静态表（QML 叠加下拉用）
     Q_INVOKABLE QVariantList cfCategories(int classId) const;
     Q_INVOKABLE void searchShadersEx(const QString& query, const QStringList& gameVersions,

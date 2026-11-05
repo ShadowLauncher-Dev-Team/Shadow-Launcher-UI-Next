@@ -56,24 +56,40 @@ static bool containsCjk(const QString& s)
 }
 // query 非空时按「搜索词相关度」排序：名称命中权重 1 / 仅简介命中 0.05（防简介喧宾夺主），
 // 同层内以加权下载量对数(0~1)作次键，避免下载量淹没相关度、也避免完全无视下载量。
+// 2026-11-06：去重键双保险。
+//   seenTitle —— 跨源同名（Modrinth 优先），原有行为；
+//   seenSlug  —— 同源同 slug（分页游标重叠/服务端翻页抖动会把同一条目拉两次，旧实现只靠标题去重，
+//                一旦两次返回的 title 大小写或空白不同就会双双入池 → 翻页时重复出现）。
+static QString dedupKey(const QVariantMap& m)
+{
+    const QString source = m.value(QStringLiteral("source")).toString();
+    const QString slug = m.value(QStringLiteral("slug")).toString();
+    if (!slug.isEmpty())
+        return source + QLatin1Char('#') + slug.toLower();
+    return QStringLiteral("title#") + normTitle(m.value(QStringLiteral("title")).toString());
+}
+
 static QVariantList mergeDedupSorted(const QVariantList& mrItems, const QVariantList& cfItems, double mrMult, const QString& query = {})
 {
-    QSet<QString> seen;
+    QSet<QString> seenTitle, seenSlug;
     QVariantList merged;
     auto appendDedup = [&](const QVariantList& items) {
         for (const QVariant& v : items) {
             const QVariantMap m = v.toMap();
             const QString key = normTitle(m.value(QStringLiteral("title")).toString());
-            if (key.isEmpty()) { merged.append(v); continue; }
-            if (seen.contains(key)) continue;
-            seen.insert(key);
+            const QString dk = dedupKey(m);
+            if (seenSlug.contains(dk)) continue;
+            if (!key.isEmpty() && seenTitle.contains(key)) continue;
+            seenSlug.insert(dk);
+            if (!key.isEmpty()) seenTitle.insert(key);
             merged.append(v);
         }
     };
     appendDedup(mrItems);  // Modrinth 先（优先保留）
     appendDedup(cfItems);  // CF 只补充特有
     const QString q = query.trimmed().toLower();
-    std::sort(merged.begin(), merged.end(), [mrMult, &q](const QVariant& a, const QVariant& b) {
+    // stable_sort：同分条目保持入池顺序，避免每次合并把并列项随机洗牌（观感上的"顺序错乱"）。
+    std::stable_sort(merged.begin(), merged.end(), [mrMult, &q](const QVariant& a, const QVariant& b) {
         auto score = [mrMult, &q](const QVariant& v) {
             const QVariantMap m = v.toMap();
             const double d = m.value(QStringLiteral("downloads")).toDouble();
@@ -106,19 +122,86 @@ static QVariantList mergePoolFreezeZone(const QVariantList& pool,
                                         const QString& query = {})
 {
     QVariantList frozen = pool.mid(0, shownCount);
-    QSet<QString> frozenKeys;
-    for (const QVariant& v : frozen)
-        frozenKeys.insert(normTitle(v.toMap().value(QStringLiteral("title")).toString()));
+    // 冻结区内的条目无论是按标题还是按 slug 命中的，都不能再次进入候选区（否则翻页重复）。
+    QSet<QString> frozenTitles, frozenSlugs;
+    for (const QVariant& v : frozen) {
+        const QVariantMap m = v.toMap();
+        const QString t = normTitle(m.value(QStringLiteral("title")).toString());
+        if (!t.isEmpty()) frozenTitles.insert(t);
+        frozenSlugs.insert(dedupKey(m));
+    }
     QVariantList mrRest, cfRest;
-    for (const QVariant& v : mrAll) {
-        if (!frozenKeys.contains(normTitle(v.toMap().value(QStringLiteral("title")).toString())))
-            mrRest.append(v);
-    }
-    for (const QVariant& v : cfAll) {
-        if (!frozenKeys.contains(normTitle(v.toMap().value(QStringLiteral("title")).toString())))
-            cfRest.append(v);
-    }
+    auto keep = [&](const QVariant& v) {
+        const QVariantMap m = v.toMap();
+        if (frozenSlugs.contains(dedupKey(m))) return false;
+        const QString t = normTitle(m.value(QStringLiteral("title")).toString());
+        return t.isEmpty() || !frozenTitles.contains(t);
+    };
+    for (const QVariant& v : mrAll) if (keep(v)) mrRest.append(v);
+    for (const QVariant& v : cfAll) if (keep(v)) cfRest.append(v);
     return frozen + mergeDedupSorted(mrRest, cfRest, mrMult, query);
+}
+
+QVariantMap ResourceBackend::resourcePoolState(const QString& kind) const
+{
+    QVariantMap out;
+    auto make = [](const QVariantList& pool, int page, int limit, int shown, int pending,
+                   bool mrMore, bool cfMore, int mrOffset, int cfOffset) {
+        QVariantMap m;
+        const int need = (page + 1) * limit;
+        m.insert(QStringLiteral("pool"), pool.size());
+        m.insert(QStringLiteral("page"), page);
+        m.insert(QStringLiteral("limit"), limit);
+        m.insert(QStringLiteral("shown"), shown);
+        m.insert(QStringLiteral("pending"), pending);
+        m.insert(QStringLiteral("mrMore"), mrMore);
+        m.insert(QStringLiteral("cfMore"), cfMore);
+        m.insert(QStringLiteral("mrOffset"), mrOffset);
+        m.insert(QStringLiteral("cfOffset"), cfOffset);
+        m.insert(QStringLiteral("hasMore"), pool.size() > need || mrMore || cfMore);
+        // 健康度自检：dup = 池内重复条目数（同源同 slug / 跨源同名都算重复）；
+        // sortedDesc = 无搜索词时"加权下载量"是否单调不增（顺序错乱的回归探针）。
+        QSet<QString> seenTitle, seenSlug;
+        int dup = 0;
+        double prev = 1e300;   // 探针起点：降序时首项必然小于哨兵（旧起点 -1 会把首项误判为乱序）
+        bool sortedDesc = true;
+        for (const QVariant& v : pool) {
+            const QVariantMap item = v.toMap();
+            const QString t = normTitle(item.value(QStringLiteral("title")).toString());
+            const QString source = item.value(QStringLiteral("source")).toString();
+            const QString slug = item.value(QStringLiteral("slug")).toString();
+            const QString dk = slug.isEmpty() ? QString() : source + QLatin1Char('#') + slug.toLower();
+            if ((!dk.isEmpty() && seenSlug.contains(dk)) || (!t.isEmpty() && seenTitle.contains(t)))
+                ++dup;
+            if (!dk.isEmpty()) seenSlug.insert(dk);
+            if (!t.isEmpty()) seenTitle.insert(t);
+            const double d = item.value(QStringLiteral("downloads")).toDouble();
+            const double w = source == QStringLiteral("CurseForge") ? d : d * 2.5;
+            if (w > prev + 0.5) sortedDesc = false;
+            prev = w;
+        }
+        m.insert(QStringLiteral("dup"), dup);
+        m.insert(QStringLiteral("sortedDesc"), sortedDesc);
+        return m;
+    };
+    const QString k = kind.toLower();
+    if (k == QLatin1String("mod"))
+        return make(m_modPool, m_modSearchPage, m_modSearchLimit, m_modShownCount, m_modPending,
+                    m_modMrMore, m_modCfMore, m_modMrOffset, m_modCfOffset);
+    if (k == QLatin1String("shader"))
+        return make(m_shaderPool, m_shaderSearchPage, m_shaderSearchLimit, m_shaderShownCount, m_shaderPending,
+                    m_shaderMrMore, m_shaderCfMore, m_shaderMrOffset, m_shaderCfOffset);
+    if (k == QLatin1String("resourcepack"))
+        return make(m_rpPool, m_rpSearchPage, m_rpSearchLimit, m_rpShownCount, m_rpPending,
+                    m_rpMrMore, m_rpCfMore, m_rpMrOffset, m_rpCfOffset);
+    if (k == QLatin1String("modpack"))
+        return make(m_packPool, m_packSearchPage, m_packSearchLimit, m_packShownCount, m_packPending,
+                    m_packMrMore, m_packCfMore, m_packMrOffset, m_packCfOffset);
+    if (k == QLatin1String("datapack"))
+        return make(m_dpPool, m_dpSearchPage, m_dpSearchLimit, m_dpShownCount, m_dpPending,
+                    m_dpMrMore, m_dpCfMore, m_dpMrOffset, m_dpCfOffset);
+    out.insert(QStringLiteral("error"), QStringLiteral("unknown kind: ") + kind);
+    return out;
 }
 
 // ============================================================
@@ -534,8 +617,9 @@ void ResourceBackend::searchModsEx(const QString& query, const QString& loader,
 
     // 搜索词/条件变化 → 重置池子与游标
     if (key != m_modSearchKey) {
-        ++m_searchGen;   // 新搜索代次：旧响应全部作废
+        ++m_modGen;   // 新搜索代次：旧响应全部作废
         m_modSearchKey = key;
+        m_modPending = 0;      // 新代次：旧在途请求的计数一并作废（否则卡死后续所有 ensure）
         m_modPool.clear();
         m_modMrAll.clear();
         m_modCfAll.clear();
@@ -567,7 +651,7 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
     }
 
     // 双源各拉一页（从各自游标继续）
-    const int gen = m_searchGen;
+    const int gen = m_modGen;
     QStringList loaders;
     if (!loader.isEmpty()) loaders << loader;
     QJsonArray facetArr;
@@ -623,7 +707,7 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
         url.setQuery(params);
         ++m_modPending;
         const auto onMrOk = [this, gen, url](int status, const QByteArray& body) {
-            if (gen != m_searchGen) return;
+            if (gen != m_modGen) return;
             if (status == 200) {
                 int totalHits = 0;
                 QJsonArray results = m_modMgr->parseSearchResponse(body, totalHits);
@@ -636,7 +720,7 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
                     fbUrl.setPath(QStringLiteral("/v2/search"));
                     fbUrl.setScheme(QStringLiteral("https"));
                     const auto onFbOk = [this, gen](int s2, const QByteArray& b2) {
-                        if (gen != m_searchGen) return;
+                        if (gen != m_modGen) return;
                         if (s2 == 200) {
                             int t2 = 0;
                             QJsonArray r2 = m_modMgr->parseSearchResponse(b2, t2);
@@ -651,7 +735,7 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
                         onModSourceDone(gen);
                     };
                     const auto onFbFail = [this, gen](const QString& e2) {
-                        if (gen != m_searchGen) return;
+                        if (gen != m_modGen) return;
                         m_modMrMore = false;
                         emit logMessage(tr("Modrinth 官方降级网络错误: %1").arg(e2));
                         onModSourceDone(gen);
@@ -672,7 +756,7 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
             onModSourceDone(gen);
         };
         const auto onMrFail = [this, gen](const QString& error) {
-            if (gen != m_searchGen) return;
+            if (gen != m_modGen) return;
             m_modMrMore = false;
             emit logMessage(tr("Modrinth 网络错误: %1").arg(error));
             onModSourceDone(gen);
@@ -691,14 +775,14 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
                         gameVersions.isEmpty() ? QString() : gameVersions.first(),
                         loader, m_modCfOffset, m_modSearchLimit,
             [this, gen](const QVariantList& items, int total) {
-                if (gen != m_searchGen) return;
+                if (gen != m_modGen) return;
                 m_modCfAll.append(items);
                 m_modCfOffset += items.size();
                 m_modCfMore = m_modCfOffset < total;
                 onModSourceDone(gen);
             },
             [this, gen](const QString& err) {
-                if (gen != m_searchGen) return;
+                if (gen != m_modGen) return;
                 m_modCfMore = false;
                 emit logMessage(tr("CurseForge 搜索失败: %1").arg(err));
                 onModSourceDone(gen);
@@ -712,7 +796,7 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
     } else {
         // 超时兜底：8s 未回 → 发当前池（防无限等待）
         QTimer::singleShot(8000, this, [this, gen]() {
-            if (gen != m_searchGen) return;
+            if (gen != m_modGen) return;
             if (m_modPending > 0) {
                 m_modPending = 0;
                 emitModPool();
@@ -724,27 +808,34 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
 // 单源回调汇聚：一轮源都回后，合并入池、检查是否需要继续拉、发信号
 void ResourceBackend::onModSourceDone(int gen)
 {
-    if (gen != m_searchGen) return;
-    if (--m_modPending > 0) return;  // 等两个源都回
+    if (gen != m_modGen) return;
+    if (m_modPending > 0) --m_modPending;  // 归还计数（可为 0：超时兜底已清零）
     m_modMgr->setBusy(false);
 
     // ═══ 冻结区 + 候选区：已显示的前 shownCount 条永不重排 ═══
     // 已显示部分（QML 已渲染的页）保持原序 → 滚动/切页不闪动；
     // 只有未显示的候选区会因新数据重排（用户看不到变化，无感知）。
-    const QVariantList mergedPool = mergePoolFreezeZone(m_modPool, m_modMrAll, m_modCfAll, m_modShownCount, 2.5, m_modSearchQuery);
-    const int frozenCount = qMin(m_modShownCount, m_modPool.size());
+    // 2026-11-06：取消"冻结区"，改为全池全局排序。
+    // 原因：双源速度差极大（实测 Modrinth 1.0s / CurseForge 5.2s）。旧逻辑在第一源回来时就把
+    // 前 N 条冻结，CF 的头部高下载项只能落到冻结区之后 → 第 2/3 页出现"比第 1 页下载量还高"的条目，
+    // 就是用户看到的"顺序错乱"。现在任何合并都按同一加权规则全局重排；已显示的页在慢源回包后会
+    // 被纠正一次（此时加载条仍在跑，观感是"加载完成后顺序正确"而不是"翻页后突然冒出高分条目"）。
+    const QVariantList mergedPool = mergeDedupSorted(m_modMrAll, m_modCfAll, 2.5, m_modSearchQuery);
+    const int frozenCount = m_modPool.size();   // 仅用于日志（旧冻结区条数），不再参与排序
     m_modPool = mergedPool;
     emit logMessage(tr("[池子] Mod 合并: 冻结 %1 + 候选 %2 → 池 %3 条")
                         .arg(frozenCount).arg(m_modPool.size() - frozenCount).arg(m_modPool.size()));
-    // 检查是否还需继续拉（池不够目标页 且 源未耗尽）
+    // 池已够目标页（或双源耗尽）→ 立刻发；慢源回包稍后静默并入候选区再发一次，
+    // 不再「等两个源都回」（旧行为：慢源把首屏拖到 8s 兜底才显示）。
     const int need = (m_modSearchPage + 1) * m_modSearchLimit;
-    if (m_modPool.size() < need && (m_modMrMore || m_modCfMore)) {
+    if (m_modPool.size() >= need || (!m_modMrMore && !m_modCfMore)) {
+        emitModPool();
+        return;
+    }
+    if (m_modPending == 0)
         ensureModPool(m_modSearchCfOnly, m_modSearchMrOnly,
                       m_modSearchQuery, m_modSearchLoader, m_modSearchCategory,
                       m_modSearchVersions, m_modSearchEnv, m_modSearchLic);
-        return;
-    }
-    emitModPool();
 }
 
 void ResourceBackend::emitModPool()
@@ -777,8 +868,8 @@ void ResourceBackend::startZhAggregatedModSearch(const QStringList& ens, const Q
     const QString& loader, const QString& category, const QStringList& gameVersions,
     const QString& environment, const QString& license, int page, int limit)
 {
-    ++m_searchGen;
-    const int gen = m_searchGen;
+    ++m_modGen;
+    const int gen = m_modGen;
     m_searchKind = SearchKind::Mod;
     m_modPool.clear();
     m_modMrAll.clear();
@@ -838,17 +929,17 @@ void ResourceBackend::startZhAggregatedModSearch(const QStringList& ens, const Q
         params.addQueryItem(QStringLiteral("index"), QStringLiteral("relevance"));
         url.setQuery(params);
         const auto onOk = [this, gen](int status, const QByteArray& body) {
-            if (gen != m_searchGen) return;
+            if (gen != m_modGen) return;
             if (status == 200) {
                 int total = 0;
                 QJsonArray results = m_modMgr->parseSearchResponse(body, total);
                 m_modMrAll.append(parseSearchResponseItems(results));
             }
-            if (--m_modPending <= 0) finishZhAggregatedModSearch(gen);
+            if (m_modPending > 0) --m_modPending; if (m_modPending <= 0) finishZhAggregatedModSearch(gen);
         };
         const auto onFail = [this, gen](const QString&) {
-            if (gen != m_searchGen) return;
-            if (--m_modPending <= 0) finishZhAggregatedModSearch(gen);
+            if (gen != m_modGen) return;
+            if (m_modPending > 0) --m_modPending; if (m_modPending <= 0) finishZhAggregatedModSearch(gen);
         };
         if (m_fetchEngine)
             m_fetchEngine->getJson(url.toString(), true, onOk, onFail);
@@ -857,14 +948,14 @@ void ResourceBackend::startZhAggregatedModSearch(const QStringList& ens, const Q
     }
     // 兜底：8s 未全回 → 用已回结果先出
     QTimer::singleShot(8000, this, [this, gen]() {
-        if (gen != m_searchGen) return;
+        if (gen != m_modGen) return;
         if (m_modPending > 0) { m_modPending = 0; finishZhAggregatedModSearch(gen); }
     });
 }
 
 void ResourceBackend::finishZhAggregatedModSearch(int gen)
 {
-    if (gen != m_searchGen) return;
+    if (gen != m_modGen) return;
     m_modMgr->setBusy(false);
     // 中文原词无法用于英文标题相关度排序 → 退化为加权下载量排序（mrMult 2.5 与主搜索一致）
     m_modPool = mergeDedupSorted(m_modMrAll, {}, 2.5);
@@ -874,7 +965,7 @@ void ResourceBackend::finishZhAggregatedModSearch(int gen)
 
 
 // ── 翻页预取：只预热司南引擎缓存，不碰 gen/pending/emit ──
-// 旧实现让预取复用 searchModsEx：预取会 ++m_searchGen 并重置 pending，
+// 旧实现让预取复用 searchModsEx：预取会 ++m_modGen 并重置 pending，
 // 打断在途主搜索（主搜索响应被 gen 检查丢弃 → 列表卡 loading/闪动）。
 // 预取改为独立入口：请求结果只进 getJson 缓存(cacheable=true) + 图标缓存，
 // 翻页/搜索时引擎缓存命中秒开；不产生任何聚合信号，与真实搜索物理隔离。
@@ -1010,8 +1101,9 @@ void ResourceBackend::searchShadersEx(
     m_shaderSearchSource = source;
 
     if (key != m_shaderSearchKey) {
-        ++m_searchGen;   // 新搜索代次：旧响应全部作废
+        ++m_shaderGen;   // 新搜索代次：旧响应全部作废
         m_shaderSearchKey = key;
+        m_shaderPending = 0;
         m_shaderPool.clear();
         m_shaderMrAll.clear();
         m_shaderCfAll.clear();
@@ -1036,7 +1128,7 @@ void ResourceBackend::ensureShaderPool()
         return;
     }
 
-    const int gen = m_searchGen;
+    const int gen = m_shaderGen;
     const QString& query = m_shaderSearchQuery;
     const QStringList& gameVersions = m_shaderSearchVersions;
     const QStringList& categories = m_shaderSearchCats;
@@ -1077,7 +1169,7 @@ void ResourceBackend::ensureShaderPool()
         url.setQuery(params);
         ++m_shaderPending;
         const auto onMrOk = [this, gen, url](int status, const QByteArray& body) {
-            if (gen != m_searchGen) return;
+            if (gen != m_shaderGen) return;
             if (status == 200) {
                 int totalHits = 0;
                 QJsonArray results = m_modMgr->parseSearchResponse(body, totalHits);
@@ -1089,7 +1181,7 @@ void ResourceBackend::ensureShaderPool()
                     fbUrl.setPath(QStringLiteral("/v2/search"));
                     fbUrl.setScheme(QStringLiteral("https"));
                     const auto onFbOk = [this, gen](int s2, const QByteArray& b2) {
-                        if (gen != m_searchGen) return;
+                        if (gen != m_shaderGen) return;
                         if (s2 == 200) {
                             int t2 = 0;
                             QJsonArray r2 = m_modMgr->parseSearchResponse(b2, t2);
@@ -1104,7 +1196,7 @@ void ResourceBackend::ensureShaderPool()
                         onShaderSourceDone(gen);
                     };
                     const auto onFbFail = [this, gen](const QString& e2) {
-                        if (gen != m_searchGen) return;
+                        if (gen != m_shaderGen) return;
                         m_shaderMrMore = false;
                         emit logMessage(tr("光影官方降级网络错误: %1").arg(e2));
                         onShaderSourceDone(gen);
@@ -1125,7 +1217,7 @@ void ResourceBackend::ensureShaderPool()
             onShaderSourceDone(gen);
         };
         const auto onMrFail = [this, gen](const QString& error) {
-            if (gen != m_searchGen) return;
+            if (gen != m_shaderGen) return;
             m_shaderMrMore = false;
             emit logMessage(tr("光影搜索网络错误: %1").arg(error));
             onShaderSourceDone(gen);
@@ -1145,14 +1237,14 @@ void ResourceBackend::ensureShaderPool()
                         loader.isEmpty() ? QString() : loader.first(),
                         m_shaderCfOffset, m_shaderSearchLimit,
             [this, gen](const QVariantList& items, int total) {
-                if (gen != m_searchGen) return;
+                if (gen != m_shaderGen) return;
                 m_shaderCfAll.append(items);
                 m_shaderCfOffset += items.size();
                 m_shaderCfMore = m_shaderCfOffset < total;
                 onShaderSourceDone(gen);
             },
             [this, gen](const QString& err) {
-                if (gen != m_searchGen) return;
+                if (gen != m_shaderGen) return;
                 m_shaderCfMore = false;
                 emit logMessage(tr("CurseForge 光影搜索失败: %1").arg(err));
                 onShaderSourceDone(gen);
@@ -1163,7 +1255,7 @@ void ResourceBackend::ensureShaderPool()
         emitShaderPool();
     } else {
         QTimer::singleShot(8000, this, [this, gen]() {
-            if (gen != m_searchGen) return;
+            if (gen != m_shaderGen) return;
             if (m_shaderPending > 0) {
                 m_shaderPending = 0;
                 emitShaderPool();
@@ -1174,21 +1266,29 @@ void ResourceBackend::ensureShaderPool()
 
 void ResourceBackend::onShaderSourceDone(int gen)
 {
-    if (gen != m_searchGen) return;
-    if (--m_shaderPending > 0) return;
+    if (gen != m_shaderGen) return;
+    if (m_shaderPending > 0) --m_shaderPending;
     m_modMgr->setBusy(false);
     // 冻结区 + 候选区（防滚动闪动）
-    const QVariantList mergedPool = mergePoolFreezeZone(m_shaderPool, m_shaderMrAll, m_shaderCfAll, m_shaderShownCount, 2.5);
-    const int frozenCount = qMin(m_shaderShownCount, m_shaderPool.size());
+    // 2026-11-06：取消"冻结区"，改为全池全局排序。
+    // 原因：双源速度差极大（实测 Modrinth 1.0s / CurseForge 5.2s）。旧逻辑在第一源回来时就把
+    // 前 N 条冻结，CF 的头部高下载项只能落到冻结区之后 → 第 2/3 页出现"比第 1 页下载量还高"的条目，
+    // 就是用户看到的"顺序错乱"。现在任何合并都按同一加权规则全局重排；已显示的页在慢源回包后会
+    // 被纠正一次（此时加载条仍在跑，观感是"加载完成后顺序正确"而不是"翻页后突然冒出高分条目"）。
+    const QVariantList mergedPool = mergeDedupSorted(m_shaderMrAll, m_shaderCfAll, 2.5);
+    const int frozenCount = m_shaderPool.size();   // 仅用于日志（旧冻结区条数），不再参与排序
     m_shaderPool = mergedPool;
     emit logMessage(tr("[池子] 光影合并: 冻结 %1 + 候选 %2 → 池 %3 条")
                         .arg(frozenCount).arg(m_shaderPool.size() - frozenCount).arg(m_shaderPool.size()));
     const int need = (m_shaderSearchPage + 1) * m_shaderSearchLimit;
-    if (m_shaderPool.size() < need && (m_shaderMrMore || m_shaderCfMore)) {
-        ensureShaderPool();
+    if (m_shaderPool.size() >= need || (!m_shaderMrMore && !m_shaderCfMore)) {
+        // 已够当前页（或双源耗尽）→ 立刻发；慢源的回包稍后会静默并入候选区再发一次，
+        // 不再"等两个源都回"（旧行为：慢源把首屏拖到 8s 兜底才显示）。
+        emitShaderPool();
         return;
     }
-    emitShaderPool();
+    if (m_shaderPending == 0)
+        ensureShaderPool();
 }
 
 void ResourceBackend::emitShaderPool()
@@ -1249,8 +1349,9 @@ void ResourceBackend::searchResourcepacks(const QString& query, const QString& g
     m_rpSearchSource = source;
 
     if (key != m_rpSearchKey) {
-        ++m_searchGen;   // 新搜索代次：旧响应全部作废
+        ++m_rpGen;   // 新搜索代次：旧响应全部作废
         m_rpSearchKey = key;
+        m_rpPending = 0;
         m_rpPool.clear();
         m_rpMrAll.clear();
         m_rpCfAll.clear();
@@ -1274,7 +1375,7 @@ void ResourceBackend::ensureRpPool()
         return;
     }
 
-    const int gen = m_searchGen;
+    const int gen = m_rpGen;
     const QString& query = m_rpSearchQuery;
     const QString& gameVersion = m_rpSearchVersion;
     const QStringList& categories = m_rpSearchCats;
@@ -1304,7 +1405,7 @@ void ResourceBackend::ensureRpPool()
         url.setQuery(params);
         ++m_rpPending;
         const auto onRpOk = [this, gen, url](int status, const QByteArray& body) {
-            if (gen != m_searchGen) return;
+            if (gen != m_rpGen) return;
             if (status == 200) {
                 int total = 0;
                 QJsonArray hits = m_modMgr->parseSearchResponse(body, total);
@@ -1316,7 +1417,7 @@ void ResourceBackend::ensureRpPool()
                     fbUrl.setPath(QStringLiteral("/v2/search"));
                     fbUrl.setScheme(QStringLiteral("https"));
                     const auto onFbOk = [this, gen](int s2, const QByteArray& b2) {
-                        if (gen != m_searchGen) return;
+                        if (gen != m_rpGen) return;
                         if (s2 == 200) {
                             int t2 = 0;
                             QJsonArray r2 = m_modMgr->parseSearchResponse(b2, t2);
@@ -1348,7 +1449,7 @@ void ResourceBackend::ensureRpPool()
                         onRpSourceDone(gen);
                     };
                     const auto onFbFail = [this, gen](const QString& e2) {
-                        if (gen != m_searchGen) return;
+                        if (gen != m_rpGen) return;
                         m_rpMrMore = false;
                         emit logMessage(tr("[RP] 官方降级网络错误: %1").arg(e2));
                         onRpSourceDone(gen);
@@ -1394,7 +1495,7 @@ void ResourceBackend::ensureRpPool()
             onRpSourceDone(gen);
         };
         const auto onRpFail = [this, gen](const QString& error) {
-            if (gen != m_searchGen) return;
+            if (gen != m_rpGen) return;
             m_rpMrMore = false;
             emit logMessage(tr("[RP] Modrinth 网络错误: %1").arg(error));
             onRpSourceDone(gen);
@@ -1411,14 +1512,14 @@ void ResourceBackend::ensureRpPool()
         ++m_rpPending;
         m_cfApi->search(12, query, 0, gameVersion, QString(), m_rpCfOffset, m_rpSearchLimit,
             [this, gen](const QVariantList& items, int total) {
-                if (gen != m_searchGen) return;
+                if (gen != m_rpGen) return;
                 m_rpCfAll.append(items);
                 m_rpCfOffset += items.size();
                 m_rpCfMore = m_rpCfOffset < total;
                 onRpSourceDone(gen);
             },
             [this, gen](const QString& err) {
-                if (gen != m_searchGen) return;
+                if (gen != m_rpGen) return;
                 m_rpCfMore = false;
                 emit logMessage(tr("[RP] CurseForge 搜索失败: %1").arg(err));
                 onRpSourceDone(gen);
@@ -1429,7 +1530,7 @@ void ResourceBackend::ensureRpPool()
         emitRpPool();
     } else {
         QTimer::singleShot(8000, this, [this, gen]() {
-            if (gen != m_searchGen) return;
+            if (gen != m_rpGen) return;
             if (m_rpPending > 0) {
                 m_rpPending = 0;
                 emitRpPool();
@@ -1440,21 +1541,29 @@ void ResourceBackend::ensureRpPool()
 
 void ResourceBackend::onRpSourceDone(int gen)
 {
-    if (gen != m_searchGen) return;
-    if (--m_rpPending > 0) return;
+    if (gen != m_rpGen) return;
+    if (m_rpPending > 0) --m_rpPending;
     m_modMgr->setBusy(false);
     // 冻结区 + 候选区（防滚动闪动）
-    const QVariantList mergedPool = mergePoolFreezeZone(m_rpPool, m_rpMrAll, m_rpCfAll, m_rpShownCount, 2.5);
-    const int frozenCount = qMin(m_rpShownCount, m_rpPool.size());
+    // 2026-11-06：取消"冻结区"，改为全池全局排序。
+    // 原因：双源速度差极大（实测 Modrinth 1.0s / CurseForge 5.2s）。旧逻辑在第一源回来时就把
+    // 前 N 条冻结，CF 的头部高下载项只能落到冻结区之后 → 第 2/3 页出现"比第 1 页下载量还高"的条目，
+    // 就是用户看到的"顺序错乱"。现在任何合并都按同一加权规则全局重排；已显示的页在慢源回包后会
+    // 被纠正一次（此时加载条仍在跑，观感是"加载完成后顺序正确"而不是"翻页后突然冒出高分条目"）。
+    const QVariantList mergedPool = mergeDedupSorted(m_rpMrAll, m_rpCfAll, 2.5);
+    const int frozenCount = m_rpPool.size();   // 仅用于日志（旧冻结区条数），不再参与排序
     m_rpPool = mergedPool;
     emit logMessage(tr("[池子] 资源包合并: 冻结 %1 + 候选 %2 → 池 %3 条")
                         .arg(frozenCount).arg(m_rpPool.size() - frozenCount).arg(m_rpPool.size()));
     const int need = (m_rpSearchPage + 1) * m_rpSearchLimit;
-    if (m_rpPool.size() < need && (m_rpMrMore || m_rpCfMore)) {
-        ensureRpPool();
+    if (m_rpPool.size() >= need || (!m_rpMrMore && !m_rpCfMore)) {
+        // 已够当前页（或双源耗尽）→ 立刻发；慢源的回包稍后会静默并入候选区再发一次，
+        // 不再"等两个源都回"（旧行为：慢源把首屏拖到 8s 兜底才显示）。
+        emitRpPool();
         return;
     }
-    emitRpPool();
+    if (m_rpPending == 0)
+        ensureRpPool();
 }
 
 void ResourceBackend::emitRpPool()
@@ -1489,8 +1598,9 @@ void ResourceBackend::searchModpacksEx(const QString& query, const QString& load
     m_packSearchSource = source;
 
     if (key != m_packSearchKey) {
-        ++m_searchGen;
+        ++m_packGen;
         m_packSearchKey = key;
+        m_packPending = 0;
         m_packPool.clear();
         m_packMrAll.clear();
         m_packCfAll.clear();
@@ -1515,7 +1625,7 @@ void ResourceBackend::ensurePackPool()
         return;
     }
 
-    const int gen = m_searchGen;
+    const int gen = m_packGen;
     const QString& query = m_packSearchQuery;
     const QString& loader = m_packSearchLoader;
     const QString& category = m_packSearchCategory;
@@ -1554,7 +1664,7 @@ void ResourceBackend::ensurePackPool()
         url.setQuery(params);
         ++m_packPending;
         const auto onMrOk = [this, gen, url](int status, const QByteArray& body) {
-            if (gen != m_searchGen) return;
+            if (gen != m_packGen) return;
             if (status == 200) {
                 int totalHits = 0;
                 QJsonArray results = m_modMgr->parseSearchResponse(body, totalHits);
@@ -1566,7 +1676,7 @@ void ResourceBackend::ensurePackPool()
                     fbUrl.setPath(QStringLiteral("/v2/search"));
                     fbUrl.setScheme(QStringLiteral("https"));
                     const auto onFbOk = [this, gen](int s2, const QByteArray& b2) {
-                        if (gen != m_searchGen) return;
+                        if (gen != m_packGen) return;
                         if (s2 == 200) {
                             int t2 = 0;
                             QJsonArray r2 = m_modMgr->parseSearchResponse(b2, t2);
@@ -1581,7 +1691,7 @@ void ResourceBackend::ensurePackPool()
                         onPackSourceDone(gen);
                     };
                     const auto onFbFail = [this, gen](const QString& e2) {
-                        if (gen != m_searchGen) return;
+                        if (gen != m_packGen) return;
                         m_packMrMore = false;
                         emit logMessage(tr("整合包官方降级网络错误: %1").arg(e2));
                         onPackSourceDone(gen);
@@ -1602,7 +1712,7 @@ void ResourceBackend::ensurePackPool()
             onPackSourceDone(gen);
         };
         const auto onMrFail = [this, gen](const QString& error) {
-            if (gen != m_searchGen) return;
+            if (gen != m_packGen) return;
             m_packMrMore = false;
             emit logMessage(tr("整合包 Modrinth 网络错误: %1").arg(error));
             onPackSourceDone(gen);
@@ -1620,14 +1730,14 @@ void ResourceBackend::ensurePackPool()
                         gameVersions.isEmpty() ? QString() : gameVersions.first(),
                         loader, m_packCfOffset, m_packSearchLimit,
             [this, gen](const QVariantList& items, int total) {
-                if (gen != m_searchGen) return;
+                if (gen != m_packGen) return;
                 m_packCfAll.append(items);
                 m_packCfOffset += items.size();
                 m_packCfMore = m_packCfOffset < total;
                 onPackSourceDone(gen);
             },
             [this, gen](const QString& err) {
-                if (gen != m_searchGen) return;
+                if (gen != m_packGen) return;
                 m_packCfMore = false;
                 emit logMessage(tr("整合包 CurseForge 搜索失败: %1").arg(err));
                 onPackSourceDone(gen);
@@ -1638,7 +1748,7 @@ void ResourceBackend::ensurePackPool()
         emitPackPool();
     } else {
         QTimer::singleShot(8000, this, [this, gen]() {
-            if (gen != m_searchGen) return;
+            if (gen != m_packGen) return;
             if (m_packPending > 0) {
                 m_packPending = 0;
                 emitPackPool();
@@ -1649,12 +1759,17 @@ void ResourceBackend::ensurePackPool()
 
 void ResourceBackend::onPackSourceDone(int gen)
 {
-    if (gen != m_searchGen) return;
-    if (--m_packPending > 0) return;
+    if (gen != m_packGen) return;
+    if (m_packPending > 0) --m_packPending;
     m_modMgr->setBusy(false);
 
-    const QVariantList mergedPool = mergePoolFreezeZone(m_packPool, m_packMrAll, m_packCfAll, m_packShownCount, 2.5);
-    const int frozenCount = qMin(m_packShownCount, m_packPool.size());
+    // 2026-11-06：取消"冻结区"，改为全池全局排序。
+    // 原因：双源速度差极大（实测 Modrinth 1.0s / CurseForge 5.2s）。旧逻辑在第一源回来时就把
+    // 前 N 条冻结，CF 的头部高下载项只能落到冻结区之后 → 第 2/3 页出现"比第 1 页下载量还高"的条目，
+    // 就是用户看到的"顺序错乱"。现在任何合并都按同一加权规则全局重排；已显示的页在慢源回包后会
+    // 被纠正一次（此时加载条仍在跑，观感是"加载完成后顺序正确"而不是"翻页后突然冒出高分条目"）。
+    const QVariantList mergedPool = mergeDedupSorted(m_packMrAll, m_packCfAll, 2.5);
+    const int frozenCount = m_packPool.size();   // 仅用于日志（旧冻结区条数），不再参与排序
     m_packPool = mergedPool;
 
     // ── 统一字符串化（防 QML 预编译模式下 QVariantList → QQmlListModel）──
@@ -1681,11 +1796,14 @@ void ResourceBackend::onPackSourceDone(int gen)
     emit logMessage(tr("[池子] 整合包合并: 冻结 %1 + 候选 %2 → 池 %3 条")
                         .arg(frozenCount).arg(m_packPool.size() - frozenCount).arg(m_packPool.size()));
     const int need = (m_packSearchPage + 1) * m_packSearchLimit;
-    if (m_packPool.size() < need && (m_packMrMore || m_packCfMore)) {
-        ensurePackPool();
+    if (m_packPool.size() >= need || (!m_packMrMore && !m_packCfMore)) {
+        // 已够当前页（或双源耗尽）→ 立刻发；慢源的回包稍后会静默并入候选区再发一次，
+        // 不再"等两个源都回"（旧行为：慢源把首屏拖到 8s 兜底才显示）。
+        emitPackPool();
         return;
     }
-    emitPackPool();
+    if (m_packPending == 0)
+        ensurePackPool();
 }
 
 void ResourceBackend::emitPackPool()
@@ -1779,8 +1897,9 @@ void ResourceBackend::searchDatapacksEx(const QString& query, const QString& cat
     m_dpSearchSource = source;
 
     if (key != m_dpSearchKey) {
-        ++m_searchGen;
+        ++m_dpGen;
         m_dpSearchKey = key;
+        m_dpPending = 0;
         m_dpPool.clear();
         m_dpMrAll.clear();
         m_dpCfAll.clear();
@@ -1805,7 +1924,7 @@ void ResourceBackend::ensureDpPool()
         return;
     }
 
-    const int gen = m_searchGen;
+    const int gen = m_dpGen;
     const QString& query = m_dpSearchQuery;
     const QString& category = m_dpSearchCategory;
     const QStringList& gameVersions = m_dpSearchVersions;
@@ -1845,7 +1964,7 @@ void ResourceBackend::ensureDpPool()
         url.setQuery(params);
         ++m_dpPending;
         const auto onMrOk = [this, gen, url](int status, const QByteArray& body) {
-            if (gen != m_searchGen) return;
+            if (gen != m_dpGen) return;
             if (status == 200) {
                 int totalHits = 0;
                 QJsonArray results = m_modMgr->parseSearchResponse(body, totalHits);
@@ -1857,7 +1976,7 @@ void ResourceBackend::ensureDpPool()
                     fbUrl.setPath(QStringLiteral("/v2/search"));
                     fbUrl.setScheme(QStringLiteral("https"));
                     const auto onFbOk = [this, gen](int s2, const QByteArray& b2) {
-                        if (gen != m_searchGen) return;
+                        if (gen != m_dpGen) return;
                         if (s2 == 200) {
                             int t2 = 0;
                             QJsonArray r2 = m_modMgr->parseSearchResponse(b2, t2);
@@ -1872,7 +1991,7 @@ void ResourceBackend::ensureDpPool()
                         onDpSourceDone(gen);
                     };
                     const auto onFbFail = [this, gen](const QString& e2) {
-                        if (gen != m_searchGen) return;
+                        if (gen != m_dpGen) return;
                         m_dpMrMore = false;
                         emit logMessage(tr("数据包官方降级网络错误: %1").arg(e2));
                         onDpSourceDone(gen);
@@ -1893,7 +2012,7 @@ void ResourceBackend::ensureDpPool()
             onDpSourceDone(gen);
         };
         const auto onMrFail = [this, gen](const QString& error) {
-            if (gen != m_searchGen) return;
+            if (gen != m_dpGen) return;
             m_dpMrMore = false;
             emit logMessage(tr("数据包 Modrinth 网络错误: %1").arg(error));
             onDpSourceDone(gen);
@@ -1914,14 +2033,14 @@ void ResourceBackend::ensureDpPool()
                         gameVersions.isEmpty() ? QString() : gameVersions.first(),
                         QString(), m_dpCfOffset, m_dpSearchLimit,
             [this, gen](const QVariantList& items, int total) {
-                if (gen != m_searchGen) return;
+                if (gen != m_dpGen) return;
                 m_dpCfAll.append(items);
                 m_dpCfOffset += items.size();
                 m_dpCfMore = m_dpCfOffset < total;
                 onDpSourceDone(gen);
             },
             [this, gen](const QString& err) {
-                if (gen != m_searchGen) return;
+                if (gen != m_dpGen) return;
                 m_dpCfMore = false;
                 emit logMessage(tr("数据包 CurseForge 搜索失败: %1").arg(err));
                 onDpSourceDone(gen);
@@ -1933,7 +2052,7 @@ void ResourceBackend::ensureDpPool()
         emitDpPool();
     } else {
         QTimer::singleShot(8000, this, [this, gen]() {
-            if (gen != m_searchGen) return;
+            if (gen != m_dpGen) return;
             if (m_dpPending > 0) {
                 m_dpPending = 0;
                 emitDpPool();
@@ -1944,12 +2063,17 @@ void ResourceBackend::ensureDpPool()
 
 void ResourceBackend::onDpSourceDone(int gen)
 {
-    if (gen != m_searchGen) return;
-    if (--m_dpPending > 0) return;
+    if (gen != m_dpGen) return;
+    if (m_dpPending > 0) --m_dpPending;
     m_modMgr->setBusy(false);
 
-    const QVariantList mergedPool = mergePoolFreezeZone(m_dpPool, m_dpMrAll, m_dpCfAll, m_dpShownCount, 1.0);
-    const int frozenCount = qMin(m_dpShownCount, m_dpPool.size());
+    // 2026-11-06：取消"冻结区"，改为全池全局排序。
+    // 原因：双源速度差极大（实测 Modrinth 1.0s / CurseForge 5.2s）。旧逻辑在第一源回来时就把
+    // 前 N 条冻结，CF 的头部高下载项只能落到冻结区之后 → 第 2/3 页出现"比第 1 页下载量还高"的条目，
+    // 就是用户看到的"顺序错乱"。现在任何合并都按同一加权规则全局重排；已显示的页在慢源回包后会
+    // 被纠正一次（此时加载条仍在跑，观感是"加载完成后顺序正确"而不是"翻页后突然冒出高分条目"）。
+    const QVariantList mergedPool = mergeDedupSorted(m_dpMrAll, m_dpCfAll, 1.0);
+    const int frozenCount = m_dpPool.size();   // 仅用于日志（旧冻结区条数），不再参与排序
     m_dpPool = mergedPool;
 
     // ── 统一字符串化（防 QML 预编译模式下 QVariantList → QQmlListModel）──
@@ -1973,11 +2097,14 @@ void ResourceBackend::onDpSourceDone(int gen)
     emit logMessage(tr("[池子] 数据包合并: 冻结 %1 + 候选 %2 → 池 %3 条")
                         .arg(frozenCount).arg(m_dpPool.size() - frozenCount).arg(m_dpPool.size()));
     const int need = (m_dpSearchPage + 1) * m_dpSearchLimit;
-    if (m_dpPool.size() < need && (m_dpMrMore || m_dpCfMore)) {
-        ensureDpPool();
+    if (m_dpPool.size() >= need || (!m_dpMrMore && !m_dpCfMore)) {
+        // 已够当前页（或双源耗尽）→ 立刻发；慢源的回包稍后会静默并入候选区再发一次，
+        // 不再"等两个源都回"（旧行为：慢源把首屏拖到 8s 兜底才显示）。
+        emitDpPool();
         return;
     }
-    emitDpPool();
+    if (m_dpPending == 0)
+        ensureDpPool();
 }
 
 void ResourceBackend::emitDpPool()

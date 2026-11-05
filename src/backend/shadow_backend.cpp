@@ -3591,6 +3591,12 @@ void ShadowBackend::searchModsEx(const QString& query, const QString& loader,
                              environment, license, offset, limit, source);
 }
 
+QVariantMap ShadowBackend::resourcePoolState(const QString& kind) const
+{
+    if (!m_resource) return {};
+    return m_resource->resourcePoolState(kind);
+}
+
 QVariantMap ShadowBackend::getModCategories() {
     return m_resource->getModCategories();
 }

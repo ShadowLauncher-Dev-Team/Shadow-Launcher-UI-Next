@@ -106,6 +106,13 @@ public:
     /// 汉化：英文名 → 中文名（查汉化表；无中文或与英文相同则返回空串，供 QML 用）
     Q_INVOKABLE QString resolveModZh(const QString& title) const;
 
+    /// 2026-11-06：池子运行时状态（诊断 + 分页 hasMore 判定）。
+    /// kind: mod | shader | resourcepack | modpack | datapack
+    /// 返回 { pool, page, limit, shown, pending, mrMore, cfMore, hasMore, mrOffset, cfOffset }
+    /// hasMore = 池里还有下一页 或 任一源仍有未拉完的数据 —— 旧 QML 用
+    /// pool.length > (page+1)*limit 判断，池刚好等于 need 时会误判"没有更多"，翻页按钮被禁死。
+    Q_INVOKABLE QVariantMap resourcePoolState(const QString& kind) const;
+
     /// 详情页「转到 XX / 复制链接」统一链接解析（2026-08-23）。
     /// kind: mod | resourcepack | shader | modpack | datapack
     /// 纯数字 slug 视为 CurseForge id，否则视为 Modrinth slug。
@@ -191,7 +198,12 @@ private:
     QList<QPair<QString, int>> m_mcmodEnPairs;  // (normalize(en), classId) 用于保守的包含匹配
 
     // ── 双源聚合状态（代次号防并发搜索污染）──
-    int m_searchGen = 0;
+    // 2026-11-06：原先五个池子共用 m_searchGen，切 Tab 会作废另一 Tab 在途请求，
+    // 而回调在代次不符时直接 return、不归还各自 Pending → 该池 permanently 卡在
+    // "Pending > 0"，此后 ensureXxxPool 永远提前返回，列表再也不刷新（重置也救不回来）。
+    // 现改为每池独立代次：切 Tab 不再互相作废，重置时同步清零 Pending。
+    int m_searchGen = 0;   // 兼容旧聚合路径（Mod 中文聚合搜索复用 m_modGen）
+    int m_modGen = 0, m_shaderGen = 0, m_rpGen = 0, m_packGen = 0, m_dpGen = 0;
 
     // ── 池子架构（对齐 主流启动器）：双源结果累积成池，翻页时从池子续拉 ──
     // 池 = 已拉取双源结果的 去重+加权排序 全量；QML 按页切片显示。
