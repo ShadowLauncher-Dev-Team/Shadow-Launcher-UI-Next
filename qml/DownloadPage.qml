@@ -130,6 +130,98 @@ Rectangle {
     property bool modPrefetching: false   // 翻页预取进行中（结果只进引擎缓存，不污染列表）
     property bool rpPrefetching: false
 
+    // ═══════════════════════════════════════════════════════════════
+    // 统一加载条状态机（2026-11-06）
+    //   · 五个 Tab 可能同时在拉数据 → 顶部条「任一在加载就亮，全部结束才灭」
+    //   · 后端是 progressive emit：首次结果到达时 pending 可能还没归零，
+    //     所以结果到达后轮询 resourcePoolState(kind).pending，归零才关条
+    //   · 9s 上限兜底（后端没有 failed 信号，网络卡死时不能让条一直转）
+    // ═══════════════════════════════════════════════════════════════
+    property var _loadingTabs: ({})
+    property var _settleWatch: []
+    property bool barActive: false
+
+    function setTabLoading(tab, on) {
+        var m = {}
+        for (var k in _loadingTabs) m[k] = _loadingTabs[k]
+        m[tab] = !!on
+        _loadingTabs = m
+        var any = false
+        for (var k2 in _loadingTabs) if (_loadingTabs[k2]) any = true
+        barActive = any
+        // 真正的开关在 MainWindow.pageLoading（loadingBar 只是文件内 id，跨组件访问 id 无效）
+        if (page.mainWindow && page.mainWindow.pageLoading !== undefined)
+            page.mainWindow.pageLoading = any
+    }
+
+    function isTabLoading(tab) { return !!_loadingTabs[tab] }
+
+    /// 结果到达后登记「等池子结算」：pending 归零（或 9s 超时）后关条并判定空态
+    function watchPoolSettled(kind, tab) {
+        var keep = []
+        for (var i = 0; i < _settleWatch.length; i++)
+            if (_settleWatch[i].tab !== tab) keep.push(_settleWatch[i])
+        keep.push({ kind: kind, tab: tab, ticks: 0 })
+        _settleWatch = keep
+    }
+
+    function tickSettle() {
+        if (!backend) { _settleWatch = []; return }
+        var keep = []
+        for (var i = 0; i < _settleWatch.length; i++) {
+            var w = _settleWatch[i]
+            w.ticks++
+            var settled = false
+            try {
+                var st = backend.resourcePoolState(w.kind)
+                settled = !st || st.pending === 0
+            } catch (e) { settled = true }
+            if (w.ticks > 26) settled = true      // 26 × 350ms ≈ 9s 上限
+            if (settled) {
+                setTabLoading(w.tab, false)
+            } else keep.push(w)
+        }
+        _settleWatch = keep
+    }
+
+    // pageLoading 是 MainWindow 的全局量：页面切换/版本列表就绪都会写 false，
+    // 本页有 Tab 在加载时每 400ms 兜底拉回，避免"条被别处关掉但列表还在转"。
+    Timer {
+        interval: 400; repeat: true
+        running: page.barActive
+        onTriggered: {
+            if (page.mainWindow && page.mainWindow.pageLoading !== undefined && !page.mainWindow.pageLoading)
+                page.mainWindow.pageLoading = true
+        }
+    }
+
+    Timer {
+        id: settleTimer
+        interval: 350; repeat: true
+        running: page._settleWatch.length > 0
+        onTriggered: page.tickSettle()
+    }
+
+    /// 分页"还有下一页"判定：优先后端池子真实状态（旧算法在池刚好等于 need 时会误判没有下一页）
+    function hasMoreOf(kind, pool) {
+        try {
+            if (backend) {
+                var st = backend.resourcePoolState(kind)
+                if (st && st.hasMore !== undefined) return !!st.hasMore
+            }
+        } catch (e) {}
+        return false
+    }
+
+    /// 离开页面/切 Tab 时清掉在途状态：迟到回包不允许再点亮加载条
+    function clearAllLoading() {
+        _settleWatch = []
+        _loadingTabs = ({})
+        barActive = false
+        if (page.mainWindow && page.mainWindow.pageLoading !== undefined)
+            page.mainWindow.pageLoading = false
+    }
+
     // Search resource packs with page number
     function searchRpPage(pageNum) {
         if (!backend) return
@@ -138,9 +230,7 @@ Rectangle {
         page.rpSearching = true
         page.rpPage = pageNum
         rpResultsModel.clear()   // 清空列表，显示加载动画
-        if (page.mainWindow && page.mainWindow.loadingBar) {
-            page.mainWindow.loadingBar.opacity = 1
-        }
+        page.setTabLoading("rp", true)
         var q = rpFilterCard.searchText || ""
         var ver = page.rpGameVersion || ""
         var cats = []
@@ -193,6 +283,9 @@ Rectangle {
             0, 30, modFilterCard.sourceFilter
         )
     }
+
+    // 退出页面（返回首页/切到别的页面）→ 立刻灭条，迟到的回包不再点亮它
+    onVisibleChanged: { if (!visible) page.clearAllLoading() }
 
     onCurrentTabChanged: {
         console.log("[RP-DEBUG] onCurrentTabChanged tab=", currentTab, "rpReady=", rpResultsReady)
@@ -677,6 +770,7 @@ Rectangle {
             page.modCurrentPage = pageNum
             page.modSearching = true
             modResultsModel.clear()   // 清空列表，显示加载动画（等池子就绪一次性显示，避免旧列表与新页混闪）
+            page.setTabLoading("mod", true)
             var q = modFilterCard.searchText ? modFilterCard.searchText.trim() : ""
             console.log("[MOD-SEARCH] calling searchModsEx q=" + JSON.stringify(q) + " tab=" + page.currentTab + " page=" + pageNum)
             var gv = page.modGameVersion ? [page.modGameVersion] : []
@@ -791,7 +885,10 @@ Rectangle {
                     })
                 }
                 page.modSearching = false
-                page.modHasMore = pool.length > (page.modCurrentPage + 1) * page.modPageSize
+                // 池子可能还在续拉（progressive emit）：等 pending 归零再关加载条
+                page.setTabLoading("mod", true)
+                page.watchPoolSettled("mod", "mod")
+                page.modHasMore = page.hasMoreOf("mod", pool)
                 if (urlsToCache.length > 0 && backend) {
                     backend.cacheIconBatchAsync(urlsToCache)
                 }
@@ -1017,6 +1114,7 @@ Rectangle {
             shaderCurrentPage = pageNum
             shaderOffset = pageNum * shaderPageSize
             shaderResultsModel.clear()   // 清空列表，显示加载动画
+            page.setTabLoading("shader", true)
             var a = shaderCategory ? [shaderCategory] : []
             var b = shaderFeature ? [shaderFeature] : []
             var c = shaderPerformance ? [shaderPerformance] : []
@@ -1067,6 +1165,8 @@ Rectangle {
                 var shEnd = Math.min(shStart + shaderTab.shaderPageSize, pool.length)
                 shaderResultsModel.clear()
                 shaderTab.shaderSearching = false
+        page.setTabLoading("shader", true)
+        page.watchPoolSettled("shader", "shader")
                 if (pool.length > 0 && shEnd > shStart) {
                     console.log("[shader] 池 " + pool.length + " 条, 切片 " + shStart + "-" + shEnd)
                     var urlsToCache = []
@@ -1389,17 +1489,15 @@ Rectangle {
             if (!results || results.length === 0) {
                 console.log("[RP-DEBUG]", page.rpDebugSeq, "EMPTY results")
                 page.rpSearching = false   // 空结果也要复位搜索态，否则分页条 loading 卡 true 永久隐藏
+        page.setTabLoading("rp", true)
+        page.watchPoolSettled("resourcepack", "rp")
                 page.rpHasMore = false
-                if (page.mainWindow && page.mainWindow.loadingBar) {
-                    page.mainWindow.loadingBar.opacity = 0
-                }
+                // 加载条交给状态机收口（这里直接关条会误灭其他 Tab 的加载态）
                 return
             }
             page.rpTotalHits = totalHits
             page.rpSearching = false
-            if (page.mainWindow && page.mainWindow.loadingBar) {
-                page.mainWindow.loadingBar.opacity = 0
-            }
+            // 关条交给状态机（见 watchPoolSettled）
 
             // ═══ 池子架构：先前端过滤整个池子，再按当前页切片 ═══
             var pool = results || []
@@ -1556,8 +1654,8 @@ Rectangle {
 
         function onResourcepackVersionsProgress(done, total) {
             console.log("[RP-DEBUG]", page.rpDebugSeq, "progress", done, "/", total)
-            if (page.mainWindow && page.mainWindow.loadingBar) {
-                page.mainWindow.loadingBar.opacity = (done < total) ? 1 : 0
+            if (page.mainWindow && page.mainWindow.pageLoading !== undefined) {
+                page.mainWindow.pageLoading = (done < total)
             }
         }
 
@@ -1574,8 +1672,8 @@ Rectangle {
                     speedStr = su === 0 ? sv.toFixed(0) + " " + speedUnits[su] : sv.toFixed(1) + " " + speedUnits[su]
                 }
                 if (toastManager) toastManager.show("下载中 " + page.installingRpName + ": " + pct + "%" + (speedStr ? " (" + speedStr + ")" : ""))
-                if (page.mainWindow && page.mainWindow.loadingBar) {
-                    page.mainWindow.loadingBar.opacity = (completed < total) ? 1 : 0
+                if (page.mainWindow && page.mainWindow.pageLoading !== undefined) {
+                    page.mainWindow.pageLoading = (completed < total)
                 }
             }
         }
@@ -1585,8 +1683,8 @@ Rectangle {
                 console.log("[resourcepack] download done:", page.installingRpName, "success:", success)
                 toastManager.show(success ? ("下载完成: " + page.installingRpName) : ("下载失败: " + page.installingRpName))
                 page.installingRpName = ""
-                if (page.mainWindow && page.mainWindow.loadingBar) {
-                    page.mainWindow.loadingBar.opacity = 0
+                if (page.mainWindow && page.mainWindow.pageLoading !== undefined) {
+                    page.mainWindow.pageLoading = false
                 }
             }
         }
@@ -2206,7 +2304,9 @@ Rectangle {
                     })
                 }
                 packTab.packSearching = false
-                packTab.packHasMore = pool.length > (packTab.packCurrentPage + 1) * packTab.packPageSize
+                page.setTabLoading("pack", true)
+                page.watchPoolSettled("modpack", "pack")
+                packTab.packHasMore = page.hasMoreOf("modpack", pool)
                 if (urlsToCache.length > 0 && backend) {
                     backend.cacheIconBatchAsync(urlsToCache)
                 }
@@ -2221,6 +2321,7 @@ Rectangle {
             packTab.packCurrentPage = pageNum
             var offset = pageNum * packTab.packPageSize
             packResultsModel.clear()
+            page.setTabLoading("pack", true)
             var ver = page.packGameVersion ? [page.packGameVersion] : []
             backend.searchModpacksEx(packFilterCard.searchText.trim(),
                                      packTab.packLoader, packTab.packCategory,
@@ -2422,7 +2523,9 @@ Rectangle {
                     })
                 }
                 dpTab.dpSearching = false
-                dpTab.dpHasMore = pool.length > (dpTab.dpCurrentPage + 1) * dpTab.dpPageSize
+                page.setTabLoading("dp", true)
+                page.watchPoolSettled("datapack", "dp")
+                dpTab.dpHasMore = page.hasMoreOf("datapack", pool)
                 if (urlsToCache.length > 0 && backend) {
                     backend.cacheIconBatchAsync(urlsToCache)
                 }
@@ -2445,6 +2548,7 @@ Rectangle {
             dpTab.dpCurrentPage = pageNum
             var offset = pageNum * dpTab.dpPageSize
             dpResultsModel.clear()
+            page.setTabLoading("dp", true)
             var ver = page.dpGameVersion ? [page.dpGameVersion] : []
             backend.searchDatapacksEx(dpFilterCard.searchText.trim(),
                                       dpTab.dpCategory, ver, dpTab.dpSort,
