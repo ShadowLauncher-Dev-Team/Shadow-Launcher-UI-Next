@@ -67,7 +67,7 @@ Item {
         onNavActivated: (label) => {
             if (label === "下载") {
                 // 侧栏「下载」= 下载列表页：从配置态或独立进度页回来都先回到列表
-                downloadPage.resetToList()
+                if (downloadLoader.item) downloadLoader.item.resetToList()
                 root.downloadOpen = true
                 root.progressOpen = false
             } else if (label === "下载进度") {
@@ -195,16 +195,25 @@ Item {
                 NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
             }
         }
-        DownloadPage {
-            id: downloadPage
+        // 异步加载：DownloadPage 首次实例化要 ~7s（见 CODE_INDEX 启动卡顿调研），
+        // 若同步创建会把首帧拖后 7s。改为首次进入下载页时才异步加载，
+        // 启动不再被它阻塞；打开瞬间由宿主淡入遮住加载期。
+        Loader {
+            id: downloadLoader
             anchors.fill: parent
-            toast: toastHost
-            onClose: root.downloadOpen = false
-            // 配置页点了「开始安装」：切到独立进度页，侧栏高亮跟随
-            onOpenProgress: {
-                root.progressOpen = true
-                root.downloadOpen = false
-                sideBar.currentLabel = "下载进度"
+            asynchronous: true
+            active: root.downloadOpen
+            sourceComponent: Component {
+                DownloadPage {
+                    anchors.fill: parent
+                    toast: toastHost
+                    onClose: root.downloadOpen = false
+                    onOpenProgress: {
+                        root.progressOpen = true
+                        root.downloadOpen = false
+                        sideBar.currentLabel = "下载进度"
+                    }
+                }
             }
         }
     }
