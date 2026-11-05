@@ -108,23 +108,6 @@ Item {
     // 版本发布日期（后端 versionList 已带 date，缺省为空不显示）
     function dateOf(id) { return page.dateMap[id] || "" }
 
-    // 已安装版本能反推出它用了哪些加载器（26.2-Forge_65.1.1 → Forge）。
-    // 全量 chips 需要后端全局映射表，这里先给"已知"的，未知就不显示。
-    function loadersOf(mc) {
-        var out = []
-        var ids = page.installedV
-        for (var i = 0; i < ids.length; ++i) {
-            var id = ids[i]
-            if (id === mc) continue
-            if (id.indexOf(mc + "-") !== 0) continue
-            var suffix = id.substring(mc.length + 1).toLowerCase()
-            if (suffix.indexOf("neoforge") >= 0 && out.indexOf("NeoForge") < 0) out.push("NeoForge")
-            else if (suffix.indexOf("forge") >= 0 && out.indexOf("Forge") < 0) out.push("Forge")
-            if (suffix.indexOf("fabric") >= 0 && out.indexOf("Fabric") < 0) out.push("Fabric")
-            if (suffix.indexOf("optifine") >= 0 && out.indexOf("OptiFine") < 0) out.push("OptiFine")
-        }
-        return out
-    }
     // QML 里 QVariantList 是"序列包装"：逐项访问 vl[i] 会每次回调 C++ getter，
     // 907 个版本就是 907 次 × 重建 907 条 → O(n²) ≈ 7 s 卡死。
     // 后端已提供一次性构造的 id→date 表（QVariantMap，转 JS 对象一次完成）。
@@ -598,33 +581,6 @@ Item {
                         font.pixelSize: 15
                         font.weight: Font.Medium
                         anchors.verticalCenter: parent.verticalCenter
-                    }
-                }
-
-                // 加载器 chips（仅显示已安装版本能确认的）
-                Row {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 340
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 4
-                    Repeater {
-                        model: page.loadersOf(modelData)
-                        delegate: Rectangle {
-                            height: 18
-                            width: lchip.implicitWidth + 12
-                            radius: 4
-                            color: "#101319"
-                            border.color: "#242b36"
-                            border.width: 1
-                            Text {
-                                id: lchip
-                                anchors.centerIn: parent
-                                text: modelData
-                                color: "#9fa8b5"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 10
-                            }
-                        }
                     }
                 }
 
