@@ -543,6 +543,25 @@ void ModpackInstallTask::onDownloadAllFinished(bool cancelled)
         return;
     }
 
+    // ── 加载器确定性失败：模组下完即收口，不再等 MC 路（2026-11-05 实测）──
+    // 场景：forge-999.0.0 不存在 → 安装器 404 失败；而 MC 路可能永远不收敛
+    // （installFinished 未按会话 id 到达），任务会永久 busy。这里直接终态 + 回滚。
+    if (m_vb && !m_mcSessionId.isEmpty()
+        && m_vb->isLoaderFailure(m_mcSessionId)
+        && !m_vb->isLoaderFailureRetryable(m_mcSessionId)) {
+        const QString err = tr("Minecraft %1 的加载器安装失败（确定性错误，重试无效）")
+                                .arg(m_meta.mcVersion);
+        emit logLine(tr("[追踪] %1").arg(err));
+        m_installingMc = false;   // 不让 fail() 进 pendingFail 等待
+        m_mcDone = true;
+        // 确定性失败没有"保留成果重试"的意义：拆掉 merged 上下文，避免临时目录残留
+        // （实测：仅 fail() 时 shadow-merged-* 会留在 %TEMP%，因为没有走 cancel 路径）。
+        if (m_vb && !m_mcSessionId.isEmpty())
+            m_vb->cancelVersionInstall(m_mcSessionId);
+        fail(err);
+        return;
+    }
+
     refreshCardMods();
 
     // 统计失败 + 收集失败清单（供「补下失败项」入口）

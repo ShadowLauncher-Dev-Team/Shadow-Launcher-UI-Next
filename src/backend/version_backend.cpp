@@ -2977,9 +2977,12 @@ bool VersionBackend::isRetryableLoaderError(const QString& errMsg)
     // ── 确定性失败优先判定（2026-11-05 实测：forge-999.0.0 这种不存在的版本 → 404）──
     // 旧逻辑只看"下载失败"等关键词就判可重试，于是 404 被当成网络抖动：
     // 进入"手动重试加载器"模式，任务 busy 不会结束（实测卡死 5 分钟）。
+    // "所有源均不可用" 也归确定性：两源都耗尽后再重试通常无效（404 时必然无效），
+    // 保留任务 forever-busy 的代价大于"网络全断时直接失败回滚"。
     if (e.contains(QStringLiteral("404")) || e.contains(QStringLiteral("not found"))
         || e.contains(QStringLiteral("不存在")) || e.contains(QStringLiteral("http 4"))
-        || e.contains(QStringLiteral("校验失败")) || e.contains(QStringLiteral("sha1")))
+        || e.contains(QStringLiteral("校验失败")) || e.contains(QStringLiteral("sha1"))
+        || e.contains(QStringLiteral("所有源均不可用")))
         return false;
     if (e.contains(QStringLiteral("超时")) || e.contains(QStringLiteral("timeout"))
         || e.contains(QStringLiteral("下载失败")) || e.contains(QStringLiteral("所有源均不可用"))
