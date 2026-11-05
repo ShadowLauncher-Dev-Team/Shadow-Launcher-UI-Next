@@ -1,123 +1,132 @@
-/* 下载页设计稿共用样式（沿用 app.css 的窗口/侧栏语言） */
-body{margin:0;background:#000}
-/* 与 app.css 的 .win/.side 保持一致，但下载页自带一份，避免互相影响 */
+/* 下载页设计稿 v2 —— 只保留"能改变用户动作"的元素 */
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#000;font-family:"Microsoft YaHei UI","Microsoft YaHei","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;color:#e8ebf2}
+svg{stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;display:block}
 .dlwin{position:relative;display:flex;width:100vw;height:100vh;background:#08090d;overflow:hidden;border-radius:12px}
+/* 侧栏（与 App 一致） */
 .dlside{width:208px;flex:0 0 208px;background:#0a0b0f;border-right:1px solid #14171d;display:flex;flex-direction:column;padding:16px 12px 12px}
 .dlbrand{font-size:14px;font-weight:700;letter-spacing:.16em;color:#fff;padding:0 10px;margin:4px 0 20px}
 .dlnav{display:flex;flex-direction:column;gap:1px}
 .dlnavsub{display:flex;flex-direction:column;gap:1px;margin-top:14px;padding-top:14px;border-top:1px solid #14171d}
-.dlnav a,.dlnavsub a{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border-radius:8px;color:#98a1ae;font-size:13.5px;text-decoration:none;position:relative}
+.dlnav a,.dlnavsub a{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border-radius:8px;color:#98a1ae;font-size:13.5px;text-decoration:none;position:relative;white-space:nowrap}
 .dlnav a svg,.dlnavsub a svg{width:17px;height:17px;flex:0 0 17px;opacity:.9}
 .dlnav a.on{background:#151a23;color:#fff;font-weight:600}
 .dlnav a.on::before{content:"";position:absolute;left:-12px;top:10px;bottom:10px;width:2px;border-radius:0 2px 2px 0;background:#3b82f6}
 .dlpill{margin-left:auto;font-style:normal;font-size:10.5px;font-weight:600;color:#0a0b0f;background:#3b82f6;border-radius:99px;padding:1px 6px;line-height:14px}
 .dlfoot{margin-top:auto;padding:0 10px;font-size:11px;color:#4b535f}
+/* 窗口按钮 */
 .dlwctl{position:absolute;top:0;right:0;height:44px;display:flex;align-items:center;gap:6px;padding:0 10px;z-index:20}
 .dllogo{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06);color:#aab2be}
 .dllogo svg{width:15px;height:15px}
-.dlsvg{stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;display:block}
-
-/* 内容区 */
+/* 主区 */
 .dlmain{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
-.dlhead{display:flex;align-items:flex-end;gap:18px;padding:26px 34px 16px}
-.dlhead .ttl{font-size:23px;font-weight:700;color:#fff;letter-spacing:-.01em}
-.dlhead .sub{font-size:12.5px;color:#7c8694;padding-bottom:3px}
+.dlhead{display:flex;align-items:center;gap:14px;padding:22px 30px 14px}
+.dlhead .ttl{font-size:22px;font-weight:700;color:#fff;letter-spacing:-.01em;white-space:nowrap}
 .dlhead .sp{flex:1}
-.dlsearch{display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);font-size:12.5px;color:#77808d;width:230px}
-.dlsearch svg{width:15px;height:15px;opacity:.7}
-
-/* 方案 A：顶部 tab */
-.dltabs{display:flex;align-items:center;gap:2px;padding:0 34px;border-bottom:1px solid #14171d}
-.dltab{display:flex;align-items:center;gap:7px;height:40px;padding:0 13px;font-size:13px;color:#8b94a2;position:relative;cursor:default}
-.dltab svg{width:15px;height:15px;opacity:.75}
-.dltab .n{font-size:10.5px;color:#5e6774;margin-left:1px}
-.dltab.on{color:#fff;font-weight:600}
-.dltab.on::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;border-radius:2px;background:#3b82f6}
-.dltab.on svg{opacity:1}
-
-/* 方案 B：内容区左侧二级导航 */
+.dlsearch{display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);font-size:12.5px;color:#77808d;width:240px;flex:0 0 240px}
+.dlsearch svg{width:15px;height:15px;opacity:.7;flex:0 0 15px}
 .dlbody{flex:1;display:flex;min-height:0}
-.dlnav2{width:178px;flex:0 0 178px;border-right:1px solid #14171d;padding:6px 10px 10px;display:flex;flex-direction:column;gap:2px}
-.dlnav2 a{display:flex;align-items:center;gap:9px;height:36px;padding:0 10px;border-radius:8px;font-size:12.8px;color:#98a1ae;text-decoration:none}
-.dlnav2 a svg{width:15px;height:15px;opacity:.8}
+/* 资源类型二级导航 */
+.dlnav2{width:176px;flex:0 0 176px;border-right:1px solid #14171d;padding:6px 10px 10px;display:flex;flex-direction:column;gap:2px}
+.dlnav2 a{display:flex;align-items:center;gap:9px;height:36px;padding:0 10px;border-radius:8px;font-size:12.8px;color:#98a1ae;text-decoration:none;white-space:nowrap}
+.dlnav2 a svg{width:15px;height:15px;opacity:.8;flex:0 0 15px}
 .dlnav2 a.on{background:#151a23;color:#fff;font-weight:600}
-.dlnav2 a .n{margin-left:auto;font-size:10.5px;color:#5e6774}
-
 /* 筛选行 */
-.dlfilters{display:flex;align-items:center;gap:8px;padding:14px 0 10px}
+.dlcontent{flex:1;min-width:0;display:flex;flex-direction:column;padding:0 26px 12px}
+.dlfilters{display:flex;align-items:center;gap:8px;padding:2px 0 12px;white-space:nowrap}
 .dlseg{display:flex;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:2px}
 .dlseg span{height:26px;display:flex;align-items:center;padding:0 11px;border-radius:6px;font-size:12px;color:#9aa3b0}
-.dlseg span.on{background:#20262f;color:#fff}
-.dlsel{display:flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:8px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);font-size:12.2px;color:#c3cad5}
-.dlsel svg{width:13px;height:13px;opacity:.6}
-.dlsp{flex:1}
-
-/* 版本行 */
-.dlrows{margin-top:2px;border-top:1px solid #12151b}
-.dlrow{display:flex;align-items:center;gap:14px;height:56px;padding:0 12px;border-bottom:1px solid #12151b;border-radius:8px}
-.dlrow.on{background:linear-gradient(90deg,rgba(59,130,246,.10),rgba(59,130,246,.02));box-shadow:inset 2px 0 0 #3b82f6}
-.dlrow .vno{width:126px;font-size:14px;font-weight:600;color:#eef2f8;letter-spacing:.01em}
-.dlbadge{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;font-size:10.8px;font-weight:600;letter-spacing:.02em}
-.dlb-release{background:rgba(74,222,128,.12);color:#5ee08f;border:1px solid rgba(74,222,128,.22)}
-.dlb-snap{background:rgba(251,191,36,.12);color:#f5c451;border:1px solid rgba(251,191,36,.22)}
-.dlb-old{background:rgba(148,163,184,.12);color:#a9b3c2;border:1px solid rgba(148,163,184,.2)}
-.dlrow .date{width:104px;font-size:12px;color:#7d8795}
-.dlrow .loaders{display:flex;gap:6px;flex:1}
-.dlchip{height:22px;display:inline-flex;align-items:center;padding:0 8px;border-radius:5px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06);font-size:10.8px;color:#9fa8b5}
-.dlrow .state{width:96px;display:flex;justify-content:flex-end;align-items:center;gap:8px}
-.dlbtn{height:30px;padding:0 14px;border-radius:7px;border:1px solid rgba(59,130,246,.45);background:rgba(59,130,246,.12);color:#8fb6f8;font-size:12px;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
-.dlbtn svg{width:13px;height:13px}
-.dlbtn.solid{border:none;background:linear-gradient(180deg,#4b8cf7,#2563eb);color:#fff;font-weight:600}
-.dlbtn.ghostb{border:1px solid #262b35;background:rgba(255,255,255,.02);color:#bfc6d2}
-.dlinst{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:#5ee08f}
-.dlinst i{width:5px;height:5px;border-radius:99px;background:#4ade80;font-style:normal}
-
-/* 右侧详情 */
-.dldetail{width:330px;flex:0 0 330px;border-left:1px solid #14171d;padding:20px 20px 16px;display:flex;flex-direction:column}
-.dldetail .big{font-size:30px;font-weight:700;color:#fff;letter-spacing:-.02em}
-.dldetail .sub2{font-size:12px;color:#7f8896;margin-top:6px}
-.dldetail .sep{height:1px;background:#12151b;margin:16px 0}
-.dlkrow{display:flex;align-items:center;gap:9px;font-size:12.3px;color:#8a93a0;height:32px}
-.dlkrow svg{width:14px;height:14px;opacity:.65;flex:0 0 14px}
-.dlkrow b{font-weight:600;color:#dfe4ec;margin-left:auto}
-
-/* 任务卡（进度页） */
-.dlsec{flex:1;overflow:hidden;padding:6px 34px 20px;display:flex;gap:18px}
-.dlcol{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;overflow:hidden}
-.dlcard{border:1px solid #1a1e26;border-radius:12px;background:#0b0d12;padding:16px 16px 14px}
-.dlcard .ch{display:flex;align-items:center;gap:10px}
-.dlcard .ch .ipk{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:#12161d;border:1px solid #1c212a;color:#9fb0c6}
-.dlcard .ch .ipk svg{width:16px;height:16px}
-.dlcard .ch .nm{font-size:13.6px;font-weight:600;color:#eef2f8}
-.dlcard .ch .md{font-size:11.2px;color:#78828f;margin-top:2px}
-.dlcard .ch .sp{flex:1}
-.dlcard .pct{font-size:12.5px;color:#9fb6d8;font-variant-numeric:tabular-nums}
-.dlbarwrap{height:4px;border-radius:99px;background:#181c24;margin:12px 0 10px;overflow:hidden}
-.dlbarwrap i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#3b82f6,#67a5fb)}
-.dlsteps{display:flex;flex-direction:column;gap:1px}
-.dlstep{display:flex;align-items:center;gap:9px;height:26px;font-size:12.2px;color:#6f7a88}
-.dlstep .dot{width:14px;height:14px;border-radius:99px;border:1px solid #2a313c;display:grid;place-items:center;flex:0 0 14px}
-.dlstep .dot svg{width:9px;height:9px;stroke-width:2.6}
-.dlstep.done{color:#9aa6b5}
-.dlstep.done .dot{border-color:rgba(74,222,128,.5);color:#4ade80;background:rgba(74,222,128,.08)}
-.dlstep.act{color:#fff}
-.dlstep.act .dot{border-color:#3b82f6;background:rgba(59,130,246,.18);color:#7cb0fb}
-.dlstep .st{margin-left:auto;font-size:11px;color:#6b7684;font-variant-numeric:tabular-nums}
-.dlstep.act .st{color:#7cb0fb}
-.dlmeta{display:flex;align-items:center;gap:14px;font-size:11.6px;color:#7a8492;margin-top:10px}
-.dlmeta b{color:#cfd8e4;font-weight:600}
-.dlacts{display:flex;align-items:center;gap:8px;margin-top:12px}
-.dlacts .sp{flex:1}
-.dlerr{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:9px;background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.22);font-size:12.2px;color:#f2a3a3;line-height:1.55}
-.dlerr svg{width:14px;height:14px;flex:0 0 14px;margin-top:1px}
-.dlok{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:9px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.2);font-size:12.2px;color:#8fe0aa}
-.dlok svg{width:14px;height:14px}
-.dlqrow{display:flex;align-items:center;gap:9px;height:30px;font-size:12px;color:#8b95a2}
-.dlqrow .d{width:6px;height:6px;border-radius:99px;background:#3b82f6}
-.dlqrow .sp{flex:1}
-.dlqrow .t{color:#b9c2ce;font-variant-numeric:tabular-nums}
-.dlnote{font-size:11px;color:#5f6875;line-height:1.6}
-/* 方案切换按钮 */
-.dlswitch{position:absolute;left:50%;transform:translateX(-50%);bottom:10px;display:flex;gap:6px;z-index:30;font-size:11px;color:#5f6875}
-.dlswitch b{cursor:pointer;padding:3px 9px;border-radius:6px;border:1px solid #232a34;background:#0c0f14;color:#9aa4b2;font-weight:500}
-.dlswitch b.on{color:#fff;border-color:#3b82f6;background:rgba(59,130,246,.12)}
+.dlseg span.on{background:#20262f;color:#fff;font-weight:600}
+.dltoggle{display:flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:8px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);font-size:12px;color:#9aa3b0}
+.dltoggle.on{border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.12);color:#cfe0fb}
+.dltoggle i{width:12px;height:12px;border-radius:3px;border:1px solid #3a4351;display:grid;place-items:center;font-style:normal}
+.dltoggle.on i{border-color:#3b82f6;background:#3b82f6;color:#fff}
+.dltoggle.on i svg{width:9px;height:9px;stroke-width:3}
+/* 版本选择行：无按钮，整行可点 */
+.vlist{border-top:1px solid #12151b;overflow:auto}
+.vrow{display:flex;align-items:center;gap:16px;height:54px;padding:0 14px;border-bottom:1px solid #12151b;border-radius:8px;text-decoration:none;color:inherit;cursor:default}
+.vrow:hover{background:rgba(255,255,255,.025)}
+.vrow.on{background:linear-gradient(90deg,rgba(59,130,246,.12),rgba(59,130,246,.02));box-shadow:inset 2px 0 0 #3b82f6}
+.vno{width:118px;flex:0 0 118px;font-size:14.5px;font-weight:600;color:#eef2f8;white-space:nowrap;letter-spacing:.01em}
+.badge{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;font-size:10.8px;font-weight:600;white-space:nowrap}
+.b-release{background:rgba(74,222,128,.12);color:#5ee08f;border:1px solid rgba(74,222,128,.22)}
+.b-snap{background:rgba(251,191,36,.12);color:#f5c451;border:1px solid rgba(251,191,36,.22)}
+.b-old{background:rgba(148,163,184,.12);color:#a9b3c2;border:1px solid rgba(148,163,184,.2)}
+.vdate{width:96px;flex:0 0 96px;font-size:12px;color:#7d8795;white-space:nowrap;font-variant-numeric:tabular-nums}
+.vlds{display:flex;gap:6px;flex:1;min-width:0;overflow:hidden}
+.vchip{height:20px;display:inline-flex;align-items:center;padding:0 7px;border-radius:5px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06);font-size:10.6px;color:#9fa8b5;white-space:nowrap}
+.vinst{display:inline-flex;align-items:center;gap:5px;font-size:11.4px;color:#5ee08f;white-space:nowrap;flex:0 0 auto}
+.vinst i{width:5px;height:5px;border-radius:99px;background:#4ade80;font-style:normal}
+.varrow{width:16px;flex:0 0 16px;color:#4a535f}
+.varrow svg{width:14px;height:14px}
+/* 安装配置页（全屏） */
+.cfg{flex:1;display:flex;flex-direction:column;min-width:0}
+.cfghead{display:flex;align-items:center;gap:12px;padding:22px 34px 0}
+.backbtn{display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:8px;border:1px solid #262b35;background:rgba(255,255,255,.02);color:#bfc6d2;font-size:12.5px;text-decoration:none}
+.backbtn svg{width:14px;height:14px}
+.cfgbody{flex:1;display:flex;gap:34px;padding:26px 34px 0;min-height:0}
+.cfgleft{width:340px;flex:0 0 340px;display:flex;flex-direction:column}
+.cfgleft .big{font-size:40px;font-weight:700;letter-spacing:-.03em;color:#fff;line-height:1.05}
+.cfgleft .meta{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:12.3px;color:#8a93a0;white-space:nowrap}
+.cfgleft .sep{height:1px;background:#14171d;margin:20px 0}
+.krow{display:flex;align-items:center;gap:9px;font-size:12.4px;color:#8a93a0;height:32px}
+.krow svg{width:14px;height:14px;opacity:.65;flex:0 0 14px}
+.krow b{margin-left:auto;color:#dfe4ec;font-weight:600;white-space:nowrap}
+.cfgright{flex:1;min-width:0;display:flex;flex-direction:column;gap:22px;padding-top:4px}
+.lbl{font-size:11.6px;color:#79828f;letter-spacing:.03em;margin-bottom:8px}
+.picks{display:flex;gap:7px;flex-wrap:wrap}
+.picks span{height:32px;display:inline-flex;align-items:center;padding:0 13px;border-radius:8px;font-size:12.4px;color:#9ba5b3;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);white-space:nowrap}
+.picks span.on{color:#fff;border-color:rgba(59,130,246,.55);background:rgba(59,130,246,.14);font-weight:600}
+.field{display:flex;align-items:center;justify-content:space-between;height:38px;padding:0 12px;border-radius:8px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);font-size:12.4px;color:#c3cad5;max-width:420px}
+.field svg{width:13px;height:13px;opacity:.55;flex:0 0 13px}
+.cfgfoot{display:flex;align-items:center;gap:12px;padding:18px 34px 22px;border-top:1px solid #14171d}
+.cfgfoot .sum{font-size:12.2px;color:#7c8694;white-space:nowrap}
+.cfgfoot .sp{flex:1}
+.btn{height:38px;padding:0 20px;border-radius:9px;border:1px solid rgba(59,130,246,.45);background:rgba(59,130,246,.12);color:#8fb6f8;font-size:13px;font-family:inherit;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.btn svg{width:14px;height:14px;flex:0 0 14px}
+.btn.solid{border:none;background:linear-gradient(180deg,#4b8cf7,#2563eb);color:#fff;font-weight:600;box-shadow:0 8px 22px -8px rgba(37,99,235,.6)}
+.btn.ghost{border:1px solid #262b35;background:rgba(255,255,255,.02);color:#bfc6d2}
+.btn.danger{border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.08);color:#f0a0a0}
+/* 进度页 */
+.wrap{flex:1;display:flex;gap:18px;padding:0 30px 16px;min-height:0}
+.left{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;overflow:auto}
+.card{border:1px solid #1a1e26;border-radius:12px;background:#0b0d12;padding:14px 15px 12px}
+.card.run{border-color:#1e2a3d;background:linear-gradient(180deg,#0c1017,#0b0d12)}
+.ch{display:flex;align-items:center;gap:10px}
+.ipk{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:#12161d;border:1px solid #1c212a;color:#9fb0c6;flex:0 0 32px}
+.ipk svg{width:15px;height:15px}
+.nm{font-size:13.4px;font-weight:600;color:#eef2f8;white-space:nowrap}
+.md{font-size:11.2px;color:#78828f;margin-top:2px;white-space:nowrap}
+.ch .sp{flex:1}
+.pct{font-size:12.8px;color:#9fb6d8;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bar{height:4px;border-radius:99px;background:#181c24;margin:11px 0 10px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#3b82f6,#67a5fb)}
+.steps{display:flex;flex-direction:column;gap:1px}
+.step{display:flex;align-items:center;gap:9px;height:26px;font-size:12.2px;color:#6f7a88;white-space:nowrap}
+.dot{width:14px;height:14px;border-radius:99px;border:1px solid #2a313c;display:grid;place-items:center;flex:0 0 14px}
+.dot svg{width:9px;height:9px;stroke-width:2.8}
+.step.done{color:#9aa6b5}
+.step.done .dot{border-color:rgba(74,222,128,.5);color:#4ade80;background:rgba(74,222,128,.08)}
+.step.act{color:#fff}
+.step.act .dot{border-color:#3b82f6;background:rgba(59,130,246,.18);color:#7cb0fb}
+.step .st{margin-left:auto;font-size:11px;color:#6b7684;font-variant-numeric:tabular-nums}
+.step.act .st{color:#7cb0fb}
+.meta{display:flex;align-items:center;gap:16px;font-size:11.6px;color:#7a8492;margin-top:9px;white-space:nowrap}
+.meta b{color:#cfd8e4;font-weight:600}
+.acts{display:flex;align-items:center;gap:8px;margin-top:11px;white-space:nowrap}
+.acts .sp{flex:1}
+.err{display:flex;align-items:flex-start;gap:9px;padding:9px 11px;border-radius:9px;background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.22);font-size:12.1px;color:#f2a3a3;line-height:1.55;margin-top:9px}
+.err svg{width:14px;height:14px;flex:0 0 14px;margin-top:2px}
+.ok{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:9px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.2);font-size:12.1px;color:#8fe0aa;margin-top:9px}
+.ok svg{width:14px;height:14px;flex:0 0 14px}
+.fail{display:flex;flex-direction:column;gap:2px;margin-top:7px;font-size:11.5px;color:#8d97a4}
+.fail span{display:flex;align-items:center;gap:8px;height:21px;white-space:nowrap}
+.fail span svg{width:10px;height:10px;color:#e08a8a;flex:0 0 10px}
+.right{width:260px;flex:0 0 260px;display:flex;flex-direction:column;gap:12px}
+.panel{border:1px solid #1a1e26;border-radius:12px;background:#0b0d12;padding:13px 13px 10px}
+.ptitle{font-size:12.4px;font-weight:600;color:#dfe5ee;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.ptitle svg{width:13px;height:13px;opacity:.7;flex:0 0 13px}
+.qrow{display:flex;align-items:center;gap:9px;height:29px;font-size:12.1px;color:#8b95a2;white-space:nowrap}
+.qrow .d{width:6px;height:6px;border-radius:99px;flex:0 0 6px}
+.qrow .d.b{background:#3b82f6}.qrow .d.g{background:#4ade80}.qrow .d.r{background:#f87171}
+.qrow .t{color:#b9c2ce;font-variant-numeric:tabular-nums;margin-left:auto}
