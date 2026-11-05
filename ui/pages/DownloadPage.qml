@@ -1197,6 +1197,25 @@ Item {
                         radius: 2
                         color: tcard.failed ? "#f87171" : Theme.accent
                     }
+                    // 停滞时（速度归零但未完成）叠一条流光，表示"还在工作"而不是卡死
+                    Rectangle {
+                        id: shimmer
+                        visible: !tcard.failed && tcard.cd && tcard.cd.progress < 1
+                                 && (tcard.cd.speed || 0) <= 0
+                        width: 72
+                        height: 3
+                        radius: 2
+                        color: "#8fb6f8"
+                        opacity: 0.55
+                        NumberAnimation on x {
+                            running: shimmer.visible
+                            loops: Animation.Infinite
+                            from: -80
+                            to: bar.width + 80
+                            duration: Theme.durLoop
+                            easing.type: Theme.easeLoop
+                        }
+                    }
                 }
 
                 // 失败信息

@@ -46,6 +46,10 @@ QtObject {
     readonly property int durSlow: 260
     readonly property int durPage: 320
 
+    // ── 动效系统（2026-11-05）：时长/缓动只从这里取，页面里不再写裸数字 ──
+    readonly property int durLoop: 1200          // 循环类动效一个来回
+    readonly property int easeLoop: Easing.Linear // 循环用线性，避免首尾顿挫
+
     // 缓动：进入用 OutQuint（快起慢收，有重量感），离开用 InCubic（加速离场，利落）
     readonly property int easeStandard: Easing.OutCubic
     readonly property int easeEnter: Easing.OutQuint
