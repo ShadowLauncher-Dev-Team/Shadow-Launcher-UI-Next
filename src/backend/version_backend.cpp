@@ -5712,6 +5712,41 @@ if (!loaderDlUrl.isEmpty()) {
                     onData(data);
                 });
             if (ctx) ctx->loaderDlHandle = h;   // 供取消时 abort
+
+            // ── 安装器下载看门狗（2026-11-05 实测卡死修复）──
+            // 实测：真实整合包的 Forge 安装器在 8% 后 7 分钟零进展、无 done 回调、
+            // 任务永久 busy=true。内层（驿道）虽有分片停滞检测，但探测/首包阶段或回调
+            // 链路异常时可能永不返回。编排层兜底：每 10s 看一次已收字节，
+            // 连续 6 次（60s）不变 → abort，交给既有 done(false) 链路换源/失败；
+            // 总时长 600s 再兜底 abort 一次（避免无限等待）。
+            {
+                auto* wd = new QTimer(this);
+                wd->setInterval(10000);
+                auto lastBytes = std::make_shared<qint64>(-1);
+                auto idle = std::make_shared<int>(0);
+                auto ticks = std::make_shared<int>(0);
+                connect(wd, &QTimer::timeout, this,
+                        [this, wd, h, installName, lastBytes, idle, ticks]() {
+                    if (!h || !h->isActive()) { wd->stop(); wd->deleteLater(); return; }
+                    ++(*ticks);
+                    qint64 cur = 0;
+                    if (auto* ds = dlSession(installName)) cur = ds->mlBytesDl;
+                    if (cur == *lastBytes) {
+                        if (++(*idle) >= 6 || *ticks >= 60) {
+                            qCWarning(logVersion)
+                                << QStringLiteral("[追踪] 安装器下载无进展 %1s，abort 并换源: %2")
+                                       .arg(*idle * 10).arg(installName);
+                            h->abort();
+                            wd->stop();
+                            wd->deleteLater();
+                        }
+                    } else {
+                        *lastBytes = cur;
+                        *idle = 0;
+                    }
+                });
+                wd->start();
+            }
         };
 
         // 主 URL（下载源策略决定官方/镜像）
