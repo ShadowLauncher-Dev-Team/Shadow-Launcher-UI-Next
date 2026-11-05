@@ -139,9 +139,25 @@ Rectangle {
     // ═══════════════════════════════════════════════════════════════
     property var _loadingTabs: ({})
     property var _settleWatch: []
+    property var _failedTabs: ({})
     property bool barActive: false
 
+    /// 失败态：网络/超时导致池子仍为空时标记，供 LoadStatus 显示"加载失败 + 重试"
+    function markFailed(tab) {
+        var m = {}
+        for (var k in _failedTabs) m[k] = _failedTabs[k]
+        m[tab] = true
+        _failedTabs = m
+    }
+    function clearFailed(tab) {
+        var m = {}
+        for (var k in _failedTabs) if (k !== tab) m[k] = _failedTabs[k]
+        _failedTabs = m
+    }
+    function errorOf(tab) { return _failedTabs[tab] ? "加载失败，可能是网络或镜像无响应" : "" }
+
     function setTabLoading(tab, on) {
+        if (on) clearFailed(tab)   // 新一轮加载开始 → 清掉上一轮的失败标记
         var m = {}
         for (var k in _loadingTabs) m[k] = _loadingTabs[k]
         m[tab] = !!on
@@ -172,13 +188,17 @@ Rectangle {
             var w = _settleWatch[i]
             w.ticks++
             var settled = false
+            var emptyPool = false
             try {
                 var st = backend.resourcePoolState(w.kind)
                 settled = !st || st.pending === 0
+                emptyPool = !st || st.pool === 0
             } catch (e) { settled = true }
-            if (w.ticks > 26) settled = true      // 26 × 350ms ≈ 9s 上限
+            const timedOut = w.ticks > 26          // 26 × 350ms ≈ 9s 上限
+            if (timedOut) settled = true
             if (settled) {
                 setTabLoading(w.tab, false)
+                if (timedOut && emptyPool) markFailed(w.tab)
             } else keep.push(w)
         }
         _settleWatch = keep
@@ -986,6 +1006,9 @@ Rectangle {
                         loading: page.modSearching
                         emptyText: qsTr("没有找到匹配的 Mod，换个关键词或重置筛选")
                         count: modResultsModel.count
+                        errorText: page.errorOf("mod")
+                        actionText: "重置筛选"
+                        onActionClicked: { page.clearFailed("mod"); modFilterCard.resetClicked() }
                     }
                     footer: PaginationFooter {
                         width: modListView2.width
@@ -1263,6 +1286,9 @@ Rectangle {
                         loading: shaderTab.shaderSearching
                         emptyText: qsTr("输入关键词搜索光影")
                         count: shaderResultsModel.count
+                        errorText: page.errorOf("shader")
+                        actionText: "重置筛选"
+                        onActionClicked: { page.clearFailed("shader"); shaderFilterCard.resetClicked() }
                     }
 
                     footer: PaginationFooter {
@@ -1389,6 +1415,9 @@ Rectangle {
                         loading: page.rpSearching
                         emptyText: qsTr("搜索资源包")
                         count: rpResultsModel.count
+                        errorText: page.errorOf("rp")
+                        actionText: "重置筛选"
+                        onActionClicked: { page.clearFailed("rp"); rpFilterCard.resetClicked() }
                     }
                     footer: PaginationFooter {
                         currentPage: page.rpPage
@@ -2213,6 +2242,9 @@ Rectangle {
                         loading: packTab.packSearching
                         emptyText: qsTr("输入关键词搜索整合包")
                         count: packResultsModel.count
+                        errorText: page.errorOf("pack")
+                        actionText: "重置筛选"
+                        onActionClicked: { page.clearFailed("pack"); packFilterCard.resetClicked() }
                     }
                     footer: PaginationFooter {
                         currentPage: packTab.packCurrentPage
@@ -2471,6 +2503,9 @@ Rectangle {
                         loading: dpTab.dpSearching
                         emptyText: qsTr("输入关键词搜索数据包")
                         count: dpResultsModel.count
+                        errorText: page.errorOf("dp")
+                        actionText: "重置筛选"
+                        onActionClicked: { page.clearFailed("dp"); dpFilterCard.resetClicked() }
                     }
                     footer: PaginationFooter {
                         currentPage: dpTab.dpCurrentPage
