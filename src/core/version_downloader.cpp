@@ -604,11 +604,24 @@ void VersionDownloader::downloadAssetIndexRace(const QString& idxUrl, const QStr
         }
     };
     // 胜出收尾（幂等）
-    auto win = [this, won, done](const QString& label) {
+    auto win = [this, won, done, idxPath](const QString& label) {
         if (*won) return;
         *won = true;
         m_indexCommitted = true;
         m_indexTempFiles.clear();   // 成功路径已自行删除分片，清账即可
+        // ── 清理"输掉那一方"留下的分片（2026-11-05 验收 P2-F）──
+        // 镜像胜出时分片回调用 *won 早退，官方已落盘的 .part.N 永不被清理
+        // （正常成功路径也会中）。这里按目录 glob 兜底扫一遍。
+        {
+            const QFileInfo fi(idxPath);
+            QDir d(fi.absolutePath());
+            const QStringList stale = d.entryList({ fi.fileName() + QStringLiteral(".part.*") },
+                                                  QDir::Files);
+            for (const QString& f : stale)
+                QFile::remove(d.absoluteFilePath(f));
+            if (!stale.isEmpty())
+                qCInfo(logDownload) << QStringLiteral("[盘古] 资源索引清理残留分片 %1 个").arg(stale.size());
+        }
         emit logMessage(QStringLiteral("[盘古] 资源索引竞速胜出 源=%1").arg(label));
         done();
     };
