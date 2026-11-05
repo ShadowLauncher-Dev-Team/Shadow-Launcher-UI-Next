@@ -220,8 +220,9 @@ svg{display:block}
 .d-auth b{color:#c3ccd9;font-weight:500}
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:14px}
 .stat{border:1px solid #171d26;border-radius:8px;padding:9px 11px;background:linear-gradient(180deg,#0d1117,#0b0e13)}
-.stat .k{font-size:9.5px;letter-spacing:.06em;color:#5d6673;display:flex;align-items:center;gap:4px}
-.stat .v{margin-top:4px;font-size:15px;font-weight:600;color:#eaf0fb;font-variant-numeric:tabular-nums}
+.stat .k{font-size:12px;line-height:1.2;letter-spacing:normal;color:#8a94a2;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.stat .k .ico{opacity:.85;flex:none}
+.stat .v{margin-top:7px;line-height:1.15;font-size:16px;font-weight:600;color:#eaf0fb;font-variant-numeric:tabular-nums}
 .stat .v small{font-size:10px;color:#6d7683;font-weight:400;margin-left:2px}
 .sec-h{display:flex;align-items:center;gap:8px;margin:0 0 9px;font-size:12.5px;font-weight:600;color:#e8ebf2}
 .sec-h::before{content:"";width:3px;height:11px;border-radius:2px;background:linear-gradient(180deg,var(--accent-top),var(--accent-bot))}
@@ -297,6 +298,10 @@ svg{display:block}
 .bar i{display:block;height:100%;width:0%;border-radius:3px;background:linear-gradient(90deg,var(--accent-bot),var(--accent-top));box-shadow:0 0 12px rgba(59,130,246,.7);transition:width .18s linear}
 .prog .row2{display:flex;justify-content:space-between;margin-top:5px;font-size:9.5px;color:#6d7683}
 .prog .row2 b{color:#bcd7ff;font-weight:500;font-variant-numeric:tabular-nums}
+.loc{margin-top:10px;padding:8px 9px 9px;border:1px dashed #1e2530;border-radius:7px;background:#0a0d12}
+.loc-k{font-size:9.5px;letter-spacing:.06em;color:#4d5764;font-weight:600}
+.loc-p{margin-top:3px;font-size:10.5px;color:#c3ccd9;font-family:Consolas,"Cascadia Mono","Courier New",monospace;word-break:break-all;line-height:1.45}
+.loc-b{width:100%;margin-top:7px;height:26px;font-size:10.5px}
 .inst-note{margin-top:8px;padding-top:8px;border-top:1px dashed #1a2029;font-size:9px;line-height:1.6;color:#4b535f}
 
 /* states */
@@ -427,6 +432,7 @@ svg{display:block}
 (function(){
 'use strict';
 var ICONS = {
+  "alert-triangle":'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
   search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
   clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
@@ -912,7 +918,7 @@ function renderPreview(){
     +   '</div>'
     +   '<div class="pv-actions">'
     +     '<button class="btn primary w100" id="pvOpen">'+ico("arrow-right","s13")+'查看详情</button>'
-    +     '<button class="btn ghost w100" id="pvDl">'+ico("download","s13")+'加入下载队列</button>'
+    +     '<button class="btn ghost w100" id="pvDl">'+ico("download","s13")+'下载</button>'
     +   '</div>'
     +   '<div class="pv-meta">'
     +     '<div><span>运行环境</span><b>'+clientOf(it)+'</b></div>'
@@ -921,7 +927,7 @@ function renderPreview(){
     +   '</div>'
     + '</div>';
   $("pvOpen").onclick = function(){ openDetail(it.id, true); };
-  $("pvDl").onclick = function(){ toast("已加入下载队列 · " + it.cn, "download"); };
+  $("pvDl").onclick = function(){ toast("开始下载 · " + it.cn, "download"); };
 }
 
 /* ══════════ 交互 ══════════ */
@@ -1096,26 +1102,45 @@ function renderDetail(){
     + '</div></div>'
     + '</div>'
 
-    + '<aside class="install">'
-    + '<div class="inst-head"><div class="t">' + ico("download","s14") + '安装</div>'
-    +   '<div class="st" id="instState"><span class="d"></span>未安装</div></div>'
-    + '<div class="inst-body">'
-    +   '<div class="field"><label>游戏版本</label><button class="sel" id="selMc"><span>' + S.mc + '</span>' + ico("chevron-down","s13") + '</button></div>'
-    +   '<div class="field"><label>加载器</label><button class="sel" id="selLoader"><span>' + S.loaderSel + '</span>' + ico("chevron-down","s13") + '</button></div>'
-    +   '<div class="vl-head"><span>历史版本</span><span>大小</span></div>'
-    +   '<div class="vl" id="vl"></div>'
-    +   '<div class="inst-actions">'
-    +     '<button class="btn primary install-btn" id="installBtn">' + ico("download","s14") + '<span>下载并安装</span></button>'
-    +     '<div class="prog" id="prog"><div class="bar"><i id="barFill"></i></div><div class="row2"><span id="progLabel">正在下载…</span><b id="progPct">0%</b></div></div>'
-    +     '<div class="inst-foot" id="instFoot"></div>'
-    +     '<div class="inst-note">安装状态由任务回传：未安装 / 下载中 / 失败。已安装与可更新状态待后端接口。</div>'
-    +   '</div>'
-    + '</div></aside>'
+    + installPanelHTML(it)
     + '</div>';
 
   $("dwrap").innerHTML = html;
   fillVersions();
   updateInstall();
+}
+
+var INST_PATH = { mod:".minecraft/mods", shader:".minecraft/shaderpacks", pack:".minecraft/resourcepacks",
+                  modpack:"downloads/", data:"world/datapacks/" };
+function instPath(it){ return INST_PATH[it.cat] || ".minecraft/mods"; }
+
+function installPanelHTML(it){
+  var isData = it.cat === "data";
+  var isPack = it.cat === "modpack";
+  var h = '<aside class="install">';
+  h += '<div class="inst-head"><div class="t">' + ico("download","s14") + (isData ? '下载' : '安装') + '</div>'
+    +  '<div class="st" id="instState"><span class="d"></span>' + (isData ? '未下载' : '未安装') + '</div></div>';
+  h += '<div class="inst-body">';
+  h +=   '<div class="field"><label>' + (isData ? '对应游戏版本' : '游戏版本') + '</label>'
+    +      '<button class="sel" id="selMc"><span>' + S.mc + '</span>' + ico("chevron-down","s13") + '</button></div>';
+  if (!isData && S.cur.loaders.length > 1){
+    h += '<div class="field"><label>加载器</label><button class="sel" id="selLoader"><span>' + S.loaderSel + '</span>' + ico("chevron-down","s13") + '</button></div>';
+  }
+  h +=   '<div class="vl-head"><span>历史版本</span><span>大小</span></div>'
+    +    '<div class="vl" id="vl"></div>'
+    +    '<div class="inst-actions">'
+    +      '<button class="btn primary install-btn" id="installBtn">' + ico("download","s14") + '<span>' + (isData ? '下载到本地' : '下载并安装') + '</span></button>'
+    +      '<div class="prog" id="prog"><div class="bar"><i id="barFill"></i></div><div class="row2"><span id="progLabel">正在下载…</span><b id="progPct">0%</b></div></div>'
+    +      '<div class="loc"><div class="loc-k">' + (isData ? '放置位置' : '安装位置') + '</div>'
+    +        '<div class="loc-p">' + instPath(it) + '</div>'
+    +        '<button class="btn sm ghost loc-b" id="openFolder">' + ico("folder","s12") + '打开文件夹</button></div>'
+    +      '<div class="inst-foot" id="instFoot"></div>'
+    +      '<div class="inst-note">' + (isData
+             ? '数据包没有安装接口，只下载到本地，需手动放进存档的 datapacks 目录。'
+             : (isPack ? '整合包下载到本地后会导入为新的游戏实例。' : '安装状态由任务回传：未安装 / 下载中 / 失败。已安装与可更新状态待后端接口。')) + '</div>'
+    +    '</div>'
+    +  '</div></aside>';
+  return h;
 }
 
 function fillVersions(){
@@ -1136,23 +1161,28 @@ function updateInstall(){
   var st = $("instState"), btn = $("installBtn"), prog = $("prog"), foot = $("instFoot");
   if (!st || !btn || !foot || !S.cur) return;
   var row = currentRow();
+  var isData = S.cur.cat === "data";
+  var W = isData ? { idle:"未下载", run:"下载中", done:"已下载", bad:"下载失败" }
+                 : { idle:"未安装", run:"下载中", done:"下载完成", bad:"安装失败" };
   if (S.inst === "running"){
-    st.className = "st run"; st.innerHTML = '<span class="d"></span>下载中';
-    btn.disabled = true; btn.innerHTML = '<span>正在安装…</span>';
+    st.className = "st run"; st.innerHTML = '<span class="d"></span>' + W.run;
+    btn.disabled = true; btn.innerHTML = '<span>' + (isData ? "正在下载…" : "正在安装…") + '</span>';
     prog.classList.add("show");
   } else if (S.inst === "failed"){
-    st.className = "st bad"; st.innerHTML = '<span class="d"></span>安装失败';
+    st.className = "st bad"; st.innerHTML = '<span class="d"></span>' + W.bad;
     btn.disabled = false; btn.innerHTML = ico("refresh","s14") + '<span>重试</span>';
     prog.classList.remove("show");
     foot.textContent = "连接超时 · 校验未通过，可重试";
   } else if (S.inst === "done"){
-    st.className = "st done"; st.innerHTML = '<span class="d"></span>下载完成';
+    st.className = "st done"; st.innerHTML = '<span class="d"></span>' + W.done;
     btn.disabled = false; btn.innerHTML = ico("refresh","s14") + '<span>重新下载</span>';
     prog.classList.remove("show");
-    foot.textContent = "已完成 " + (row ? row.name : "") + " 的下载与校验";
+    foot.textContent = isData
+      ? "已保存到下载目录 · 放进 " + instPath(S.cur) + " 生效"
+      : "已完成 " + (row ? row.name : "") + " 的下载与校验";
   } else {
-    st.className = "st"; st.innerHTML = '<span class="d"></span>未安装';
-    btn.disabled = false; btn.innerHTML = ico("download","s14") + '<span>下载并安装</span>';
+    st.className = "st"; st.innerHTML = '<span class="d"></span>' + W.idle;
+    btn.disabled = false; btn.innerHTML = ico("download","s14") + '<span>' + (isData ? "下载到本地" : "下载并安装") + '</span>';
     prog.classList.remove("show");
     foot.textContent = row ? (row.name + " · " + row.size) : S.cur.size;
   }
@@ -1173,10 +1203,12 @@ function startInstall(){
     if (!f || !pl || !lb){ clearInterval(S.timer); return; }
     f.style.width = pct.toFixed(1) + "%"; pl.textContent = Math.round(pct) + "%";
     lb.textContent = pct < 56 ? "正在下载 " + row.name
-      : (pct < 88 ? "正在写入 .minecraft/" + (S.cur.cat === "shader" ? "shaderpacks" : S.cur.cat === "pack" ? "resourcepacks" : S.cur.cat === "modpack" ? "instances" : "mods")
+      : (pct < 88 ? (S.cur.cat === "data" ? "正在保存到下载目录"
+          : "正在写入 .minecraft/" + (S.cur.cat === "shader" ? "shaderpacks" : S.cur.cat === "pack" ? "resourcepacks" : S.cur.cat === "modpack" ? "instances" : "mods"))
       : "正在校验文件签名");
     if (willFail && pct >= 76){ clearInterval(S.timer); S.inst = "failed"; updateInstall(); toast("安装失败 · 连接超时","alert-triangle"); return; }
-    if (pct >= 100){ clearInterval(S.timer); S.inst = "done"; updateInstall(); toast("下载完成 · 已校验 " + S.cur.cn,"check"); }
+    if (pct >= 100){ clearInterval(S.timer); S.inst = "done"; updateInstall();
+      toast(S.cur.cat === "data" ? "已下载 · 放至 " + instPath(S.cur) + " 生效" : "下载完成 · 已校验 " + S.cur.cn, "check"); }
   }, 80);
 }
 
@@ -1296,7 +1328,7 @@ function bindAll(){
 
   $("rows").addEventListener("click", function(e){
     var dl = e.target.closest("[data-dl]");
-    if (dl){ e.stopPropagation(); toast("已加入下载队列 · " + byId(dl.getAttribute("data-dl")).cn, "download"); return; }
+    if (dl){ e.stopPropagation(); toast("开始下载 · " + byId(dl.getAttribute("data-dl")).cn, "download"); return; }
     var row = e.target.closest(".row");
     if (row){ selectRow(row.getAttribute("data-id")); }
   });
@@ -1317,6 +1349,7 @@ function bindAll(){
   $("dwrap").addEventListener("click", function(e){
     if (!S.cur) return;
     if (e.target.closest("#installBtn")){ startInstall(); return; }
+    if (e.target.closest("#openFolder")){ toast("已打开 " + instPath(S.cur), "folder"); return; }
     if (e.target.closest("#vtMore")){ S.expanded = !S.expanded; renderDetail(); return; }
     var mc = e.target.closest("#selMc");
     if (mc){

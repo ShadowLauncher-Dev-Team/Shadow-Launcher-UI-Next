@@ -363,6 +363,9 @@ img{max-width:100%}
 .kv-btn{font-size:10.5px;color:#8fb8f0;border:1px solid #2b4d7c;background:rgba(59,130,246,.08);border-radius:4px;padding:1px 6px;margin-left:4px;line-height:1.5;transition:all .14s var(--ease)}
 .kv-btn:hover{background:rgba(59,130,246,.16);color:#d6e8ff}
 .link-note{font-size:10.5px;color:#5d6673;line-height:1.6;letter-spacing:.01em}
+.dp-dest{display:flex;align-items:center;gap:8px;margin:0 0 8px;padding-top:8px;border-top:1px solid var(--line);font-size:10.5px;color:#6f7987;white-space:nowrap}
+.dp-dest b{font-size:11px;font-weight:600;color:#c7d1de}
+.dp-dest .kv-btn{margin-left:auto}
 
 /* 空 / 骨架 / 状态预览 */
 .list-sec{scroll-margin-top:78px}
@@ -703,7 +706,7 @@ img{max-width:100%}
 .dcover-sub .src-badge{height:20px;padding:0 7px;font-size:10.5px}
 
 /* 版本元信息单行 */
-.vmeta-line{display:flex;align-items:center;gap:7px;margin:0 0 12px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:#0a0e14;font-size:10.5px;color:#6f7987;white-space:nowrap;overflow:hidden}
+.vmeta-line{display:flex;align-items:center;gap:7px;margin:0 0 10px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:#0a0e14;font-size:10.5px;color:#6f7987;white-space:nowrap;overflow:hidden}
 .vmeta-line b{color:#c3cedb;font-weight:600}
 .vmeta-line .dot{width:2px;height:2px;background:#3a4351}
 .vmeta-line .vm-type{color:#8fa8c8}
@@ -2048,12 +2051,18 @@ function scene(it, w, h, opts){
 
     h.push('<div class="vmeta-line"><span class="vm-type" id="vmType">' + b0.typeText + '</span><span class="dot"></span><span id="vmDate">' + b0.date + '</span><span class="dot"></span><span>下载 <b id="vmDl">' + fmtDl(b0.dl) + '</b></span><span class="vm-size" id="vmSize">' + b0.size + '</span></div>');
 
+    if (isDp) {
+      h.push('<div class="dp-dest"><span>手动放入</span><b>' + destFor(it.kind) + '</b><button class="kv-btn" data-folder>打开文件夹</button></div>');
+    }
+
     h.push('<div class="inst-area" id="instArea">' + instActionsHTML() + '</div>');
 
-    h.push('<dl class="kv">');
-    h.push('<div><dt>加载器</dt><dd>' + esc(it.loader) + '</dd></div>');
-    h.push('<div><dt>' + (isDp ? '手动放入' : '安装位置') + '</dt><dd>' + destFor(it.kind) + (isDp ? ' <button class="kv-btn" data-folder>打开文件夹</button>' : '') + '</dd></div>');
-    h.push('</dl>');
+    if (!isDp) {
+      h.push('<dl class="kv">');
+      h.push('<div><dt>加载器</dt><dd>' + esc(it.loader) + '</dd></div>');
+      h.push('<div><dt>安装位置</dt><dd>' + destFor(it.kind) + '</dd></div>');
+      h.push('</dl>');
+    }
 
     h.push('<div class="link-row">' + (isDp
       ? '<span class="link-note">解压后放入该目录，执行 /reload 生效</span>'
