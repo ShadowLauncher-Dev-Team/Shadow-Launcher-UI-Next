@@ -23,7 +23,8 @@ Item {
     readonly property bool fullOpen: versionsOpen || accountOpen
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
-    readonly property bool loading: b ? b.microsoftLoginBusy : false
+    // 登录这类不确定等待 + 资源库在途请求，统一走顶部 SLoadingBar
+    readonly property bool loading: (b ? b.microsoftLoginBusy : false) || (downloadPage ? downloadPage.resourceBusy : false)
 
     Component.onCompleted: {
         if (Qt.application.arguments.indexOf("--ui-versions") >= 0) root.versionsOpen = true

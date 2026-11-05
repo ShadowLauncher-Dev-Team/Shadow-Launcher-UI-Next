@@ -19,6 +19,8 @@ Item {
     readonly property int padR: narrow ? 28 : 72
     readonly property int topH: narrow ? 56 : 64
     signal close()
+    /// 资源库是否有在途请求（外壳顶部加载条聚合用）
+    readonly property bool resourceBusy: resourceView ? resourceView.busy : false
     // 安装已启动：交给外壳切到独立的「下载进度」页（本页不再持有进度视图）
     signal openProgress()
 
@@ -265,6 +267,10 @@ Item {
         // 这里再同步调一次会让 QML 加载被后端解析阻塞 7 秒（首屏卡死的根因），故不再调用。
         if (Qt.application.arguments.indexOf("--ui-config") >= 0 && page.releaseV.length > 0)
             page.pickVersion(page.releaseV[0])
+        // 调试/验收钩子：--ui-tab N 直接落到指定 tab（0=MC 1=Mod … 5=数据包）
+        var ti = Qt.application.arguments.indexOf("--ui-tab")
+        if (ti >= 0 && ti + 1 < Qt.application.arguments.length)
+            page.tab = parseInt(Qt.application.arguments[ti + 1]) || 0
     }
 
     Connections {
@@ -436,14 +442,13 @@ Item {
         anchors.topMargin: 20
         anchors.bottomMargin: 24
 
-        // 未接入的 tab：只说事实
-        Text {
+        // 资源库五类（Mod / 光影 / 资源包 / 整合包 / 数据包）：同一页参数化
+        ResourcePage {
+            id: resourceView
+            anchors.fill: parent
             visible: page.tab !== 0
-            anchors.centerIn: parent
-            text: page.tabs[page.tab] + " 分类还未接入"
-            color: Theme.fg3
-            font.family: Theme.fontFamily
-            font.pixelSize: 13
+            tabIndex: page.tab
+            toast: page.toast
         }
 
         // 筛选：分段控件（与主页其它页的 seg 同语言，不用旧 UI 的圆胶囊）
