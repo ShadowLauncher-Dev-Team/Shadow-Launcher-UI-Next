@@ -1,0 +1,77 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8"><title>步骤标记 · Google 式转圈方案</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#08090d;color:#e8ebf2;font-family:"Microsoft YaHei UI","Microsoft YaHei",system-ui,sans-serif;padding:40px 56px;min-width:1000px}
+h1{font-size:20px;font-weight:700;margin-bottom:6px}
+.sub{font-size:12px;color:#7c8694;margin-bottom:26px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.card{border:1px solid #1a1e26;border-radius:12px;background:#0b0d12;padding:16px 16px 12px}
+.card h2{font-size:13.5px;font-weight:600;margin-bottom:2px}
+.desc{font-size:11px;color:#6f7a88;margin-bottom:14px;line-height:1.6;min-height:52px}
+.step{display:flex;align-items:center;gap:10px;height:34px;font-size:12px;color:#8a93a0}
+.step .lbl{flex:1}
+.step .st{font-size:10.5px;color:#5d6673}
+.done{color:#9aa6b5}
+.mark{width:16px;height:16px;flex:0 0 16px;position:relative;display:grid;place-items:center}
+svg.ring{position:absolute;inset:0;width:16px;height:16px;transform:rotate(-90deg)}
+svg.ring circle{fill:none;stroke-width:2;stroke-linecap:round}
+
+/* F Material 不确定环：容器旋转 + 弧长扫动（Google 的经典实现） */
+.F .base circle{stroke:#232a34}
+.F .arc{stroke:#3b82f6;animation:dash 1.4s ease-in-out infinite}
+.F .mark{animation:spin 1.6s linear infinite}
+.F .done .mark,.F .done .arc{animation:none}
+.F .done .arc{stroke:#4ade80}
+
+/* G 确定环：conic 渐变按百分比画弧 */
+.G .mark{width:18px;height:18px;flex:0 0 18px}
+.G .donut{position:absolute;inset:0;border-radius:99px;background:conic-gradient(#3b82f6 0 var(--p),#232a34 var(--p) 100%);-webkit-mask:radial-gradient(circle,transparent 58%,#000 60%);mask:radial-gradient(circle,transparent 58%,#000 60%);transition:--p .3s linear}
+.G .pct{font-size:7px;color:#8fb6f8;font-variant-numeric:tabular-nums;margin-top:1px}
+.G .done .donut{background:conic-gradient(#4ade80 0 100%,#4ade80 0)}
+.G .done .pct{color:#4ade80}
+
+/* H 双层大环：外圈淡、内弧粗，放大版 Google 加载圈 */
+.H .mark{width:22px;height:22px;flex:0 0 22px}
+.H .outer{position:absolute;inset:0;border-radius:99px;border:1.5px solid #1c222c}
+.H .inner{position:absolute;inset:2.5px;border-radius:99px;border:2px solid transparent;border-top-color:#3b82f6;border-right-color:#3b82f6;animation:spin 1s linear infinite}
+.H .done .inner{animation:none;border-color:transparent;background:#4ade80}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes dash{0%{stroke-dasharray:1 42;stroke-dashoffset:0}50%{stroke-dasharray:26 42;stroke-dashoffset:-10}100%{stroke-dasharray:1 42;stroke-dashoffset:-42}}
+</style></head><body>
+<h1>步骤标记 · Google 式转圈</h1>
+<div class="sub">三种圆圈转动：不确定环（Material 扫掠+旋转）、确定环（百分比）、双层大环。进行中持续转，完成变绿，待开始灰色静止。</div>
+<div class="grid">
+
+  <div class="card F"><h2>F · Material 不确定环</h2>
+    <div class="desc">Google 标准的 indeterminate circular：整环旋转 1.6s，同时弧长在扫动（短→长→短），不是匀速转一个固定缺口。最"Google"。</div>
+    <div class="demo">
+      <div class="step done"><span class="mark"><svg class="ring base" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/></svg><svg class="ring" viewBox="0 0 20 20"><circle class="arc" cx="10" cy="10" r="8"/></svg></span><span class="lbl">下载版本信息</span><span class="st">完成</span></div>
+      <div class="step act"><span class="mark"><svg class="ring base" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/></svg><svg class="ring" viewBox="0 0 20 20"><circle class="arc" cx="10" cy="10" r="8"/></svg></span><span class="lbl">下载游戏库</span><span class="st">24%</span></div>
+      <div class="step"><span class="mark"><svg class="ring base" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/></svg><svg class="ring" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/></svg></span><span class="lbl">校验游戏文件</span><span class="st"></span></div>
+      <div class="step"><span class="mark"><svg class="ring base" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/></svg></span><span class="lbl">安装 Forge</span><span class="st"></span></div>
+    </div>
+  </div>
+
+  <div class="card G"><h2>G · 确定环（百分比）</h2>
+    <div class="desc">环本身就是进度：24% 的环是蓝色弧、其余灰色，中心小字显示百分比；完成环填满变绿。信息量最大，但需要每步有真实百分比。</div>
+    <div class="demo">
+      <div class="step done"><span class="mark"><i class="donut" style="--p:100%"></i></span><span class="lbl">下载版本信息</span><span class="st">完成</span></div>
+      <div class="step act"><span class="mark" style="width:18px;height:18px"><i class="donut" style="--p:24%"></i><span class="pct">24</span></span><span class="lbl">下载游戏库</span><span class="st">24%</span></div>
+      <div class="step"><span class="mark"><i class="donut" style="--p:0%"></i></span><span class="lbl">校验游戏文件</span><span class="st"></span></div>
+      <div class="step"><span class="mark"><i class="donut" style="--p:0%"></i></span><span class="lbl">安装 Forge</span><span class="st"></span></div>
+    </div>
+  </div>
+
+  <div class="card H"><h2>H · 双层大环</h2>
+    <div class="desc">外圈 1.5px 淡色常驻、内圈 2px 蓝色缺口旋转；完成时内圈被绿色实心填满。体积更大，适合只有 3-4 步的短流程。</div>
+    <div class="demo">
+      <div class="step done"><span class="mark"><i class="outer"></i><i class="inner"></i></span><span class="lbl">下载版本信息</span><span class="st">完成</span></div>
+      <div class="step act"><span class="mark"><i class="outer"></i><i class="inner"></i></span><span class="lbl">下载游戏库</span><span class="st">24%</span></div>
+      <div class="step"><span class="mark"><i class="outer"></i><i class="inner"></i></span><span class="lbl">校验游戏文件</span><span class="st"></span></div>
+      <div class="step"><span class="mark"><i class="outer"></i><i class="inner"></i></span><span class="lbl">安装 Forge</span><span class="st"></span></div>
+    </div>
+  </div>
+
+</div>
+</body></html>
