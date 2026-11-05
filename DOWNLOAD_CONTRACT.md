@@ -233,7 +233,8 @@ DownloadTask（任务：步骤模型 + 进度 + 状态机 + 取消）
 | **完整安装整合包** | ✅ **通过** | 真实包 落幕曲1.6.6.1（MC 1.20.1 + Forge 47.3.22 + 271 模组）：导入完成于 09:04:51，`versions/ZZ-full2` 含 jar 23MB + json + 292 个 mods + overrides（config/kubejs/resourcepacks/shaderpacks/tacz），日志「✅ 整合包导入完成」 |
 | **启动游戏** | ✅ **通过** | `backend.launch("ZZ-full2", true)` → java 进程存活（3.7GB），ModLauncher/Forge 47.3.22 加载，GL 4.6，资源重载正常（仅模组自身 blockstate 警告） |
 | D 确定性加载器失败 | ✅ **闭环** | 合成包 forge-999.0.0：42 秒内「Minecraft 1.20.1 安装失败」、busy=false、版本目录回滚删除、启动器存活（`a806a1a`） |
-| C saves 守卫 | ⏳ 未复验 | 测试取消发生在安装完成后，cancel-cleanup 分支未触发 |
+| C saves 守卫 | ✅ 自检覆盖 | 抽成 `CleanupGuard::dirHasUserSaves()` 纯函数；自检第 10 组用 QTemporaryDir 真建三种布局，断言隔离/共享根都命中、无存档不误判（`e3fa194`） |
+| F 索引 .part 清理 | ✅ 自检覆盖 | 抽成 `CleanupGuard::removeStaleIndexParts()`；自检第 10 组造 3 个 .part 文件断言全部删除 |
 | B 看门狗 / E 阈值 / F .part | ⚠️ 代码级 | 需要"无进展连接""网络黑洞""镜像先赢"三类人造网络场景，本机无法可靠构造；逻辑与回归已验证，效果未真机确认 |
 
 ### 施工进度与验收记录（2026-11-05 夜）
