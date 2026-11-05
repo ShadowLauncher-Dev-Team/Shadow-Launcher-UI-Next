@@ -69,7 +69,7 @@ public:
 
     // ── 增量更新接口 (避免全量 rebuild) ──
     void updateRow(int row, const InstallCard& card);
-    void updateProgressAndSpeed(int row, qreal progress, qint64 speed);  // 仅触发 ProgressRole + SpeedRole
+    void updateProgressAndSpeed(int row, qreal progress, qint64 speed, qint64 etaSeconds = -1);  // 仅触发 ProgressRole + SpeedRole(+Eta)
     bool updateStepList(int row, const QVariantList& newSteps);  // 原地更新步骤，仅触发 StepsRole
     void updatePhase(int row, const QString& phase);  // 仅触发 PhaseRole
     void insertRow(int row, const InstallCard& card);

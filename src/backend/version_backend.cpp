@@ -6835,7 +6835,23 @@ void VersionBackend::updateCardFromSession(const QString& installId, const QStri
     qint64 newS = 0;
     if (!ds->isMerged() && m_dlStates.contains(installId))
         newS = m_dlStates[installId].speed;
-    m_installCardsModel->updateProgressAndSpeed(row, newP, newS);
+    // ETA：进度线性外推（在更新路径算，避免被后续 updateRow 覆盖成 0）
+    qint64 newEta = 0;
+    if (newS > 0 && newP > 0.02 && newP < 0.999) {
+        const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+        auto& anchor = m_etaAnchors[installId];
+        if (anchor.first <= 0 || anchor.second > newP + 0.05) {
+            anchor = qMakePair(nowMs, newP);
+        } else if (newP > anchor.second + 0.002) {
+            const qint64 dt = nowMs - anchor.first;
+            const qreal dp = newP - anchor.second;
+            if (dt >= 1200 && dp > 0)
+                newEta = static_cast<qint64>(dt / 1000.0 * (1.0 - newP) / dp);
+        }
+    } else if (newP <= 0.02 || newP >= 0.999) {
+        m_etaAnchors.remove(installId);
+    }
+    m_installCardsModel->updateProgressAndSpeed(row, newP, newS, newEta);
 
     // 更新 phase / failed / completed
     const InstallCard* cur = m_installCardsModel->cardAt(row);
@@ -7739,12 +7755,13 @@ QHash<int, QByteArray> InstallCardModel::roleNames() const {
 
 
 
-void InstallCardModel::updateProgressAndSpeed(int row, qreal progress, qint64 speed) {
+void InstallCardModel::updateProgressAndSpeed(int row, qreal progress, qint64 speed, qint64 etaSeconds) {
     if (row < 0 || row >= m_cards.size()) return;
     // Poll 模式下只更新内部字段，不发射 dataChanged
     // QML 端通过 Timer 轮询 cardData() 获取最新值
     m_cards[row].progress = progress;
     m_cards[row].speed = speed;
+    if (etaSeconds >= 0) m_cards[row].etaSeconds = etaSeconds;
 }
 
 const InstallCard* InstallCardModel::cardAt(int row) const {
