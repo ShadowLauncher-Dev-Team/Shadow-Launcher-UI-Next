@@ -390,6 +390,7 @@ private:
         qint64 bytesTotal = 0;
         qint64 networkBytesDl = 0;   // bytes from network only (excl. cache), for speed
         qint64 speed = 0;              // EMA-smoothed speed (bytes/s)
+        qint64 etaSeconds = 0;         // 剩余下载秒数（更新速度时就地算好）
         double smoothSpeed = 0.0;      // EMA accumulator (bytes/s float, avoids int truncation)
         QString file;
         QString phase = QStringLiteral("idle");

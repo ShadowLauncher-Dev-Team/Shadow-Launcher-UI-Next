@@ -122,7 +122,7 @@ void DownloadSession::reset() {
 // ══════════════════════════════════════════════
 
 InstallCard DownloadSession::toCard(const QString& iid, const QString& name, const QString& type,
-                                     qint64 bytesDl, qint64 bytesTotal) const {
+                                     qint64 bytesDl, qint64 bytesTotal, qint64 etaSeconds) const {
     InstallCard card;
     card.iid = iid;
     card.name = name;
@@ -130,12 +130,16 @@ InstallCard DownloadSession::toCard(const QString& iid, const QString& name, con
     card.progress = totalProgress();
     card.speed = m_speed;
     // 剩余时间：仅在有速度、还没下完字节时估算；校验/安装阶段没有字节流，返回 0
-    const qint64 dlNow = (bytesDl >= 0) ? bytesDl : mcBytesDl;
-    const qint64 dlAll = (bytesTotal >= 0) ? bytesTotal : mcBytesAll;
-    if (m_speed > 0 && !mcDownloadDone) {
-        const qint64 remainBytes = qMax<qint64>(0, dlAll - dlNow);
-        if (remainBytes > 0)
-            card.etaSeconds = remainBytes / m_speed;
+    if (etaSeconds >= 0) {
+        card.etaSeconds = etaSeconds;
+    } else {
+        const qint64 dlNow = (bytesDl >= 0) ? bytesDl : mcBytesDl;
+        const qint64 dlAll = (bytesTotal >= 0) ? bytesTotal : mcBytesAll;
+        if (m_speed > 0 && !mcDownloadDone) {
+            const qint64 remainBytes = qMax<qint64>(0, dlAll - dlNow);
+            if (remainBytes > 0)
+                card.etaSeconds = remainBytes / m_speed;
+        }
     }
     card.failed = m_failed;
     card.error = m_error;

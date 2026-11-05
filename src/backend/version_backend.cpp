@@ -3285,6 +3285,12 @@ void VersionBackend::updateDownloadProgress(const QString& versionId,
 
     st.bytesTotal = tb;
 
+    // 剩余时间就地算：速度与字节都在这一刻是最新的
+    if (st.speed > 0 && st.bytesTotal > st.bytesDl)
+        st.etaSeconds = (st.bytesTotal - st.bytesDl) / st.speed;
+    else
+        st.etaSeconds = 0;
+
     // ── 会话速度同步：DownloadSession 不再自算（recordBytes 已去速度），
     //    统一由本处推送引擎 EMA，保证所有 toCard 路径取值一致 ──
     if (auto* ds = dlSession(versionId)) {
@@ -8307,7 +8313,8 @@ auto* ds = dlSession(it.key());
 
         // 字节统计在本类的 DlState 上（非合并会话），传给 toCard 才能算 ETA
         const DlState st = m_dlStates.value(sid);
-        InstallCard c = ds->toCard(sid, sid, QStringLiteral("version"), st.bytesDl, st.bytesTotal);
+        InstallCard c = ds->toCard(sid, sid, QStringLiteral("version"),
+                                    st.bytesDl, st.bytesTotal, st.etaSeconds);
 
         // Ensure consistent name/type
 
