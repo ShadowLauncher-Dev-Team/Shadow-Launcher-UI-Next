@@ -220,6 +220,7 @@ Item {
     property real totalProgress: 0
     property int runningCount: 0
     property var cards: []
+    property int tick: 0   // 每 400ms 自增，驱动卡片绑定重算（不重建 delegate，动画才不会被打断）
     property string remainText: "—"
     property var _doneAt: ({})
     Timer {
@@ -256,7 +257,32 @@ Item {
                 eta = Math.max(eta, r.eta || 0)
             }
         }
-        page.cards = list
+        // 结构不变时原地更新（避免 ListView 全量重建导致动画每 400ms 重来一次）
+        var sameIds = (page.cards.length === list.length)
+        if (sameIds) {
+            for (var k = 0; k < list.length; ++k) {
+                if (page.cards[k].iid !== list[k].iid) { sameIds = false; break }
+            }
+        }
+        if (sameIds) {
+            for (var j = 0; j < list.length; ++j) {
+                var dst = page.cards[j]
+                var src = list[j]
+                dst.name = src.name
+                dst.phase = src.phase
+                dst.progress = src.progress
+                dst.speed = src.speed
+                dst.eta = src.eta
+                dst.failed = src.failed
+                dst.error = src.error
+                dst.canCancel = src.canCancel
+                dst.canRetry = src.canRetry
+                dst.steps = src.steps
+            }
+        } else {
+            page.cards = list
+        }
+        page.tick++
         page.totalSpeed = sp
         page.totalProgress = prog
         page.runningCount = run
@@ -1162,7 +1188,24 @@ Item {
 
                 readonly property var cd: modelData
                 readonly property bool failed: cd && cd.failed
-                readonly property var cardSteps: (cd && cd.steps) ? cd.steps.filter(function(s) { return s.show !== false }) : []
+                // 每个用到的大字段都显式依赖 tick：只 bump tick 时对象引用不变，
+                // 不显式依赖就不会重算（这正是卡片停在 0% 的原因）
+                // 用 page.tick 参与表达式，确保 QML 把这个绑定登记为依赖（只用 local var 会被优化掉）
+                readonly property real pv: (page.tick >= 0) ? (cd ? (cd.progress || 0) : 0) : 0
+                readonly property real sp: (page.tick >= 0) ? (cd ? (cd.speed || 0) : 0) : 0
+                readonly property string ph: (page.tick >= 0) ? (cd ? (cd.phase || "") : "") : ""
+                readonly property var cardSteps: (page.tick >= 0 && cd && cd.steps)
+                                                  ? cd.steps.filter(function(x) { return x.show !== false }) : []
+                // 速度归零持续 1.2s 才算"停滞"（避免刚开始还没测速时闪一下流光）
+                property bool stalled: false
+                Timer {
+                    id: stallTimer
+                    interval: 1200
+                    repeat: false
+                    running: { var t = page.tick; return !tcard.failed && tcard.pv < 1 && tcard.sp <= 0 }
+                    onTriggered: tcard.stalled = (!tcard.failed && tcard.pv < 1 && tcard.sp <= 0)
+                }
+                onSpChanged: if (tcard.sp > 0) tcard.stalled = false
 
                 // 头部
                 Rectangle {
@@ -1201,7 +1244,7 @@ Item {
                             font.weight: Font.DemiBold
                         }
                         Text {
-                            text: tcard.failed ? "部分失败" : (tcard.cd ? (tcard.cd.phase || "") : "")
+                            text: tcard.failed ? "部分失败" : tcard.ph
                             color: tcard.failed ? "#f0a0a0" : Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -1216,8 +1259,8 @@ Item {
                     spacing: 6
                     Text {
                         text: tcard.failed ? "0 MB/s"
-                              : (((tcard.cd ? tcard.cd.speed : 0) / 1048576).toFixed(1) + " MB/s · "
-                                 + Math.round((tcard.cd ? tcard.cd.progress : 0) * 100) + "%")
+                              : ((tcard.sp / 1048576).toFixed(1) + " MB/s · "
+                                 + Math.round(tcard.pv * 100) + "%")
                         color: tcard.failed ? "#f0a0a0" : "#9fb6d8"
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -1237,16 +1280,17 @@ Item {
                     radius: 2
                     color: "#181c24"
                     Rectangle {
-                        width: Math.max(0, Math.min(1, (tcard.cd ? tcard.cd.progress : 0))) * parent.width
+                        width: Math.max(0, Math.min(1, tcard.pv)) * parent.width
                         height: 3
                         radius: 2
                         color: tcard.failed ? "#f87171" : Theme.accent
+                        // 真实进度也要平滑地"走过去"，而不是每 400ms 跳一格
+                        Behavior on width { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                     }
                     // 停滞时（速度归零但未完成）叠一条流光，表示"还在工作"而不是卡死
                     Rectangle {
                         id: shimmer
-                        visible: !tcard.failed && tcard.cd && tcard.cd.progress < 1
-                                 && (tcard.cd.speed || 0) <= 0
+                        visible: tcard.stalled
                         width: 72
                         height: 3
                         radius: 2
