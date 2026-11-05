@@ -16,7 +16,9 @@ Item {
     readonly property int sideW: (narrow ? Theme.sideWNarrow : Theme.sideW)
     property bool versionsOpen: false
     property bool accountOpen: false
-    readonly property bool fullOpen: versionsOpen || accountOpen
+    // 下载页与版本页/账户页同一套：侧栏宽度收到 0，页面淡入 + 右移 24
+    property bool downloadOpen: false
+    readonly property bool fullOpen: versionsOpen || accountOpen || downloadOpen
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
     readonly property bool loading: b ? b.microsoftLoginBusy : false
@@ -24,6 +26,7 @@ Item {
     Component.onCompleted: {
         if (Qt.application.arguments.indexOf("--ui-versions") >= 0) root.versionsOpen = true
         if (Qt.application.arguments.indexOf("--ui-account") >= 0) root.accountOpen = true
+        if (Qt.application.arguments.indexOf("--ui-download") >= 0) root.downloadOpen = true
     }
 
     Rectangle {
@@ -142,6 +145,28 @@ Item {
             anchors.fill: parent
             toast: toastHost
             onClose: root.accountOpen = false
+        }
+    }
+
+    // 下载页（全窗，与版本页同构：淡入 + 右移 24px）
+    Item {
+        id: downloadHost
+        anchors.fill: parent
+        visible: root.downloadOpen || opacity > 0.01
+        opacity: root.downloadOpen ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.durBase; easing.type: root.downloadOpen ? Theme.easeEnter : Theme.easeExit }
+        }
+        transform: Translate {
+            x: root.downloadOpen ? 0 : 24
+            Behavior on x {
+                NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
+            }
+        }
+        DownloadPage {
+            anchors.fill: parent
+            toast: toastHost
+            onClose: root.downloadOpen = false
         }
     }
 
