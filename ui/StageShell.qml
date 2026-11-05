@@ -18,6 +18,8 @@ Item {
     property bool accountOpen: false
     // 下载页与版本页/账户页同一套：侧栏宽度收到 0，页面淡入 + 右移 24
     property bool downloadOpen: false
+    // 下载进度：独立页面（不再借用 DownloadPage 的 mode=2 视图）
+    property bool progressOpen: false
     readonly property bool fullOpen: versionsOpen || accountOpen
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
@@ -28,7 +30,13 @@ Item {
         if (Qt.application.arguments.indexOf("--ui-account") >= 0) root.accountOpen = true
         if (Qt.application.arguments.indexOf("--ui-download") >= 0) {
             root.downloadOpen = true
+            root.progressOpen = false
             sideBar.currentLabel = "下载"
+        }
+        if (Qt.application.arguments.indexOf("--ui-progress") >= 0) {
+            root.progressOpen = true
+            root.downloadOpen = false
+            sideBar.currentLabel = "下载进度"
         }
     }
 
@@ -58,14 +66,18 @@ Item {
         // 点击侧栏"下载"进下载页；点其它主项离开（侧栏常驻，页面内不需要返回键）
         onNavActivated: (label) => {
             if (label === "下载") {
-                if (root.downloadOpen) downloadPage.resetToList()
+                // 侧栏「下载」= 下载列表页：从配置态或独立进度页回来都先回到列表
+                downloadPage.resetToList()
                 root.downloadOpen = true
+                root.progressOpen = false
             } else if (label === "下载进度") {
-                // 侧栏「下载进度」：直接进下载页的进度视图（mode = 2）
-                root.downloadOpen = true
-                downloadPage.mode = 2
+                // 侧栏「下载进度」：独立页面，与「下载」互不捆绑
+                root.progressOpen = true
+                root.downloadOpen = false
+                sideBar.currentLabel = "下载进度"
             } else if (label === "启动" || label === "联机" || label === "统计" || label === "设置") {
                 root.downloadOpen = false
+                root.progressOpen = false
             }
             // 其余子项（帮助文档 / 实用网站）暂未实现：保持当前页面不动
         }
@@ -101,7 +113,7 @@ Item {
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        enabled: !root.fullOpen && !root.downloadOpen
+        enabled: !root.fullOpen && !root.downloadOpen && !root.progressOpen
         hostWindow: root.hostWindow
         narrow: root.narrow
         toast: toastHost
@@ -188,14 +200,37 @@ Item {
             anchors.fill: parent
             toast: toastHost
             onClose: root.downloadOpen = false
-        }
-        // 页面内部视图变化时，侧栏高亮跟着走：进度视图 -> 「下载进度」，其余 -> 「下载」
-        Connections {
-            target: downloadPage
-            function onModeChanged() {
-                if (downloadPage.mode === 2) sideBar.currentLabel = "下载进度"
-                else if (sideBar.currentLabel === "下载进度") sideBar.currentLabel = "下载"
+            // 配置页点了「开始安装」：切到独立进度页，侧栏高亮跟随
+            onOpenProgress: {
+                root.progressOpen = true
+                root.downloadOpen = false
+                sideBar.currentLabel = "下载进度"
             }
+        }
+    }
+
+    // 下载进度（独立页，与下载页同构：淡入 + 轻微上移）
+    Item {
+        id: progressHost
+        anchors.left: sideBar.right
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        visible: root.progressOpen || opacity > 0.01
+        opacity: root.progressOpen ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.durBase; easing.type: root.progressOpen ? Theme.easeEnter : Theme.easeExit }
+        }
+        transform: Translate {
+            y: root.progressOpen ? 0 : 8
+            Behavior on y {
+                NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
+            }
+        }
+        ProgressPage {
+            id: progressPage
+            anchors.fill: parent
+            toast: toastHost
         }
     }
 

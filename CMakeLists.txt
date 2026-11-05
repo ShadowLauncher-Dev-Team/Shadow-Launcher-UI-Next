@@ -238,6 +238,7 @@ set_source_files_properties(ui/pages/StagePage.qml PROPERTIES QT_RESOURCE_ALIAS 
 set_source_files_properties(ui/pages/VersionPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/VersionPage.qml)
 set_source_files_properties(ui/pages/AccountPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/AccountPage.qml)
 set_source_files_properties(ui/pages/DownloadPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/DownloadPage.qml)
+set_source_files_properties(ui/pages/ProgressPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/ProgressPage.qml)
 set_source_files_properties(ui/LaunchOverlay.qml PROPERTIES QT_RESOURCE_ALIAS LaunchOverlay.qml)
 set_source_files_properties(ui/controls/SIcon.qml PROPERTIES QT_RESOURCE_ALIAS controls/SIcon.qml)
 set_source_files_properties(ui/controls/SButton.qml PROPERTIES QT_RESOURCE_ALIAS controls/SButton.qml)
@@ -261,6 +262,7 @@ qt_add_qml_module(ShadowLauncher
         ui/pages/VersionPage.qml
         ui/pages/AccountPage.qml
         ui/pages/DownloadPage.qml
+        ui/pages/ProgressPage.qml
         ui/LaunchOverlay.qml
         ui/controls/SIcon.qml
         ui/controls/SButton.qml
