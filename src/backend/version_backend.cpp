@@ -8305,7 +8305,9 @@ auto* ds = dlSession(it.key());
 
         // Build card from DownloadSession data
 
-        InstallCard c = ds->toCard(sid, sid, QStringLiteral("version"));
+        // 字节统计在本类的 DlState 上（非合并会话），传给 toCard 才能算 ETA
+        const DlState st = m_dlStates.value(sid);
+        InstallCard c = ds->toCard(sid, sid, QStringLiteral("version"), st.bytesDl, st.bytesTotal);
 
         // Ensure consistent name/type
 

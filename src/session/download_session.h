@@ -57,7 +57,9 @@ public:
     void clearFailure() { m_failed = false; m_error.clear(); emit progressUpdated(); }
 
     // ── 卡片数据导出 (适配旧 InstallCardModel) ──
-    InstallCard toCard(const QString& iid, const QString& name, const QString& type) const;
+    /// bytesDl/bytesTotal 由上层传入（非合并会话的字节统计在 VersionBackend::DlState 里）
+    InstallCard toCard(const QString& iid, const QString& name, const QString& type,
+                       qint64 bytesDl = -1, qint64 bytesTotal = -1) const;
 
 signals:
     void progressUpdated();     // 进度/速度变化 → 触发卡片增量更新
