@@ -65,6 +65,24 @@ ModpackInstallTask::ModpackInstallTask(QObject* parent)
             onMcInstallFinished(true);
             return;
         }
+        // ── 安装停摆检测（2026-11-05 实测修复）──
+        // 场景：加载器版本不存在 → Forge 安装器失败 → 后端安装收尾但**从不发
+        // installFinished(本会话 id)**；任务侧等不到信号、进度又只有 0.87，
+        // 上面的"p>=0.99"兜底永远不满足 → 永久 busy（实测卡死 5 分钟直到手动取消）。
+        // 规则：后端已不在安装 + 进度 30s 没变化 → 按失败收口（不依赖信号）。
+        if (!m_mcDone && m_installingMc && !m_vb->isInstalling()) {
+            if (qAbs(p - m_lastMcProgress) < 0.0001) {
+                if (++m_mcStallTicks >= 100) {   // 300ms × 100 = 30s
+                    emit logLine(tr("[追踪] MC/加载器安装停摆 30s（进度 %1），按失败收口").arg(p));
+                    m_installingMc = false;
+                    onMcInstallFinished(false);
+                    return;
+                }
+            } else {
+                m_lastMcProgress = p;
+                m_mcStallTicks = 0;
+            }
+        }
         // 速度单一来源（契约 §4）：直接读引擎的窗口值。
         // 旧实现这里还有一层"800ms 无字节 → 减半"的平滑 —— 引擎窗口（30×100ms≈3s）本身
         // 停流就会滑落归零，再加一层就会让速度出现"突然砍半"的假跳变（用户看到的"速度乱跳"之一）。
@@ -135,6 +153,8 @@ void ModpackInstallTask::start(const QString& zipPath, const QString& versionNam
     m_pendingFail.clear();
     m_failedModFiles.clear();
     m_finalizing = false;   // 新一轮任务：允许再次进入终态
+    m_lastMcProgress = -1.0;
+    m_mcStallTicks = 0;
     // 加载器重试状态复位
     m_loaderAutoRetryCount = 0;
     m_loaderRetryMode = false;
@@ -974,7 +994,8 @@ void ModpackInstallTask::downloadPackIconToVersionDir()
 bool ModpackInstallTask::loaderFailureRetryable() const
 {
     if (!m_vb || m_mcSessionId.isEmpty()) return false;
-    return m_vb->isLoaderFailure(m_mcSessionId);
+    // 2026-11-05：确定性失败（404/版本不存在）不再进"手动重试"模式，否则任务永久 busy。
+    return m_vb->isLoaderFailureRetryable(m_mcSessionId);
 }
 
 void ModpackInstallTask::startLoaderRetry()

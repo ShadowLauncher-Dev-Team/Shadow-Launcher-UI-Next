@@ -2974,6 +2974,13 @@ bool VersionBackend::isRetryableLoaderError(const QString& errMsg)
     if (errMsg.isEmpty()) return false;
     // 只对网络/超时类错误自动重试；配置/完整性/Java 配置类是确定失败，重试无意义。
     const QString e = errMsg.toLower();
+    // ── 确定性失败优先判定（2026-11-05 实测：forge-999.0.0 这种不存在的版本 → 404）──
+    // 旧逻辑只看"下载失败"等关键词就判可重试，于是 404 被当成网络抖动：
+    // 进入"手动重试加载器"模式，任务 busy 不会结束（实测卡死 5 分钟）。
+    if (e.contains(QStringLiteral("404")) || e.contains(QStringLiteral("not found"))
+        || e.contains(QStringLiteral("不存在")) || e.contains(QStringLiteral("http 4"))
+        || e.contains(QStringLiteral("校验失败")) || e.contains(QStringLiteral("sha1")))
+        return false;
     if (e.contains(QStringLiteral("超时")) || e.contains(QStringLiteral("timeout"))
         || e.contains(QStringLiteral("下载失败")) || e.contains(QStringLiteral("所有源均不可用"))
         || e.contains(QStringLiteral("无法连接")) || e.contains(QStringLiteral("网络")))
@@ -7495,6 +7502,13 @@ bool VersionBackend::isLoaderFailure(const QString& installId) const
     auto* ctx = mergedContext(installId);
     // 加载器终态失败：MC 已下载完成（mcDownloadDone）且 ctx 已标记 installFailed
     return ds && ds->isFailed() && ctx && ctx->installFailed && ctx->mcDownloadDone;
+}
+
+bool VersionBackend::isLoaderFailureRetryable(const QString& installId) const
+{
+    if (!isLoaderFailure(installId)) return false;
+    auto* ds = dlSession(installId);
+    return isRetryableLoaderError(ds ? ds->errorMessage() : QString());
 }
 
 bool VersionBackend::canRetryLoaderInstall(const QString& installId) const

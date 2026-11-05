@@ -248,6 +248,9 @@ public:
     bool isTaskCard(const QString& cardId) const { return m_taskCards.contains(cardId); }
     /// 合并安装会话是否处于「加载器失败（MC 已下载完成，可只重试加载器）」终态
     bool isLoaderFailure(const QString& installId) const;
+    /// 加载器失败是否可重试：isLoaderFailure + 错误原因判定（404/不存在/校验失败 = 不可重试）。
+    /// 2026-11-05 实测：forge-999.0.0 不存在 → 404 被当成网络抖动 → 任务进入"手动重试"模式永久 busy。
+    bool isLoaderFailureRetryable(const QString& installId) const;
     /// 该会话的加载器类型是否支持重试（forge/neoforge/fabric；quilt 等暂不支持）
     bool canRetryLoaderInstall(const QString& installId) const;
     /// 整合包任务卡片：设置「重试加载器」按钮可用性（失败卡保留 + 不自动消失）

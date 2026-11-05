@@ -139,6 +139,9 @@ private:
     qint64 m_lastBytesMs = 0;
     qint64 m_lastFileProgMs = 0; // fileProgress 回调节流（200ms）
     qreal m_modFrac = 0.0;       // 模组路完成比例（总进度合成用）
+    // ── MC/加载器安装停摆检测（2026-11-05 验收：加载器失败时 installFinished 没来 → 任务永久 busy）──
+    qreal m_lastMcProgress = -1.0;
+    int   m_mcStallTicks = 0;
     QString m_mcSessionId;       // MC 阶段轮询的会话 id（merged=targetName / vanilla=mcVersion）
     QTimer* m_mcPollTimer = nullptr;     // MC 阶段 300ms 轮询进度/速度/步骤
     QTimer* m_attachSyncTimer = nullptr; // 下载阶段 500ms 同步附件
