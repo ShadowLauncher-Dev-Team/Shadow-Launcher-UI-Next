@@ -9423,7 +9423,16 @@ void VersionBackend::destroyMergedContext(const QString& installId)
         ctx->installer->deleteLater();
     }
 
-    delete ctx;
+    // ── 延迟销毁（2026-11-05 取消崩溃修复）──
+    // 实测：cancel 后 ctx 在 0.9s 被 delete，而驿道安装器分片下载在 1.4s 后才重新启动，
+    // 其完成回调解引用已释放的 ctx → 0xFFFFFFFFFFFFFFFF 读冲突崩溃。
+    // 所有下载路径的超时上限是 20s（kRaceTimeoutMs），这里先标记 abandoned 让回调早退，
+    // 再把 delete 推迟 30s，覆盖所有在途请求与重试定时器。
+    ctx->failed = true;
+    ctx->abandoned = true;
+    QTimer::singleShot(30000, this, [ctx]() {
+        delete ctx;
+    });
 
     // If this was the last merged context, update installing state
     if (m_mergedContexts.isEmpty()) {

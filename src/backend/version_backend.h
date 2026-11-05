@@ -114,6 +114,9 @@ struct MergedInstallContext {
     bool loaderJarReady = false;  // loader JAR downloaded + verified
     bool bootstrapperDone = false;
     bool failed = false;
+    /// 上下文已废弃（取消/强制清理）：所有异步回调见到它必须立刻早退。
+    /// 与 failed 分开：failed 表示"安装失败待重试"，abandoned 表示"对象即将销毁，禁止再碰"。
+    bool abandoned = false;
     QString failReason;
 
     // ── 加载器失败重试状态 ──
