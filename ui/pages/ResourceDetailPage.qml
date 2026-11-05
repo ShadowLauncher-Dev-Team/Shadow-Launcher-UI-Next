@@ -72,8 +72,8 @@ Item {
                 sha1: d.sha1 || "",
                 size: d.size || 0,
                 downloads: d.downloads || 0,
-                gameVersions: d.game_version || (Array.isArray(d.game_versions) ? d.game_versions.join(", ") : ""),
-                loaders: Array.isArray(d.loaders) ? d.loaders.join(", ") : (d.loaders || "")
+                gameVersions: d.game_version || page.joinList(d.game_versions),
+                loaders: page.joinList(d.loaders)
             })
         }
         page.versions = out
@@ -132,6 +132,20 @@ Item {
             var l = page.b.resolveProjectLinks(page.title, page.slug, page.kind)
             return l && l.mrUrl ? l.mrUrl : (l && l.cfUrl ? l.cfUrl : "")
         } catch (e) { return "" }
+    }
+
+    // QStringList / QVariantList / JS array 通吃（后端 loaders 是 QStringList，
+    // 直接 Array.isArray 判断会落空，取值会退化成单字符）
+    function joinList(v) {
+        if (!v) return ""
+        if (typeof v === "string") return v
+        if (Array.isArray(v)) return v.join(", ")
+        if (typeof v.length === "number") {
+            var out = []
+            for (var i = 0; i < v.length; ++i) out.push(String(v[i]))
+            return out.join(", ")
+        }
+        return String(v)
     }
 
     function fmtSize(n) {
@@ -313,10 +327,10 @@ Item {
                 Layout.fillWidth: true
                 height: 26
                 spacing: 0
-                Text { width: parent.width * 0.38; text: "文件"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                Text { width: parent.width * 0.16; text: "游戏版本"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                Text { width: parent.width * 0.16; text: "加载器"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                Text { width: parent.width * 0.15; text: "发布时间"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                Text { width: parent.width * 0.35; text: "文件"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                Text { width: parent.width * 0.15; text: "游戏版本"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                Text { width: parent.width * 0.15; text: "加载器"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                Text { width: parent.width * 0.17; text: "发布时间"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
                 Text { width: parent.width * 0.15; text: "大小"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
             }
 
@@ -334,10 +348,10 @@ Item {
                     Row {
                         anchors.fill: parent
                         anchors.leftMargin: 8
-                        Text { width: parent.width * 0.38; anchors.verticalCenter: parent.verticalCenter; text: modelData.filename || modelData.version; color: page.picked === index ? Theme.fg : Theme.fg2; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideMiddle }
-                        Text { width: parent.width * 0.16; anchors.verticalCenter: parent.verticalCenter; text: modelData.gameVersions.length > 0 ? modelData.gameVersions : "—"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideRight }
-                        Text { width: parent.width * 0.16; anchors.verticalCenter: parent.verticalCenter; text: modelData.loaders.length > 0 ? modelData.loaders : "—"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideRight }
-                        Text { width: parent.width * 0.15; anchors.verticalCenter: parent.verticalCenter; text: modelData.date.length > 0 ? modelData.date : "—"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                        Text { width: parent.width * 0.35; anchors.verticalCenter: parent.verticalCenter; text: modelData.filename || modelData.version; color: page.picked === index ? Theme.fg : Theme.fg2; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideMiddle; clip: true }
+                        Text { width: parent.width * 0.15; anchors.verticalCenter: parent.verticalCenter; text: modelData.gameVersions.length > 0 ? modelData.gameVersions : "—"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideRight; clip: true }
+                        Text { width: parent.width * 0.15; anchors.verticalCenter: parent.verticalCenter; text: modelData.loaders.length > 0 ? modelData.loaders : "—"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideRight; clip: true }
+                        Text { width: parent.width * 0.17; anchors.verticalCenter: parent.verticalCenter; text: modelData.date.length > 0 ? modelData.date : "—"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideRight; clip: true }
                         Text { width: parent.width * 0.15; anchors.verticalCenter: parent.verticalCenter; text: page.fmtSize(modelData.size); color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
                     }
                     MouseArea {
