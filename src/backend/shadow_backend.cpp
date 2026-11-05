@@ -431,8 +431,12 @@ ShadowBackend::ShadowBackend(QObject* parent)
             this, &ShadowBackend::logMessage);
 
     // ── Signal forwarding: VersionBackend → ShadowBackend ──
-    connect(m_version, &VersionBackend::versionListReady,
-            this, &ShadowBackend::versionListReady);
+    connect(m_version, &VersionBackend::versionListReady, this, [this]() {
+        m_versionListCacheValid = false;
+        m_versionListCache.clear();
+        m_versionDateMapCache.clear();
+        emit versionListReady();
+    });
     connect(m_version, &VersionBackend::installedVersionsChanged,
             this, [this]() {
                 // 已安装列表就绪时恢复上次选中版本——只恢复「真实存在」的版本（installedIds）。
@@ -1175,7 +1179,27 @@ QStringList ShadowBackend::versionIds() const {
 }
 
 QVariantList ShadowBackend::versionList() const {
-    return m_version->versionInfoList();
+    if (!m_versionListCacheValid) {
+        m_versionListCache = m_version->versionInfoList();
+        m_versionDateMapCache.clear();
+        m_versionListCacheValid = true;
+    }
+    return m_versionListCache;
+}
+
+QVariantMap ShadowBackend::versionDateMap() const {
+    if (!m_versionListCacheValid) {
+        m_versionListCache = m_version->versionInfoList();
+        m_versionListCacheValid = true;
+    }
+    if (m_versionDateMapCache.isEmpty() && !m_versionListCache.isEmpty()) {
+        for (const auto& v : m_versionListCache) {
+            const QVariantMap m = v.toMap();
+            m_versionDateMapCache.insert(m.value(QStringLiteral("id")).toString(),
+                                          m.value(QStringLiteral("date")));
+        }
+    }
+    return m_versionDateMapCache;
 }
 
 QStringList ShadowBackend::installedVersions() const {

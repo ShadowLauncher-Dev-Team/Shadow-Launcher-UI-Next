@@ -87,6 +87,11 @@ class ShadowBackend : public QObject {
     Q_PROPERTY(QString lastPlayedLabel READ lastPlayedLabel NOTIFY lastPlayedChanged)
     Q_PROPERTY(QStringList versionIds READ versionIds NOTIFY versionListReady)
     Q_PROPERTY(QVariantList versionList READ versionList NOTIFY versionListReady)
+    // 列表页日期查询表（id → yyyy-MM-dd）：QML 若直接逐项访问 QVariantList，
+    // 每次下标访问都会回调一次 C++ getter（QVariantList 在 QML 里是序列包装，
+    // 不是 JS 数组副本），907 个版本 × 重建 907 个 map = O(n²) ≈ 7 秒卡死。
+    // 这里一次性算成 QVariantMap（QML 侧转 JS 对象一次完成），QML 只查表。
+    Q_PROPERTY(QVariantMap versionDateMap READ versionDateMap NOTIFY versionListReady)
     Q_PROPERTY(QStringList releaseVersions READ releaseVersions NOTIFY versionListReady)
     Q_PROPERTY(QStringList snapshotVersions READ snapshotVersions NOTIFY versionListReady)
     Q_PROPERTY(QStringList oldVersions READ oldVersions NOTIFY versionListReady)
@@ -280,6 +285,7 @@ public:
     void recordLastPlayed(const QString& versionId);
     QStringList versionIds() const;
     QVariantList versionList() const;
+    QVariantMap versionDateMap() const;
     QStringList releaseVersions() const;
     QStringList snapshotVersions() const;
     QStringList oldVersions() const;
@@ -1020,6 +1026,10 @@ private:
     QString m_verifyReportPath;
     QString m_gameDir;
     QVariantList m_versionDetails;
+    // 版本列表/日期表缓存（versionListReady 时失效）：避免 QML 序列逐项访问时反复重建
+    mutable QVariantList m_versionListCache;
+    mutable QVariantMap m_versionDateMapCache;
+    mutable bool m_versionListCacheValid = false;
     QVariantMap m_currentVersionSummary;
 
     // ── Async version scanning state ──

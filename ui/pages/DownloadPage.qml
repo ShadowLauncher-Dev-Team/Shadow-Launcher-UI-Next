@@ -125,15 +125,10 @@ Item {
         }
         return out
     }
-    readonly property var dateMap: (function() {
-        var m = {}
-        var vl = page.b ? page.b.versionList : []
-        for (var i = 0; i < vl.length; ++i) {
-            var v = vl[i]
-            if (v && v.id) m[v.id] = v.date || ""
-        }
-        return m
-    })()
+    // QML 里 QVariantList 是"序列包装"：逐项访问 vl[i] 会每次回调 C++ getter，
+    // 907 个版本就是 907 次 × 重建 907 条 → O(n²) ≈ 7 s 卡死。
+    // 后端已提供一次性构造的 id→date 表（QVariantMap，转 JS 对象一次完成）。
+    readonly property var dateMap: (b ? b.versionDateMap : ({}))
 
     function pickVersion(vid) {
         page.picked = vid
