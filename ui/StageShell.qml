@@ -64,8 +64,6 @@ Item {
                 // 侧栏「下载进度」：直接进下载页的进度视图（mode = 2）
                 root.downloadOpen = true
                 downloadPage.mode = 2
-                // 侧栏高亮仍挂在主项「下载」上，避免主项失去选中态
-                sideBar.currentLabel = "下载"
             } else if (label === "启动" || label === "联机" || label === "统计" || label === "设置") {
                 root.downloadOpen = false
             }
@@ -190,6 +188,14 @@ Item {
             anchors.fill: parent
             toast: toastHost
             onClose: root.downloadOpen = false
+        }
+        // 页面内部视图变化时，侧栏高亮跟着走：进度视图 -> 「下载进度」，其余 -> 「下载」
+        Connections {
+            target: downloadPage
+            function onModeChanged() {
+                if (downloadPage.mode === 2) sideBar.currentLabel = "下载进度"
+                else if (sideBar.currentLabel === "下载进度") sideBar.currentLabel = "下载"
+            }
         }
     }
 

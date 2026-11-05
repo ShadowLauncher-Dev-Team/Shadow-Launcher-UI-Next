@@ -104,7 +104,8 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 38
             readonly property bool isMain: modelData.group === "main"
-            readonly property bool sel: row.isMain && root.currentLabel === modelData.label
+            // 子项（下载进度等）也能被高亮：选中态就是"当前导航项"
+            readonly property bool sel: root.currentLabel === modelData.label
 
             Rectangle {
                 anchors.fill: parent
