@@ -46,6 +46,7 @@ public:
         SpeedRole,
         PhaseRole,
         RemainingRole,
+        EtaRole,
         StepsRole,
         FailedRole,
         ErrorRole,

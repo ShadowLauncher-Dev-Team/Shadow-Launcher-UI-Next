@@ -7647,6 +7647,8 @@ QVariant InstallCardModel::data(const QModelIndex& index, int role) const {
 
     case RemainingRole: return c.remaining;
 
+        case EtaRole: return c.etaSeconds;
+
     case StepsRole:     return QVariant::fromValue(c.steps);  // QVariantList → JS array directly
 
     case FailedRole:    return c.failed;
@@ -7706,6 +7708,8 @@ QHash<int, QByteArray> InstallCardModel::roleNames() const {
         {PhaseRole, "phase"},
 
         {RemainingRole, "remaining"},
+
+        {EtaRole, "eta"},
 
         {StepsRole, "steps"},
 

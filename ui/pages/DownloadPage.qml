@@ -161,6 +161,14 @@ Item {
         return t
     }
 
+    function fmtEta(sec) {
+        sec = Math.round(sec || 0)
+        if (sec <= 0) return "—"
+        if (sec < 60) return sec + " 秒"
+        if (sec < 3600) return Math.round(sec / 60) + " 分钟"
+        return Math.floor(sec / 3600) + " 小时 " + Math.round((sec % 3600) / 60) + " 分"
+    }
+
     function canInstall() {
         if (page.nameConflict) return false
         if (page.activeLoader.length === 0) return true
@@ -204,7 +212,7 @@ Item {
         if (!b || !b.installCardsModel) return
         var m = b.installCardsModel
         if (!m.cardDataAt) return
-        var list = [], sp = 0, run = 0, prog = 0, steps = 0
+        var list = [], sp = 0, run = 0, prog = 0, eta = 0
         for (var i = 0; i < m.count; ++i) {
             var r = m.cardDataAt(i)
             if (!r) continue
@@ -219,7 +227,7 @@ Item {
             }
             list.push({
                 iid: r.iid, name: r.name, phase: r.phase,
-                progress: r.progress || 0, speed: r.speed || 0,
+                progress: r.progress || 0, speed: r.speed || 0, eta: r.eta || 0,
                 steps: r.steps || [], failed: r.failed, error: r.error || "",
                 canCancel: r.canCancel, canRetry: r.canRetry
             })
@@ -227,14 +235,14 @@ Item {
                 run++
                 sp += (r.speed || 0)
                 prog = Math.max(prog, r.progress || 0)
-                steps = Math.max(steps, r.remaining || 0)
+                eta = Math.max(eta, r.eta || 0)
             }
         }
         page.cards = list
         page.totalSpeed = sp
         page.totalProgress = prog
         page.runningCount = run
-        page.remainText = steps > 0 ? (steps + " 步") : "—"
+        page.remainText = page.fmtEta(eta)
     }
 
     Component.onCompleted: {

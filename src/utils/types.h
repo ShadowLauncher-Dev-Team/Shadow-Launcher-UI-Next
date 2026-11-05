@@ -141,6 +141,8 @@ struct InstallCard {
     qint64 speed = 0;
     QString phase;
     int remaining = 0;
+    // 剩余下载时间（秒）；0 表示无法估算（校验阶段/无速度/无剩余字节）
+    qint64 etaSeconds = 0;
     QVariantList steps;
     bool failed = false;
     QString error;
