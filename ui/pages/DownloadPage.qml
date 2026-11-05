@@ -284,20 +284,11 @@ Item {
         return out
     }
 
-    // 全局旋转角（保留属性：旧实现用它驱动几何弧；现在流程标记改读烘焙帧相位）
+    // 全局旋转角（保留属性：旧实现用它驱动几何弧；现在流程标记是 C++ 场景图 item，自走相位）
     property real spinAngle: 0
-    // 烘焙帧相位：0..336 走完 11.2 秒，正好一整个无缝循环（336 帧 @30fps）
-    property real spinPhase: 0
     // 进度条流光相位：页面级 0..1，delegate 重建不会打断
     property real flowPhase: 0
     property bool downloading: cardModel.count > 0
-    NumberAnimation on spinPhase {
-        running: page.downloading
-        loops: Animation.Infinite
-        from: 0
-        to: 336
-        duration: Theme.durLoop * 28 / 3
-    }
     NumberAnimation on flowPhase {
         running: page.downloading
         loops: Animation.Infinite
@@ -1537,19 +1528,16 @@ Item {
                                     border.width: 1.5
                                 }
 
-                                // 预烘焙帧动画（336 帧 / 16 列网格 / 32px）：运行时只换贴图，
-                                // 不重绘几何、不插值；相位挂在页面级，delegate 重建也不会跳帧。
-                                Image {
-                                    id: ring
+                                // 不确定环：C++ 场景图 item（QQuickItem + QSGNode，见 src/ui_next/dl_spinner_item.cpp）。
+                                // 几何在 updatePaintNode 里重建，相位由节点自己的 16ms 定时器推进，
+                                // QML 侧没有任何逐帧绑定——卡片数据每 400ms 刷新、delegate 重建都打断不了它。
+                                DlSpinner {
                                     visible: st === "active"
                                     width: 16
                                     height: 16
-                                    smooth: true
-                                    source: "qrc:/qt/qml/ShadowLauncher/qml/icons/anim/spin-f.png"
-                                    sourceClipRect: {
-                                        var f = Math.floor(page.spinPhase) % 336
-                                        return Qt.rect((f % 16) * 32, Math.floor(f / 16) * 32, 32, 32)
-                                    }
+                                    running: visible
+                                    color: "#3b82f6"
+                                    trackColor: "#232a34"
                                 }
                             }
                             Text {

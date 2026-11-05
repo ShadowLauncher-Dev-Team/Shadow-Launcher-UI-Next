@@ -118,6 +118,8 @@ set(SOURCES
     # Independent next-generation UI presentation layer
     src/ui_next/appearance_controller.cpp
     src/ui_next/ui_next_presenter.cpp
+    # 下载步骤不确定环：QQuickItem + QSGNode（照 Qt Material BusyIndicator 的结构）
+    src/ui_next/dl_spinner_item.cpp
 )
 
 set(HEADERS
@@ -172,6 +174,7 @@ set(HEADERS
 
     src/ui_next/appearance_controller.h
     src/ui_next/ui_next_presenter.h
+    src/ui_next/dl_spinner_item.h
 
     src/multiplayer/room_code.cpp
     src/multiplayer/room_code.h
