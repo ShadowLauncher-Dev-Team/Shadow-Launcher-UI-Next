@@ -23,6 +23,7 @@ Item {
     readonly property int pageSize: tabIndex === 2 ? 20 : (tabIndex === 2 ? 20 : 30)
     property var pool: []
     property bool busy: false
+    property bool _autoOpened: false
 
     signal openDetail(string kind, var item)
 
@@ -71,6 +72,17 @@ Item {
                 downloads: r.downloads || 0,
                 source: r.source || "Modrinth",
                 dateModified: r.dateModified || ""
+            })
+        }
+        // 验收钩子：--ui-detail-first 自动打开第一条（截图用，不影响正常交互）
+        if (!page._autoOpened && listModel.count > 0
+                && Qt.application.arguments.indexOf("--ui-detail-first") >= 0) {
+            page._autoOpened = true
+            var r0 = page.pool[page.pageNo * page.pageSize] || ({})
+            page.openDetail(page.kind, {
+                slug: r0.slug || "", title: r0.title || "", zh: r0.zh || "",
+                desc: r0.desc || "", icon: r0.icon || "", downloads: r0.downloads || 0,
+                source: r0.source || "Modrinth", dateModified: r0.dateModified || ""
             })
         }
     }

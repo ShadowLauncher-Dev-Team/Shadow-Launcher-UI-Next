@@ -248,6 +248,7 @@ set_source_files_properties(ui/controls/SMinecraftHead.qml PROPERTIES QT_RESOURC
 set_source_files_properties(ui/controls/SLoadingBar.qml PROPERTIES QT_RESOURCE_ALIAS controls/SLoadingBar.qml)
 set_source_files_properties(ui/controls/ResourceTile.qml PROPERTIES QT_RESOURCE_ALIAS controls/ResourceTile.qml)
 set_source_files_properties(ui/pages/ResourcePage.qml PROPERTIES QT_RESOURCE_ALIAS pages/ResourcePage.qml)
+set_source_files_properties(ui/pages/ResourceDetailPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/ResourceDetailPage.qml)
 set_source_files_properties(ui/ToastHost.qml PROPERTIES QT_RESOURCE_ALIAS ToastHost.qml)
 
 qt_add_qml_module(ShadowLauncher
@@ -274,6 +275,7 @@ qt_add_qml_module(ShadowLauncher
         ui/controls/SLoadingBar.qml
         ui/controls/ResourceTile.qml
         ui/pages/ResourcePage.qml
+        ui/pages/ResourceDetailPage.qml
         ui/ToastHost.qml
 )
 

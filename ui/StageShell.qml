@@ -20,11 +20,15 @@ Item {
     property bool downloadOpen: false
     // 下载进度：独立页面（不再借用 DownloadPage 的 mode=2 视图）
     property bool progressOpen: false
+    // 资源详情页（从资源库卡片打开）
+    property bool resDetailOpen: false
     readonly property bool fullOpen: versionsOpen || accountOpen
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
     // 登录这类不确定等待 + 资源库在途请求，统一走顶部 SLoadingBar
-    readonly property bool loading: (b ? b.microsoftLoginBusy : false) || (downloadPage ? downloadPage.resourceBusy : false)
+    readonly property bool loading: (b ? b.microsoftLoginBusy : false)
+        || (downloadPage ? downloadPage.resourceBusy : false)
+        || (resDetail ? resDetail.loading : false)
 
     Component.onCompleted: {
         if (Qt.application.arguments.indexOf("--ui-versions") >= 0) root.versionsOpen = true
@@ -207,6 +211,36 @@ Item {
                 root.downloadOpen = false
                 sideBar.currentLabel = "下载进度"
             }
+            onOpenResourceDetail: (kind, item) => {
+                resDetail.kind = kind
+                resDetail.item = item
+                root.resDetailOpen = true
+            }
+        }
+    }
+
+    // 资源详情（覆盖在下载页之上，同层级淡入）
+    Item {
+        id: resDetailHost
+        anchors.left: sideBar.right
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        visible: root.resDetailOpen || opacity > 0.01
+        opacity: root.resDetailOpen ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.durBase; easing.type: root.resDetailOpen ? Theme.easeEnter : Theme.easeExit }
+        }
+
+        ResourceDetailPage {
+            id: resDetail
+            anchors.fill: parent
+            anchors.leftMargin: 28
+            anchors.rightMargin: 28
+            anchors.topMargin: 16
+            anchors.bottomMargin: 20
+            toast: toastHost
+            onBack: root.resDetailOpen = false
         }
     }
 

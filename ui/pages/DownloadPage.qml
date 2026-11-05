@@ -19,6 +19,8 @@ Item {
     readonly property int padR: narrow ? 28 : 72
     readonly property int topH: narrow ? 56 : 64
     signal close()
+    /// 资源库点了卡片：交给外壳打开详情页
+    signal openResourceDetail(string kind, var item)
     /// 资源库是否有在途请求（外壳顶部加载条聚合用）
     readonly property bool resourceBusy: resourceView ? resourceView.busy : false
     // 安装已启动：交给外壳切到独立的「下载进度」页（本页不再持有进度视图）
@@ -449,6 +451,7 @@ Item {
             visible: page.tab !== 0
             tabIndex: page.tab
             toast: page.toast
+            onOpenDetail: (kind, item) => page.openResourceDetail(kind, item)
         }
 
         // 筛选：分段控件（与主页其它页的 seg 同语言，不用旧 UI 的圆胶囊）
