@@ -66,13 +66,13 @@ Item {
             var d = details[list[i]] || ({})
             out.push({
                 version: list[i],
-                date: d.date || "",
+                date: d.date_published || d.date || "",
                 url: d.url || "",
                 filename: d.filename || "",
                 sha1: d.sha1 || "",
                 size: d.size || 0,
                 downloads: d.downloads || 0,
-                gameVersions: Array.isArray(d.gameVersions) ? d.gameVersions.join(", ") : (d.gameVersions || ""),
+                gameVersions: d.game_version || (Array.isArray(d.game_versions) ? d.game_versions.join(", ") : ""),
                 loaders: Array.isArray(d.loaders) ? d.loaders.join(", ") : (d.loaders || "")
             })
         }
@@ -313,9 +313,11 @@ Item {
                 Layout.fillWidth: true
                 height: 26
                 spacing: 0
-                Text { width: parent.width * 0.56; text: "文件"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                Text { width: parent.width * 0.22; text: "发布时间"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                Text { width: parent.width * 0.22; text: "大小"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                Text { width: parent.width * 0.38; text: "文件"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                Text { width: parent.width * 0.16; text: "游戏版本"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                Text { width: parent.width * 0.16; text: "加载器"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                Text { width: parent.width * 0.15; text: "发布时间"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                Text { width: parent.width * 0.15; text: "大小"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
             }
 
             ListView {
@@ -332,9 +334,11 @@ Item {
                     Row {
                         anchors.fill: parent
                         anchors.leftMargin: 8
-                        Text { width: parent.width * 0.56; anchors.verticalCenter: parent.verticalCenter; text: modelData.filename || modelData.version; color: page.picked === index ? Theme.fg : Theme.fg2; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideMiddle }
-                        Text { width: parent.width * 0.22; anchors.verticalCenter: parent.verticalCenter; text: modelData.date.length > 0 ? modelData.date : "—"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                        Text { width: parent.width * 0.22; anchors.verticalCenter: parent.verticalCenter; text: page.fmtSize(modelData.size); color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                        Text { width: parent.width * 0.38; anchors.verticalCenter: parent.verticalCenter; text: modelData.filename || modelData.version; color: page.picked === index ? Theme.fg : Theme.fg2; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideMiddle }
+                        Text { width: parent.width * 0.16; anchors.verticalCenter: parent.verticalCenter; text: modelData.gameVersions.length > 0 ? modelData.gameVersions : "—"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideRight }
+                        Text { width: parent.width * 0.16; anchors.verticalCenter: parent.verticalCenter; text: modelData.loaders.length > 0 ? modelData.loaders : "—"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideRight }
+                        Text { width: parent.width * 0.15; anchors.verticalCenter: parent.verticalCenter; text: modelData.date.length > 0 ? modelData.date : "—"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                        Text { width: parent.width * 0.15; anchors.verticalCenter: parent.verticalCenter; text: page.fmtSize(modelData.size); color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
                     }
                     MouseArea {
                         id: rowHover
