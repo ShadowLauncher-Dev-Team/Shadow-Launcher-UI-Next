@@ -18,7 +18,7 @@ Item {
     property bool accountOpen: false
     // 下载页与版本页/账户页同一套：侧栏宽度收到 0，页面淡入 + 右移 24
     property bool downloadOpen: false
-    readonly property bool fullOpen: versionsOpen || accountOpen || downloadOpen
+    readonly property bool fullOpen: versionsOpen || accountOpen
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
     readonly property bool loading: b ? b.microsoftLoginBusy : false
@@ -26,7 +26,10 @@ Item {
     Component.onCompleted: {
         if (Qt.application.arguments.indexOf("--ui-versions") >= 0) root.versionsOpen = true
         if (Qt.application.arguments.indexOf("--ui-account") >= 0) root.accountOpen = true
-        if (Qt.application.arguments.indexOf("--ui-download") >= 0) root.downloadOpen = true
+        if (Qt.application.arguments.indexOf("--ui-download") >= 0) {
+            root.downloadOpen = true
+            sideBar.currentLabel = "下载"
+        }
     }
 
     Rectangle {
@@ -52,6 +55,15 @@ Item {
         width: root.fullOpen ? 0 : root.sideW
         narrow: root.narrow
         hostWindow: root.hostWindow
+        // 点击侧栏"下载"进下载页；点其它主项离开（侧栏常驻，页面内不需要返回键）
+        onNavActivated: (label) => {
+            if (label === "下载") {
+                if (root.downloadOpen) downloadPage.resetToList()
+                root.downloadOpen = true
+            } else {
+                root.downloadOpen = false
+            }
+        }
         // 快起：前 40% 时间就收掉大部分宽度，与页面淡入同帧开始，视觉上是一次动作
         Behavior on width {
             NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
@@ -84,7 +96,7 @@ Item {
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        enabled: !root.fullOpen
+        enabled: !root.fullOpen && !root.downloadOpen
         hostWindow: root.hostWindow
         narrow: root.narrow
         toast: toastHost
@@ -151,19 +163,23 @@ Item {
     // 下载页（全窗，与版本页同构：淡入 + 右移 24px）
     Item {
         id: downloadHost
-        anchors.fill: parent
+        anchors.left: sideBar.right
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
         visible: root.downloadOpen || opacity > 0.01
         opacity: root.downloadOpen ? 1 : 0
         Behavior on opacity {
             NumberAnimation { duration: Theme.durBase; easing.type: root.downloadOpen ? Theme.easeEnter : Theme.easeExit }
         }
         transform: Translate {
-            x: root.downloadOpen ? 0 : 24
-            Behavior on x {
+            y: root.downloadOpen ? 0 : 8
+            Behavior on y {
                 NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
             }
         }
         DownloadPage {
+            id: downloadPage
             anchors.fill: parent
             toast: toastHost
             onClose: root.downloadOpen = false

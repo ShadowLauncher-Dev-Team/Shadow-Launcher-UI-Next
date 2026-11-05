@@ -96,6 +96,9 @@ Item {
         return "#5ee08f"
     }
 
+    // Sidebar 再次点"下载"时回到列表（已在本页时）
+    function resetToList() { page.mode = 0; page.search = "" }
+
     function pickVersion(vid) {
         page.picked = vid
         page.instName = vid
@@ -204,21 +207,20 @@ Item {
             anchors.left: parent.left
             anchors.leftMargin: page.padH
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 12
+            spacing: 10
 
+            // 仅配置页需要"回列表"（列表页本身由侧栏进入，不需要返回）
             Rectangle {
+                visible: page.mode === 1
                 width: 30; height: 30; radius: Theme.rSm
-                color: backHover.containsMouse ? "#12151c" : "transparent"
+                color: cfgBackHover.containsMouse ? "#12151c" : "transparent"
                 SIcon { anchors.centerIn: parent; name: "arrow-left"; size: 16; color: Theme.fg2 }
                 MouseArea {
-                    id: backHover
+                    id: cfgBackHover
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (page.mode === 1) page.mode = 0
-                        else page.close()
-                    }
+                    onClicked: page.mode = 0
                 }
             }
             Text {
@@ -343,50 +345,52 @@ Item {
             font.pixelSize: 13
         }
 
-        // 筛选 pills
-        Row {
+        // 筛选：分段控件（与主页其它页的 seg 同语言，不用旧 UI 的圆胶囊）
+        Rectangle {
             id: filterRow
             visible: page.tab === 0
-            spacing: 6
-            Repeater {
-                model: page.filters
-                delegate: Rectangle {
-                    height: 30
-                    width: fTxt.implicitWidth + fCnt.implicitWidth + 30
-                    radius: 15
-                    color: page.filter === modelData.key ? Theme.accent : "#0d1016"
-                    border.color: page.filter === modelData.key ? Theme.accent : Theme.line2
-                    border.width: 1
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 5
-                        SIcon {
-                            name: modelData.key === 0 ? "check-circle" : (modelData.key === 1 ? "flask-conical" : (modelData.key === 2 ? "landmark" : "sparkles"))
-                            size: 13
-                            color: page.filter === modelData.key ? "#ffffff" : Theme.fg3
-                            anchors.verticalCenter: parent.verticalCenter
+            width: segContent.width + 4
+            height: 32
+            radius: Theme.rSm
+            color: "#0d1016"
+            border.color: Theme.line2
+            border.width: 1
+
+            Row {
+                id: segContent
+                anchors.centerIn: parent
+                spacing: 2
+                Repeater {
+                    model: page.filters
+                    delegate: Rectangle {
+                        height: 28
+                        width: segLabel.implicitWidth + segCnt.implicitWidth + 24
+                        radius: 6
+                        color: page.filter === modelData.key ? "#20262f" : "transparent"
+                        Row {
+                            anchors.centerIn: parent
+                            spacing: 5
+                            Text {
+                                id: segLabel
+                                text: modelData.label
+                                color: page.filter === modelData.key ? "#ffffff" : Theme.fg2
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 12
+                                font.weight: page.filter === modelData.key ? Font.DemiBold : Font.Normal
+                            }
+                            Text {
+                                id: segCnt
+                                text: page.countFor(modelData.key)
+                                color: page.filter === modelData.key ? "#9fb6d8" : Theme.fg3
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
                         }
-                        Text {
-                            id: fTxt
-                            text: modelData.label
-                            color: page.filter === modelData.key ? "#ffffff" : Theme.fg2
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 12
-                            anchors.verticalCenter: parent.verticalCenter
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: page.filter = modelData.key
                         }
-                        Text {
-                            id: fCnt
-                            text: "(" + page.countFor(modelData.key) + ")"
-                            color: page.filter === modelData.key ? "#dbeafe" : Theme.fg3
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: page.filter = modelData.key
                     }
                 }
             }

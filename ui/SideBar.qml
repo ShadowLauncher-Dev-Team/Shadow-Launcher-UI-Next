@@ -8,6 +8,8 @@ Item {
     property bool narrow: false
     property string currentLabel: "启动"
     property Window hostWindow: null
+    /// 主菜单点击（StageShell 据此切换内容区页面）
+    signal navActivated(string label)
 
     implicitWidth: narrow ? Theme.sideWNarrow : Theme.sideW
     clip: true
@@ -150,6 +152,7 @@ Item {
                 onClicked: {
                     if (row.isMain) {
                         root.currentLabel = modelData.label
+                        root.navActivated(modelData.label)
                         console.info("[ui] nav ->", modelData.label)
                     }
                 }
