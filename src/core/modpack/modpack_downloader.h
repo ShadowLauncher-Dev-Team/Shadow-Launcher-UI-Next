@@ -51,7 +51,12 @@ class ModpackDownloader : public QObject {
     static constexpr int kConcurrentStartup = 3;  // 每轮批量启动上限
     static constexpr int kCleanupDelayMs = 2000; // 取消后延迟清理（等 abort/worker 退出）
     static constexpr int kBatchRetryLimit = 2;    // 批次 API 失败重试次数（退避 1s/3s）
-    static constexpr int kStallTimeoutMs = 60000; // 下载阶段无字节进展判失败阈值
+    // 下载阶段无字节进展判失败阈值（2026-11-05 验收调整：60s → 240s）
+// 依据：引擎的文件级重试退避是 5+10+15+20=50s 纯退避，再叠加每轮失败的尝试耗时
+// （多源 × 15~30s 空闲超时），可自愈的抖动零字节窗口约 230s。旧值 60s 会在引擎
+// 仍按设计重试时把整包判死（failRemaining 一次性标 fail，丢掉剩余 4 轮预算）。
+// 取 240s：略大于 horizon，且仍能在真正挂死时兜底（4 分钟内必有结论）。
+static constexpr int kStallTimeoutMs = 240000;
     static constexpr int kStallCheckIntervalMs = 5000;
     Q_OBJECT
 public:
