@@ -21,6 +21,10 @@ Rectangle {
     property string gameVersions: ""
     property string loaders: ""
     property string dateModified: ""
+    // 资源包/数据包用到的标签 JSON（网格卡片不展示，保留以兼容原 delegate 传参）
+    property string categoriesJson: "[]"
+    property string featuresJson: "[]"
+    property string resolutionsJson: "[]"
 
     signal clicked()
 

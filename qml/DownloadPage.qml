@@ -1246,11 +1246,15 @@ Rectangle {
                 ScrollBar.vertical.policy: ScrollBar.AsNeeded
                 Component.onCompleted: contentItem.flickDeceleration = 250
 
-                ListView {
+                GridView {
                     id: shaderCardView
                     anchors.fill: parent
                     model: shaderResultsModel
-                    spacing: 6; cacheBuffer: 200
+                    readonly property int gap: 10
+                    readonly property int cols: width >= 1000 ? 4 : (width >= 740 ? 3 : 2)
+                    cellWidth: Math.floor((width - (cols - 1) * gap) / cols)
+                    cellHeight: 156
+                    cacheBuffer: 400
                     onAtYEndChanged: { if (atYEnd) shaderTab.prefetchNextShaderPage() }
                     clip: true
 
@@ -1270,8 +1274,9 @@ Rectangle {
                         onNextClicked: shaderTab.doSearch(shaderTab.shaderCurrentPage + 1)
                     }
 
-                    delegate: DownloadCard {
-                        width: shaderCardView.width
+                    delegate: ResourceTile {
+                        width: shaderCardView.cellWidth - shaderCardView.gap
+                        height: shaderCardView.cellHeight - shaderCardView.gap
                         title: model.title || ""
                         zh: model.zh || ""
                         description: model.desc || ""
@@ -1368,9 +1373,13 @@ Rectangle {
                 Component.onCompleted: contentItem.flickDeceleration = 250
                 
 
-                ListView {
+                GridView {
                     id: rpListView
-                    anchors.fill: parent; spacing: 6
+                    anchors.fill: parent
+                    readonly property int gap: 10
+                    readonly property int cols: width >= 1000 ? 4 : (width >= 740 ? 3 : 2)
+                    cellWidth: Math.floor((width - (cols - 1) * gap) / cols)
+                    cellHeight: 156
                     model: rpResultsModel
                     cacheBuffer: 200
                     onAtYEndChanged: { if (atYEnd) page.prefetchRpNextPage() }
@@ -1390,8 +1399,9 @@ Rectangle {
                         onNextClicked: searchRpPage(page.rpPage + 1)
                     }
 
-                    delegate: DownloadCard {
-                        width: rpListView.width - 8
+                    delegate: ResourceTile {
+                        width: rpListView.cellWidth - rpListView.gap
+                        height: rpListView.cellHeight - rpListView.gap
                         title: model.title || ""
                         zh: model.zh || ""
                         description: model.desc || ""
@@ -1825,6 +1835,8 @@ Rectangle {
                 _keepActive = true
                 if (item) {
                     item.goBack.connect(function() { modExitAnim.start() })
+                    // 详情页加载版本时也点亮顶部加载条（统一走本页状态机）
+                    if (item.loadingStateChanged) item.loadingStateChanged.connect(function(on) { page.setTabLoading("detail", on) })
                     item.backend = backend
                     item.toastManager = toastManager
                     item.mainWindow = mainWindow
@@ -2185,9 +2197,13 @@ Rectangle {
                 ScrollBar.vertical.policy: ScrollBar.AsNeeded
                 Component.onCompleted: contentItem.flickDeceleration = 250
 
-                ListView {
+                GridView {
                     id: packListView
-                    anchors.fill: parent; spacing: 6
+                    anchors.fill: parent
+                    readonly property int gap: 10
+                    readonly property int cols: width >= 1000 ? 4 : (width >= 740 ? 3 : 2)
+                    cellWidth: Math.floor((width - (cols - 1) * gap) / cols)
+                    cellHeight: 156
                     model: packResultsModel
                     cacheBuffer: 200
                     onAtYEndChanged: { if (atYEnd) packTab.prefetchPackNextPage() }
@@ -2207,8 +2223,9 @@ Rectangle {
                         onNextClicked: packTab.doPackSearch(packTab.packCurrentPage + 1)
                     }
 
-                    delegate: DownloadCard {
-                        width: packListView.width - 8
+                    delegate: ResourceTile {
+                        width: packListView.cellWidth - packListView.gap
+                        height: packListView.cellHeight - packListView.gap
                         title: model.title || ""
                         zh: model.zh || ""
                         description: model.desc || ""
@@ -2438,9 +2455,13 @@ Rectangle {
                 ScrollBar.vertical.policy: ScrollBar.AsNeeded
                 Component.onCompleted: contentItem.flickDeceleration = 250
 
-                ListView {
+                GridView {
                     id: dpListView
-                    anchors.fill: parent; spacing: 6
+                    anchors.fill: parent
+                    readonly property int gap: 10
+                    readonly property int cols: width >= 1000 ? 4 : (width >= 740 ? 3 : 2)
+                    cellWidth: Math.floor((width - (cols - 1) * gap) / cols)
+                    cellHeight: 156
                     model: dpResultsModel
                     cacheBuffer: 200
                     onAtYEndChanged: { if (atYEnd) dpTab.prefetchDpNextPage() }
@@ -2460,8 +2481,9 @@ Rectangle {
                         onNextClicked: dpTab.doDpSearch(dpTab.dpCurrentPage + 1)
                     }
 
-                    delegate: DownloadCard {
-                        width: dpListView.width - 8
+                    delegate: ResourceTile {
+                        width: dpListView.cellWidth - dpListView.gap
+                        height: dpListView.cellHeight - dpListView.gap
                         title: model.title || ""
                         zh: model.zh || ""
                         description: model.desc || ""
