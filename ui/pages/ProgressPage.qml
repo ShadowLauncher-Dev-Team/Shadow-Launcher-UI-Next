@@ -86,8 +86,9 @@ Item {
     property var _doneAt: ({})
     Timer {
         interval: 400; repeat: true
-        // 页面隐藏时停表：没打开过进度页就不该发"安装完成"通知
-        running: page.visible && page.parent && page.parent.visible
+        // 页面隐藏时停表：没打开过进度页就不该发"安装完成"通知。
+        // 只看宿主可见性：若同时读 page.visible（本项自身），Qt 会报 running 的 binding loop。
+        running: page.parent !== null && page.parent.visible
         onTriggered: page.recalc()
     }
     function recalc() {
