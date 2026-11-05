@@ -1907,20 +1907,29 @@ void VersionBackend::cleanupCanceledVersion(const QString& versionId, const QStr
     // On cancel/fail: delete the entire version folder
 
     // Safety guard: if saves/ already exists, the version has been played — don't touch it.
-
+    // 2026-11-05 修：原来只看 versions/<id>/saves，但本仓存在两种别的布局：
+    //   隔离布局  versions/<id>/game/saves
+    //   共享根    <gameDir>/saves
+    // 只认一种会把"能玩的整版"连存档一起删掉（取消一次重装/修复即触发）。
     const QString versionDir = gameDir + QStringLiteral("/versions/") + versionId;
 
-    const QString savesDir = versionDir + QStringLiteral("/saves");
+    QString savesHit;
+    const QStringList saveCandidates = {
+        versionDir + QStringLiteral("/saves"),
+        versionDir + QStringLiteral("/game/saves"),
+        gameDir + QStringLiteral("/saves"),
+    };
+    for (const QString& p : saveCandidates) {
+        if (QDir(p).exists()) { savesHit = p; break; }
+    }
 
-
-
-    if (QDir(savesDir).exists()) {
+    if (!savesHit.isEmpty()) {
 
         qCInfo(logVersion).noquote()
 
-            << QStringLiteral("[cancel-cleanup] %1: 版本已独立启动, 不清理 (saves/ 存在)")
+            << QStringLiteral("[cancel-cleanup] %1: 版本已独立启动, 不清理 (saves/ 存在: %2)")
 
-                   .arg(versionId);
+                   .arg(versionId, savesHit);
 
         return;
 
