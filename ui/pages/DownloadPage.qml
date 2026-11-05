@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import QtQuick
+import QtQuick.Shapes
 import QtQuick.Layouts
 import ShadowLauncher.Next
 
@@ -180,6 +181,37 @@ Item {
     }
 
     // steps 可能是数组，也可能被 QML 包装成 ListModel（有 get/length）——两种都兼容
+    function stepField(src, idx, key) {
+        var s = stepAt(src, idx)
+        if (!s) return key === "pct" ? 0 : ""
+        if (key === "status") return (s.status !== undefined && s.status !== null) ? String(s.status) : "pending"
+        if (key === "detail") return (s.detail !== undefined && s.detail !== null) ? String(s.detail) : ""
+        if (key === "pct") return (s.percentage !== undefined && s.percentage !== null) ? Number(s.percentage) : 0
+        return (s.name !== undefined && s.name !== null) ? String(s.name) : ""
+    }
+
+    function stepAt(src, idx) {
+        if (!src) return null
+        var n = (typeof src.count === "number") ? src.count : (src.length || 0)
+        var out = []
+        for (var i = 0; i < n; ++i) {
+            var it = (typeof src.get === "function") ? src.get(i) : src[i]
+            if (it && it.show !== false) out.push(it)
+        }
+        return idx < out.length ? out[idx] : null
+    }
+
+    function countSteps(src) {
+        if (!src) return 0
+        var n = (typeof src.count === "number") ? src.count : (src.length || 0)
+        var c = 0
+        for (var i = 0; i < n; ++i) {
+            var it = (typeof src.get === "function") ? src.get(i) : src[i]
+            if (it && it.show !== false) c++
+        }
+        return c
+    }
+
     function visibleSteps(src) {
         var out = []
         if (!src) return out
@@ -189,6 +221,18 @@ Item {
             if (it && it.show !== false) out.push(it)
         }
         return out
+    }
+
+    // 全局旋转角：动画挂在页面级，delegate 无论怎么重建，读到的角度都是连续的，
+    // 不会再出现"转一下硬切回原地"。
+    property real spinAngle: 0
+    property bool downloading: cardModel.count > 0
+    NumberAnimation on spinAngle {
+        running: page.downloading
+        loops: Animation.Infinite
+        from: 0
+        to: 360
+        duration: Theme.durLoop * 4 / 3
     }
 
     function fmtEta(sec) {
@@ -1189,24 +1233,28 @@ Item {
             delegate: Rectangle {
                 id: tcard
                 width: taskList.width
-                height: 46 + 10 + 3 + 8 + cardSteps.length * 23 + 12 + 32 + 12
+                // 高度只依赖 stepCount（计数），不依赖 cardSteps 数组，
+                // 否则 height <-> cardSteps 会形成 binding loop，delegate 反复重建、动画被重置。
+                height: 46 + 10 + 3 + 8 + stepCount * 23 + 12 + 32 + 12
+                readonly property int stepCount: page.countSteps(steps)
                 radius: 10
                 color: tcard.isFailed ? "#141013" : "#0b0d12"
                 border.color: tcard.isFailed ? "#4a2530" : Theme.line2
                 border.width: 1
 
-                // 角色名在 delegate 里是直接可用的（不是 model.xxx）；自身属性改名避免与 failed 角色冲突
-                readonly property var cd: ({
-                    iid: iid, name: name, phase: phase,
-                    progress: progress, speed: speed, eta: eta,
-                    steps: steps, failed: failed, error: error,
-                    canCancel: canCancel, canRetry: canRetry
-                })
-                readonly property bool isFailed: cd.failed
-                readonly property real pv: cd.progress || 0
-                readonly property real sp: cd.speed || 0
-                readonly property string ph: cd.phase || ""
-                readonly property var cardSteps: page.visibleSteps(cd.steps)
+                // 角色名在 delegate 里直接可用（不是 model.xxx）。
+                // 这里不再包一层 JS 对象：对象每次角色变化都会重建，
+                // 与 height <- cardSteps.length 形成 binding loop，导致 delegate 反复刷新。
+                readonly property bool isFailed: failed
+                readonly property real pv: progress || 0
+                readonly property real sp: speed || 0
+                readonly property string ph: phase || ""
+                readonly property string cardName: name || ""
+                readonly property string cardError: error || ""
+                readonly property string cardIid: iid
+                readonly property bool cardCanRetry: canRetry
+                readonly property bool cardCanCancel: canCancel
+
                 // 速度归零持续 1.2s 才算"停滞"（避免刚开始还没测速时闪一下流光）
                 property bool stalled: false
                 Timer {
@@ -1248,7 +1296,7 @@ Item {
                     Column {
                         spacing: 2
                         Text {
-                            text: tcard.cd ? (tcard.cd.name || "") : ""
+                            text: tcard.cardName
                             color: "#e8ebf2"
                             font.family: Theme.fontFamily
                             font.pixelSize: 13
@@ -1327,7 +1375,7 @@ Item {
                     anchors.rightMargin: 14
                     anchors.top: bar.bottom
                     anchors.topMargin: 8
-                    text: tcard.cd ? (tcard.cd.error || "安装失败，可重试") : ""
+                    text: tcard.cardError.length > 0 ? tcard.cardError : "安装失败，可重试"
                     color: "#f2a3a3"
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -1350,10 +1398,14 @@ Item {
                         model: 4
                         delegate: Item {
                             width: stepsCol.width
-                            height: stepData ? 23 : 0
-                            visible: stepData !== null
-                            readonly property var stepData: (tcard.cardSteps.length > index) ? tcard.cardSteps[index] : null
-                            readonly property string st: (stepData && stepData["status"]) ? stepData["status"] : "pending"
+                            // 只绑原始值（字符串/数字），不绑对象：返回对象会让 QML 认为
+                            // 每次求值都产生新值，触发 binding loop，delegate 反复刷新 → 动画重启。
+                            readonly property string stepName: page.stepField(steps, index, "name")
+                            readonly property string st: page.stepField(steps, index, "status")
+                            readonly property string stepDetail: page.stepField(steps, index, "detail")
+                            readonly property real stepPct: page.stepField(steps, index, "pct")
+                            height: stepName.length > 0 ? 23 : 0
+                            visible: stepName.length > 0
                             Item {
                                 id: dot
                                 width: 16
@@ -1372,36 +1424,51 @@ Item {
                                     border.width: 1.5
                                 }
 
-                                // 进行中：静态弧 + Rotation 变换（GPU 合成，不重绘 Canvas）。
-                                // 0° 与 360° 视觉相同，循环点无缝，不会"转一下硬切回原地"。
+                                // 与网页同一套机制：容器负责匀速旋转（1.6s/圈），
+                                // 弧本身负责扫掠（30°↔260°，InOutQuad）。两个动画各管各的，
+                                // 互不重启，所以不会"转一下硬切回原地"。
                                 Item {
                                     id: ring
                                     visible: st === "active"
+
                                     width: 16
                                     height: 16
                                     transform: Rotation {
                                         origin.x: 8
                                         origin.y: 8
-                                        angle: 0
-                                        NumberAnimation on angle {
-                                            running: st === "active"
-                                            loops: Animation.Infinite
-                                            from: 0
-                                            to: 360
-                                            duration: Theme.durLoop * 4 / 3
-                                        }
+                                        angle: page.spinAngle
                                     }
-                                    Canvas {
+                                    Shape {
                                         anchors.fill: parent
-                                        onPaint: {
-                                            var ctx = getContext("2d")
-                                            ctx.reset()
-                                            ctx.lineWidth = 1.8
-                                            ctx.lineCap = "round"
-                                            ctx.strokeStyle = "#232a34"
-                                            ctx.beginPath(); ctx.arc(8, 8, 6.2, 0, Math.PI * 2); ctx.stroke()
-                                            ctx.strokeStyle = "#3b82f6"
-                                            ctx.beginPath(); ctx.arc(8, 8, 6.2, 0, Math.PI * 1.45); ctx.stroke()
+                                        preferredRendererType: Shape.CurveRenderer
+                                        ShapePath {
+                                            fillColor: "transparent"
+                                            strokeColor: "#232a34"
+                                            strokeWidth: 1.8
+                                            PathAngleArc {
+                                                centerX: 8; centerY: 8
+                                                radiusX: 6.2; radiusY: 6.2
+                                                startAngle: 0
+                                                sweepAngle: 360
+                                            }
+                                        }
+                                        ShapePath {
+                                            fillColor: "transparent"
+                                            strokeColor: "#3b82f6"
+                                            strokeWidth: 1.8
+                                            capStyle: ShapePath.RoundCap
+                                            PathAngleArc {
+                                                centerX: 8; centerY: 8
+                                                radiusX: 6.2; radiusY: 6.2
+                                                startAngle: 0
+                                                sweepAngle: 30
+                                                SequentialAnimation on sweepAngle {
+                                                    running: st === "active"
+                                                    loops: Animation.Infinite
+                                                    NumberAnimation { from: 30; to: 260; duration: Theme.durLoop * 0.6; easing.type: Easing.InOutQuad }
+                                                    NumberAnimation { from: 260; to: 30; duration: Theme.durLoop * 0.6; easing.type: Easing.InOutQuad }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -1410,7 +1477,7 @@ Item {
                                 anchors.left: dot.right
                                 anchors.leftMargin: 9
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: (stepData && stepData.name) ? stepData.name : ""
+                                text: stepName
                                 color: st === "completed" ? "#95a1b0" : (st === "active" ? "#ffffff" : Theme.fg3)
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
@@ -1418,7 +1485,7 @@ Item {
                             Text {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: st === "completed" ? "完成" : (st === "active" ? ((stepData && stepData.detail && stepData.detail.length > 0) ? stepData.detail : ((stepData ? stepData.percentage : 0) + "%")) : "")
+                                text: st === "completed" ? "完成" : (st === "active" ? (stepDetail.length > 0 ? stepDetail : (stepPct + "%")) : "")
                                 color: st === "active" ? "#7cb0fb" : Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -1447,33 +1514,28 @@ Item {
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 12
                     spacing: 8
-                    Rectangle {
-                        visible: tcard.isFailed && tcard.cd && tcard.cd.canRetry
-                        width: 62; height: 26; radius: 6
-                        color: "transparent"
-                        border.color: "#4a2530"
-                        border.width: 1
-                        Text { anchors.centerIn: parent; text: "重试"; color: "#f0a0a0"; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: if (page.b && page.b.retryVersionInstall)
-                                           page.b.retryVersionInstall(tcard.cd.iid)
-                        }
+                    // 与登录页统一：SButton ghost + 直角(radius 2) + 图标
+                    SButton {
+                        visible: tcard.isFailed && tcard.cardCanRetry
+                        kind: 1
+                        radius: 2
+                        height: 30
+                        width: 84
+                        iconName: "rotate-ccw"
+                        text: "重试"
+                        onClicked: if (page.b && page.b.retryVersionInstall)
+                                       page.b.retryVersionInstall(tcard.cardIid)
                     }
-                    Rectangle {
-                        visible: tcard.cd && tcard.cd.canCancel && !tcard.isFailed
-                        width: 62; height: 26; radius: 6
-                        color: "transparent"
-                        border.color: Qt.rgba(0.973, 0.443, 0.443, .35)
-                        border.width: 1
-                        Text { anchors.centerIn: parent; text: "取消"; color: "#f0a0a0"; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: if (page.b && page.b.cancelVersionInstall)
-                                           page.b.cancelVersionInstall(tcard.cd.iid)
-                        }
+                    SButton {
+                        visible: tcard.cardCanCancel && !tcard.isFailed
+                        kind: 1
+                        radius: 2
+                        height: 30
+                        width: 84
+                        iconName: "x"
+                        text: "取消"
+                        onClicked: if (page.b && page.b.cancelVersionInstall)
+                                       page.b.cancelVersionInstall(tcard.cardIid)
                     }
 
                 }
