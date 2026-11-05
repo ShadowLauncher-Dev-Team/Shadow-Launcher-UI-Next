@@ -1,0 +1,111 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8"><title>下载进度 · 三套布局</title><link rel="stylesheet" href="e.css">
+<style>
+body[data-v="a"] .vB,body[data-v="a"] .vC{display:none}
+body[data-v="b"] .vA,body[data-v="b"] .vC{display:none}
+body[data-v="c"] .vA,body[data-v="c"] .vB{display:none}
+.vA{display:flex;gap:16px;flex:1;min-height:0;padding:0 26px 16px}
+.vA .pcol{flex:1}
+.mini{flex:1;padding:0 26px 16px;display:flex;flex-direction:column;overflow:hidden}
+.minihead{display:flex;align-items:center;gap:14px;padding:2px 2px 8px;font-size:11.4px;color:#8b95a2;white-space:nowrap}
+.minihead b{color:#dfe5ee;font-weight:600}
+</style></head><body data-v="a">
+<div class="win">
+  <aside class="rail"><div class="brand">S</div><a><svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg></a><a class="on"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a><a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg></a><a><svg viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></a><div class="sp"></div><a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></a></aside>
+<nav class="submenu"><div class="ttl">下载</div>
+  <a><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><polyline points="3.3 8 12 13 20.7 8"/></svg><span>游戏版本</span><em class="n">32</em></a>
+  <a><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><line x1="3.3" y1="8" x2="12" y2="13"/><line x1="20.7" y1="8" x2="12" y2="13"/></svg><span>模组</span></a><a><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3z"/></svg><span>光影</span></a><a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="8.5" cy="10.5" r="1"/><circle cx="12" cy="8" r="1"/><circle cx="15.5" cy="10.5" r="1"/></svg><span>资源包</span></a>
+  <a><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><polyline points="3.3 8 12 13 20.7 8"/><line x1="12" y1="22" x2="12" y2="13"/></svg><span>整合包</span></a><a><svg viewBox="0 0 24 24"><path d="M8 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8"/><path d="M8 3a2 2 0 0 0-2 2v14a2 2 0 0 1-2 2h9"/></svg><span>数据包</span></a><a><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg><span>Java 运行时</span></a>
+  <a class="on"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg><span>下载进度</span><em class="n">3</em></a>
+  <a class="back"><svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg><span>返回主菜单</span></a></nav>
+  <main class="main">
+    <div class="head"><div class="ttl">下载进度</div><div class="sp"></div><div class="search"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg><span>共 3 个任务</span></div></div>
+    <!-- A：右栏汇总 -->
+    <div class="vA">
+      <div class="pcol"><div class="tcard run">
+  <div class="tch"><div class="ic"><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><polyline points="3.3 8 12 13 20.7 8"/><line x1="12" y1="22" x2="12" y2="13"/></svg></div><div><div class="nm">26.2 · Fabric 0.19.5</div><div class="md">下载游戏资源</div></div><div class="sp"></div><div class="spd">4.2 MB/s · 62%</div></div>
+  <div class="bar"><i style="width:62%"></i></div>
+  <div class="steps">
+    <div class="step done"><span class="dot"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>下载版本信息<span class="st">完成</span></div>
+    <div class="step done"><span class="dot"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>下载游戏库<span class="st">完成</span></div>
+    <div class="step act"><span class="dot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/></svg></span>下载游戏资源<span class="st">312/503 MB</span></div>
+    <div class="step"><span class="dot"></span>校验游戏文件</div><div class="step"><span class="dot"></span>安装 Fabric</div>
+  </div>
+  <div class="acts"><button class="btn danger">取消</button><div class="sp"></div><span class="md">剩余 1 分 20 秒</span></div>
+</div><div class="tcard">
+  <div class="tch"><div class="ic" style="color:#e0a0a0;border-color:rgba(248,113,113,.25);background:rgba(248,113,113,.06)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div><div class="nm">落幕曲 1.6.6.1 · Forge</div><div class="md">部分失败</div></div><div class="sp"></div><div class="spd" style="color:#f0a0a0">0 MB/s</div></div>
+  <div class="err"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div>3 个文件失败，268 个已保留；补下只重下失败项。</div></div>
+  <div class="acts"><button class="btn solid">补下失败项（3）</button><div class="sp"></div><button class="btn ghost">关闭</button></div>
+</div><div class="tcard">
+  <div class="tch"><div class="ic" style="color:#8fe0aa;border-color:rgba(74,222,128,.25);background:rgba(74,222,128,.06)"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="nm">1.20.1 · Forge 47.4.10</div><div class="md">已完成</div></div><div class="sp"></div><div class="spd" style="color:#8fe0aa">已结束</div></div>
+  <div class="acts"><button class="btn solid"><svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg>启动游戏</button><div class="sp"></div><button class="btn ghost">关闭</button></div>
+</div></div>
+      <div class="summary">
+  <div class="sp-card"><div class="lb">总进度</div><div class="ring"><i>62%</i></div>
+    <div class="lb" style="text-align:center">1 进行中 · 1 失败 · 1 完成</div></div>
+  <div class="sp-card"><div class="lb">总速度</div><div class="vv">4.2<small>MB/s</small></div>
+    <div class="lb" style="margin-top:6px">峰值 8.6 MB/s</div></div>
+  <div class="sp-card"><div class="lb">队列</div>
+    <div class="qrow"><span class="d b"></span>26.2 · Fabric<span class="t">62%</span></div>
+    <div class="qrow"><span class="d r"></span>落幕曲整合包<span class="t">失败</span></div>
+    <div class="qrow"><span class="d g"></span>1.20.1 · Forge<span class="t">完成</span></div>
+    <div class="qrow"><span class="d y"></span>1.21.11 · 原版<span class="t">等待</span></div>
+  </div>
+</div>
+    </div>
+    <!-- B：顶部总览条 + 卡片 -->
+    <div class="vB" style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <div class="topbar">
+  <div class="g" style="flex:1.6"><div class="lb">总进度</div><div class="v">62%<small>4 / 7 步</small></div><div class="bar2"><i style="width:62%"></i></div></div>
+  <div class="g" style="flex:1"><div class="lb">总速度</div><div class="v">4.2<small>MB/s</small></div></div>
+  <div class="g" style="flex:.8"><div class="lb">任务</div><div class="v">1<small>进行中 / 3 总计</small></div></div>
+  <div class="g" style="flex:.8"><div class="lb">剩余</div><div class="v">1<small>分 20 秒</small></div></div>
+</div>
+      <div class="pwrap"><div class="pcol"><div class="tcard run">
+  <div class="tch"><div class="ic"><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><polyline points="3.3 8 12 13 20.7 8"/><line x1="12" y1="22" x2="12" y2="13"/></svg></div><div><div class="nm">26.2 · Fabric 0.19.5</div><div class="md">下载游戏资源</div></div><div class="sp"></div><div class="spd">4.2 MB/s · 62%</div></div>
+  <div class="bar"><i style="width:62%"></i></div>
+  <div class="steps">
+    <div class="step done"><span class="dot"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>下载版本信息<span class="st">完成</span></div>
+    <div class="step done"><span class="dot"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>下载游戏库<span class="st">完成</span></div>
+    <div class="step act"><span class="dot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/></svg></span>下载游戏资源<span class="st">312/503 MB</span></div>
+    <div class="step"><span class="dot"></span>校验游戏文件</div><div class="step"><span class="dot"></span>安装 Fabric</div>
+  </div>
+  <div class="acts"><button class="btn danger">取消</button><div class="sp"></div><span class="md">剩余 1 分 20 秒</span></div>
+</div><div class="tcard">
+  <div class="tch"><div class="ic" style="color:#e0a0a0;border-color:rgba(248,113,113,.25);background:rgba(248,113,113,.06)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div><div class="nm">落幕曲 1.6.6.1 · Forge</div><div class="md">部分失败</div></div><div class="sp"></div><div class="spd" style="color:#f0a0a0">0 MB/s</div></div>
+  <div class="err"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div>3 个文件失败，268 个已保留；补下只重下失败项。</div></div>
+  <div class="acts"><button class="btn solid">补下失败项（3）</button><div class="sp"></div><button class="btn ghost">关闭</button></div>
+</div><div class="tcard">
+  <div class="tch"><div class="ic" style="color:#8fe0aa;border-color:rgba(74,222,128,.25);background:rgba(74,222,128,.06)"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="nm">1.20.1 · Forge 47.4.10</div><div class="md">已完成</div></div><div class="sp"></div><div class="spd" style="color:#8fe0aa">已结束</div></div>
+  <div class="acts"><button class="btn solid"><svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg>启动游戏</button><div class="sp"></div><button class="btn ghost">关闭</button></div>
+</div></div></div>
+    </div>
+    <!-- C：极简单行 -->
+    <div class="vC">
+      <div class="mini">
+        <div class="minihead"><span>总进度 <b>62%</b></span><span>总速度 <b>4.2 MB/s</b></span><span>1 进行中 · 1 失败 · 1 完成</span></div>
+        <div class="rrow on"><span class="nm2">26.2 · Fabric</span><span class="st2">下载游戏资源</span><span class="bar3"><i style="width:62%"></i></span><span class="spd2">4.2 MB/s</span></div><div class="rrow "><span class="nm2">落幕曲整合包</span><span class="st2">部分失败</span><span class="bar3"><i style="width:86%"></i></span><span class="spd2">0 MB/s</span></div><div class="rrow "><span class="nm2">1.20.1 · Forge</span><span class="st2">已完成</span><span class="bar3"><i style="width:100%"></i></span><span class="spd2">已结束</span></div>
+        <div style="height:10px"></div>
+        <div class="tcard run" style="margin-top:2px"><div class="tcard run" style="border:none;padding:0;background:transparent">
+  <div class="tch"><div class="ic"><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><polyline points="3.3 8 12 13 20.7 8"/><line x1="12" y1="22" x2="12" y2="13"/></svg></div><div><div class="nm">26.2 · Fabric 0.19.5</div><div class="md">下载游戏资源</div></div><div class="sp"></div><div class="spd">4.2 MB/s · 62%</div></div>
+  <div class="bar"><i style="width:62%"></i></div>
+  <div class="steps">
+    <div class="step done"><span class="dot"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>下载版本信息<span class="st">完成</span></div>
+    <div class="step done"><span class="dot"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>下载游戏库<span class="st">完成</span></div>
+    <div class="step act"><span class="dot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/></svg></span>下载游戏资源<span class="st">312/503 MB</span></div>
+    <div class="step"><span class="dot"></span>校验游戏文件</div><div class="step"><span class="dot"></span>安装 Fabric</div>
+  </div>
+  <div class="acts"><button class="btn danger">取消</button><div class="sp"></div><span class="md">剩余 1 分 20 秒</span></div>
+</div></div>
+      </div>
+    </div>
+  </main>
+  <div class="wctl"><div class="wbtn"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="wbtn"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>
+  <div class="switch"><b class="on" data-v="a">1 · 右侧汇总栏</b><b data-v="b">2 · 顶部总览条</b><b data-v="c">3 · 极简单行</b></div>
+</div>
+<script>
+const bs=[...document.querySelectorAll('.switch b')];
+function setV(v){document.body.dataset.v=v;bs.forEach(b=>b.classList.toggle('on',b.dataset.v===v))}
+bs.forEach(b=>b.onclick=()=>setV(b.dataset.v));
+addEventListener('keydown',e=>{if(['1','2','3'].includes(e.key))setV('abc'[+e.key-1])});
+if(new URLSearchParams(location.search).get('v'))setV(new URLSearchParams(location.search).get('v'));
+</script></body></html>
