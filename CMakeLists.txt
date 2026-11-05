@@ -353,6 +353,7 @@ qt6_add_resources(ShadowLauncher "qml_resources"
         qml/DebugWindow.qml
         qml/BackButton.qml
         qml/DownloadCard.qml
+    qml/ResourceTile.qml
         qml/DownloadCardTagRow.qml
         qml/DownloadQueueCard.qml
         qml/DataPackDetailPage.qml

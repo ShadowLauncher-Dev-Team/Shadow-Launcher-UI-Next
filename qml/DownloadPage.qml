@@ -968,20 +968,27 @@ Rectangle {
                 Component.onCompleted: contentItem.flickDeceleration = 250
                 
 
-                ListView {
+                // 货架式网格（A 方案）：宽窗 4 列 / 中窗 3 列 / 窄窗 2 列，
+                // 卡片用 ResourceTile（竖向），列表行形态的 DownloadCard 留给详情页相近资源用。
+                GridView {
                     id: modListView2
-                    anchors.fill: parent; spacing: 6
+                    anchors.fill: parent
                     model: modResultsModel
-                    cacheBuffer: 200
+                    cacheBuffer: 400
+                    readonly property int gap: 10
+                    readonly property int cols: width >= 1000 ? 4 : (width >= 740 ? 3 : 2)
+                    cellWidth: Math.floor((width - (cols - 1) * gap) / cols)
+                    cellHeight: 156
                     onAtYEndChanged: { if (atYEnd) modTab.prefetchModNextPage() }
 
                     header: LoadStatus {
                         width: modListView2.width
                         loading: page.modSearching
-                        emptyText: qsTr("输入关键词搜索 Mod")
+                        emptyText: qsTr("没有找到匹配的 Mod，换个关键词或重置筛选")
                         count: modResultsModel.count
                     }
                     footer: PaginationFooter {
+                        width: modListView2.width
                         currentPage: page.modCurrentPage
                         hasNext: page.modHasMore
                         loading: page.modSearching
@@ -990,8 +997,9 @@ Rectangle {
                         onNextClicked: modTab.doModSearch(page.modCurrentPage + 1)
                     }
 
-                    delegate: DownloadCard {
-                        width: modListView2.width - 8
+                    delegate: ResourceTile {
+                        width: modListView2.cellWidth - modListView2.gap
+                        height: modListView2.cellHeight - modListView2.gap
                         title: model.title || ""
                         zh: model.zh || ""
                         description: model.desc || ""
