@@ -179,6 +179,18 @@ Item {
         return t
     }
 
+    // steps 可能是数组，也可能被 QML 包装成 ListModel（有 get/length）——两种都兼容
+    function visibleSteps(src) {
+        var out = []
+        if (!src) return out
+        var n = (typeof src.count === "number") ? src.count : (src.length || 0)
+        for (var i = 0; i < n; ++i) {
+            var it = (typeof src.get === "function") ? src.get(i) : src[i]
+            if (it && it.show !== false) out.push(it)
+        }
+        return out
+    }
+
     function fmtEta(sec) {
         sec = Math.round(sec || 0)
         if (sec <= 0) return "—"
@@ -257,32 +269,24 @@ Item {
                 eta = Math.max(eta, r.eta || 0)
             }
         }
-        // 结构不变时原地更新（避免 ListView 全量重建导致动画每 400ms 重来一次）
-        var sameIds = (page.cards.length === list.length)
-        if (sameIds) {
-            for (var k = 0; k < list.length; ++k) {
-                if (page.cards[k].iid !== list[k].iid) { sameIds = false; break }
+        // 同步进 ListModel：已存在则原地 set（role 变化会通知 delegate），否则 append
+        var seenIds = {}
+        for (var n = 0; n < list.length; ++n) {
+            var item = list[n]
+            seenIds[item.iid] = true
+            var row = -1
+            for (var r = 0; r < cardModel.count; ++r) {
+                if (cardModel.get(r).iid === item.iid) { row = r; break }
+            }
+            if (row < 0) {
+                cardModel.append(item)
+            } else {
+                cardModel.set(row, item)
             }
         }
-        if (sameIds) {
-            for (var j = 0; j < list.length; ++j) {
-                var dst = page.cards[j]
-                var src = list[j]
-                dst.name = src.name
-                dst.phase = src.phase
-                dst.progress = src.progress
-                dst.speed = src.speed
-                dst.eta = src.eta
-                dst.failed = src.failed
-                dst.error = src.error
-                dst.canCancel = src.canCancel
-                dst.canRetry = src.canRetry
-                dst.steps = src.steps
-            }
-        } else {
-            page.cards = list
+        for (var d = cardModel.count - 1; d >= 0; --d) {
+            if (!seenIds[cardModel.get(d).iid]) cardModel.remove(d)
         }
-        page.tick++
         page.totalSpeed = sp
         page.totalProgress = prog
         page.runningCount = run
@@ -310,6 +314,9 @@ Item {
                 page.toast.show(message, 3000, "warning")
         }
     }
+
+    // 进度卡片的稳定模型：JS 数组每次替换会重建 delegate，动画被打断；ListModel 支持原地更新
+    ListModel { id: cardModel }
 
     Rectangle { anchors.fill: parent; color: Theme.bg }
 
@@ -1176,34 +1183,36 @@ Item {
             clip: true
             spacing: 10
             boundsBehavior: Flickable.StopAtBounds
-            model: page.cards
+            model: cardModel
             delegate: Rectangle {
                 id: tcard
                 width: taskList.width
                 height: 46 + 10 + 3 + 8 + cardSteps.length * 23 + 12 + 32 + 12
                 radius: 10
-                color: tcard.failed ? "#141013" : "#0b0d12"
-                border.color: tcard.failed ? "#4a2530" : Theme.line2
+                color: tcard.isFailed ? "#141013" : "#0b0d12"
+                border.color: tcard.isFailed ? "#4a2530" : Theme.line2
                 border.width: 1
 
-                readonly property var cd: modelData
-                readonly property bool failed: cd && cd.failed
-                // 每个用到的大字段都显式依赖 tick：只 bump tick 时对象引用不变，
-                // 不显式依赖就不会重算（这正是卡片停在 0% 的原因）
-                // 用 page.tick 参与表达式，确保 QML 把这个绑定登记为依赖（只用 local var 会被优化掉）
-                readonly property real pv: (page.tick >= 0) ? (cd ? (cd.progress || 0) : 0) : 0
-                readonly property real sp: (page.tick >= 0) ? (cd ? (cd.speed || 0) : 0) : 0
-                readonly property string ph: (page.tick >= 0) ? (cd ? (cd.phase || "") : "") : ""
-                readonly property var cardSteps: (page.tick >= 0 && cd && cd.steps)
-                                                  ? cd.steps.filter(function(x) { return x.show !== false }) : []
+                // 角色名在 delegate 里是直接可用的（不是 model.xxx）；自身属性改名避免与 failed 角色冲突
+                readonly property var cd: ({
+                    iid: iid, name: name, phase: phase,
+                    progress: progress, speed: speed, eta: eta,
+                    steps: steps, failed: failed, error: error,
+                    canCancel: canCancel, canRetry: canRetry
+                })
+                readonly property bool isFailed: cd.failed
+                readonly property real pv: cd.progress || 0
+                readonly property real sp: cd.speed || 0
+                readonly property string ph: cd.phase || ""
+                readonly property var cardSteps: page.visibleSteps(cd.steps)
                 // 速度归零持续 1.2s 才算"停滞"（避免刚开始还没测速时闪一下流光）
                 property bool stalled: false
                 Timer {
                     id: stallTimer
                     interval: 1200
                     repeat: false
-                    running: { var t = page.tick; return !tcard.failed && tcard.pv < 1 && tcard.sp <= 0 }
-                    onTriggered: tcard.stalled = (!tcard.failed && tcard.pv < 1 && tcard.sp <= 0)
+                    running: { var t = page.tick; return !tcard.isFailed && tcard.pv < 1 && tcard.sp <= 0 }
+                    onTriggered: tcard.stalled = (!tcard.isFailed && tcard.pv < 1 && tcard.sp <= 0)
                 }
                 onSpChanged: if (tcard.sp > 0) tcard.stalled = false
 
@@ -1215,14 +1224,14 @@ Item {
                     width: 30
                     height: 30
                     radius: 8
-                    color: tcard.failed ? Qt.rgba(0.973, 0.443, 0.443, .06) : "#12161d"
-                    border.color: tcard.failed ? Qt.rgba(0.973, 0.443, 0.443, .25) : "#1c212a"
+                    color: tcard.isFailed ? Qt.rgba(0.973, 0.443, 0.443, .06) : "#12161d"
+                    border.color: tcard.isFailed ? Qt.rgba(0.973, 0.443, 0.443, .25) : "#1c212a"
                     border.width: 1
                     SIcon {
                         anchors.centerIn: parent
-                        name: tcard.failed ? "alert-triangle" : "box"
+                        name: tcard.isFailed ? "alert-triangle" : "box"
                         size: 15
-                        color: tcard.failed ? "#e0a0a0" : "#9fb0c6"
+                        color: tcard.isFailed ? "#e0a0a0" : "#9fb0c6"
                     }
                 }
                 Row {
@@ -1244,8 +1253,8 @@ Item {
                             font.weight: Font.DemiBold
                         }
                         Text {
-                            text: tcard.failed ? "部分失败" : tcard.ph
-                            color: tcard.failed ? "#f0a0a0" : Theme.fg3
+                            text: tcard.isFailed ? "部分失败" : tcard.ph
+                            color: tcard.isFailed ? "#f0a0a0" : Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
@@ -1258,10 +1267,10 @@ Item {
                     anchors.verticalCenter: headRow.verticalCenter
                     spacing: 6
                     Text {
-                        text: tcard.failed ? "0 MB/s"
+                        text: tcard.isFailed ? "0 MB/s"
                               : ((tcard.sp / 1048576).toFixed(1) + " MB/s · "
                                  + Math.round(tcard.pv * 100) + "%")
-                        color: tcard.failed ? "#f0a0a0" : "#9fb6d8"
+                        color: tcard.isFailed ? "#f0a0a0" : "#9fb6d8"
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                     }
@@ -1283,7 +1292,7 @@ Item {
                         width: Math.max(0, Math.min(1, tcard.pv)) * parent.width
                         height: 3
                         radius: 2
-                        color: tcard.failed ? "#f87171" : Theme.accent
+                        color: tcard.isFailed ? "#f87171" : Theme.accent
                         // 真实进度也要平滑地"走过去"，而不是每 400ms 跳一格
                         Behavior on width { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                     }
@@ -1309,7 +1318,7 @@ Item {
 
                 // 失败信息
                 Text {
-                    visible: tcard.failed
+                    visible: tcard.isFailed
                     anchors.left: parent.left
                     anchors.leftMargin: 14
                     anchors.right: parent.right
@@ -1331,7 +1340,7 @@ Item {
                     anchors.right: parent.right
                     anchors.rightMargin: 14
                     anchors.top: bar.bottom
-                    anchors.topMargin: tcard.failed ? 30 : 8
+                    anchors.topMargin: tcard.isFailed ? 30 : 8
                     spacing: 0
                     Repeater {
                         model: tcard.cardSteps
@@ -1388,7 +1397,7 @@ Item {
                     anchors.rightMargin: 14
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 18
-                    text: tcard.failed ? "" : page.remainText
+                    text: tcard.isFailed ? "" : page.remainText
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -1404,7 +1413,7 @@ Item {
                     anchors.bottomMargin: 12
                     spacing: 8
                     Rectangle {
-                        visible: tcard.failed && tcard.cd && tcard.cd.canRetry
+                        visible: tcard.isFailed && tcard.cd && tcard.cd.canRetry
                         width: 62; height: 26; radius: 6
                         color: "transparent"
                         border.color: "#4a2530"
@@ -1418,7 +1427,7 @@ Item {
                         }
                     }
                     Rectangle {
-                        visible: tcard.cd && tcard.cd.canCancel && !tcard.failed
+                        visible: tcard.cd && tcard.cd.canCancel && !tcard.isFailed
                         width: 62; height: 26; radius: 6
                         color: "transparent"
                         border.color: Qt.rgba(0.973, 0.443, 0.443, .35)
@@ -1437,7 +1446,7 @@ Item {
 
             Text {
                 anchors.centerIn: parent
-                visible: page.cards.length === 0
+                visible: cardModel.count === 0
                 text: "当前没有下载任务"
                 color: Theme.fg3
                 font.family: Theme.fontFamily
