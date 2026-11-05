@@ -14,6 +14,7 @@
 
 #include "../core/step_keys.h"
 #include "../core/source_policy.h"
+#include "../core/cleanup_guard.h"
 #include "../core/loader_plan.h"
 #include "../core/loader_events.h"
 #include "../utils/hash_utils.h"
@@ -1913,23 +1914,13 @@ void VersionBackend::cleanupCanceledVersion(const QString& versionId, const QStr
     // 只认一种会把"能玩的整版"连存档一起删掉（取消一次重装/修复即触发）。
     const QString versionDir = gameDir + QStringLiteral("/versions/") + versionId;
 
-    QString savesHit;
-    const QStringList saveCandidates = {
-        versionDir + QStringLiteral("/saves"),
-        versionDir + QStringLiteral("/game/saves"),
-        gameDir + QStringLiteral("/saves"),
-    };
-    for (const QString& p : saveCandidates) {
-        if (QDir(p).exists()) { savesHit = p; break; }
-    }
-
-    if (!savesHit.isEmpty()) {
+    if (ShadowLauncher::CleanupGuard::dirHasUserSaves(versionDir, gameDir)) {
 
         qCInfo(logVersion).noquote()
 
-            << QStringLiteral("[cancel-cleanup] %1: 版本已独立启动, 不清理 (saves/ 存在: %2)")
+            << QStringLiteral("[cancel-cleanup] %1: 版本已独立启动, 不清理 (saves/ 存在)")
 
-                   .arg(versionId, savesHit);
+                   .arg(versionId);
 
         return;
 

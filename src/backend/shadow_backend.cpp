@@ -5,6 +5,8 @@
 #include "../core/http_client.h"
 #include "../core/step_keys.h"
 #include "../core/loader_plan.h"
+#include "../core/cleanup_guard.h"
+#include <QTemporaryDir>
 #include "../core/source_policy.h"
 #include "../core/file_downloader.h"
 #include "../core/download_accept.h"
@@ -3357,8 +3359,44 @@ QString ShadowBackend::downloadSelfcheck()
         }
     }
 
+    // ── 10) 清理守卫纯逻辑：三布局 saves 判定 + 索引 .part.* 清理
+    {
+        QTemporaryDir tmp;
+        if (!tmp.isValid()) {
+            fails << QStringLiteral("QTemporaryDir invalid");
+        } else {
+            const QString gameDir = tmp.path();
+            const QString verDir = gameDir + QStringLiteral("/versions/T");
+            // 布局 1：版本隔离 versions/<id>/game/saves
+            QDir().mkpath(verDir + QStringLiteral("/game/saves"));
+            if (!ShadowLauncher::CleanupGuard::dirHasUserSaves(verDir, gameDir))
+                fails << QStringLiteral("saves guard: isolated layout not detected");
+            QDir(verDir + QStringLiteral("/game/saves")).removeRecursively();
+            // 布局 2：共享根 <gameDir>/saves
+            QDir().mkpath(gameDir + QStringLiteral("/saves"));
+            if (!ShadowLauncher::CleanupGuard::dirHasUserSaves(verDir, gameDir))
+                fails << QStringLiteral("saves guard: shared-root layout not detected");
+            QDir(gameDir + QStringLiteral("/saves")).removeRecursively();
+            // 无存档 → false
+            if (ShadowLauncher::CleanupGuard::dirHasUserSaves(verDir, gameDir))
+                fails << QStringLiteral("saves guard: false positive without saves");
+            // 索引分片清理
+            QDir().mkpath(verDir);
+            for (int i = 0; i < 3; ++i) {
+                QFile f(verDir + QStringLiteral("/5.json.part.%1").arg(i));
+                if (f.open(QIODevice::WriteOnly)) { f.write("x"); f.close(); }
+            }
+            const int removed = ShadowLauncher::CleanupGuard::removeStaleIndexParts(verDir,
+                                                                                    QStringLiteral("5.json"));
+            if (removed != 3)
+                fails << QStringLiteral("index parts removed=%1 want 3").arg(removed);
+            if (!QDir(verDir).entryList({ QStringLiteral("*.part.*") }, QDir::Files).isEmpty())
+                fails << QStringLiteral("index parts left after cleanup");
+        }
+    }
+
     if (fails.isEmpty())
-        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=9")
+        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=10")
             .arg(allKeys.size()).arg(legacyCases.size());
     return QStringLiteral("FAIL(%1): ").arg(fails.size()) + fails.join(QStringLiteral(" | "));
 }
