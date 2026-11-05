@@ -29,12 +29,6 @@ Rectangle {
     property var mainWindow: null
 
     property string modDetailSlug: ""
-
-    // 详情页自身的加载态上报：由宿主（DownloadPage）统一驱动顶部加载条，
-    // 避免详情页直接写 mainWindow.pageLoading 与下载页状态机互相覆盖。
-    signal loadingStateChanged(bool on)
-    onModDetailLoadingChanged: loadingStateChanged(modDetailLoading)
-
     // CF 详情（slug 为纯数字 modId）：下载量数据不可靠 → 卡片不显示（2026-08-15）
     property bool _isCfDetail: /^\d+$/.test(modDetailSlug)
     property string modDetailTitle: ""

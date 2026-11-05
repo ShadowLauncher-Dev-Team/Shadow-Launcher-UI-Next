@@ -130,118 +130,6 @@ Rectangle {
     property bool modPrefetching: false   // 翻页预取进行中（结果只进引擎缓存，不污染列表）
     property bool rpPrefetching: false
 
-    // ═══════════════════════════════════════════════════════════════
-    // 统一加载条状态机（2026-11-06）
-    //   · 五个 Tab 可能同时在拉数据 → 顶部条「任一在加载就亮，全部结束才灭」
-    //   · 后端是 progressive emit：首次结果到达时 pending 可能还没归零，
-    //     所以结果到达后轮询 resourcePoolState(kind).pending，归零才关条
-    //   · 9s 上限兜底（后端没有 failed 信号，网络卡死时不能让条一直转）
-    // ═══════════════════════════════════════════════════════════════
-    property var _loadingTabs: ({})
-    property var _settleWatch: []
-    property var _failedTabs: ({})
-    property bool barActive: false
-
-    /// 失败态：网络/超时导致池子仍为空时标记，供 LoadStatus 显示"加载失败 + 重试"
-    function markFailed(tab) {
-        var m = {}
-        for (var k in _failedTabs) m[k] = _failedTabs[k]
-        m[tab] = true
-        _failedTabs = m
-    }
-    function clearFailed(tab) {
-        var m = {}
-        for (var k in _failedTabs) if (k !== tab) m[k] = _failedTabs[k]
-        _failedTabs = m
-    }
-    function errorOf(tab) { return _failedTabs[tab] ? "加载失败，可能是网络或镜像无响应" : "" }
-
-    function setTabLoading(tab, on) {
-        if (on) clearFailed(tab)   // 新一轮加载开始 → 清掉上一轮的失败标记
-        var m = {}
-        for (var k in _loadingTabs) m[k] = _loadingTabs[k]
-        m[tab] = !!on
-        _loadingTabs = m
-        var any = false
-        for (var k2 in _loadingTabs) if (_loadingTabs[k2]) any = true
-        barActive = any
-        // 真正的开关在 MainWindow.pageLoading（loadingBar 只是文件内 id，跨组件访问 id 无效）
-        if (page.mainWindow && page.mainWindow.pageLoading !== undefined)
-            page.mainWindow.pageLoading = any
-    }
-
-    function isTabLoading(tab) { return !!_loadingTabs[tab] }
-
-    /// 结果到达后登记「等池子结算」：pending 归零（或 9s 超时）后关条并判定空态
-    function watchPoolSettled(kind, tab) {
-        var keep = []
-        for (var i = 0; i < _settleWatch.length; i++)
-            if (_settleWatch[i].tab !== tab) keep.push(_settleWatch[i])
-        keep.push({ kind: kind, tab: tab, ticks: 0 })
-        _settleWatch = keep
-    }
-
-    function tickSettle() {
-        if (!backend) { _settleWatch = []; return }
-        var keep = []
-        for (var i = 0; i < _settleWatch.length; i++) {
-            var w = _settleWatch[i]
-            w.ticks++
-            var settled = false
-            var emptyPool = false
-            try {
-                var st = backend.resourcePoolState(w.kind)
-                settled = !st || st.pending === 0
-                emptyPool = !st || st.pool === 0
-            } catch (e) { settled = true }
-            const timedOut = w.ticks > 26          // 26 × 350ms ≈ 9s 上限
-            if (timedOut) settled = true
-            if (settled) {
-                setTabLoading(w.tab, false)
-                if (timedOut && emptyPool) markFailed(w.tab)
-            } else keep.push(w)
-        }
-        _settleWatch = keep
-    }
-
-    // pageLoading 是 MainWindow 的全局量：页面切换/版本列表就绪都会写 false，
-    // 本页有 Tab 在加载时每 400ms 兜底拉回，避免"条被别处关掉但列表还在转"。
-    Timer {
-        interval: 400; repeat: true
-        running: page.barActive
-        onTriggered: {
-            if (page.mainWindow && page.mainWindow.pageLoading !== undefined && !page.mainWindow.pageLoading)
-                page.mainWindow.pageLoading = true
-        }
-    }
-
-    Timer {
-        id: settleTimer
-        interval: 350; repeat: true
-        running: page._settleWatch.length > 0
-        onTriggered: page.tickSettle()
-    }
-
-    /// 分页"还有下一页"判定：优先后端池子真实状态（旧算法在池刚好等于 need 时会误判没有下一页）
-    function hasMoreOf(kind, pool) {
-        try {
-            if (backend) {
-                var st = backend.resourcePoolState(kind)
-                if (st && st.hasMore !== undefined) return !!st.hasMore
-            }
-        } catch (e) {}
-        return false
-    }
-
-    /// 离开页面/切 Tab 时清掉在途状态：迟到回包不允许再点亮加载条
-    function clearAllLoading() {
-        _settleWatch = []
-        _loadingTabs = ({})
-        barActive = false
-        if (page.mainWindow && page.mainWindow.pageLoading !== undefined)
-            page.mainWindow.pageLoading = false
-    }
-
     // Search resource packs with page number
     function searchRpPage(pageNum) {
         if (!backend) return
@@ -250,7 +138,9 @@ Rectangle {
         page.rpSearching = true
         page.rpPage = pageNum
         rpResultsModel.clear()   // 清空列表，显示加载动画
-        page.setTabLoading("rp", true)
+        if (page.mainWindow && page.mainWindow.loadingBar) {
+            page.mainWindow.loadingBar.opacity = 1
+        }
         var q = rpFilterCard.searchText || ""
         var ver = page.rpGameVersion || ""
         var cats = []
@@ -303,9 +193,6 @@ Rectangle {
             0, 30, modFilterCard.sourceFilter
         )
     }
-
-    // 退出页面（返回首页/切到别的页面）→ 立刻灭条，迟到的回包不再点亮它
-    onVisibleChanged: { if (!visible) page.clearAllLoading() }
 
     onCurrentTabChanged: {
         console.log("[RP-DEBUG] onCurrentTabChanged tab=", currentTab, "rpReady=", rpResultsReady)
@@ -790,7 +677,6 @@ Rectangle {
             page.modCurrentPage = pageNum
             page.modSearching = true
             modResultsModel.clear()   // 清空列表，显示加载动画（等池子就绪一次性显示，避免旧列表与新页混闪）
-            page.setTabLoading("mod", true)
             var q = modFilterCard.searchText ? modFilterCard.searchText.trim() : ""
             console.log("[MOD-SEARCH] calling searchModsEx q=" + JSON.stringify(q) + " tab=" + page.currentTab + " page=" + pageNum)
             var gv = page.modGameVersion ? [page.modGameVersion] : []
@@ -905,10 +791,7 @@ Rectangle {
                     })
                 }
                 page.modSearching = false
-                // 池子可能还在续拉（progressive emit）：等 pending 归零再关加载条
-                page.setTabLoading("mod", true)
-                page.watchPoolSettled("mod", "mod")
-                page.modHasMore = page.hasMoreOf("mod", pool)
+                page.modHasMore = pool.length > (page.modCurrentPage + 1) * page.modPageSize
                 if (urlsToCache.length > 0 && backend) {
                     backend.cacheIconBatchAsync(urlsToCache)
                 }
@@ -988,30 +871,20 @@ Rectangle {
                 Component.onCompleted: contentItem.flickDeceleration = 250
                 
 
-                // 货架式网格（A 方案）：宽窗 4 列 / 中窗 3 列 / 窄窗 2 列，
-                // 卡片用 ResourceTile（竖向），列表行形态的 DownloadCard 留给详情页相近资源用。
-                GridView {
+                ListView {
                     id: modListView2
-                    anchors.fill: parent
+                    anchors.fill: parent; spacing: 6
                     model: modResultsModel
-                    cacheBuffer: 400
-                    readonly property int gap: 10
-                    readonly property int cols: width >= 1000 ? 4 : (width >= 740 ? 3 : 2)
-                    cellWidth: Math.floor((width - (cols - 1) * gap) / cols)
-                    cellHeight: 156
+                    cacheBuffer: 200
                     onAtYEndChanged: { if (atYEnd) modTab.prefetchModNextPage() }
 
                     header: LoadStatus {
                         width: modListView2.width
                         loading: page.modSearching
-                        emptyText: qsTr("没有找到匹配的 Mod，换个关键词或重置筛选")
+                        emptyText: qsTr("输入关键词搜索 Mod")
                         count: modResultsModel.count
-                        errorText: page.errorOf("mod")
-                        actionText: "重置筛选"
-                        onActionClicked: { page.clearFailed("mod"); modFilterCard.resetClicked() }
                     }
                     footer: PaginationFooter {
-                        width: modListView2.width
                         currentPage: page.modCurrentPage
                         hasNext: page.modHasMore
                         loading: page.modSearching
@@ -1020,9 +893,8 @@ Rectangle {
                         onNextClicked: modTab.doModSearch(page.modCurrentPage + 1)
                     }
 
-                    delegate: ResourceTile {
-                        width: modListView2.cellWidth - modListView2.gap
-                        height: modListView2.cellHeight - modListView2.gap
+                    delegate: DownloadCard {
+                        width: modListView2.width - 8
                         title: model.title || ""
                         zh: model.zh || ""
                         description: model.desc || ""
@@ -1145,7 +1017,6 @@ Rectangle {
             shaderCurrentPage = pageNum
             shaderOffset = pageNum * shaderPageSize
             shaderResultsModel.clear()   // 清空列表，显示加载动画
-            page.setTabLoading("shader", true)
             var a = shaderCategory ? [shaderCategory] : []
             var b = shaderFeature ? [shaderFeature] : []
             var c = shaderPerformance ? [shaderPerformance] : []
@@ -1196,8 +1067,6 @@ Rectangle {
                 var shEnd = Math.min(shStart + shaderTab.shaderPageSize, pool.length)
                 shaderResultsModel.clear()
                 shaderTab.shaderSearching = false
-        page.setTabLoading("shader", true)
-        page.watchPoolSettled("shader", "shader")
                 if (pool.length > 0 && shEnd > shStart) {
                     console.log("[shader] 池 " + pool.length + " 条, 切片 " + shStart + "-" + shEnd)
                     var urlsToCache = []
@@ -1269,15 +1138,11 @@ Rectangle {
                 ScrollBar.vertical.policy: ScrollBar.AsNeeded
                 Component.onCompleted: contentItem.flickDeceleration = 250
 
-                GridView {
+                ListView {
                     id: shaderCardView
                     anchors.fill: parent
                     model: shaderResultsModel
-                    readonly property int gap: 10
-                    readonly property int cols: width >= 1000 ? 4 : (width >= 740 ? 3 : 2)
-                    cellWidth: Math.floor((width - (cols - 1) * gap) / cols)
-                    cellHeight: 156
-                    cacheBuffer: 400
+                    spacing: 6; cacheBuffer: 200
                     onAtYEndChanged: { if (atYEnd) shaderTab.prefetchNextShaderPage() }
                     clip: true
 
@@ -1286,9 +1151,6 @@ Rectangle {
                         loading: shaderTab.shaderSearching
                         emptyText: qsTr("输入关键词搜索光影")
                         count: shaderResultsModel.count
-                        errorText: page.errorOf("shader")
-                        actionText: "重置筛选"
-                        onActionClicked: { page.clearFailed("shader"); shaderFilterCard.resetClicked() }
                     }
 
                     footer: PaginationFooter {
@@ -1300,9 +1162,8 @@ Rectangle {
                         onNextClicked: shaderTab.doSearch(shaderTab.shaderCurrentPage + 1)
                     }
 
-                    delegate: ResourceTile {
-                        width: shaderCardView.cellWidth - shaderCardView.gap
-                        height: shaderCardView.cellHeight - shaderCardView.gap
+                    delegate: DownloadCard {
+                        width: shaderCardView.width
                         title: model.title || ""
                         zh: model.zh || ""
                         description: model.desc || ""
@@ -1399,13 +1260,9 @@ Rectangle {
                 Component.onCompleted: contentItem.flickDeceleration = 250
                 
 
-                GridView {
+                ListView {
                     id: rpListView
-                    anchors.fill: parent
-                    readonly property int gap: 10
-                    readonly property int cols: width >= 1000 ? 4 : (width >= 740 ? 3 : 2)
-                    cellWidth: Math.floor((width - (cols - 1) * gap) / cols)
-                    cellHeight: 156
+                    anchors.fill: parent; spacing: 6
                     model: rpResultsModel
                     cacheBuffer: 200
                     onAtYEndChanged: { if (atYEnd) page.prefetchRpNextPage() }
@@ -1415,9 +1272,6 @@ Rectangle {
                         loading: page.rpSearching
                         emptyText: qsTr("搜索资源包")
                         count: rpResultsModel.count
-                        errorText: page.errorOf("rp")
-                        actionText: "重置筛选"
-                        onActionClicked: { page.clearFailed("rp"); rpFilterCard.resetClicked() }
                     }
                     footer: PaginationFooter {
                         currentPage: page.rpPage
@@ -1428,9 +1282,8 @@ Rectangle {
                         onNextClicked: searchRpPage(page.rpPage + 1)
                     }
 
-                    delegate: ResourceTile {
-                        width: rpListView.cellWidth - rpListView.gap
-                        height: rpListView.cellHeight - rpListView.gap
+                    delegate: DownloadCard {
+                        width: rpListView.width - 8
                         title: model.title || ""
                         zh: model.zh || ""
                         description: model.desc || ""
@@ -1536,15 +1389,17 @@ Rectangle {
             if (!results || results.length === 0) {
                 console.log("[RP-DEBUG]", page.rpDebugSeq, "EMPTY results")
                 page.rpSearching = false   // 空结果也要复位搜索态，否则分页条 loading 卡 true 永久隐藏
-        page.setTabLoading("rp", true)
-        page.watchPoolSettled("resourcepack", "rp")
                 page.rpHasMore = false
-                // 加载条交给状态机收口（这里直接关条会误灭其他 Tab 的加载态）
+                if (page.mainWindow && page.mainWindow.loadingBar) {
+                    page.mainWindow.loadingBar.opacity = 0
+                }
                 return
             }
             page.rpTotalHits = totalHits
             page.rpSearching = false
-            // 关条交给状态机（见 watchPoolSettled）
+            if (page.mainWindow && page.mainWindow.loadingBar) {
+                page.mainWindow.loadingBar.opacity = 0
+            }
 
             // ═══ 池子架构：先前端过滤整个池子，再按当前页切片 ═══
             var pool = results || []
@@ -1701,8 +1556,8 @@ Rectangle {
 
         function onResourcepackVersionsProgress(done, total) {
             console.log("[RP-DEBUG]", page.rpDebugSeq, "progress", done, "/", total)
-            if (page.mainWindow && page.mainWindow.pageLoading !== undefined) {
-                page.mainWindow.pageLoading = (done < total)
+            if (page.mainWindow && page.mainWindow.loadingBar) {
+                page.mainWindow.loadingBar.opacity = (done < total) ? 1 : 0
             }
         }
 
@@ -1719,8 +1574,8 @@ Rectangle {
                     speedStr = su === 0 ? sv.toFixed(0) + " " + speedUnits[su] : sv.toFixed(1) + " " + speedUnits[su]
                 }
                 if (toastManager) toastManager.show("下载中 " + page.installingRpName + ": " + pct + "%" + (speedStr ? " (" + speedStr + ")" : ""))
-                if (page.mainWindow && page.mainWindow.pageLoading !== undefined) {
-                    page.mainWindow.pageLoading = (completed < total)
+                if (page.mainWindow && page.mainWindow.loadingBar) {
+                    page.mainWindow.loadingBar.opacity = (completed < total) ? 1 : 0
                 }
             }
         }
@@ -1730,8 +1585,8 @@ Rectangle {
                 console.log("[resourcepack] download done:", page.installingRpName, "success:", success)
                 toastManager.show(success ? ("下载完成: " + page.installingRpName) : ("下载失败: " + page.installingRpName))
                 page.installingRpName = ""
-                if (page.mainWindow && page.mainWindow.pageLoading !== undefined) {
-                    page.mainWindow.pageLoading = false
+                if (page.mainWindow && page.mainWindow.loadingBar) {
+                    page.mainWindow.loadingBar.opacity = 0
                 }
             }
         }
@@ -1864,8 +1719,6 @@ Rectangle {
                 _keepActive = true
                 if (item) {
                     item.goBack.connect(function() { modExitAnim.start() })
-                    // 详情页加载版本时也点亮顶部加载条（统一走本页状态机）
-                    if (item.loadingStateChanged) item.loadingStateChanged.connect(function(on) { page.setTabLoading("detail", on) })
                     item.backend = backend
                     item.toastManager = toastManager
                     item.mainWindow = mainWindow
@@ -2226,13 +2079,9 @@ Rectangle {
                 ScrollBar.vertical.policy: ScrollBar.AsNeeded
                 Component.onCompleted: contentItem.flickDeceleration = 250
 
-                GridView {
+                ListView {
                     id: packListView
-                    anchors.fill: parent
-                    readonly property int gap: 10
-                    readonly property int cols: width >= 1000 ? 4 : (width >= 740 ? 3 : 2)
-                    cellWidth: Math.floor((width - (cols - 1) * gap) / cols)
-                    cellHeight: 156
+                    anchors.fill: parent; spacing: 6
                     model: packResultsModel
                     cacheBuffer: 200
                     onAtYEndChanged: { if (atYEnd) packTab.prefetchPackNextPage() }
@@ -2242,9 +2091,6 @@ Rectangle {
                         loading: packTab.packSearching
                         emptyText: qsTr("输入关键词搜索整合包")
                         count: packResultsModel.count
-                        errorText: page.errorOf("pack")
-                        actionText: "重置筛选"
-                        onActionClicked: { page.clearFailed("pack"); packFilterCard.resetClicked() }
                     }
                     footer: PaginationFooter {
                         currentPage: packTab.packCurrentPage
@@ -2255,9 +2101,8 @@ Rectangle {
                         onNextClicked: packTab.doPackSearch(packTab.packCurrentPage + 1)
                     }
 
-                    delegate: ResourceTile {
-                        width: packListView.cellWidth - packListView.gap
-                        height: packListView.cellHeight - packListView.gap
+                    delegate: DownloadCard {
+                        width: packListView.width - 8
                         title: model.title || ""
                         zh: model.zh || ""
                         description: model.desc || ""
@@ -2361,9 +2206,7 @@ Rectangle {
                     })
                 }
                 packTab.packSearching = false
-                page.setTabLoading("pack", true)
-                page.watchPoolSettled("modpack", "pack")
-                packTab.packHasMore = page.hasMoreOf("modpack", pool)
+                packTab.packHasMore = pool.length > (packTab.packCurrentPage + 1) * packTab.packPageSize
                 if (urlsToCache.length > 0 && backend) {
                     backend.cacheIconBatchAsync(urlsToCache)
                 }
@@ -2378,7 +2221,6 @@ Rectangle {
             packTab.packCurrentPage = pageNum
             var offset = pageNum * packTab.packPageSize
             packResultsModel.clear()
-            page.setTabLoading("pack", true)
             var ver = page.packGameVersion ? [page.packGameVersion] : []
             backend.searchModpacksEx(packFilterCard.searchText.trim(),
                                      packTab.packLoader, packTab.packCategory,
@@ -2487,13 +2329,9 @@ Rectangle {
                 ScrollBar.vertical.policy: ScrollBar.AsNeeded
                 Component.onCompleted: contentItem.flickDeceleration = 250
 
-                GridView {
+                ListView {
                     id: dpListView
-                    anchors.fill: parent
-                    readonly property int gap: 10
-                    readonly property int cols: width >= 1000 ? 4 : (width >= 740 ? 3 : 2)
-                    cellWidth: Math.floor((width - (cols - 1) * gap) / cols)
-                    cellHeight: 156
+                    anchors.fill: parent; spacing: 6
                     model: dpResultsModel
                     cacheBuffer: 200
                     onAtYEndChanged: { if (atYEnd) dpTab.prefetchDpNextPage() }
@@ -2503,9 +2341,6 @@ Rectangle {
                         loading: dpTab.dpSearching
                         emptyText: qsTr("输入关键词搜索数据包")
                         count: dpResultsModel.count
-                        errorText: page.errorOf("dp")
-                        actionText: "重置筛选"
-                        onActionClicked: { page.clearFailed("dp"); dpFilterCard.resetClicked() }
                     }
                     footer: PaginationFooter {
                         currentPage: dpTab.dpCurrentPage
@@ -2516,9 +2351,8 @@ Rectangle {
                         onNextClicked: dpTab.doDpSearch(dpTab.dpCurrentPage + 1)
                     }
 
-                    delegate: ResourceTile {
-                        width: dpListView.cellWidth - dpListView.gap
-                        height: dpListView.cellHeight - dpListView.gap
+                    delegate: DownloadCard {
+                        width: dpListView.width - 8
                         title: model.title || ""
                         zh: model.zh || ""
                         description: model.desc || ""
@@ -2588,9 +2422,7 @@ Rectangle {
                     })
                 }
                 dpTab.dpSearching = false
-                page.setTabLoading("dp", true)
-                page.watchPoolSettled("datapack", "dp")
-                dpTab.dpHasMore = page.hasMoreOf("datapack", pool)
+                dpTab.dpHasMore = pool.length > (dpTab.dpCurrentPage + 1) * dpTab.dpPageSize
                 if (urlsToCache.length > 0 && backend) {
                     backend.cacheIconBatchAsync(urlsToCache)
                 }
@@ -2613,7 +2445,6 @@ Rectangle {
             dpTab.dpCurrentPage = pageNum
             var offset = pageNum * dpTab.dpPageSize
             dpResultsModel.clear()
-            page.setTabLoading("dp", true)
             var ver = page.dpGameVersion ? [page.dpGameVersion] : []
             backend.searchDatapacksEx(dpFilterCard.searchText.trim(),
                                       dpTab.dpCategory, ver, dpTab.dpSort,
