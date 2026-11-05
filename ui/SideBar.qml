@@ -150,11 +150,9 @@ Item {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    if (row.isMain) {
-                        root.currentLabel = modelData.label
-                        root.navActivated(modelData.label)
-                        console.info("[ui] nav ->", modelData.label)
-                    }
+                    // 主项才改高亮；子项也要发信号，否则「下载进度」这类子项完全点不动
+                    if (row.isMain) root.currentLabel = modelData.label
+                    root.navActivated(modelData.label)
                 }
             }
         }

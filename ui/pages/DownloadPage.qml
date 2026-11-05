@@ -404,7 +404,8 @@ Item {
     }
 
     Component.onCompleted: {
-        if (b && b.releaseVersions.length === 0) b.refreshVersionList()
+        // 版本列表由 VersionBackend 在启动时自己刷新（日志"开始刷新版本列表"）；
+        // 这里再同步调一次会让 QML 加载被后端解析阻塞 7 秒（首屏卡死的根因），故不再调用。
         page.recalc()
         if (Qt.application.arguments.indexOf("--ui-progress") >= 0) page.mode = 2
         if (Qt.application.arguments.indexOf("--ui-config") >= 0 && page.releaseV.length > 0)

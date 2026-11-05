@@ -66,9 +66,10 @@ Item {
                 downloadPage.mode = 2
                 // 侧栏高亮仍挂在主项「下载」上，避免主项失去选中态
                 sideBar.currentLabel = "下载"
-            } else {
+            } else if (label === "启动" || label === "联机" || label === "统计" || label === "设置") {
                 root.downloadOpen = false
             }
+            // 其余子项（帮助文档 / 实用网站）暂未实现：保持当前页面不动
         }
         // 快起：前 40% 时间就收掉大部分宽度，与页面淡入同帧开始，视觉上是一次动作
         Behavior on width {
