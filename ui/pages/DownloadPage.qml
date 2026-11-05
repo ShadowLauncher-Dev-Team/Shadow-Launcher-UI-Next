@@ -209,6 +209,10 @@ Item {
         function onFabricApiVersionsReady(v) { page.fabricApiList = v }
         function onOptifineVersionsReady(v) { page.optifineList = v }
         function onInstalledVersionsChanged() { }
+        function onCancelNotification(installId, message) {
+            if (page.toast && message && message.length > 0)
+                page.toast.show(message, 3000, "warning")
+        }
     }
 
     Rectangle { anchors.fill: parent; color: Theme.bg }
@@ -694,6 +698,9 @@ Item {
                         readonly property string llabel: modelData.label
                         readonly property string offReason: page.loaderDisabled(lkey)
                         readonly property bool off: offReason.length > 0
+                        // Fabric API 只在 Fabric 被选中（或已选过版本）时才有意义
+                        visible: lkey !== "fabric_api" || page.activeLoader === "fabric"
+                                 || page.fabricApiVersion.length > 0
                         opacity: off ? 0.45 : 1
                         Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter } }
                         property var loaderVersions: (function() {
@@ -808,6 +815,19 @@ Item {
                                         }
                                     }
                                 }
+                            }
+
+                            // 空态：查询完成但没有版本
+                            Text {
+                                visible: loaderCard.loaderVersions.length === 0
+                                width: loaderCard.width - 20
+                                x: 10
+                                height: 28
+                                text: "没有可用版本"
+                                color: Theme.fg3
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 12
+                                verticalAlignment: Text.AlignVCenter
                             }
 
                             // 不使用
@@ -999,6 +1019,8 @@ Item {
                     if (!tcard.notified && tcard.prog >= 1 && !tcard.failFlag) {
                         tcard.notified = true
                         if (page.toast) page.toast.show(tcard.cardName + " 安装完成", 2600, "success")
+                        // 装完立刻刷新已安装列表，让版本列表绿点跟上
+                        if (page.b && page.b.refreshInstalled) page.b.refreshInstalled()
                         tcard.hideTimer.start()
                     }
                 }
