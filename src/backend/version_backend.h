@@ -410,6 +410,8 @@ private:
         qreal lastCardProgress = -1.0;  // monotonic guard: card progress never goes backward
     };
     QMap<QString, DlState> m_dlStates;
+    // 进度线性外推的锚点：{起始毫秒, 起始 progress}（ETA 不依赖 bytesTotal）
+    QHash<QString, QPair<qint64, qreal>> m_etaAnchors;
     QMap<QString, VersionDownloader*> m_downloaders;
 
     bool m_initialFetchDone = false;

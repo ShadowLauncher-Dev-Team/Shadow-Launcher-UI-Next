@@ -8313,8 +8313,28 @@ auto* ds = dlSession(it.key());
 
         // 字节统计在本类的 DlState 上（非合并会话），传给 toCard 才能算 ETA
         const DlState st = m_dlStates.value(sid);
+
+        // ETA：进度线性外推（bytesTotal 在这条路径上拿不到，不能靠字节算）
+        const qreal p = qBound<qreal>(0.0, ds->totalProgress(), 1.0);
+        const qint64 spd = ds->currentSpeed();
+        qint64 eta = 0;
+        if (spd > 0 && p > 0.02 && p < 0.999) {
+            const qint64 now = QDateTime::currentMSecsSinceEpoch();
+            auto& anchor = m_etaAnchors[sid];
+            if (anchor.first <= 0 || anchor.second > p + 0.05) {
+                anchor = qMakePair(now, p);   // 新建锚点 / 进度回退则重置
+            } else if (p > anchor.second + 0.002) {
+                const qint64 dt = now - anchor.first;
+                const qreal dp = p - anchor.second;
+                if (dt >= 1200 && dp > 0)
+                    eta = static_cast<qint64>(dt / 1000.0 * (1.0 - p) / dp);
+            }
+        } else if (p <= 0.02 || p >= 0.999) {
+            m_etaAnchors.remove(sid);
+        }
+
         InstallCard c = ds->toCard(sid, sid, QStringLiteral("version"),
-                                    st.bytesDl, st.bytesTotal, st.etaSeconds);
+                                    st.bytesDl, st.bytesTotal, eta);
 
         // Ensure consistent name/type
 
