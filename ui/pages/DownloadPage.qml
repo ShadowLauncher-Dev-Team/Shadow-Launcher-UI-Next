@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import QtQuick
-import QtQuick.Shapes
 import QtQuick.Layouts
 import ShadowLauncher.Next
 
@@ -34,6 +33,10 @@ Item {
     property string picked: ""
     property string instName: ""
     property bool nameConflict: false
+    // 安装名自动生成：用户没手动改过时，跟随「MC 版本 + 加载器」自动变化
+    property bool nameEdited: false
+    // 程序回写 TextInput 时置真，避免把"自动改名"误判成"用户手动编辑"
+    property bool syncingName: false
     property string activeLoader: ""
     property string selectedVersion: ""
     property string fabricApiVersion: ""
@@ -132,14 +135,12 @@ Item {
 
     function pickVersion(vid) {
         page.picked = vid
-        page.instName = vid
-        page.nameConflict = false
+        page.nameEdited = false
         page.activeLoader = ""
         page.selectedVersion = ""
-        page.fabricApiVersion = ""
-        page.fabricApiUrl = ""
-        page.fabricApiFile = ""
+        page.clearFabricApi()
         page.expandedLoader = ""
+        page.applyName(vid)      // 自动名 = MC 版本（还没选加载器）
         page.loaderQuery(vid)
         page.mode = 1
     }
@@ -156,9 +157,69 @@ Item {
     }
 
     function checkName(v) {
-        var name = v.trim()
-        if (name.length === 0) { page.nameConflict = false; return }
-        page.nameConflict = page.isInstalled(name)
+        var name = (v === undefined || v === null) ? "" : String(v).trim()
+        page.nameConflict = name.length > 0 && page.isInstalled(name)
+    }
+
+    // ── 安装名自动生成（旧 UI 语义）──
+    // 加载器后缀沿用后端命名约定：OptiFine 的 installName 必须含 "OptiFine_<版本>"，
+    // mod_loader_installer 会从 installName 反解加载器版本（见 installer.cpp 469 行）。
+    function loaderSuffix() {
+        if (page.activeLoader === "optifine")
+            return "OptiFine_" + (page.selectedVersion.length > 0 ? page.selectedVersion : "latest")
+        return page.activeLoader
+    }
+
+    function autoName() {
+        if (page.picked.length === 0) return ""
+        var suffix = page.loaderSuffix()
+        return suffix.length > 0 ? (page.picked + "-" + suffix) : page.picked
+    }
+
+    // 同时写属性与输入框：TextInput.text 一旦被用户编辑过，绑定就断了，
+    // 只改 instName 不会回显，所以这里显式双写。
+    function applyName(n) {
+        if (page.instName !== n) page.instName = n
+        if (nameInput.text !== n) {
+            page.syncingName = true
+            nameInput.text = n
+            page.syncingName = false
+        }
+        page.checkName(n)
+    }
+
+    function refreshName() {
+        if (page.nameEdited) return
+        page.applyName(page.autoName())
+    }
+
+    // ── 加载器选择（可取消）──
+    // Fabric API 只在 Fabric 被选中时成立；离开 Fabric / 取消 Fabric 时一并清掉，
+    // 否则卡片会靠 "fabricApiVersion.length > 0" 继续挂着。
+    function clearFabricApi() {
+        page.fabricApiVersion = ""
+        page.fabricApiUrl = ""
+        page.fabricApiFile = ""
+    }
+
+    function deselectLoader() {
+        if (page.activeLoader === "fabric") page.clearFabricApi()
+        page.activeLoader = ""
+        page.selectedVersion = ""
+        page.refreshName()
+    }
+
+    // 再点一次已选中的版本 = 取消选中（返回 false 表示这次是取消）
+    function selectLoader(key, ver) {
+        if (page.activeLoader === key && page.selectedVersion === ver) {
+            page.deselectLoader()
+            return false
+        }
+        page.activeLoader = key
+        page.selectedVersion = ver
+        if (key !== "fabric") page.clearFabricApi()
+        page.refreshName()
+        return true
     }
 
     // ── 加载器互斥（原 UI 语义）──
@@ -223,16 +284,26 @@ Item {
         return out
     }
 
-    // 全局旋转角：动画挂在页面级，delegate 无论怎么重建，读到的角度都是连续的，
-    // 不会再出现"转一下硬切回原地"。
+    // 全局旋转角（保留属性：旧实现用它驱动几何弧；现在流程标记改读烘焙帧相位）
     property real spinAngle: 0
+    // 烘焙帧相位：0..336 走完 11.2 秒，正好一整个无缝循环（336 帧 @30fps）
+    property real spinPhase: 0
+    // 进度条流光相位：页面级 0..1，delegate 重建不会打断
+    property real flowPhase: 0
     property bool downloading: cardModel.count > 0
-    NumberAnimation on spinAngle {
+    NumberAnimation on spinPhase {
         running: page.downloading
         loops: Animation.Infinite
         from: 0
-        to: 360
-        duration: Theme.durLoop * 4 / 3
+        to: 336
+        duration: Theme.durLoop * 28 / 3
+    }
+    NumberAnimation on flowPhase {
+        running: page.downloading
+        loops: Animation.Infinite
+        from: 0
+        to: 1
+        duration: Theme.durLoop
     }
 
     function fmtEta(sec) {
@@ -251,7 +322,9 @@ Item {
 
     function startInstall() {
         if (!b) return
-        var name = page.instName.trim().length > 0 ? page.instName.trim() : page.picked
+        // 名称被清空时用自动名兜底（带加载器后缀），不再退回裸 MC 版本号
+        var fallback = page.autoName().length > 0 ? page.autoName() : page.picked
+        var name = page.instName.trim().length > 0 ? page.instName.trim() : fallback
         if (page.activeLoader === "forge" || page.activeLoader === "neoforge"
                 || page.activeLoader === "fabric") {
             b.installModLoader(page.picked, page.activeLoader, page.selectedVersion, name,
@@ -833,7 +906,13 @@ Item {
                             font.family: Theme.fontFamily
                             font.pixelSize: 13
                             clip: true
-                            onTextChanged: { page.instName = text; page.checkName(text) }
+                            onTextChanged: {
+                                if (page.syncingName) return
+                                page.instName = text
+                                // 内容等于自动名 → 仍算"没手动改过"，后续选加载器继续自动跟随
+                                page.nameEdited = text.trim().length > 0 && text !== page.autoName()
+                                page.checkName(text)
+                            }
                         }
                     }
                     Text {
@@ -965,7 +1044,17 @@ Item {
                                 cursorShape: loaderCard.off ? Qt.ArrowCursor : Qt.PointingHandCursor
                                 onClicked: {
                                     if (loaderCard.off) return
-                                    page.expandedLoader = (page.expandedLoader === loaderCard.lkey) ? "" : loaderCard.lkey
+                                    // 展开中优先收起；已选中的加载器卡片再点一次 = 取消选中
+                                    // （旧 UI 里卡片本身就是开关，新 UI 之前只能靠展开后的"不使用"）
+                                    if (page.expandedLoader === loaderCard.lkey) {
+                                        page.expandedLoader = ""
+                                        return
+                                    }
+                                    if (loaderCard.lkey !== "fabric_api" && page.activeLoader === loaderCard.lkey) {
+                                        page.deselectLoader()
+                                        return
+                                    }
+                                    page.expandedLoader = loaderCard.lkey
                                 }
                             }
                         }
@@ -1006,14 +1095,19 @@ Item {
                                         onClicked: {
                                             if (loaderCard.off) return
                                             if (loaderCard.lkey === "fabric_api") {
+                                                // 再点已选的 Fabric API 版本 = 取消
+                                                if (page.fabricApiVersion === parent.ver) {
+                                                    page.clearFabricApi()
+                                                    return
+                                                }
                                                 page.fabricApiVersion = parent.ver
                                                 if (typeof modelData === "object") {
                                                     page.fabricApiUrl = modelData.url || ""
                                                     page.fabricApiFile = modelData.filename || ""
                                                 }
-                                            } else {
-                                                page.activeLoader = loaderCard.lkey
-                                                page.selectedVersion = parent.ver
+                                                page.expandedLoader = ""
+                                            } else if (page.selectLoader(loaderCard.lkey, parent.ver)) {
+                                                page.expandedLoader = ""
                                                 if (page.toast)
                                                     page.toast.show(loaderCard.llabel + " " + parent.ver, 1600, "info")
                                             }
@@ -1057,9 +1151,10 @@ Item {
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        page.activeLoader = ""
-                                        page.selectedVersion = ""
-                                        if (loaderCard.lkey === "fabric_api") page.fabricApiVersion = ""
+                                        // Fabric API 的"不使用"只清它自己，别把已选的 Fabric 一起清掉
+                                        if (loaderCard.lkey === "fabric_api") page.clearFabricApi()
+                                        else page.deselectLoader()
+                                        page.expandedLoader = ""
                                     }
                                 }
                             }
@@ -1149,70 +1244,89 @@ Item {
             border.color: Theme.line2
             border.width: 1
 
-            Row {
+            // 三块统计各自固定宽度：速度/任务/剩余的数字变宽变窄都只发生在列内，
+            // 列宽不参与布局，所以相邻列零位移（之前用 implicitWidth 的 Row，速度一变就互挤）。
+            // 总进度列吃掉剩下的空间——它只随窗口宽度变化，与速度无关。
+            Column {
+                id: progCol
                 anchors.left: parent.left
                 anchors.leftMargin: 18
+                anchors.right: statsRow.left
+                anchors.rightMargin: 36
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 4
+                Text { text: "总进度"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                Text {
+                    width: parent.width
+                    text: Math.round(page.totalProgress * 100) + "%"
+                    color: "#ffffff"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 22
+                    font.weight: Font.Bold
+                    horizontalAlignment: Text.AlignLeft
+                }
+                Rectangle {
+                    width: parent.width
+                    height: 3
+                    radius: 2
+                    color: "#181c24"
+                    Rectangle {
+                        width: Math.max(0, Math.min(1, page.totalProgress)) * parent.width
+                        height: 3
+                        radius: 2
+                        color: Theme.accent
+                    }
+                }
+            }
+
+            Row {
+                id: statsRow
                 anchors.right: parent.right
                 anchors.rightMargin: 18
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 40
+                spacing: 36
 
-                // 总进度 + 细进度线
+                // 固定列宽 + 数值 Text 固定 width 左对齐：数字长短只影响列内空白
                 Column {
-                    width: Math.round((sumBar.width - 36 - 120) * 0.42)
-                    spacing: 4
-                    Text { text: "总进度"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                    Text {
-                        text: Math.round(page.totalProgress * 100) + "%"
-                        color: "#ffffff"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 22
-                        font.weight: Font.Bold
-                    }
-                    Rectangle {
-                        width: parent.width
-                        height: 3
-                        radius: 2
-                        color: "#181c24"
-                        Rectangle {
-                            width: Math.max(0, Math.min(1, page.totalProgress)) * parent.width
-                            height: 3
-                            radius: 2
-                            color: Theme.accent
-                        }
-                    }
-                }
-                Column {
+                    width: 150
                     spacing: 4
                     Text { text: "总速度"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
                     Text {
+                        width: parent.width
                         text: (page.totalSpeed / 1048576).toFixed(1) + " MB/s"
                         color: "#dfe6f0"
                         font.family: Theme.fontFamily
                         font.pixelSize: 18
                         font.weight: Font.DemiBold
+                        horizontalAlignment: Text.AlignLeft
                     }
                 }
                 Column {
+                    width: 104
                     spacing: 4
                     Text { text: "任务"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
                     Text {
+                        width: parent.width
                         text: page.runningCount + " 进行中"
                         color: "#dfe6f0"
                         font.family: Theme.fontFamily
                         font.pixelSize: 18
                         font.weight: Font.DemiBold
+                        horizontalAlignment: Text.AlignLeft
                     }
                 }
                 Column {
+                    width: 132
                     spacing: 4
                     Text { text: "剩余"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
                     Text {
+                        width: parent.width
                         text: page.remainText
                         color: "#dfe6f0"
                         font.family: Theme.fontFamily
                         font.pixelSize: 18
                         font.weight: Font.DemiBold
+                        horizontalAlignment: Text.AlignLeft
                     }
                 }
             }
@@ -1326,7 +1440,7 @@ Item {
                     }
                 }
 
-                // 总进度线
+                // 总进度线（clip：流光只在轨道内走，越界部分被裁掉——"穿模"的根治手段）
                 Rectangle {
                     id: bar
                     anchors.left: parent.left
@@ -1337,6 +1451,7 @@ Item {
                     anchors.topMargin: 56
                     height: 3
                     radius: 2
+                    clip: true
                     color: "#181c24"
                     Rectangle {
                         width: Math.max(0, Math.min(1, tcard.pv)) * parent.width
@@ -1346,22 +1461,20 @@ Item {
                         // 真实进度也要平滑地"走过去"，而不是每 400ms 跳一格
                         Behavior on width { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                     }
-                    // 停滞时（速度归零但未完成）叠一条流光，表示"还在工作"而不是卡死
+                    // 停滞时（速度归零但未完成）叠一条流光，表示"还在工作"而不是卡死。
+                    // 位置读页面级相位（不自己跑动画），显隐用 opacity 过渡：
+                    // 之前 visible 每 400ms 级切换 + 自身 NumberAnimation，会表现为"消失又出现/穿出轨道"。
                     Rectangle {
-                        id: shimmer
-                        visible: tcard.stalled
+                        id: shine
+                        visible: bar.width > 0
                         width: 72
-                        height: 3
-                        radius: 2
+                        height: parent.height
+                        radius: height / 2
                         color: "#8fb6f8"
-                        opacity: 0.55
-                        NumberAnimation on x {
-                            running: shimmer.visible
-                            loops: Animation.Infinite
-                            from: -80
-                            to: bar.width + 80
-                            duration: Theme.durLoop
-                            easing.type: Theme.easeLoop
+                        x: -80 + page.flowPhase * (parent.width + 160)
+                        opacity: tcard.stalled ? 0.55 : 0
+                        Behavior on opacity {
+                            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
                         }
                     }
                 }
@@ -1424,52 +1537,18 @@ Item {
                                     border.width: 1.5
                                 }
 
-                                // 与网页同一套机制：容器负责匀速旋转（1.6s/圈），
-                                // 弧本身负责扫掠（30°↔260°，InOutQuad）。两个动画各管各的，
-                                // 互不重启，所以不会"转一下硬切回原地"。
-                                Item {
+                                // 预烘焙帧动画（336 帧 / 16 列网格 / 32px）：运行时只换贴图，
+                                // 不重绘几何、不插值；相位挂在页面级，delegate 重建也不会跳帧。
+                                Image {
                                     id: ring
                                     visible: st === "active"
-
                                     width: 16
                                     height: 16
-                                    transform: Rotation {
-                                        origin.x: 8
-                                        origin.y: 8
-                                        angle: page.spinAngle
-                                    }
-                                    Shape {
-                                        anchors.fill: parent
-                                        preferredRendererType: Shape.CurveRenderer
-                                        ShapePath {
-                                            fillColor: "transparent"
-                                            strokeColor: "#232a34"
-                                            strokeWidth: 1.8
-                                            PathAngleArc {
-                                                centerX: 8; centerY: 8
-                                                radiusX: 6.2; radiusY: 6.2
-                                                startAngle: 0
-                                                sweepAngle: 360
-                                            }
-                                        }
-                                        ShapePath {
-                                            fillColor: "transparent"
-                                            strokeColor: "#3b82f6"
-                                            strokeWidth: 1.8
-                                            capStyle: ShapePath.RoundCap
-                                            PathAngleArc {
-                                                centerX: 8; centerY: 8
-                                                radiusX: 6.2; radiusY: 6.2
-                                                startAngle: 0
-                                                sweepAngle: 30
-                                                SequentialAnimation on sweepAngle {
-                                                    running: st === "active"
-                                                    loops: Animation.Infinite
-                                                    NumberAnimation { from: 30; to: 260; duration: Theme.durLoop * 0.6; easing.type: Easing.InOutQuad }
-                                                    NumberAnimation { from: 260; to: 30; duration: Theme.durLoop * 0.6; easing.type: Easing.InOutQuad }
-                                                }
-                                            }
-                                        }
+                                    smooth: true
+                                    source: "qrc:/qt/qml/ShadowLauncher/qml/icons/anim/spin-f.png"
+                                    sourceClipRect: {
+                                        var f = Math.floor(page.spinPhase) % 336
+                                        return Qt.rect((f % 16) * 32, Math.floor(f / 16) * 32, 32, 32)
                                     }
                                 }
                             }
@@ -1514,13 +1593,15 @@ Item {
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 12
                     spacing: 8
-                    // 与登录页统一：SButton ghost + 直角(radius 2) + 图标
+                    // 与登录页统一：SButton ghost + 直角(radius 2) + 图标；
+                    // 取消是危险动作 → danger 红镶边（kind 1 / radius 2 / height 30，与登录页同规格）
                     SButton {
                         visible: tcard.isFailed && tcard.cardCanRetry
                         kind: 1
                         radius: 2
                         height: 30
                         width: 84
+                        danger: true
                         iconName: "rotate-ccw"
                         text: "重试"
                         onClicked: if (page.b && page.b.retryVersionInstall)
@@ -1532,6 +1613,7 @@ Item {
                         radius: 2
                         height: 30
                         width: 84
+                        danger: true
                         iconName: "x"
                         text: "取消"
                         onClicked: if (page.b && page.b.cancelVersionInstall)
