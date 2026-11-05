@@ -15,9 +15,9 @@ Item {
     property var toast: null
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     readonly property bool narrow: width < 900
-    readonly property int padH: narrow ? 28 : 64
-    readonly property int padR: narrow ? 24 : 64
-    readonly property int topH: narrow ? 46 : 52
+    readonly property int padH: narrow ? 32 : 72
+    readonly property int padR: narrow ? 28 : 72
+    readonly property int topH: narrow ? 56 : 64
     signal close()
 
     readonly property var releaseV: b ? b.releaseVersions : []
@@ -333,7 +333,8 @@ Item {
         anchors.bottom: parent.bottom
         anchors.leftMargin: page.padH
         anchors.rightMargin: page.padR
-        anchors.topMargin: 12
+        anchors.topMargin: 20
+        anchors.bottomMargin: 24
 
         // 未接入的 tab：只说事实
         Text {
@@ -478,14 +479,20 @@ Item {
 
                 Row {
                     anchors.left: parent.left
-                    anchors.leftMargin: 14
+                    anchors.leftMargin: 16
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 8
-                    Rectangle {
-                        visible: page.isInstalled(modelData)
-                        width: 5; height: 5; radius: 3
-                        color: "#4ade80"
+                    spacing: 0
+                    // 固定 16px 槽位：有没有绿点，版本号都在同一条左边线上
+                    Item {
+                        width: 16
+                        height: 16
                         anchors.verticalCenter: parent.verticalCenter
+                        Rectangle {
+                            visible: page.isInstalled(modelData)
+                            width: 5; height: 5; radius: 3
+                            color: "#4ade80"
+                            anchors.centerIn: parent
+                        }
                     }
                     Text {
                         text: modelData
