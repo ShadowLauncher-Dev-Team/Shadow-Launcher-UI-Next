@@ -1345,12 +1345,15 @@ Item {
                     anchors.topMargin: tcard.isFailed ? 30 : 8
                     spacing: 0
                     Repeater {
-                        model: tcard.cardSteps
+                        // 固定 4 个槽位：step 数据每 400ms 变一次。
+                        // 若模型是"数组"，数组一换 delegate 就重建，Canvas 动画会每 400ms 重启 → 抽搐。
+                        model: 4
                         delegate: Item {
                             width: stepsCol.width
-                            height: 23
-                            // QML 里 QVariantMap 的 status 用点号取不到（保留字冲突），改用下标
-                            readonly property string st: (modelData && modelData["status"]) ? modelData["status"] : "pending"
+                            height: stepData ? 23 : 0
+                            visible: stepData !== null
+                            readonly property var stepData: (tcard.cardSteps.length > index) ? tcard.cardSteps[index] : null
+                            readonly property string st: (stepData && stepData["status"]) ? stepData["status"] : "pending"
                             Item {
                                 id: dot
                                 width: 16
@@ -1367,42 +1370,43 @@ Item {
                                     color: st === "completed" ? Qt.rgba(0.290, 0.871, 0.502, 0.12) : "transparent"
                                     border.color: st === "completed" ? "#4ade80" : "#2a313c"
                                     border.width: 1.5
-                                    SIcon {
-                                        visible: st === "completed"
-                                        anchors.centerIn: parent
-                                        name: "check"
-                                        size: 9
-                                        color: "#4ade80"
-                                    }
                                 }
 
-                                // 进行中：Material 不确定环（底环 + 旋转扫弧），与 design/step-spinner-google.html 的 F 一致
+                                // 进行中：Material 不确定环。相位由 NumberAnimation 驱动（帧同步），
+                                // 之前用 16ms Timer + requestPaint 会抖动/抽搐。
                                 Canvas {
                                     id: ring
                                     visible: st === "active"
                                     width: 16
                                     height: 16
-                                    property real phase: 0
+                                    property real rot: 0
+                                    property real sweep: 0.10
+                                    onRotChanged: requestPaint()
+                                    onSweepChanged: requestPaint()
                                     onPaint: {
                                         var ctx = getContext("2d")
                                         ctx.reset()
-                                        ctx.lineWidth = 1.6
+                                        ctx.lineWidth = 1.8
                                         ctx.lineCap = "round"
                                         ctx.strokeStyle = "#232a34"
-                                        ctx.beginPath(); ctx.arc(8, 8, 6.4, 0, Math.PI * 2); ctx.stroke()
-                                        var rot = phase * Math.PI * 2
-                                        var sweep = (0.12 + 0.62 * (0.5 + 0.5 * Math.sin(phase * Math.PI * 8))) * Math.PI * 2
+                                        ctx.beginPath(); ctx.arc(8, 8, 6.2, 0, Math.PI * 2); ctx.stroke()
                                         ctx.strokeStyle = "#3b82f6"
-                                        ctx.beginPath(); ctx.arc(8, 8, 6.4, rot, rot + sweep); ctx.stroke()
+                                        ctx.beginPath()
+                                        ctx.arc(8, 8, 6.2, rot * Math.PI * 2, (rot + sweep) * Math.PI * 2)
+                                        ctx.stroke()
                                     }
-                                }
-                                Timer {
-                                    interval: 16
-                                    repeat: true
-                                    running: st === "active"
-                                    onTriggered: {
-                                        ring.phase = (ring.phase + 0.016 / 1.6) % 1
-                                        ring.requestPaint()
+                                    NumberAnimation on rot {
+                                        running: st === "active"
+                                        loops: Animation.Infinite
+                                        from: 0
+                                        to: 1
+                                        duration: Theme.durLoop * 4 / 3
+                                    }
+                                    SequentialAnimation on sweep {
+                                        running: st === "active"
+                                        loops: Animation.Infinite
+                                        NumberAnimation { from: 0.10; to: 0.72; duration: Theme.durLoop * 0.6; easing.type: Easing.InOutQuad }
+                                        NumberAnimation { from: 0.72; to: 0.10; duration: Theme.durLoop * 0.6; easing.type: Easing.InOutQuad }
                                     }
                                 }
                             }
@@ -1410,7 +1414,7 @@ Item {
                                 anchors.left: dot.right
                                 anchors.leftMargin: 9
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: modelData.name || ""
+                                text: (stepData && stepData.name) ? stepData.name : ""
                                 color: st === "completed" ? "#95a1b0" : (st === "active" ? "#ffffff" : Theme.fg3)
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
@@ -1418,7 +1422,7 @@ Item {
                             Text {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: st === "completed" ? "完成" : (st === "active" ? ((modelData.detail && modelData.detail.length > 0) ? modelData.detail : (modelData.percentage + "%")) : "")
+                                text: st === "completed" ? "完成" : (st === "active" ? ((stepData && stepData.detail && stepData.detail.length > 0) ? stepData.detail : ((stepData ? stepData.percentage : 0) + "%")) : "")
                                 color: st === "active" ? "#7cb0fb" : Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
