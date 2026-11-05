@@ -60,6 +60,12 @@ Item {
             if (label === "下载") {
                 if (root.downloadOpen) downloadPage.resetToList()
                 root.downloadOpen = true
+            } else if (label === "下载进度") {
+                // 侧栏「下载进度」：直接进下载页的进度视图（mode = 2）
+                root.downloadOpen = true
+                downloadPage.mode = 2
+                // 侧栏高亮仍挂在主项「下载」上，避免主项失去选中态
+                sideBar.currentLabel = "下载"
             } else {
                 root.downloadOpen = false
             }
