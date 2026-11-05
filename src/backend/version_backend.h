@@ -322,6 +322,9 @@ public:
 
 signals:
     void versionListReady();
+    // 手动「刷新版本列表」的结果（成功/失败都发）：QML 用它做一次收尾提示，
+    // 而不是只在点击时弹「正在刷新」然后永远没有结果反馈。
+    void versionRefreshFinished(bool ok, const QString& message, int count);
     void installedVersionsChanged();
     void selectedVersionChanged();
     void installStateChanged();

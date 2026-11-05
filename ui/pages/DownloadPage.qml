@@ -251,6 +251,15 @@ Item {
         page.openProgress()
     }
 
+    // 手动刷新的一次性状态：等后端 versionRefreshFinished 回来再提示
+    property bool refreshPending: false
+    Timer {
+        id: refreshTimer
+        interval: 20000
+        repeat: false
+        onTriggered: page.refreshPending = false   // 超时静默放弃，避免卡住后续提示
+    }
+
     Component.onCompleted: {
         // 版本列表由 VersionBackend 在启动时自己刷新（日志"开始刷新版本列表"）；
         // 这里再同步调一次会让 QML 加载被后端解析阻塞 7 秒（首屏卡死的根因），故不再调用。
@@ -266,6 +275,15 @@ Item {
         function onFabricApiVersionsReady(v) { page.fabricApiList = v }
         function onOptifineVersionsReady(v) { page.optifineList = v }
         function onInstalledVersionsChanged() { }
+
+        // 手动刷新版本列表的收尾提示（只响应用户手动点击，启动期自动刷新不弹）
+        function onVersionRefreshFinished(ok, message, count) {
+            if (!page.refreshPending) return
+            page.refreshPending = false
+            refreshTimer.stop()
+            if (page.toast)
+                page.toast.show(ok ? "版本列表刷新成功" : "版本列表刷新失败", 2200, ok ? "info" : "warning")
+        }
         function onCancelNotification(installId, message) {
             if (page.toast && message && message.length > 0)
                 page.toast.show(message, 3000, "warning")
@@ -398,7 +416,9 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: if (page.b) { page.b.refreshVersionList(); if (page.toast) page.toast.show("正在刷新版本列表", 1800, "info") }
+                    // 点击后不弹「正在刷新」：只等后端回结果，再提示一次（成功/失败），
+                    // 避免"弹个开始提示然后什么都没有"的反直觉反馈。
+                    onClicked: if (page.b) { page.refreshPending = true; refreshTimer.restart(); page.b.refreshVersionList() }
                 }
             }
         }

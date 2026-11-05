@@ -774,6 +774,8 @@ signals:
     void embeddedLoginChanged();
     void modDepsTooltipEnabledChanged();   // 2026-08-15：实验性 tooltip 开关
     void versionListReady();
+    // 手动刷新版本列表的结果（QML 收尾提示用）：ok=是否成功，message=失败原因，count=版本数
+    void versionRefreshFinished(bool ok, const QString& message, int count);
     void versionDetailsReady();
     void scanningChanged();
     void installedVersionsChanged();

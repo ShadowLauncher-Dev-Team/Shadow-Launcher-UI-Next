@@ -431,6 +431,10 @@ ShadowBackend::ShadowBackend(QObject* parent)
             this, &ShadowBackend::logMessage);
 
     // ── Signal forwarding: VersionBackend → ShadowBackend ──
+    connect(m_version, &VersionBackend::versionRefreshFinished, this,
+            [this](bool ok, const QString& message, int count) {
+                emit versionRefreshFinished(ok, message, count);
+            });
     connect(m_version, &VersionBackend::versionListReady, this, [this]() {
         m_versionListCacheValid = false;
         m_versionListCache.clear();

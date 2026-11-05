@@ -226,6 +226,7 @@ VersionBackend::VersionBackend(QObject* parent)
                         .arg(m_versionIds.size()));
 
                 emit versionListReady();
+                emit versionRefreshFinished(true, QString(), m_versionIds.size());
 
             });
 
@@ -240,6 +241,7 @@ VersionBackend::VersionBackend(QObject* parent)
                 emit logMessage(
 
                     tr("获取版本列表失败: %1").arg(err));
+                emit versionRefreshFinished(false, err, 0);
 
             });
 
