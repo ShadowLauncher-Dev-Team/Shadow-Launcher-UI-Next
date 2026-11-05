@@ -99,6 +99,18 @@ Item {
     // Sidebar 再次点"下载"时回到列表（已在本页时）
     function resetToList() { page.mode = 0; page.search = "" }
 
+    // 版本发布日期（后端 versionList 已带 date，缺省为空不显示）
+    function dateOf(id) { return page.dateMap[id] || "" }
+    readonly property var dateMap: (function() {
+        var m = {}
+        var vl = page.b ? page.b.versionList : []
+        for (var i = 0; i < vl.length; ++i) {
+            var v = vl[i]
+            if (v && v.id) m[v.id] = v.date || ""
+        }
+        return m
+    })()
+
     function pickVersion(vid) {
         page.picked = vid
         page.instName = vid
@@ -559,6 +571,17 @@ Item {
                     }
                 }
 
+                // 发布日期（真实字段；缺失时留空）
+                Text {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 250
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: page.dateOf(modelData)
+                    color: Theme.fg3
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                }
+
                 Row {
                     anchors.right: parent.right
                     anchors.rightMargin: 14
@@ -718,7 +741,7 @@ Item {
                         id: loaderCard
                         width: cfgCol.width
                         height: page.expandedLoader === modelData.key
-                                ? 40 + Math.min(6, loaderVersions().length) * 30 + 8 : 44
+                                ? 40 + Math.min(6, loaderCard.loaderVersions.length) * 30 + 8 : 44
                         radius: 10
                         color: "#0b0d12"
                         border.color: (page.activeLoader === modelData.key && modelData.key !== "fabric_api")
@@ -733,7 +756,7 @@ Item {
                         // Fabric API 只在 Fabric 被选中（或已选过版本）时才有意义
                         visible: lkey !== "fabric_api" || page.activeLoader === "fabric"
                                  || page.fabricApiVersion.length > 0
-                        opacity: off ? 0.45 : 1
+                        opacity: off ? 0.62 : 1
                         Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter } }
                         property var loaderVersions: (function() {
                             if (lkey === "forge") return page.forgeList
@@ -765,14 +788,32 @@ Item {
                                 anchors.rightMargin: 34
                                 anchors.verticalCenter: parent.verticalCenter
                                 spacing: 6
+                                // 禁用原因做成小标签：比整行红字更轻，也更像状态而不是报错
+                                Rectangle {
+                                    visible: loaderCard.off
+                                    height: 20
+                                    width: offTxt.implicitWidth + 16
+                                    radius: 4
+                                    color: Qt.rgba(0.973, 0.443, 0.443, 0.08)
+                                    border.color: Qt.rgba(0.973, 0.443, 0.443, 0.22)
+                                    border.width: 1
+                                    Text {
+                                        id: offTxt
+                                        anchors.centerIn: parent
+                                        text: loaderCard.offReason
+                                        color: "#c99a9a"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 10
+                                    }
+                                }
                                 Text {
-                                    text: loaderCard.off ? loaderCard.offReason
-                                          : (loaderCard.lkey === "fabric_api"
-                                             ? (page.fabricApiVersion.length > 0 ? page.fabricApiVersion : "可选")
-                                             : (page.activeLoader === loaderCard.lkey && page.selectedVersion.length > 0
-                                                ? page.selectedVersion : "不使用"))
-                                    color: loaderCard.off ? "#b06a6a" : (page.activeLoader === loaderCard.lkey && loaderCard.lkey !== "fabric_api")
-                                           || (loaderCard.lkey === "fabric_api" && page.fabricApiVersion.length > 0)
+                                    visible: !loaderCard.off
+                                    text: loaderCard.lkey === "fabric_api"
+                                          ? (page.fabricApiVersion.length > 0 ? page.fabricApiVersion : "可选")
+                                          : (page.activeLoader === loaderCard.lkey && page.selectedVersion.length > 0
+                                             ? page.selectedVersion : "不使用")
+                                    color: ((page.activeLoader === loaderCard.lkey && loaderCard.lkey !== "fabric_api")
+                                            || (loaderCard.lkey === "fabric_api" && page.fabricApiVersion.length > 0))
                                            ? "#8fb6f8" : Theme.fg3
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 12

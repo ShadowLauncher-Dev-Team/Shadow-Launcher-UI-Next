@@ -466,6 +466,15 @@ QVariantList VersionBackend::versionInfoList() const
 
         m[QStringLiteral("type")] = v.type;
 
+        // 发布日期：列表页要显示，避免 QML 再逐版本拉 meta
+        if (v.releaseTime.isValid()) {
+            m[QStringLiteral("releaseTime")] = v.releaseTime.toUTC().toString(Qt::ISODate);
+            m[QStringLiteral("date")] = v.releaseTime.toLocalTime().date().toString(QStringLiteral("yyyy-MM-dd"));
+        } else {
+            m[QStringLiteral("releaseTime")] = QString();
+            m[QStringLiteral("date")] = QString();
+        }
+
         list.append(m);
 
     }
