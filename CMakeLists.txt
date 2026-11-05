@@ -378,6 +378,15 @@ qt6_add_resources(ShadowLauncher "qml_resources"
 )
 target_include_directories(ShadowLauncher PRIVATE src src/backend src/ui_next)
 
+# ── Baked animation sprites (预烘焙帧动画) ──
+# 进度步骤的 Google 不确定环：60 帧序列烘焙成一张网格图，QML 用 AnimatedSprite 播放。
+# 渲染脚本：tools/bake_spin_sprite.py（改颜色/尺寸后重跑即可）
+qt6_add_resources(ShadowLauncher "anim_resources"
+    PREFIX "/qt/qml/ShadowLauncher/qml"
+    FILES
+        icons/anim/spin-f.png
+)
+
 # 鈹€鈹€ Lucide icon resources (must mirror dev-mode copy: icons copied into qml/icons/) 鈹€鈹€
 qt6_add_resources(ShadowLauncher "icon_resources"
     PREFIX "/qt/qml/ShadowLauncher/qml"
