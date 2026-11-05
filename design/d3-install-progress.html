@@ -1,0 +1,176 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8"><title>安装进度 · 三态</title>
+<link rel="stylesheet" href="d.css">
+<style>
+body{margin:0;background:#000}
+.dlwin{position:relative;display:flex;width:100vw;height:100vh;background:#08090d;overflow:hidden;border-radius:12px}
+.dlside{width:208px;flex:0 0 208px;background:#0a0b0f;border-right:1px solid #14171d;display:flex;flex-direction:column;padding:16px 12px 12px}
+.dlbrand{font-size:14px;font-weight:700;letter-spacing:.16em;color:#fff;padding:0 10px;margin:4px 0 20px}
+.dlnav{display:flex;flex-direction:column;gap:1px}
+.dlnavsub{display:flex;flex-direction:column;gap:1px;margin-top:14px;padding-top:14px;border-top:1px solid #14171d}
+.dlnav a,.dlnavsub a{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border-radius:8px;color:#98a1ae;font-size:13.5px;text-decoration:none}
+.dlnav a svg,.dlnavsub a svg{width:17px;height:17px;flex:0 0 17px;opacity:.9}
+.dlnav a.on{background:#151a23;color:#fff;font-weight:600}
+.dlnav a.on::before{content:"";position:absolute;left:-12px;top:10px;bottom:10px;width:2px;background:#3b82f6}
+.dlfoot{margin-top:auto;padding:0 10px;font-size:11px;color:#4b535f}
+.dlpill{margin-left:auto;font-style:normal;font-size:10.5px;font-weight:600;color:#0a0b0f;background:#3b82f6;border-radius:99px;padding:1px 6px}
+.dlmain{flex:1;min-width:0;display:flex;flex-direction:column}
+.dlhead{display:flex;align-items:flex-end;gap:16px;padding:26px 34px 14px}
+.dlhead .ttl{font-size:23px;font-weight:700;color:#fff}
+.dlhead .sub{font-size:12.5px;color:#7c8694;padding-bottom:3px}
+.dlhead .sp{flex:1}
+.dllogo{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06);color:#aab2be}
+.dllogo svg{width:15px;height:15px}
+.dlwctl{position:absolute;top:0;right:0;height:44px;display:flex;gap:6px;padding:0 10px;align-items:center}
+
+/* 卡片 */
+.wrap{flex:1;display:flex;gap:18px;padding:0 34px 20px;min-height:0}
+.left{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+.card{border:1px solid #1a1e26;border-radius:12px;background:#0b0d12;padding:15px 16px 13px}
+.card.run{border-color:#1e2a3d;background:linear-gradient(180deg,#0c1017,#0b0d12)}
+.ch{display:flex;align-items:center;gap:10px}
+.ipk{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:#12161d;border:1px solid #1c212a;color:#9fb0c6;flex:0 0 34px}
+.ipk svg{width:16px;height:16px}
+.nm{font-size:13.8px;font-weight:600;color:#eef2f8}
+.md{font-size:11.2px;color:#78828f;margin-top:2px}
+.ch .sp{flex:1}
+.pct{font-size:13px;color:#9fb6d8;font-variant-numeric:tabular-nums}
+.bar{height:4px;border-radius:99px;background:#181c24;margin:12px 0 11px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#3b82f6,#67a5fb)}
+.steps{display:flex;flex-direction:column;gap:1px}
+.step{display:flex;align-items:center;gap:9px;height:27px;font-size:12.3px;color:#6f7a88}
+.dot{width:14px;height:14px;border-radius:99px;border:1px solid #2a313c;display:grid;place-items:center;flex:0 0 14px;font-size:9px}
+.dot svg{width:9px;height:9px;stroke-width:2.8}
+.step.done{color:#9aa6b5}
+.step.done .dot{border-color:rgba(74,222,128,.5);color:#4ade80;background:rgba(74,222,128,.08)}
+.step.act{color:#fff}
+.step.act .dot{border-color:#3b82f6;background:rgba(59,130,246,.18);color:#7cb0fb}
+.step .st{margin-left:auto;font-size:11px;color:#6b7684;font-variant-numeric:tabular-nums}
+.step.act .st{color:#7cb0fb}
+.meta{display:flex;align-items:center;gap:16px;font-size:11.6px;color:#7a8492;margin-top:10px}
+.meta b{color:#cfd8e4;font-weight:600}
+.acts{display:flex;align-items:center;gap:8px;margin-top:12px}
+.acts .sp{flex:1}
+.btn{height:32px;padding:0 14px;border-radius:8px;border:1px solid rgba(59,130,246,.45);background:rgba(59,130,246,.12);color:#8fb6f8;font-size:12.2px;font-family:inherit;display:inline-flex;align-items:center;gap:7px}
+.btn svg{width:13px;height:13px}
+.btn.solid{border:none;background:linear-gradient(180deg,#4b8cf7,#2563eb);color:#fff;font-weight:600}
+.btn.ghost{border:1px solid #262b35;background:rgba(255,255,255,.02);color:#bfc6d2}
+.btn.danger{border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.08);color:#f0a0a0}
+.err{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:9px;background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.22);font-size:12.2px;color:#f2a3a3;line-height:1.6;margin-top:10px}
+.err svg{width:14px;height:14px;flex:0 0 14px;margin-top:2px}
+.ok{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:9px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.2);font-size:12.2px;color:#8fe0aa;margin-top:10px}
+.ok svg{width:14px;height:14px}
+.fail{display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:11.6px;color:#8d97a4}
+.fail span{display:flex;align-items:center;gap:8px;height:22px}
+.fail span svg{width:11px;height:11px;color:#e08a8a;opacity:.9}
+.more{font-size:11px;color:#6b7684;margin-top:2px}
+
+/* 右列 */
+.right{width:300px;flex:0 0 300px;display:flex;flex-direction:column;gap:14px}
+.panel{border:1px solid #1a1e26;border-radius:12px;background:#0b0d12;padding:14px 14px 12px}
+.ptitle{font-size:12.5px;font-weight:600;color:#dfe5ee;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.ptitle svg{width:14px;height:14px;opacity:.7}
+.qrow{display:flex;align-items:center;gap:9px;height:30px;font-size:12.2px;color:#8b95a2}
+.qrow .d{width:6px;height:6px;border-radius:99px;flex:0 0 6px}
+.qrow .d.b{background:#3b82f6}
+.qrow .d.g{background:#4ade80}
+.qrow .d.r{background:#f87171}
+.qrow .t{color:#b9c2ce;font-variant-numeric:tabular-nums}
+.qrow .sp{flex:1}
+.note{font-size:11.2px;color:#66707d;line-height:1.75}
+.note b{color:#a8b2c0;font-weight:600}
+</style></head><body>
+<div class="dlwin">
+  <aside class="dlside">
+    <div class="dlbrand">SHADOW</div>
+    <nav class="dlnav">
+      <a><svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg><span>启动</span></a>
+      <a class="on"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>下载</span></a>
+      <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg><span>联机</span></a>
+      <a><svg viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>统计</span></a>
+      <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>设置</span></a>
+    </nav>
+    <div class="dlnavsub"><a class="on" style="background:#151a23;color:#fff;font-weight:600"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg><span>下载进度</span><em class="dlpill">2</em></a><a><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span>帮助文档</span></a><a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.2 7.8 14.1 14.1 7.8 16.2 9.9 9.9 16.2 7.8"/></svg><span>实用网站</span></a></div>
+    <div class="dlfoot">v1.0.4</div>
+  </aside>
+  <main class="dlmain">
+    <div class="dlhead">
+      <div class="ttl">下载进度</div>
+      <div class="sub">1 个进行中 · 2 个已结束</div>
+      <div class="sp"></div>
+      <div class="dllogo"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg></div>
+    </div>
+    <div class="wrap">
+      <div class="left">
+        <!-- 进行中 -->
+        <div class="card run">
+          <div class="ch">
+            <div class="ipk"><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><polyline points="3.3 8 12 13 20.7 8"/><line x1="12" y1="22" x2="12" y2="13"/></svg></div>
+            <div><div class="nm">26.2 · Fabric 0.19.5</div><div class="md">原版 + 加载器 · 安装名 26.2-fabric-0.19.5</div></div>
+            <div class="sp"></div><div class="pct">62%</div>
+          </div>
+          <div class="bar"><i style="width:62%"></i></div>
+          <div class="steps">
+            <div class="step done"><span class="dot"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>下载版本信息<span class="st">完成</span></div>
+            <div class="step done"><span class="dot"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>下载游戏库<span class="st">完成</span></div>
+            <div class="step act"><span class="dot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/></svg></span>下载游戏资源<span class="st">312 / 503 MB</span></div>
+            <div class="step"><span class="dot"></span>校验游戏文件<span class="st"></span></div>
+            <div class="step"><span class="dot"></span>安装 Fabric<span class="st"></span></div>
+          </div>
+          <div class="meta"><span>速度 <b>4.2 MB/s</b></span><span>剩余 <b>1 分 20 秒</b></span><span>磁盘 <b>2.1 GB</b></span></div>
+          <div class="acts"><button class="btn danger">取消</button><div class="sp"></div><span class="md">取消后本次已下载文件会清理</span></div>
+        </div>
+
+        <!-- 部分失败 -->
+        <div class="card">
+          <div class="ch">
+            <div class="ipk" style="color:#e0a0a0;border-color:rgba(248,113,113,.25);background:rgba(248,113,113,.06)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+            <div><div class="nm">落幕曲 1.6.6.1 · Forge 47.3.22</div><div class="md">整合包 · 271 个模组</div></div>
+            <div class="sp"></div><div class="pct" style="color:#f0a0a0">部分失败</div>
+          </div>
+          <div class="err"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div>3 个文件下载失败，268 个已保留。加载器与 MC 资源已装好，补下失败项即可，不会重复下载。</div></div>
+          <div class="fail">
+            <span><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>tacz-1.20.1-1.1.7-hotfix2.jar</span>
+            <span><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>battlemusic-1.20.1-1.1.1.jar</span>
+            <span><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>wab-1.20.1-1.0.2.jar</span>
+            <div class="more">其余 0 个…</div>
+          </div>
+          <div class="acts"><button class="btn solid">补下失败项（3）</button><button class="btn ghost">查看日志</button><div class="sp"></div><button class="btn ghost">关闭</button></div>
+        </div>
+
+        <!-- 完成 -->
+        <div class="card">
+          <div class="ch">
+            <div class="ipk" style="color:#8fe0aa;border-color:rgba(74,222,128,.25);background:rgba(74,222,128,.06)"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <div><div class="nm">1.20.1 · Forge 47.4.10</div><div class="md">原版 + 加载器 · 安装名 1.20.1-Forge_47.4.10</div></div>
+            <div class="sp"></div><div class="pct" style="color:#8fe0aa">已完成</div>
+          </div>
+          <div class="ok"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><div>安装完成，用时 3 分 12 秒 · 已注册到版本列表</div></div>
+          <div class="acts"><button class="btn solid">启动游戏</button><button class="btn ghost">打开目录</button><div class="sp"></div><button class="btn ghost">关闭</button></div>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="panel">
+          <div class="ptitle"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>队列</div>
+          <div class="qrow"><span class="d b"></span>26.2 · Fabric<span class="sp"></span><span class="t">62%</span></div>
+          <div class="qrow"><span class="d r"></span>落幕曲整合包<span class="sp"></span><span class="t">部分失败</span></div>
+          <div class="qrow"><span class="d g"></span>1.20.1 · Forge<span class="sp"></span><span class="t">完成</span></div>
+        </div>
+        <div class="panel">
+          <div class="ptitle"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>关于这些状态</div>
+          <div class="note">
+            <b>进行中</b>：只显示当前步骤的字节数；速度是引擎单一来源，不做二次平滑。<br><br>
+            <b>部分失败</b>：不会标「完成」，也不会回滚已下载文件；「补下」只重下失败项。<br><br>
+            <b>完成</b>：只有全部步骤通过校验才出现；取消则直接清理临时文件。
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ptitle"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>规则</div>
+          <div class="note">同一时间只允许一个安装任务写版本目录；其余任务进入队列，前一个结束后自动开始。取消会中止在途请求，并在 20 秒内清理临时文件。</div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div class="dlwctl"><div class="dllogo"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="dllogo"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>
+</div>
+</body></html>
