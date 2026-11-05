@@ -19,6 +19,10 @@ Item {
 
     property string query: ""
     property int source: 0           // 0 全部 1 Modrinth 2 CurseForge
+    // 筛选按后端能力分档：加载器/环境只有 Mod 有查询参数；排序只有数据包有
+    property string loader: ""
+    property string env: ""
+    property string dpSort: ""
     property int pageNo: 0
     readonly property int pageSize: tabIndex === 2 ? 20 : (tabIndex === 2 ? 20 : 30)
     property var pool: []
@@ -38,7 +42,7 @@ Item {
         var q = page.query.trim()
         var off = page.pageNo * page.pageSize
         if (page.tabIndex === 1) {
-            page.b.searchModsEx(q, "", "", [], "", "", off, page.pageSize, page.sourceArg())
+            page.b.searchModsEx(q, page.loader, "", [], page.env, "", off, page.pageSize, page.sourceArg())
         } else if (page.tabIndex === 2) {
             page.b.searchShadersEx(q, [], [], [], [], off, page.pageSize, page.sourceArg())
         } else if (page.tabIndex === 3) {
@@ -46,7 +50,7 @@ Item {
         } else if (page.tabIndex === 4) {
             page.b.searchModpacksEx(q, "", "", [], off, page.pageSize, page.sourceArg())
         } else if (page.tabIndex === 5) {
-            page.b.searchDatapacksEx(q, "", [], "", off, page.pageSize, page.sourceArg())
+            page.b.searchDatapacksEx(q, "", [], page.dpSort, off, page.pageSize, page.sourceArg())
         }
         settleTimer.restart()
     }
@@ -227,9 +231,74 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: { searchInput.text = ""; page.query = ""; page.source = 0; page.doSearch(0) }
+                    onClicked: { searchInput.text = ""; page.query = ""; page.source = 0; page.loader = ""; page.env = ""; page.dpSort = ""; page.doSearch(0) }
                 }
             }
+        }
+
+        // ── 筛选（按类别能力显示不同项）──
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 6
+            visible: page.tabIndex === 1 || page.tabIndex === 5
+
+            Repeater {
+                model: page.tabIndex === 5
+                    ? [{ t: "下载量", v: "" }, { t: "最近更新", v: "updated" }, { t: "名称", v: "name" }]
+                    : [{ t: "全部加载器", v: "" }, { t: "Fabric", v: "fabric" }, { t: "Forge", v: "forge" }, { t: "NeoForge", v: "neoforge" }]
+                delegate: Rectangle {
+                    Layout.preferredHeight: 26
+                    implicitWidth: chipTxt.implicitWidth + 18
+                    radius: 13
+                    property bool sel: page.tabIndex === 5 ? (page.dpSort === modelData.v) : (page.loader === modelData.v)
+                    color: sel ? "#1b2433" : "transparent"
+                    border.width: 1
+                    border.color: sel ? "#2c3a4f" : Theme.line2
+                    Text {
+                        id: chipTxt
+                        anchors.centerIn: parent
+                        text: modelData.t
+                        color: parent.sel ? Theme.fg : Theme.fg3
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (page.tabIndex === 5) page.dpSort = modelData.v
+                            else page.loader = modelData.v
+                            page.doSearch(0)
+                        }
+                    }
+                }
+            }
+
+            Repeater {
+                model: page.tabIndex === 1 ? [{ t: "全部环境", v: "" }, { t: "客户端", v: "client" }, { t: "服务端", v: "server" }] : []
+                delegate: Rectangle {
+                    Layout.preferredHeight: 26
+                    implicitWidth: envTxt.implicitWidth + 18
+                    radius: 13
+                    color: page.env === modelData.v ? "#1b2433" : "transparent"
+                    border.width: 1
+                    border.color: page.env === modelData.v ? "#2c3a4f" : Theme.line2
+                    Text {
+                        id: envTxt
+                        anchors.centerIn: parent
+                        text: modelData.t
+                        color: page.env === modelData.v ? Theme.fg : Theme.fg3
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: { page.env = modelData.v; page.doSearch(0) }
+                    }
+                }
+            }
+            Item { Layout.fillWidth: true }
         }
 
         // ── 网格 ──
