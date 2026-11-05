@@ -130,6 +130,25 @@ Item {
         page.nameConflict = page.isInstalled(name)
     }
 
+    // ── 加载器互斥（原 UI 语义）──
+    function loaderDisabled(key) {
+        if (page.activeLoader.length === 0) return ""
+        if (key === page.activeLoader) return ""
+        if (key === "fabric_api") return page.activeLoader === "fabric" ? "" : "仅 Fabric 可用"
+        if (key === "optifine")
+            return (page.activeLoader === "fabric" || page.activeLoader === "neoforge")
+                   ? ("与 " + page.activeLoader + " 不兼容") : ""
+        if (page.activeLoader === "optifine" && key !== "fabric_api")
+            return "与 OptiFine 不兼容"
+        return "已选 " + page.activeLoader
+    }
+
+    function canInstall() {
+        if (page.nameConflict) return false
+        if (page.activeLoader.length === 0) return true
+        return page.selectedVersion.length > 0
+    }
+
     function startInstall() {
         if (!b) return
         var name = page.instName.trim().length > 0 ? page.instName.trim() : page.picked
@@ -550,7 +569,13 @@ Item {
 
     // ══════════ 配置态 ══════════
     Item {
-        visible: page.mode === 1
+        visible: page.mode === 1 || opacity > 0.01
+        opacity: page.mode === 1 ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: page.mode === 1 ? Theme.easeEnter : Theme.easeExit } }
+        transform: Translate {
+            x: page.mode === 1 ? 0 : 16
+            Behavior on x { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+        }
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: topBar.bottom
@@ -633,6 +658,38 @@ Item {
                     }
                 }
 
+                // Java 卡（只读事实：当前运行时与路径；异常时描边变红）
+                Rectangle {
+                    width: cfgCol.width
+                    height: 64
+                    radius: 10
+                    color: "#0b0d12"
+                    border.color: (page.b && page.b.javaVersion.length > 0) ? Theme.line2 : "#4a2530"
+                    border.width: 1
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 14
+                        anchors.top: parent.top
+                        anchors.topMargin: 12
+                        text: "Java 运行时"
+                        color: Theme.fg3
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+                    }
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 14
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 12
+                        text: page.b ? ((page.b.javaVersion || "未检测到") + (page.b.javaPath ? " · " + page.b.javaPath : "")) : ""
+                        color: (page.b && page.b.javaVersion.length > 0) ? "#dfe5ee" : "#f0a0a0"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                        elide: Text.ElideMiddle
+                        width: parent.width - 28
+                    }
+                }
+
                 // 加载器分段标题
                 Text {
                     text: "Mod 加载器"
@@ -667,6 +724,10 @@ Item {
 
                         readonly property string lkey: modelData.key
                         readonly property string llabel: modelData.label
+                        readonly property string offReason: page.loaderDisabled(lkey)
+                        readonly property bool off: offReason.length > 0
+                        opacity: off ? 0.45 : 1
+                        Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter } }
                         property var loaderVersions: (function() {
                             if (lkey === "forge") return page.forgeList
                             if (lkey === "neoforge") return page.neoforgeList
@@ -698,11 +759,12 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 spacing: 6
                                 Text {
-                                    text: loaderCard.lkey === "fabric_api"
-                                          ? (page.fabricApiVersion.length > 0 ? page.fabricApiVersion : "可选")
-                                          : (page.activeLoader === loaderCard.lkey && page.selectedVersion.length > 0
-                                             ? page.selectedVersion : "不使用")
-                                    color: (page.activeLoader === loaderCard.lkey && loaderCard.lkey !== "fabric_api")
+                                    text: loaderCard.off ? loaderCard.offReason
+                                          : (loaderCard.lkey === "fabric_api"
+                                             ? (page.fabricApiVersion.length > 0 ? page.fabricApiVersion : "可选")
+                                             : (page.activeLoader === loaderCard.lkey && page.selectedVersion.length > 0
+                                                ? page.selectedVersion : "不使用"))
+                                    color: loaderCard.off ? "#b06a6a" : (page.activeLoader === loaderCard.lkey && loaderCard.lkey !== "fabric_api")
                                            || (loaderCard.lkey === "fabric_api" && page.fabricApiVersion.length > 0)
                                            ? "#8fb6f8" : Theme.fg3
                                     font.family: Theme.fontFamily
@@ -720,8 +782,11 @@ Item {
                             }
                             MouseArea {
                                 anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: page.expandedLoader = (page.expandedLoader === loaderCard.lkey) ? "" : loaderCard.lkey
+                                cursorShape: loaderCard.off ? Qt.ArrowCursor : Qt.PointingHandCursor
+                                onClicked: {
+                                    if (loaderCard.off) return
+                                    page.expandedLoader = (page.expandedLoader === loaderCard.lkey) ? "" : loaderCard.lkey
+                                }
                             }
                         }
 
@@ -757,8 +822,9 @@ Item {
                                         id: lvHover
                                         anchors.fill: parent
                                         hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
+                                        cursorShape: loaderCard.off ? Qt.ArrowCursor : Qt.PointingHandCursor
                                         onClicked: {
+                                            if (loaderCard.off) return
                                             if (loaderCard.lkey === "fabric_api") {
                                                 page.fabricApiVersion = parent.ver
                                                 if (typeof modelData === "object") {
@@ -840,11 +906,13 @@ Item {
                 anchors.right: parent.right
                 anchors.rightMargin: page.padR
                 anchors.verticalCenter: parent.verticalCenter
-                color: page.nameConflict ? "#2a2f3a" : Theme.accentTop
+                color: page.canInstall() ? Theme.accentTop : "#2a2f3a"
                 Text {
                     anchors.centerIn: parent
-                    text: "开始安装"
-                    color: page.nameConflict ? Theme.fg3 : "#ffffff"
+                    text: page.canInstall() ? "开始安装"
+                          : (page.activeLoader.length > 0 && page.selectedVersion.length === 0
+                             ? "请选择版本" : "开始安装")
+                    color: page.canInstall() ? "#ffffff" : Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
@@ -852,7 +920,7 @@ Item {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    enabled: !page.nameConflict
+                    enabled: page.canInstall()
                     onClicked: page.startInstall()
                 }
             }
@@ -861,7 +929,13 @@ Item {
 
     // ══════════ 进度态 ══════════
     Item {
-        visible: page.mode === 2
+        visible: page.mode === 2 || opacity > 0.01
+        opacity: page.mode === 2 ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: page.mode === 2 ? Theme.easeEnter : Theme.easeExit } }
+        transform: Translate {
+            y: page.mode === 2 ? 0 : 12
+            Behavior on y { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+        }
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: topBar.bottom
@@ -946,6 +1020,9 @@ Item {
 
                 property bool dismissed: false
                 property bool notified: false
+                Behavior on height { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeExit } }
+                Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeExit } }
+                opacity: tcard.dismissed ? 0 : 1
                 property real prog: (typeof progress !== "undefined") ? progress : 0
                 property bool failFlag: (typeof failed !== "undefined") ? failed : false
                 property string cardName: (typeof name !== "undefined" && name) ? name : "任务"
@@ -1016,6 +1093,24 @@ Item {
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                     elide: Text.ElideRight
+                }
+                Rectangle {
+                    visible: tcard.failFlag
+                    width: 66; height: 26; radius: 6
+                    anchors.left: parent.left
+                    anchors.leftMargin: 16
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 10
+                    color: "transparent"
+                    border.color: "#4a2530"
+                    border.width: 1
+                    Text { anchors.centerIn: parent; text: "重试"; color: "#f0a0a0"; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: if (page.b && page.b.retryVersionInstall)
+                                       page.b.retryVersionInstall(typeof iid !== "undefined" ? iid : "")
+                    }
                 }
                 Rectangle {
                     visible: (typeof canCancel !== "undefined" && canCancel) && tcard.prog < 1 && !tcard.failFlag
