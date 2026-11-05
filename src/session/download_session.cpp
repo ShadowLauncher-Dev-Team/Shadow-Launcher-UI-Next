@@ -29,8 +29,8 @@ qreal DownloadSession::totalProgress() const {
 }
 
 void DownloadSession::recordBytes(qint64 bytesRecv, qint64 bytesTotal) {
-    Q_UNUSED(bytesRecv);
-    Q_UNUSED(bytesTotal);
+    m_bytesRecv = qMax<qint64>(0, bytesRecv);
+    m_bytesTotal = qMax<qint64>(0, bytesTotal);
     // 速度计算已移除：卡片速度由 VersionBackend 统一从引擎 EMA 推送（setSpeed），
     // 此处仅保留进度刷新信号，避免第三套独立速度算法造成界面与日志不一致。
     emit progressUpdated();
@@ -69,6 +69,7 @@ void DownloadSession::reset() {
     for (int i = 0; i < 3; ++i) mcStepDone[i] = mcStepTotal[i] = 0;
     mcFileAdded.clear();
     mcBytesDl = mcBytesAll = 0;
+    m_bytesRecv = m_bytesTotal = 0;
 
     loaderDownloadReady = false;
     loaderDownloadData.clear();
@@ -133,8 +134,10 @@ InstallCard DownloadSession::toCard(const QString& iid, const QString& name, con
     if (etaSeconds >= 0) {
         card.etaSeconds = etaSeconds;
     } else {
-        const qint64 dlNow = (bytesDl >= 0) ? bytesDl : mcBytesDl;
-        const qint64 dlAll = (bytesTotal >= 0) ? bytesTotal : mcBytesAll;
+        qint64 dlNow = (bytesDl >= 0) ? bytesDl : mcBytesDl;
+        qint64 dlAll = (bytesTotal >= 0) ? bytesTotal : mcBytesAll;
+        // 会话侧 recordBytes 的字节数最可靠（backend 的 sid/versionId 键可能不一致）
+        if (m_bytesTotal > 0) { dlNow = m_bytesRecv; dlAll = m_bytesTotal; }
         if (m_speed > 0 && !mcDownloadDone) {
             const qint64 remainBytes = qMax<qint64>(0, dlAll - dlNow);
             if (remainBytes > 0)

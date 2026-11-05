@@ -84,6 +84,9 @@ public:
     QSet<QString> mcFileAdded;
     qint64 mcBytesDl = 0;
     qint64 mcBytesAll = 0;
+    // 最近一次 recordBytes 推来的字节数（用于 ETA；不依赖 backend 的 key 映射）
+    qint64 m_bytesRecv = 0;
+    qint64 m_bytesTotal = 0;
 
     // ── 加载器状态 ──
     bool loaderDownloadReady = false;
