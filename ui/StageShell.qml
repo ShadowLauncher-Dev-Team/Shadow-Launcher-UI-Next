@@ -16,6 +16,8 @@ Item {
     readonly property int sideW: (narrow ? Theme.sideWNarrow : Theme.sideW)
     property bool versionsOpen: false
     property bool accountOpen: false
+    // 下载页：侧栏折叠成图标条，页面内自带二级导航（2026-11-05 方案）
+    property bool downloadOpen: false
     readonly property bool fullOpen: versionsOpen || accountOpen
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
@@ -24,6 +26,11 @@ Item {
     Component.onCompleted: {
         if (Qt.application.arguments.indexOf("--ui-versions") >= 0) root.versionsOpen = true
         if (Qt.application.arguments.indexOf("--ui-account") >= 0) root.accountOpen = true
+        if (Qt.application.arguments.indexOf("--ui-download") >= 0) {
+            root.downloadOpen = true
+            sideBar.currentLabel = "下载"
+        }
+        console.info("[ui] shell ready, downloadOpen=", root.downloadOpen)
     }
 
     Rectangle {
@@ -46,9 +53,14 @@ Item {
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        width: root.fullOpen ? 0 : root.sideW
+        width: root.fullOpen ? 0 : (root.downloadOpen ? 56 : root.sideW)
         narrow: root.narrow
+        compact: root.downloadOpen
         hostWindow: root.hostWindow
+        onNavActivated: (label) => {
+            // 只有"下载"把侧栏折叠；点其它主项自动退出下载页
+            root.downloadOpen = (label === "下载")
+        }
         // 快起：前 40% 时间就收掉大部分宽度，与页面淡入同帧开始，视觉上是一次动作
         Behavior on width {
             NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
@@ -81,7 +93,7 @@ Item {
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        enabled: !root.fullOpen
+        enabled: !root.fullOpen && !root.downloadOpen
         hostWindow: root.hostWindow
         narrow: root.narrow
         toast: toastHost
@@ -143,6 +155,18 @@ Item {
             toast: toastHost
             onClose: root.accountOpen = false
         }
+    }
+
+    // 下载页（侧栏已折叠成 56px 图标条；页面内自带二级导航 + 内容区）
+    DownloadPage {
+        id: downloadPage
+        anchors.left: sideBar.right
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        visible: root.downloadOpen
+        toast: toastHost
+        onClose: root.downloadOpen = false
     }
 
     // Toast：右下角通知栈。全窗挂一份，页面通过 toast 属性调用；

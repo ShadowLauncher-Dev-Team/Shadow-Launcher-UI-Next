@@ -234,6 +234,7 @@ set_source_files_properties(ui/SideBar.qml PROPERTIES QT_RESOURCE_ALIAS SideBar.
 set_source_files_properties(ui/pages/StagePage.qml PROPERTIES QT_RESOURCE_ALIAS pages/StagePage.qml)
 set_source_files_properties(ui/pages/VersionPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/VersionPage.qml)
 set_source_files_properties(ui/pages/AccountPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/AccountPage.qml)
+set_source_files_properties(ui/pages/DownloadPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/DownloadPage.qml)
 set_source_files_properties(ui/LaunchOverlay.qml PROPERTIES QT_RESOURCE_ALIAS LaunchOverlay.qml)
 set_source_files_properties(ui/controls/SIcon.qml PROPERTIES QT_RESOURCE_ALIAS controls/SIcon.qml)
 set_source_files_properties(ui/controls/SButton.qml PROPERTIES QT_RESOURCE_ALIAS controls/SButton.qml)
@@ -256,6 +257,7 @@ qt_add_qml_module(ShadowLauncher
         ui/pages/StagePage.qml
         ui/pages/VersionPage.qml
         ui/pages/AccountPage.qml
+        ui/pages/DownloadPage.qml
         ui/LaunchOverlay.qml
         ui/controls/SIcon.qml
         ui/controls/SButton.qml
@@ -280,6 +282,7 @@ qt6_add_resources(ShadowLauncher "ui_stage_assets"
     BASE "ui/assets"
     FILES
         ui/assets/stage-aurora.jpg
+        ui/assets/shadowlauncher.png
 )
 
 # QML: bundled in qrc for memory-mapped loading + runtime caching
