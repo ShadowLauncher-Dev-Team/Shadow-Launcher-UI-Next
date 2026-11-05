@@ -658,38 +658,6 @@ Item {
                     }
                 }
 
-                // Java 卡（只读事实：当前运行时与路径；异常时描边变红）
-                Rectangle {
-                    width: cfgCol.width
-                    height: 64
-                    radius: 10
-                    color: "#0b0d12"
-                    border.color: (page.b && page.b.javaVersion.length > 0) ? Theme.line2 : "#4a2530"
-                    border.width: 1
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 14
-                        anchors.top: parent.top
-                        anchors.topMargin: 12
-                        text: "Java 运行时"
-                        color: Theme.fg3
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 14
-                        anchors.bottom: parent.bottom
-                        anchors.bottomMargin: 12
-                        text: page.b ? ((page.b.javaVersion || "未检测到") + (page.b.javaPath ? " · " + page.b.javaPath : "")) : ""
-                        color: (page.b && page.b.javaVersion.length > 0) ? "#dfe5ee" : "#f0a0a0"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 12
-                        elide: Text.ElideMiddle
-                        width: parent.width - 28
-                    }
-                }
-
                 // 加载器分段标题
                 Text {
                     text: "Mod 加载器"
