@@ -61,6 +61,8 @@ public:
     int rowCount(const QModelIndex& parent = QModelIndex()) const override;
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
+    /// QML 侧无法调用 QAbstractListModel::get(index)，这里给一个按行取整条卡片的入口
+    Q_INVOKABLE QVariantMap cardDataAt(int row) const;
 
     void rebuild(const QVector<InstallCard>& cards);
 

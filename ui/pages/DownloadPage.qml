@@ -143,6 +143,12 @@ Item {
         return "已选 " + page.activeLoader
     }
 
+    function typeText(t) {
+        if (t === "version" || t === "vanilla") return "原版"
+        if (t === "merged") return "整合安装"
+        return t
+    }
+
     function canInstall() {
         if (page.nameConflict) return false
         if (page.activeLoader.length === 0) return true
@@ -175,6 +181,9 @@ Item {
     property real totalSpeed: 0
     property real totalProgress: 0
     property int runningCount: 0
+    property var cards: []
+    property string remainText: "—"
+    property var _doneAt: ({})
     Timer {
         interval: 400; repeat: true; running: page.mode === 2
         onTriggered: page.recalc()
@@ -182,15 +191,38 @@ Item {
     function recalc() {
         if (!b || !b.installCardsModel) return
         var m = b.installCardsModel
-        var sp = 0, run = 0, prog = 0
+        if (!m.cardDataAt) return
+        var list = [], sp = 0, run = 0, prog = 0, steps = 0
         for (var i = 0; i < m.count; ++i) {
-            var r = m.get(i)
-            if (r.failed) continue
-            if (r.progress < 1) { run++; sp += (r.speed || 0); prog = Math.max(prog, r.progress || 0) }
+            var r = m.cardDataAt(i)
+            if (!r) continue
+            var done = !r.failed && (r.progress || 0) >= 1
+            if (done) {
+                if (!page._doneAt[r.iid]) {
+                    page._doneAt[r.iid] = Date.now()
+                    if (page.toast) page.toast.show((r.name || "任务") + " 安装完成", 2600, "success")
+                    if (page.b.refreshInstalled) page.b.refreshInstalled()
+                }
+                continue
+            }
+            list.push({
+                iid: r.iid, name: r.name, phase: r.phase,
+                progress: r.progress || 0, speed: r.speed || 0,
+                steps: r.steps || [], failed: r.failed, error: r.error || "",
+                canCancel: r.canCancel, canRetry: r.canRetry
+            })
+            if (!r.failed) {
+                run++
+                sp += (r.speed || 0)
+                prog = Math.max(prog, r.progress || 0)
+                steps = Math.max(steps, r.remaining || 0)
+            }
         }
+        page.cards = list
         page.totalSpeed = sp
         page.totalProgress = prog
         page.runningCount = run
+        page.remainText = steps > 0 ? (steps + " 步") : "—"
     }
 
     Component.onCompleted: {
@@ -690,7 +722,7 @@ Item {
                         radius: 10
                         color: "#0b0d12"
                         border.color: (page.activeLoader === modelData.key && modelData.key !== "fabric_api")
-                                      ? "rgba(59,130,246,.55)" : Theme.line2
+                                      ? Qt.rgba(0.231, 0.510, 0.965, .55) : Theme.line2
                         border.width: 1
                         clip: true
 
@@ -783,7 +815,7 @@ Item {
                                     readonly property string ver: (typeof modelData === "string") ? modelData : (modelData.version || "")
                                     color: ((loaderCard.lkey === "fabric_api" ? page.fabricApiVersion : page.selectedVersion) === ver
                                             && (loaderCard.lkey === "fabric_api" || page.activeLoader === loaderCard.lkey))
-                                           ? "rgba(59,130,246,.16)" : (lvHover.containsMouse ? "#12151c" : "transparent")
+                                           ? Qt.rgba(0.231, 0.510, 0.965, .16) : (lvHover.containsMouse ? "#12151c" : "transparent")
                                     Text {
                                         anchors.left: parent.left
                                         anchors.leftMargin: 10
@@ -915,7 +947,7 @@ Item {
         }
     }
 
-    // ══════════ 进度态 ══════════
+    // ══════════ 进度态（对齐 design/e2 方案 B：顶部总览条 + 带步骤的任务卡）══════════
     Item {
         visible: page.mode === 2 || opacity > 0.01
         opacity: page.mode === 2 ? 1 : 0
@@ -932,13 +964,13 @@ Item {
         anchors.rightMargin: page.padR
         anchors.topMargin: 12
 
-        // 汇总条
+        // 顶部总览条
         Rectangle {
             id: sumBar
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            height: 64
+            height: 76
             radius: 10
             color: "#0b0d12"
             border.color: Theme.line2
@@ -947,17 +979,34 @@ Item {
             Row {
                 anchors.left: parent.left
                 anchors.leftMargin: 18
+                anchors.right: parent.right
+                anchors.rightMargin: 18
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 56
+                spacing: 40
+
+                // 总进度 + 细进度线
                 Column {
+                    width: Math.round((sumBar.width - 36 - 120) * 0.42)
                     spacing: 4
                     Text { text: "总进度"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
                     Text {
                         text: Math.round(page.totalProgress * 100) + "%"
                         color: "#ffffff"
                         font.family: Theme.fontFamily
-                        font.pixelSize: 20
+                        font.pixelSize: 22
                         font.weight: Font.Bold
+                    }
+                    Rectangle {
+                        width: parent.width
+                        height: 3
+                        radius: 2
+                        color: "#181c24"
+                        Rectangle {
+                            width: Math.max(0, Math.min(1, page.totalProgress)) * parent.width
+                            height: 3
+                            radius: 2
+                            color: Theme.accent
+                        }
                     }
                 }
                 Column {
@@ -967,24 +1016,36 @@ Item {
                         text: (page.totalSpeed / 1048576).toFixed(1) + " MB/s"
                         color: "#dfe6f0"
                         font.family: Theme.fontFamily
-                        font.pixelSize: 16
+                        font.pixelSize: 18
                         font.weight: Font.DemiBold
                     }
                 }
                 Column {
                     spacing: 4
-                    Text { text: "进行中"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                    Text { text: "任务"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
                     Text {
-                        text: page.runningCount + " 个任务"
+                        text: page.runningCount + " 进行中"
                         color: "#dfe6f0"
                         font.family: Theme.fontFamily
-                        font.pixelSize: 16
+                        font.pixelSize: 18
+                        font.weight: Font.DemiBold
+                    }
+                }
+                Column {
+                    spacing: 4
+                    Text { text: "剩余"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                    Text {
+                        text: page.remainText
+                        color: "#dfe6f0"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 18
                         font.weight: Font.DemiBold
                     }
                 }
             }
         }
 
+        // 任务卡
         ListView {
             id: taskList
             anchors.left: parent.left
@@ -993,138 +1054,233 @@ Item {
             anchors.topMargin: 12
             anchors.bottom: parent.bottom
             clip: true
-            spacing: 8
+            spacing: 10
             boundsBehavior: Flickable.StopAtBounds
-            model: (page.b && page.b.installCardsModel) ? page.b.installCardsModel : null
+            model: page.cards
             delegate: Rectangle {
                 id: tcard
                 width: taskList.width
-                height: tcard.dismissed ? 0 : 96
-                visible: !tcard.dismissed
+                height: 46 + 10 + 3 + 8 + cardSteps.length * 23 + 12 + 32 + 12
                 radius: 10
-                color: tcard.failFlag ? "#141013" : "#0b0d12"
-                border.color: tcard.failFlag ? "#4a2530" : Theme.line2
+                color: tcard.failed ? "#141013" : "#0b0d12"
+                border.color: tcard.failed ? "#4a2530" : Theme.line2
                 border.width: 1
 
-                property bool dismissed: false
-                property bool notified: false
-                Behavior on height { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeExit } }
-                Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeExit } }
-                opacity: tcard.dismissed ? 0 : 1
-                property real prog: (typeof progress !== "undefined") ? progress : 0
-                property bool failFlag: (typeof failed !== "undefined") ? failed : false
-                property string cardName: (typeof name !== "undefined" && name) ? name : "任务"
+                readonly property var cd: modelData
+                readonly property bool failed: cd && cd.failed
+                readonly property var cardSteps: (cd && cd.steps) ? cd.steps.filter(function(s) { return s.show !== false }) : []
 
-                onProgChanged: {
-                    if (!tcard.notified && tcard.prog >= 1 && !tcard.failFlag) {
-                        tcard.notified = true
-                        if (page.toast) page.toast.show(tcard.cardName + " 安装完成", 2600, "success")
-                        // 装完立刻刷新已安装列表，让版本列表绿点跟上
-                        if (page.b && page.b.refreshInstalled) page.b.refreshInstalled()
-                        tcard.hideTimer.start()
+                // 头部
+                Rectangle {
+                    id: icBox
+                    x: 14
+                    anchors.verticalCenter: headRow.verticalCenter
+                    width: 30
+                    height: 30
+                    radius: 8
+                    color: tcard.failed ? Qt.rgba(0.973, 0.443, 0.443, .06) : "#12161d"
+                    border.color: tcard.failed ? Qt.rgba(0.973, 0.443, 0.443, .25) : "#1c212a"
+                    border.width: 1
+                    SIcon {
+                        anchors.centerIn: parent
+                        name: tcard.failed ? "alert-triangle" : "box"
+                        size: 15
+                        color: tcard.failed ? "#e0a0a0" : "#9fb0c6"
                     }
                 }
-                onFailFlagChanged: {
-                    if (!tcard.notified && tcard.failFlag) {
-                        tcard.notified = true
-                        if (page.toast) page.toast.show(tcard.cardName + " 安装失败", 3200, "warning")
-                    }
-                }
-                Timer { id: hideTimer; interval: 1800; onTriggered: tcard.dismissed = true }
-
-                Text {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
+                Row {
+                    id: headRow
+                    anchors.left: icBox.right
+                    anchors.leftMargin: 10
+                    anchors.right: headRight.left
+                    anchors.rightMargin: 12
                     anchors.top: parent.top
                     anchors.topMargin: 12
-                    text: (typeof name !== "undefined" ? name : "") + (typeof type !== "undefined" && type ? " · " + type : "")
-                    color: "#e8ebf2"
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 13
-                    font.weight: Font.DemiBold
+                    spacing: 0
+                    Column {
+                        spacing: 2
+                        Text {
+                            text: tcard.cd ? (tcard.cd.name || "") : ""
+                            color: "#e8ebf2"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                        }
+                        Text {
+                            text: tcard.failed ? "部分失败" : (tcard.cd ? (tcard.cd.phase || "") : "")
+                            color: tcard.failed ? "#f0a0a0" : Theme.fg3
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+                    }
                 }
-                Text {
+                Row {
+                    id: headRight
                     anchors.right: parent.right
-                    anchors.rightMargin: 16
-                    anchors.top: parent.top
-                    anchors.topMargin: 13
-                    text: tcard.failFlag ? "失败" : (tcard.prog >= 1 ? "已完成" : ((typeof speed !== "undefined" ? (speed || 0) : 0) / 1048576).toFixed(1) + " MB/s")
-                    color: tcard.failFlag ? "#f0a0a0" : (tcard.prog >= 1 ? "#8fe0aa" : "#9fb6d8")
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 12
+                    anchors.rightMargin: 14
+                    anchors.verticalCenter: headRow.verticalCenter
+                    spacing: 6
+                    Text {
+                        text: tcard.failed ? "0 MB/s"
+                              : (((tcard.cd ? tcard.cd.speed : 0) / 1048576).toFixed(1) + " MB/s · "
+                                 + Math.round((tcard.cd ? tcard.cd.progress : 0) * 100) + "%")
+                        color: tcard.failed ? "#f0a0a0" : "#9fb6d8"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                    }
                 }
+
+                // 总进度线
                 Rectangle {
-                    id: track
+                    id: bar
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    anchors.leftMargin: 16
-                    anchors.rightMargin: 16
+                    anchors.leftMargin: 14
+                    anchors.rightMargin: 14
                     anchors.top: parent.top
-                    anchors.topMargin: 40
+                    anchors.topMargin: 56
                     height: 3
                     radius: 2
                     color: "#181c24"
                     Rectangle {
-                        width: Math.max(0, Math.min(1, tcard.prog)) * track.width
+                        width: Math.max(0, Math.min(1, (tcard.cd ? tcard.cd.progress : 0))) * parent.width
                         height: 3
                         radius: 2
-                        color: tcard.failFlag ? "#f87171" : Theme.accent
+                        color: tcard.failed ? "#f87171" : Theme.accent
                     }
                 }
+
+                // 失败信息
                 Text {
+                    visible: tcard.failed
                     anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.top: track.bottom
-                    anchors.topMargin: 9
-                    width: parent.width - 130
-                    text: tcard.failFlag ? ((typeof error !== "undefined" && error) ? error : "安装失败")
-                                        : ((typeof phase !== "undefined") ? phase : "")
-                    color: tcard.failFlag ? "#f0a0a0" : Theme.fg2
+                    anchors.leftMargin: 14
+                    anchors.right: parent.right
+                    anchors.rightMargin: 14
+                    anchors.top: bar.bottom
+                    anchors.topMargin: 8
+                    text: tcard.cd ? (tcard.cd.error || "安装失败，可重试") : ""
+                    color: "#f2a3a3"
                     font.family: Theme.fontFamily
-                    font.pixelSize: 12
+                    font.pixelSize: 11
                     elide: Text.ElideRight
                 }
-                Rectangle {
-                    visible: tcard.failFlag
-                    width: 66; height: 26; radius: 6
+
+                // 步骤列表
+                Column {
+                    id: stepsCol
                     anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 10
-                    color: "transparent"
-                    border.color: "#4a2530"
-                    border.width: 1
-                    Text { anchors.centerIn: parent; text: "重试"; color: "#f0a0a0"; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: if (page.b && page.b.retryVersionInstall)
-                                       page.b.retryVersionInstall(typeof iid !== "undefined" ? iid : "")
+                    anchors.leftMargin: 14
+                    anchors.right: parent.right
+                    anchors.rightMargin: 14
+                    anchors.top: bar.bottom
+                    anchors.topMargin: tcard.failed ? 30 : 8
+                    spacing: 0
+                    Repeater {
+                        model: tcard.cardSteps
+                        delegate: Item {
+                            width: stepsCol.width
+                            height: 23
+                            readonly property string st: modelData.status || "pending"
+                            Rectangle {
+                                id: dot
+                                width: 13
+                                height: 13
+                                radius: 7
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: st === "completed" ? Qt.rgba(0.290, 0.871, 0.502, .08) : (st === "active" ? Qt.rgba(0.231, 0.510, 0.965, .18) : "transparent")
+                                border.color: st === "completed" ? Qt.rgba(0.290, 0.871, 0.502, .5) : (st === "active" ? Theme.accent : "#2a313c")
+                                border.width: 1
+                                SIcon {
+                                    visible: st === "completed"
+                                    anchors.centerIn: parent
+                                    name: "check"
+                                    size: 8
+                                    color: "#4ade80"
+                                }
+                                Rectangle {
+                                    visible: st === "active"
+                                    anchors.centerIn: parent
+                                    width: 6; height: 6; radius: 3
+                                    color: "#7cb0fb"
+                                }
+                            }
+                            Text {
+                                anchors.left: dot.right
+                                anchors.leftMargin: 9
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: modelData.name || ""
+                                color: st === "completed" ? "#95a1b0" : (st === "active" ? "#ffffff" : Theme.fg3)
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+                            Text {
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: st === "completed" ? "完成" : (st === "active" ? ((modelData.detail && modelData.detail.length > 0) ? modelData.detail : (modelData.percentage + "%")) : "")
+                                color: st === "active" ? "#7cb0fb" : Theme.fg3
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                            }
+                        }
                     }
                 }
-                Rectangle {
-                    visible: (typeof canCancel !== "undefined" && canCancel) && tcard.prog < 1 && !tcard.failFlag
-                    width: 60; height: 26; radius: 6
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
+
+                Text {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 14
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 10
-                    color: "transparent"
-                    border.color: Theme.line2
-                    border.width: 1
-                    Text { anchors.centerIn: parent; text: "取消"; color: Theme.fg2; font.family: Theme.fontFamily; font.pixelSize: 12 }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: if (page.b && page.b.cancelVersionInstall)
-                                       page.b.cancelVersionInstall(typeof iid !== "undefined" ? iid : "")
+                    anchors.bottomMargin: 18
+                    text: tcard.failed ? "" : page.remainText
+                    color: Theme.fg3
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                }
+
+                // 操作行
+                Row {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 14
+                    anchors.right: parent.right
+                    anchors.rightMargin: 14
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 12
+                    spacing: 8
+                    Rectangle {
+                        visible: tcard.failed && tcard.cd && tcard.cd.canRetry
+                        width: 62; height: 26; radius: 6
+                        color: "transparent"
+                        border.color: "#4a2530"
+                        border.width: 1
+                        Text { anchors.centerIn: parent; text: "重试"; color: "#f0a0a0"; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: if (page.b && page.b.retryVersionInstall)
+                                           page.b.retryVersionInstall(tcard.cd.iid)
+                        }
                     }
+                    Rectangle {
+                        visible: tcard.cd && tcard.cd.canCancel && !tcard.failed
+                        width: 62; height: 26; radius: 6
+                        color: "transparent"
+                        border.color: Qt.rgba(0.973, 0.443, 0.443, .35)
+                        border.width: 1
+                        Text { anchors.centerIn: parent; text: "取消"; color: "#f0a0a0"; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: if (page.b && page.b.cancelVersionInstall)
+                                           page.b.cancelVersionInstall(tcard.cd.iid)
+                        }
+                    }
+
                 }
             }
 
             Text {
                 anchors.centerIn: parent
-                visible: !page.b || !page.b.installCardsModel || page.b.installCardsModel.count === 0
+                visible: page.cards.length === 0
                 text: "当前没有下载任务"
                 color: Theme.fg3
                 font.family: Theme.fontFamily

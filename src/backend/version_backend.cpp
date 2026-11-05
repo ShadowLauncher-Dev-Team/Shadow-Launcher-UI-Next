@@ -7662,6 +7662,24 @@ QVariant InstallCardModel::data(const QModelIndex& index, int role) const {
 
 
 
+QVariantMap InstallCardModel::cardDataAt(int row) const {
+
+    QVariantMap out;
+
+    if (row < 0 || row >= rowCount()) return out;
+
+    const QModelIndex idx = index(row, 0);
+
+    const auto names = roleNames();
+
+    for (auto it = names.constBegin(); it != names.constEnd(); ++it)
+
+        out.insert(QString::fromUtf8(it.value()), data(idx, it.key()));
+
+    return out;
+
+}
+
 QHash<int, QByteArray> InstallCardModel::roleNames() const {
 
     return {
