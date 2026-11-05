@@ -259,7 +259,9 @@ Item {
             list.push({
                 iid: r.iid, name: r.name, phase: r.phase,
                 progress: r.progress || 0, speed: r.speed || 0, eta: r.eta || 0,
-                steps: r.steps || [], failed: r.failed, error: r.error || "",
+                steps: (r.steps || []).map(function(s) {
+                    return { name: s.name, detail: s.detail, status: s.status, percentage: s.percentage, show: s.show }
+                }), failed: r.failed, error: r.error || "",
                 canCancel: r.canCancel, canRetry: r.canRetry
             })
             if (!r.failed) {
@@ -1347,28 +1349,61 @@ Item {
                         delegate: Item {
                             width: stepsCol.width
                             height: 23
-                            readonly property string st: modelData.status || "pending"
-                            Rectangle {
+                            // QML 里 QVariantMap 的 status 用点号取不到（保留字冲突），改用下标
+                            readonly property string st: (modelData && modelData["status"]) ? modelData["status"] : "pending"
+                            Item {
                                 id: dot
-                                width: 13
-                                height: 13
-                                radius: 7
+                                width: 16
+                                height: 16
                                 anchors.verticalCenter: parent.verticalCenter
-                                color: st === "completed" ? Qt.rgba(0.290, 0.871, 0.502, .08) : (st === "active" ? Qt.rgba(0.231, 0.510, 0.965, .18) : "transparent")
-                                border.color: st === "completed" ? Qt.rgba(0.290, 0.871, 0.502, .5) : (st === "active" ? Theme.accent : "#2a313c")
-                                border.width: 1
-                                SIcon {
-                                    visible: st === "completed"
-                                    anchors.centerIn: parent
-                                    name: "check"
-                                    size: 8
-                                    color: "#4ade80"
-                                }
+
+                                // 待开始 / 完成：静态环（完成带对勾，不再用实心点，避免圆心偏移）
                                 Rectangle {
-                                    visible: st === "active"
+                                    visible: st !== "active"
                                     anchors.centerIn: parent
-                                    width: 6; height: 6; radius: 3
-                                    color: "#7cb0fb"
+                                    width: 16
+                                    height: 16
+                                    radius: 8
+                                    color: st === "completed" ? Qt.rgba(0.290, 0.871, 0.502, 0.12) : "transparent"
+                                    border.color: st === "completed" ? "#4ade80" : "#2a313c"
+                                    border.width: 1.5
+                                    SIcon {
+                                        visible: st === "completed"
+                                        anchors.centerIn: parent
+                                        name: "check"
+                                        size: 9
+                                        color: "#4ade80"
+                                    }
+                                }
+
+                                // 进行中：Material 不确定环（底环 + 旋转扫弧），与 design/step-spinner-google.html 的 F 一致
+                                Canvas {
+                                    id: ring
+                                    visible: st === "active"
+                                    width: 16
+                                    height: 16
+                                    property real phase: 0
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        ctx.reset()
+                                        ctx.lineWidth = 1.6
+                                        ctx.lineCap = "round"
+                                        ctx.strokeStyle = "#232a34"
+                                        ctx.beginPath(); ctx.arc(8, 8, 6.4, 0, Math.PI * 2); ctx.stroke()
+                                        var rot = phase * Math.PI * 2
+                                        var sweep = (0.12 + 0.62 * (0.5 + 0.5 * Math.sin(phase * Math.PI * 8))) * Math.PI * 2
+                                        ctx.strokeStyle = "#3b82f6"
+                                        ctx.beginPath(); ctx.arc(8, 8, 6.4, rot, rot + sweep); ctx.stroke()
+                                    }
+                                }
+                                Timer {
+                                    interval: 16
+                                    repeat: true
+                                    running: st === "active"
+                                    onTriggered: {
+                                        ring.phase = (ring.phase + 0.016 / 1.6) % 1
+                                        ring.requestPaint()
+                                    }
                                 }
                             }
                             Text {
