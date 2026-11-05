@@ -134,6 +134,7 @@ void ModpackInstallTask::start(const QString& zipPath, const QString& versionNam
     m_pendingFailKeepFiles = false;
     m_pendingFail.clear();
     m_failedModFiles.clear();
+    m_finalizing = false;   // 新一轮任务：允许再次进入终态
     // 加载器重试状态复位
     m_loaderAutoRetryCount = 0;
     m_loaderRetryMode = false;
@@ -506,6 +507,13 @@ void ModpackInstallTask::onDownloadAllFinished(bool cancelled)
 {
     Q_UNUSED(cancelled);   // 取消判定用 m_cancel（downloader 中止也可能是失败守卫触发）
     emit logLine(tr("[追踪] onDownloadAllFinished 进入 cancelled=%1").arg(cancelled));
+    // ── 终态重入保护（2026-11-05 验收 P0）──
+    // fail() 里同步 cancel 下载器会重入本函数；此时未完成项已被标 skipped（不是 fail），
+    // 于是 failed==0 → 走完成分支 → 先 failure 后 success 的双终态、还会留下空壳版本。
+    if (m_finalizing) {
+        emit logLine(tr("[追踪] onDownloadAllFinished 忽略：终态已开始"));
+        return;
+    }
     m_attachSyncTimer->stop();
     m_modsDone = true;
 
@@ -534,7 +542,11 @@ void ModpackInstallTask::onDownloadAllFinished(bool cancelled)
     m_failedModFiles = failedFiles;
     const int total = m_meta.files.size();
 
-    if (failed == total && total > 0) {
+    // ── 全失败判据（2026-11-05 验收修复）──
+    // 旧判据 failed==total 在有可选文件时永远不可达：未勾选的可选文件被标 skipped，
+    // 既不算 done 也不算 fail，于是"全部必需文件都失败"落进部分失败分支 → 不回滚、留半成品。
+    // 新判据：一个成功都没有（doneCount==0）且有失败 → 视为整体失败，回滚。
+    if (failed > 0 && doneCount == 0) {
         // 全部失败：视为导入失败（如 CF 密钥 401/403、网络完全不可用）→ 整体回滚
         if (m_installingMc) {
             // MC 路还在跑：登记待失败，等其停止后统一出口（避免与安装线程竞态）
@@ -1048,6 +1060,7 @@ void ModpackInstallTask::cancel()
 void ModpackInstallTask::fail(const QString& error)
 {
     if (m_phase == Phase::Error || m_phase == Phase::Cancelled || m_phase == Phase::Done) return;
+    m_finalizing = true;   // 先立旗：后面同步 cancel 下载器会重入 onDownloadAllFinished
 
     // 另一路还在跑：先停它，等汇合后统一失败出口（避免与下载/安装线程写盘竞态）
     if (m_downloader->isRunning())
@@ -1085,6 +1098,7 @@ void ModpackInstallTask::fail(const QString& error)
 void ModpackInstallTask::failPartial(const QString& error)
 {
     if (m_phase == Phase::Error || m_phase == Phase::Cancelled || m_phase == Phase::Done) return;
+    m_finalizing = true;
 
     // 步骤 2（模组批量下载）立即标失败——部分失败绝不能显示 completed 100%
     if (m_cardSteps.size() > 2) {

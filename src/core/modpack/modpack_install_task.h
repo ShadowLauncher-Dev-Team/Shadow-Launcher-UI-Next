@@ -143,6 +143,9 @@ private:
     QTimer* m_mcPollTimer = nullptr;     // MC 阶段 300ms 轮询进度/速度/步骤
     QTimer* m_attachSyncTimer = nullptr; // 下载阶段 500ms 同步附件
     bool m_cardDone = false;
+    /// 终态已开始（fail/failPartial/finishCancelled/completeImport 任一已进入）：
+    /// 用于挡住"失败时同步 cancel 下载器 → 重入 onDownloadAllFinished → 反而走完成"的路径。
+    bool m_finalizing = false;
 
     // ── 并行汇合状态 ──
     bool m_modsDone = false;     // 模组路完成
