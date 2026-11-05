@@ -1618,12 +1618,40 @@ bool FileDownloader::mergeFile(std::shared_ptr<FileDownload> file)
         .arg(file->localPath).arg(file->threads.size());
 
     QDir().mkpath(QFileInfo(file->localPath).absolutePath());
-    QFile out(file->localPath);
-    file->targetWritten = true;   // 合并写最终路径：取消后必须删
+    // ── temp + rename（2026-11-05 验收 P2-F）──
+    // 旧实现直接 open(localPath) 顺序写：分片打不开 / SHA1 失败 / 进程被杀
+    // 都会在最终路径留下半截或脏文件（且没人清理）。改为写 .shadow_merge，
+    // 校验通过再 rename；失败分支一律删临时文件。
+    const QString mergeTmp = file->localPath + QStringLiteral(".shadow_merge");
+    QFile::remove(mergeTmp);
+    QFile out(mergeTmp);
+    file->targetWritten = true;   // 写过（临时）文件：取消后必须删
     if (!out.open(QIODevice::WriteOnly)) {
-        emit logMessage(QString("[夸父] 无法写入: %1").arg(file->localPath));
+        emit logMessage(QString("[夸父] 无法写入: %1").arg(mergeTmp));
         return false;
     }
+
+    // 提交器：close + SHA1 校验 + rename。返回 false 时调用方负责删除 mergeTmp。
+    auto commitTmp = [&]() -> bool {
+        out.close();
+        if (!file->expectedSha1.isEmpty()) {
+            QFile chk(mergeTmp);
+            if (!chk.open(QIODevice::ReadOnly)) return false;
+            QCryptographicHash h(QCryptographicHash::Sha1);
+            h.addData(&chk);
+            chk.close();
+            if (h.result().toHex() != file->expectedSha1) {
+                emit logMessage(QString("[夸父] SHA1合并校验失败: %1").arg(file->localName));
+                return false;
+            }
+        }
+        QFile::remove(file->localPath);   // rename 前先清掉旧文件（Windows rename 不覆盖）
+        if (!QFile::rename(mergeTmp, file->localPath)) {
+            emit logMessage(QString("[夸父] 合并文件改名失败: %1").arg(file->localPath));
+            return false;
+        }
+        return true;
+    };
 
     // 服务器返回全文件（忽略 Range）的线程：其 temp 是完整文件，直接复制为
     // 最终文件（跳过其他分片——它们只是部分数据，完整数据已具备）
@@ -1634,7 +1662,12 @@ bool FileDownloader::mergeFile(std::shared_ptr<FileDownload> file)
                 out.write(tf.readAll());
                 tf.close();
                 tf.remove();
-                out.close();
+                if (!commitTmp()) {
+                    qCWarning(logDownload) << QStringLiteral("[夸父] 全文件提交失败，已丢弃临时文件 %1").arg(file->localName);
+                    out.close();
+                    QFile::remove(mergeTmp);
+                    return false;
+                }
                 qCInfo(logDownload) << QStringLiteral("[夸父] 合并使用全文件数据 %1").arg(file->localName);
                 // 清理其余分片 temp
                 for (auto& o : file->threads) {
@@ -1654,21 +1687,18 @@ bool FileDownloader::mergeFile(std::shared_ptr<FileDownload> file)
     for (auto& th : sorted) {
         if (th->tempPath.isEmpty()) continue;
         QFile tf(th->tempPath);
-        if (!tf.open(QIODevice::ReadOnly)) { out.close(); return false; }
+        if (!tf.open(QIODevice::ReadOnly)) {
+            out.close();
+            QFile::remove(mergeTmp);   // 半截合并文件不留在最终路径
+            return false;
+        }
         out.write(tf.readAll());
         tf.close();
         tf.remove();
     }
-    out.close();
-
-    if (!file->expectedSha1.isEmpty()) {
-        out.open(QIODevice::ReadOnly);
-        QCryptographicHash h(QCryptographicHash::Sha1);
-        h.addData(&out); out.close();
-        if (h.result().toHex() != file->expectedSha1) {
-            emit logMessage(QString("[夸父] SHA1合并校验失败: %1").arg(file->localName));
-            return false;
-        }
+    if (!commitTmp()) {
+        QFile::remove(mergeTmp);
+        return false;
     }
 
     qCInfo(logDownload) << QStringLiteral("[夸父] 合并完成 文件=%1 SHA1校验=通过").arg(file->localName);
