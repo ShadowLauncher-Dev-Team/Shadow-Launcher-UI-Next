@@ -107,7 +107,7 @@ Item {
         if (page.kind === "shader") return base + "/shaderpacks"
         if (page.kind === "resourcepack") return base + "/resourcepacks"
         if (page.kind === "modpack") return base + "/downloads"
-        return base + "/datapacks"
+        return base   // 数据包没有固定安装目录：要放进具体存档的 world/datapacks/
     }
 
     function install() {
@@ -410,7 +410,9 @@ Item {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: "安装位置：" + page.installDir()
+                    text: page.kind === "datapack"
+                          ? "放置位置：<存档>/world/datapacks/（手动）"
+                          : "安装位置：" + page.installDir()
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
