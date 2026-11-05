@@ -204,7 +204,8 @@ DownloadTask（任务：步骤模型 + 进度 + 状态机 + 取消）
 
 | 设置 | 真实消费点 | 验收方法 | 状态 |
 |---|---|---|---|
-| 文件下载源 `fileSource` | `VersionDownloader` 选镜像对象（jar/libs/assets 的 host）；加载器安装器库下载 | 改档后 `backend.downloadSourceSummary()` 的 preferOfficial 变化；装一次原版看日志 host | ✅ 已接（既有），未逐档实测 |
+| 文件下载源 `fileSource` | `VersionDownloader` 选镜像对象（jar/libs/assets 的 host） | 改档后 `backend.downloadSourceSummary()` 的 preferOfficial 变化；装一次原版看日志 host | ✅ 已接（既有），未逐档实测 |
+| 加载器 Maven 源（Forge/NeoForge 安装器与依赖库） | `forgeStepLibs()`（mod_loader_installer.cpp） | 日志「[安装] 下载安装器库:」的 host | ❌ **未接（2026-11-05 更正）**：forgeStepLibs 完全不读 `m_preferOfficial`——官方恒定第一、BMCLAPI 仅兜底；且 `HttpClient::mirrorUrl` 会**无条件**把 libraries.minecraft.net 改写成 BMCLAPI（http_client.cpp:222-261），所以"官方优先"对这些 host 从来没真正生效。待 C 项收尾时接通，接通前不得再声称"已接" |
 | 版本列表源 `listSource` | `VersionManager` 版本清单主源/兜底源；整合包导入的 MC 版本清单 | `/eval`：`backend.listDownloadSource=0` → 主源 bmclapi；=1/2 → launchermeta | ✅ 实测（`d8ab617`） |
 | 下载限速 `speedLimitMB` | `FileDownloader::applySpeedLimit()`（全局虚拟时钟）；`AssetDownloader` 的并发门控 | `backend.downloadProbe(url, limitKBps, ms)` 实测：1MB/s 档 0.99MB/s、4MB/s 档 3.84MB/s | ✅ 实测（`686ceb6`） |
 | 并发线程 `threadLimit` | `FileDownloader::setMaxThreads`（夹 1..24）→ `AssetDownloader` 并发 | `/eval`：残留 64 → 24、set 64 → 24、set 0 → 1 | ✅ 实测（`686ceb6`） |
