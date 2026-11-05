@@ -233,7 +233,7 @@ img{max-width:100%}
 
 /* ============================= 区块头 ============================= */
 .sec{padding:0 var(--pad)}
-.picks-sec{padding-top:26px}
+.picks-sec{padding-top:26px;position:relative}
 .list-sec{padding-top:28px}
 .sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:15px}
 .sec-title .kicker{margin-bottom:7px}
@@ -246,7 +246,7 @@ img{max-width:100%}
   border:1px solid var(--line2);background:#0b0e14;transition:all .15s var(--ease)}
 .rbtn:hover{color:#fff;border-color:#3a4454;background:#121822}
 
-/* ============================= 本周精选 ============================= */
+/* ============================= 下载量最高（横向卡） ============================= */
 .picks{
   display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;
   -webkit-mask-image:linear-gradient(90deg,#000 0,#000 95.5%,transparent 100%);
@@ -359,6 +359,11 @@ img{max-width:100%}
 .empty b{font-size:14px;font-weight:600;color:#aab4c2}
 .empty span{font-size:12px;color:#5c6674}
 
+/* 数据包下载提示 */
+.kv-btn{font-size:10.5px;color:#8fb8f0;border:1px solid #2b4d7c;background:rgba(59,130,246,.08);border-radius:4px;padding:1px 6px;margin-left:4px;line-height:1.5;transition:all .14s var(--ease)}
+.kv-btn:hover{background:rgba(59,130,246,.16);color:#d6e8ff}
+.link-note{font-size:10.5px;color:#5d6673;line-height:1.6;letter-spacing:.01em}
+
 /* 空 / 骨架 / 状态预览 */
 .list-sec{scroll-margin-top:78px}
 .state-bar{display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:4px var(--pad) 30px;font-size:10px;color:#404855}
@@ -366,7 +371,7 @@ img{max-width:100%}
 .state-bar button{font-size:10px;color:#5b6674;padding:2px 7px;border-radius:4px;border:1px solid transparent;transition:all .14s var(--ease)}
 .state-bar button:hover{color:#b7c3d3;border-color:#232a35;background:#0d1117}
 .state-bar button.on{color:#9fc5fb;border-color:#2b4d7c;background:rgba(59,130,246,.08)}
-.sk{display:block;border-radius:5px;background:linear-gradient(90deg,#0e131b 25%,#161d28 37%,#0e131b 63%);background-size:400% 100%;animation:shimmer 1.5s ease-in-out infinite}
+.sk{display:block;border-radius:5px;background:linear-gradient(90deg,#111823 25%,#1b2431 37%,#111823 63%);background-size:400% 100%;animation:shimmer 1.5s ease-in-out infinite}
 .skcard{display:flex;gap:16px;height:132px;padding:18px;border:1px solid var(--line);border-radius:var(--r);background:#0b0e13}
 .sk-cover{width:96px;height:96px;flex:0 0 96px;border-radius:8px}
 .sk-body{flex:1;display:flex;flex-direction:column;gap:7px;min-width:0}
@@ -760,6 +765,7 @@ img{max-width:100%}
 }
 @media (max-width:1220px){
   :root{--pad:40px}
+  .picks-sec::after{content:"";position:absolute;top:60px;right:0;bottom:4px;width:54px;pointer-events:none;background:linear-gradient(90deg,rgba(8,9,13,0),var(--bg) 90%)}
   .nav-inner{gap:22px}
   .cat{padding:0 11px}
   .search{width:186px}
@@ -1330,11 +1336,9 @@ function catItems(cat){
   return out;
 }
 function heroCandidates(cat){
-  var out = [];
-  var all = catItems(cat);
-  for (var i = 0; i < all.length; i++) if (all[i].hero) out.push(all[i]);
-  if (out.length === 0) out = all.slice(0, 3);
-  return out;
+  var all = catItems(cat).slice();
+  all.sort(function(a, b){ return b.dl - a.dl; });
+  return all.slice(0, 3);
 }
 function fmtDl(n){
   if (n >= 100000000) return (n / 100000000).toFixed(2).replace('.00','').replace('.0','') + ' 亿';
@@ -1693,7 +1697,7 @@ function scene(it, w, h, opts){
     h.push('<section class="hero" id="hero">');
     h.push('<div class="hero-grid">');
     h.push('<div class="hero-copy">');
-    h.push('<div class="hero-kicker"><span class="kline"></span><span class="kicker">编辑推荐 · Editor’s Pick</span><span class="idx">VOL.07 / ' + cur + ' — ' + total + '</span></div>');
+    h.push('<div class="hero-kicker"><span class="kline"></span><span class="kicker">下载量最高 · Most Downloaded</span><span class="idx">VOL.07 / ' + cur + ' — ' + total + '</span></div>');
     h.push('<h1 class="hero-title">' + esc(it.cn) + '<span>' + esc(it.en) + '</span></h1>');
     h.push('<div class="hero-sub">' + srcBadge(it) + '<span>' + cat.label + ' · ' + esc(it.tags[0]) + '</span><i class="dot"></i><span>' + it.versions.length + ' 个游戏版本</span><i class="dot"></i><span>' + esc(it.loader) + '</span></div>');
     h.push('<p class="hero-desc">' + esc(it.intro) + '</p>');
@@ -1711,7 +1715,7 @@ function scene(it, w, h, opts){
     h.push('<div class="plate-back"></div>');
     h.push('<div class="plate">' + scene(it, 640, 300) + '</div>');
     h.push('<div class="fl-tile">' + icon(cat.icon, 30) + '</div>');
-    h.push('<div class="fl-badge"><span class="live-dot"></span>' + esc(it.note || '编辑推荐') + '</div>');
+    h.push('<div class="fl-badge"><span class="live-dot"></span>累计下载 TOP ' + (idx + 1) + '</div>');
     h.push('<div class="hero-pager"><span>' + cur + ' / ' + total + '</span><button class="pg" data-hero-prev aria-label="上一条推荐">' + icon('chevron-left', 13) + '</button><button class="pg" data-hero-next aria-label="下一条推荐">' + icon('chevron-right', 13) + '</button></div>');
     h.push('</div>');
     h.push('</div>');
@@ -1742,7 +1746,7 @@ function scene(it, w, h, opts){
     var h = [];
     h.push('<section class="sec picks-sec">');
     h.push('<div class="sec-head">');
-    h.push('<div class="sec-title"><div class="kicker">MOST DOWNLOADED · 累计下载</div><h2 class="sec-h2">下载量最高<em>TOP ' + arr.length + '</em></h2></div>');
+    h.push('<div class="sec-title"><div class="kicker">RANKING · 累计下载</div><h2 class="sec-h2">下载量排行<em>TOP ' + arr.length + '</em></h2></div>');
     h.push('<div class="sec-tools"><span class="sec-note">按累计下载量排序</span><div class="round-btns">');
     h.push('<button class="rbtn" data-scrollpicks="-1" aria-label="向左滚动">' + icon('chevron-left', 15) + '</button>');
     h.push('<button class="rbtn" data-scrollpicks="1" aria-label="向右滚动">' + icon('chevron-right', 15) + '</button>');
@@ -1886,17 +1890,13 @@ function scene(it, w, h, opts){
   function destFor(kind){
     if (kind === 'shader') return 'shaderpacks/';
     if (kind === 'pack') return 'resourcepacks/';
-    if (kind === 'datapack') return '世界存档/datapacks/';
+    if (kind === 'datapack') return 'world/datapacks/';
     if (kind === 'modpack') return '由启动器管理';
     return 'mods/';
   }
   function fileExt(it){
     if (it.cat === 'modpack') return '.zip';
     return it.cat === 'mod' ? '.jar' : '.zip';
-  }
-  function authorAvatar(it){
-    var a = it.author.trim();
-    return a.length ? a.charAt(0).toUpperCase() : 'S';
   }
   function sourceMark(it){
     if (it.source === 'Modrinth') return 'MODRINTH';
@@ -1947,7 +1947,7 @@ function scene(it, w, h, opts){
     h.push('<div class="dcover">');
     h.push(scene(it, 1240, 280, { v:'cover' }));
     h.push('<div class="dcover-shade"></div>');
-    h.push('<div class="dcover-badges"><span class="dbadge">' + cat.label + ' · ' + esc(it.tags[0]) + '</span><span class="dbadge"><span class="okdot"></span>' + esc(it.versions[0]) + ' 已适配</span><span class="dbadge">' + esc(it.loader) + '</span></div>');
+    h.push('<div class="dcover-badges"><span class="dbadge">' + cat.label + ' · ' + esc(it.tags[0]) + '</span><span class="dbadge"><span class="okdot"></span>适配 ' + esc(it.versions[0]) + '</span><span class="dbadge">' + esc(it.loader) + '</span></div>');
     h.push('<div class="dcover-icon">' + icon(cat.icon, 30) + '</div>');
     h.push('<div class="dcover-main"><h1>' + esc(it.cn) + '<span>' + esc(it.en) + '</span></h1>');
     h.push('<div class="dcover-sub">' + srcBadge(it) + '<span>' + esc(it.license) + '</span><i class="dot"></i><span>' + clientText(it) + '</span><i class="dot"></i><span>更新于 ' + updText(it.upd) + ' · ' + b0.date + '</span></div></div>');
@@ -2028,7 +2028,8 @@ function scene(it, w, h, opts){
     h.push('<aside class="dside"><div class="sticky">');
 
     h.push('<div class="icard">');
-    h.push('<div class="icard-head"><div><div class="kicker">INSTALL</div><h3>安装</h3></div><span class="badge-src">' + icon('shield-check', 12) + esc(it.source) + '</span></div>');
+    var isDp = it.cat === 'datapack';
+    h.push('<div class="icard-head"><div><div class="kicker">' + (isDp ? 'DOWNLOAD' : 'INSTALL') + '</div><h3>' + (isDp ? '下载' : '安装') + '</h3></div><span class="badge-src">' + icon('shield-check', 12) + esc(it.source) + '</span></div>');
     h.push('<div class="icard-body">');
     h.push('<div class="field"><div class="field-label">游戏版本<em>' + it.versions.length + ' 个可用版本</em></div><div class="select-wrap">');
     h.push('<button class="select" id="mcBtn" data-mc-toggle aria-expanded="false" aria-haspopup="listbox"><span id="mcLabel">' + esc(detail.mc) + '</span><span class="mc-tag">最新</span>' + icon('chevron-down', 14) + '</button>');
@@ -2051,11 +2052,14 @@ function scene(it, w, h, opts){
 
     h.push('<dl class="kv">');
     h.push('<div><dt>加载器</dt><dd>' + esc(it.loader) + '</dd></div>');
-    h.push('<div><dt>安装位置</dt><dd>' + destFor(it.kind) + '</dd></div>');
+    h.push('<div><dt>' + (isDp ? '手动放入' : '安装位置') + '</dt><dd>' + destFor(it.kind) + (isDp ? ' <button class="kv-btn" data-folder>打开文件夹</button>' : '') + '</dd></div>');
     h.push('</dl>');
 
-    h.push('<div class="link-row"><button class="link-btn" data-manual>手动下载 ' + fileExt(it) + icon('external-link', 11) + '</button><button class="link-btn" data-folder>打开目录' + icon('arrow-up-right', 11) + '</button></div>');
-    h.push('<div class="demo-row"><span>状态演示 · 未安装 / 下载中 / 失败</span><button data-demo-fail>失败态</button></div>');
+    h.push('<div class="link-row">' + (isDp
+      ? '<span class="link-note">解压后放入该目录，执行 /reload 生效</span>'
+      : '<button class="link-btn" data-manual>手动下载 ' + fileExt(it) + icon('external-link', 11) + '</button><button class="link-btn" data-folder>打开目录' + icon('arrow-up-right', 11) + '</button>')
+      + '</div>');
+    h.push('<div class="demo-row"><span>状态演示 · ' + (isDp ? '未下载 / 下载中 / 失败' : '未安装 / 下载中 / 失败') + '</span><button data-demo-fail>失败态</button></div>');
     h.push('</div></div>');
 
     h.push('<div class="side-card"><div class="sc-head"><span>AUTHOR</span><span class="api-tag">待接口</span></div>');
@@ -2109,7 +2113,8 @@ function scene(it, w, h, opts){
     if (detail.phase === 'done') {
       return '<div class="done-box pending"><span class="dok">' + icon('check', 14) + '</span><div><b>下载完成<span class="pend-tag">已安装状态待后端</span></b><span>' + b.size + ' 已写入 ' + destFor(detail.it.kind) + '</span></div><button data-again>重新下载</button></div>';
     }
-    return '<button class="btn primary block" data-install-now>' + icon('download', 15) + '下载并安装</button>';
+    var isDp2 = detail.it.cat === 'datapack';
+    return '<button class="btn primary block" data-install-now>' + icon('download', 15) + (isDp2 ? '下载到本地' : '下载并安装') + '</button>';
   }
 
   function paintProgress(){
@@ -2141,6 +2146,14 @@ function scene(it, w, h, opts){
       paintProgress();
       if (detail.pct >= 100) {
         clearInterval(installTimer);
+        if (detail.it.cat === 'datapack') {
+          detail.phase = 'idle';
+          detail.pct = 0;
+          var a0 = document.getElementById('instArea');
+          if (a0) a0.innerHTML = instActionsHTML();
+          toast('已下载到本地，请放入 world/datapacks/', 'ok');
+          return;
+        }
         detail.phase = 'done';
         var a = document.getElementById('instArea');
         if (a) a.innerHTML = instActionsHTML();
@@ -2436,29 +2449,11 @@ function scene(it, w, h, opts){
       return;
     }
 
-    if ((el = t.closest('[data-fav]'))) {
-      el.classList.toggle('on');
-      var on = el.classList.contains('on');
-      var lbl = el.querySelector('span');
-      if (lbl) lbl.textContent = on ? '已收藏' : '收藏';
-      toast(on ? '已加入收藏' : '已取消收藏', 'ok');
-      return;
-    }
-
     if ((el = t.closest('[data-share]'))) {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(location.href).catch(function(){});
       }
       toast('资源链接已复制', 'ok');
-      return;
-    }
-
-    if ((el = t.closest('[data-follow]'))) {
-      var following = el.classList.contains('on');
-      el.classList.toggle('on');
-      var sp = el.querySelector('span');
-      if (sp) sp.textContent = following ? '关注作者' : '已关注';
-      toast(following ? '已取消关注' : '已关注 ' + (detail ? detail.it.author : ''), 'ok');
       return;
     }
 

@@ -1232,16 +1232,16 @@ function renderHero(list){
   var el = $("hero");
   if (!list.length){ el.style.display = "none"; return; }
   el.style.display = "";
-  var it = null;
-  for (var i=0;i<list.length;i++) if (list[i].featured){ it = list[i]; break; }
-  if (!it) it = list[0];
+  var it = list[0];
+  var kick = S.sort === "updated" ? "最近更新 · NEW"
+    : (S.sort === "name" ? "名称序 · FIRST" : "下载量最高 · TOP PICK");
   el.style.setProperty("--hero-glow", rgba(it.accent, 0.18));
   el.setAttribute("data-id", it.id);
   var rows = versionRows(it);
   el.innerHTML =
       '<div class="hero-art">' + heroArt(it) + '</div>'
     + '<div class="hero-copy">'
-    +   '<div class="hero-kicker"><span class="ln"></span>本周焦点 · EDITOR’S PICK</div>'
+    +   '<div class="hero-kicker"><span class="ln"></span>' + kick + '</div>'
     +   '<div class="hero-title">' + it.cn + '<small>' + it.en + '</small></div>'
     +   '<div class="hero-desc">' + it.desc + '</div>'
     +   '<div class="hero-meta">'
@@ -1516,7 +1516,7 @@ function renderDetail(){
     +     '<div class="d-src">'
     +       '<div class="d-src-row"><span class="src-badge ' + (it.src === "CurseForge" ? "cf" : "") + '">'
     +         '<span class="dotm"></span>' + it.src + '</span></div>'
-    +       '<div class="d-src-note">' + it.up + '同步 · 文件签名已校验</div>'
+    +       '<div class="d-src-note">' + it.up + '同步 · 来自 ' + it.src + '</div>'
     +     '</div>'
     +     '<div class="d-acts">'
     +       '<button class="btn ghost w100" id="copyBtn">' + ico("copy","s13") + '复制链接</button>'
