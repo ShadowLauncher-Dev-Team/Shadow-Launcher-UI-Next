@@ -46,6 +46,50 @@ Item {
         onTriggered: root.sideNarrowed = root.resDetailOpen
     }
     readonly property var b: (typeof backend !== "undefined") ? backend : null
+
+    // ── 模组/资源「文件下载」追踪 ──
+    // 后端对 downloadModFile 只发信号（started/progress/finished/failed/cancelled），没有 model；
+    // 详情页要就地显示进度、下载进度页也要能看到，所以统一在壳里收成一份表。
+    property var fileDl: []
+    function _dlIdx(id) {
+        for (var i = 0; i < root.fileDl.length; ++i)
+            if (root.fileDl[i].id === id) return i
+        return -1
+    }
+    function _dlPatch(id, patch) {
+        var arr = root.fileDl.slice()
+        var i = root._dlIdx(id)
+        var o = i >= 0 ? arr[i]
+                       : ({ id: id, name: "", received: 0, total: 0, speed: 0, state: "run", path: "", error: "" })
+        for (var k in patch) o[k] = patch[k]
+        if (i >= 0) arr[i] = o; else arr.push(o)
+        root.fileDl = arr
+    }
+    Connections {
+        target: root.b
+        ignoreUnknownSignals: true
+        function onModFileDownloadStarted(downloadId, fileName, fileSize, displayName) {
+            root._dlPatch(downloadId, { name: displayName || fileName, total: fileSize, state: "run" })
+        }
+        function onModFileDownloadProgress(downloadId, received, total, speed) {
+            root._dlPatch(downloadId, { received: received, total: total, speed: speed })
+        }
+        function onModFileDownloadFinished(downloadId, success, filePath, displayName) {
+            root._dlPatch(downloadId, {
+                name: displayName || "", state: success ? "done" : "fail", path: filePath || "",
+                speed: 0, received: -1
+            })
+            if (success) toastHost.show((displayName || "文件") + " 下载完成", 2600, "success")
+            else toastHost.show((displayName || "文件") + " 下载失败", 3200, "error")
+        }
+        function onModFileDownloadFailed(downloadId, errorDetail, displayName) {
+            root._dlPatch(downloadId, { state: "fail", error: errorDetail || "", speed: 0 })
+            toastHost.show((displayName || "文件") + " 下载失败：" + (errorDetail || "未知错误"), 3600, "error")
+        }
+        function onModFileDownloadCancelled(downloadId, displayName) {
+            root._dlPatch(downloadId, { state: "fail", error: "已取消", speed: 0 })
+        }
+    }
     // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
     // 登录这类不确定等待 + 资源库在途请求，统一走顶部 SLoadingBar
     readonly property bool loading: (b ? b.microsoftLoginBusy : false)
@@ -233,6 +277,7 @@ Item {
             id: resDetail
             anchors.fill: parent
             toast: toastHost
+            fileDl: root.fileDl
             onBack: root.resDetailOpen = false
         }
     }
@@ -250,6 +295,7 @@ Item {
             id: progressPage
             anchors.fill: parent
             toast: toastHost
+            fileDl: root.fileDl
         }
     }
 

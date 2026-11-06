@@ -9,6 +9,14 @@ import ShadowLauncher.Next
 Item {
     id: page
     property var toast: null
+    // 模组/资源「文件下载」：由 StageShell 统一收集，这里只负责显示
+    property var fileDl: []
+    function dlStateText(d) {
+        if (d.state === "done") return "已完成"
+        if (d.state === "fail") return d.error ? ("失败 · " + d.error) : "失败"
+        var pct = d.total > 0 ? Math.round(d.received / d.total * 100) : 0
+        return pct + "%" + (d.speed > 0 ? (" · " + (d.speed / 1048576).toFixed(1) + " MB/s") : "")
+    }
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     // 窗口宽度而非自身宽度：侧栏收起/展开时自身宽度会变，用它判断会在动画最后一帧
     // 突然从宽布局切到窄布局（用户看到的「最后一刻震动卡一下」）
@@ -286,12 +294,63 @@ Item {
             }
         }
 
+        // 文件下载（模组/资源）：后端只发信号没有 model，条目来自 StageShell
+        Item {
+            id: dlBlock
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: sumBar.bottom
+            anchors.topMargin: page.fileDl.length > 0 ? 12 : 0
+            height: page.fileDl.length > 0 ? (24 + Math.min(4, page.fileDl.length) * 20) : 0
+            visible: page.fileDl.length > 0
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 10
+                color: "#0b0d12"
+                border.color: Theme.line2
+                border.width: 1
+            }
+            Column {
+                anchors.left: parent.left; anchors.leftMargin: 18
+                anchors.right: parent.right; anchors.rightMargin: 18
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 6
+                Repeater {
+                    model: page.fileDl.slice(-4).reverse()
+                    delegate: Item {
+                        width: parent.width
+                        height: 14
+                        Text {
+                            anchors.left: parent.left
+                            anchors.right: stText.left
+                            anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: modelData.name || "文件"
+                            color: Theme.fg2
+                            elide: Text.ElideMiddle
+                            font.family: Theme.fontFamily; font.pixelSize: 12
+                        }
+                        Text {
+                            id: stText
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: page.dlStateText(modelData)
+                            color: modelData.state === "done" ? "#5ee08f"
+                                 : (modelData.state === "fail" ? "#e28a8a" : "#8fb6f8")
+                            font.family: Theme.fontFamily; font.pixelSize: 12
+                        }
+                    }
+                }
+            }
+        }
+
         // 任务卡
         ListView {
             id: taskList
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.top: sumBar.bottom
+            anchors.top: dlBlock.bottom
             anchors.topMargin: 12
             anchors.bottom: parent.bottom
             clip: true
@@ -576,7 +635,7 @@ Item {
 
             Text {
                 anchors.centerIn: parent
-                visible: cardModel.count === 0
+                visible: cardModel.count === 0 && page.fileDl.length === 0
                 text: "当前没有下载任务"
                 color: Theme.fg3
                 font.family: Theme.fontFamily

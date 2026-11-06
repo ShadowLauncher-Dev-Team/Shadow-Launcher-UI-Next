@@ -38,6 +38,22 @@ Item {
     property var dlQueue: []
     property var pendingJob: null
     property string status: ""
+    // 本页发起的文件下载（id 由 downloadModFile 返回）；数据表在 StageShell 里统一收
+    property var fileDl: []
+    property var myIds: []
+    readonly property var myDls: {
+        var out = []
+        for (var i = 0; i < fileDl.length; ++i)
+            if (myIds.indexOf(fileDl[i].id) >= 0) out.push(fileDl[i])
+        return out
+    }
+    function dlLine(d) {
+        if (d.state === "done") return "已完成  " + (d.name || "")
+        if (d.state === "fail") return "失败  " + (d.name || "")
+        var pct = d.total > 0 ? Math.round(d.received / d.total * 100) : 0
+        var sp = d.speed > 0 ? (" · " + (d.speed / 1048576).toFixed(1) + " MB/s") : ""
+        return "下载中  " + pct + "%" + sp + "  " + (d.name || "")
+    }
 
     readonly property var comboList: {
         var out = []
@@ -278,7 +294,11 @@ Item {
             var path = p.replace(/^file:\/{2,3}/i, "")
             var cut = path.lastIndexOf("/")
             if (cut > 0) page.lastDir = path.substring(0, cut)
-            if (j && page.b) page.b.downloadModFile(j.url, path, j.filename, j.size, j.sha1)
+            if (j && page.b) {
+                var dlId = page.b.downloadModFile(j.url, path, j.filename, j.size, j.sha1)
+                if (dlId > 0) page.myIds = page.myIds.concat([dlId])
+                if (page.toast) page.toast.show("开始下载 " + j.filename, 2400, "info")
+            }
             page.popQueue()
         }
         onRejected: page.popQueue()
@@ -398,12 +418,12 @@ Item {
             id: rightRail
             anchors.right: parent.right; anchors.top: parent.top
             width: page.narrow ? 232 : 280
-            height: 172
+            height: installCard.height + 4
 
             Rectangle {
                 id: installCard
                 anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
-                height: 168; radius: Theme.rSm
+                height: 168 + Math.min(4, page.myDls.length) * 15; radius: Theme.rSm
                 color: "#0b0e13"; border.width: 1; border.color: Theme.line
 
                 Text {
@@ -437,10 +457,28 @@ Item {
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 16; anchors.right: parent.right; anchors.rightMargin: 16
                     anchors.top: parent.top; anchors.topMargin: 136
+                    visible: page.myDls.length === 0
                     text: page.status.length > 0 ? page.status : "下载时由你选择保存位置"
-                    color: page.status.length > 0 ? Theme.fg3 : Theme.fg3
+                    color: Theme.fg3
                     font.family: Theme.fontFamily; font.pixelSize: 10
                     elide: Text.ElideRight
+                }
+                // 本页发起的下载：就地显示，不用退出去看下载进度
+                Column {
+                    anchors.left: parent.left; anchors.leftMargin: 16; anchors.right: parent.right; anchors.rightMargin: 16
+                    anchors.top: parent.top; anchors.topMargin: 136
+                    spacing: 3
+                    Repeater {
+                        model: page.myDls.slice(0, 4)
+                        delegate: Text {
+                            width: parent.width
+                            text: page.dlLine(modelData)
+                            color: modelData.state === "done" ? "#5ee08f"
+                                 : (modelData.state === "fail" ? "#e28a8a" : "#8fb6f8")
+                            font.family: Theme.fontFamily; font.pixelSize: 10
+                            elide: Text.ElideRight
+                        }
+                    }
                 }
             }
         }

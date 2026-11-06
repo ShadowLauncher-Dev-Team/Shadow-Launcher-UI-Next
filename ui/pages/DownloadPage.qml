@@ -159,10 +159,25 @@ Item {
     // ── 安装名自动生成（旧 UI 语义）──
     // 加载器后缀沿用后端命名约定：OptiFine 的 installName 必须含 "OptiFine_<版本>"，
     // mod_loader_installer 会从 installName 反解加载器版本（见 installer.cpp 469 行）。
+    // 命名与旧 UI InstallPage.versionSuffix 完全一致：
+    //   <mc>-forge-<ver> / <mc>-neoforge-<ver> / <mc>-fabric-<ver>[-fabric-api-<apiVer>] / <mc>-OptiFine_<ver>
+    // 之前只拼了加载器 key（"26.2-fabric"），既丢了加载器版本，也完全没带 Fabric API，
+    // 所以选中 Fabric API 时名字不动 —— 这就是用户报的那条。
     function loaderSuffix() {
-        if (page.activeLoader === "optifine")
-            return "OptiFine_" + (page.selectedVersion.length > 0 ? page.selectedVersion : "latest")
-        return page.activeLoader
+        var parts = []
+        if (page.activeLoader === "forge" && page.selectedVersion.length > 0) {
+            parts.push("forge-" + page.selectedVersion)
+        } else if (page.activeLoader === "neoforge" && page.selectedVersion.length > 0) {
+            parts.push("neoforge-" + page.selectedVersion)
+        } else if (page.activeLoader === "fabric") {
+            if (page.selectedVersion.length > 0) parts.push("fabric-" + page.selectedVersion)
+            if (page.fabricApiVersion.length > 0) parts.push("fabric-api-" + page.fabricApiVersion)
+        } else if (page.activeLoader === "optifine") {
+            parts.push("OptiFine_" + (page.selectedVersion.length > 0 ? page.selectedVersion : "latest"))
+        } else if (page.activeLoader.length > 0) {
+            parts.push(page.activeLoader)
+        }
+        return parts.join("-")
     }
 
     function autoName() {
@@ -192,9 +207,11 @@ Item {
     // Fabric API 只在 Fabric 被选中时成立；离开 Fabric / 取消 Fabric 时一并清掉，
     // 否则卡片会靠 "fabricApiVersion.length > 0" 继续挂着。
     function clearFabricApi() {
+        if (page.fabricApiVersion.length === 0) return
         page.fabricApiVersion = ""
         page.fabricApiUrl = ""
         page.fabricApiFile = ""
+        page.refreshName()
     }
 
     function deselectLoader() {
@@ -960,6 +977,7 @@ Item {
                                                     page.fabricApiUrl = modelData.url || ""
                                                     page.fabricApiFile = modelData.filename || ""
                                                 }
+                                                page.refreshName()   // 选中 Fabric API 也要改安装名
                                                 page.expandedLoader = ""
                                             } else if (page.selectLoader(loaderCard.lkey, parent.ver)) {
                                                 page.expandedLoader = ""
