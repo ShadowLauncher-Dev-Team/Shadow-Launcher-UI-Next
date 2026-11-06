@@ -685,17 +685,22 @@ Item {
             spacing: 10
             visible: page.step === 4
 
-            Row {
+            // 左标题 / 右来源：两端锚定，右边与卡片右缘对齐（原来用 width-400 的占位 Item，右边落在随机位置）
+            Item {
                 width: parent.width
+                height: 16
                 Text {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
                     text: "选择分发形式 · " + page.javaFilesCount() + " 个文件"
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     font.letterSpacing: 1
                 }
-                Item { width: parent.width - 400; height: 1 }
                 Text {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
                     text: "来源 mirrors.tuna.tsinghua.edu.cn"
                     color: Theme.fg3
                     font.family: Theme.fontFamily
