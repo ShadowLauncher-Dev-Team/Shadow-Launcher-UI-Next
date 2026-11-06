@@ -40,6 +40,17 @@ Item {
     property var dlQueue: []
     property var pendingJob: null
     property string status: ""
+    // 入场：详情页打开后各区块错峰浮现（自上而下 0/60/120ms）
+    property bool detailShown: false
+    onVisibleChanged: {
+        // 每次重新打开都要重播：先把开关压回 false（此时页面不可见，不会闪），再延时抬起
+        if (visible) { page.detailShown = false; detailReveal.restart() }
+    }
+    Timer {
+        id: detailReveal
+        interval: 30
+        onTriggered: page.detailShown = true
+    }
     // 本页发起的文件下载（id 由 downloadModFile 返回）；数据表在 StageShell 里统一收
     property var fileDl: []
     property var myIds: []
@@ -427,6 +438,12 @@ Item {
             anchors.right: parent.right; anchors.top: parent.top
             width: page.narrow ? 232 : 280
             height: installCard.height + 4
+            opacity: page.detailShown ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+            transform: Translate {
+                x: page.detailShown ? 0 : 16
+                Behavior on x { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+            }
 
             Rectangle {
                 id: installCard
@@ -503,6 +520,12 @@ Item {
                 anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
                 height: 124; radius: Theme.rSm
                 color: "#0b0e13"; border.width: 1; border.color: Theme.line
+                opacity: page.detailShown ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                transform: Translate {
+                    y: page.detailShown ? 0 : 12
+                    Behavior on y { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                }
 
                 Text {
                     id: gLabel
@@ -579,6 +602,12 @@ Item {
                 anchors.top: pickCard.bottom; anchors.topMargin: 12
                 height: 92; radius: Theme.rSm
                 color: "#0b0e13"; border.width: 1; border.color: Theme.line
+                opacity: page.detailShown ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                transform: Translate {
+                    y: page.detailShown ? 0 : 12
+                    Behavior on y { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                }
 
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 18; anchors.top: parent.top; anchors.topMargin: 14

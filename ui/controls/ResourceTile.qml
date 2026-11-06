@@ -17,21 +17,60 @@ Rectangle {
     signal clicked()
 
     property bool hovered: false
+    // 页面统一推进的高光相位（用于 hover 时扫一道光）
+    property real shimmerPhase: 0
+    property bool pressed: false
     implicitHeight: 150
     radius: Theme.rMd
     color: hovered ? "#0f141b" : "#0b0e13"
     border.width: 1
-    border.color: hovered ? "#2b3644" : Theme.line
-    Behavior on color { ColorAnimation { duration: Theme.durFast } }
-    Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
+    border.color: hovered ? "#33465e" : Theme.line
+    clip: true
+    Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+    Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+
+    // ── 悬停 / 按压 ──
+    // 悬停：整卡上浮 2px + 边框提亮（不是只变色），视线先感到"这张卡是活的"
+    // 按压：缩到 0.975 再弹回（easePop 过冲），松手的回弹比按下更明显
+    transform: Translate {
+        y: tile.hovered ? -2 : 0
+        Behavior on y { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter } }
+    }
+    scale: tile.pressed ? 0.975 : 1.0
+    Behavior on scale { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easePop } }
+
+    // hover 时一道柔光从左扫到右（复用页面相位，卡片自己不持有动画）
+    SShimmer {
+        anchors.fill: parent
+        phase: tile.shimmerPhase
+        active: tile.hovered
+        bandWidth: 90
+        strength: 0.07
+    }
 
     MouseArea {
+        id: hit
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onEntered: tile.hovered = true
         onExited: tile.hovered = false
-        onClicked: tile.clicked()
+        onPressed: tile.pressed = true
+        onReleased: tile.pressed = false
+        onCanceled: tile.pressed = false
+        onClicked: {
+            tile.pressed = false
+            ripple.burst(hit.mouseX, hit.mouseY)
+            tile.clicked()
+        }
+    }
+
+    // 点击涟漪：扩散后再离开（过渡到详情页的"起手式"）
+    SRipple {
+        id: ripple
+        anchors.fill: parent
+        color: "#8fb6f8"
+        maxRadius: 260
     }
 
     Column {
@@ -45,14 +84,18 @@ Rectangle {
             Rectangle {
                 width: 40; height: 40
                 radius: Theme.rSm
-                color: "#12161c"
+                color: tile.hovered ? "#161c25" : "#12161c"
                 clip: true
+                Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                 Image {
                     anchors.fill: parent
                     source: tile.iconUrl
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     visible: tile.iconUrl.length > 0
+                    // hover 时图标轻微推近（1.08），卡片"凑过来"的感觉
+                    scale: tile.hovered ? 1.08 : 1.0
+                    Behavior on scale { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                 }
             }
             Column {
@@ -66,6 +109,8 @@ Rectangle {
                     font.pixelSize: 14
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
+                    x: tile.hovered ? 2 : 0
+                    Behavior on x { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter } }
                 }
                 Text {
                     width: parent.width

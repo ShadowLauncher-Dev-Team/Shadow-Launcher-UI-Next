@@ -27,6 +27,18 @@ Item {
         border.width: 1
         border.color: input.activeFocus ? Theme.accent : Theme.line2
         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
+        clip: true
+
+        // 聚焦下划线：从中间向两侧展开
+        Rectangle {
+            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            height: 1
+            width: (parent.width - 2) * (input.activeFocus ? 1 : 0)
+            radius: 1
+            color: Theme.accent
+            Behavior on width { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter } }
+        }
     }
 
     SIcon {
@@ -72,7 +84,7 @@ Item {
             id: labelText
             anchors.centerIn: parent
             text: root.label
-            color: root.active ? Theme.fg3 : Theme.fg3
+            color: Theme.fg3
             font.family: Theme.fontFamily
             font.pixelSize: root.active ? 10 : 12
         }
@@ -84,7 +96,11 @@ Item {
         width: 16; height: 16
         anchors.right: parent.right; anchors.rightMargin: 10
         anchors.verticalCenter: parent.verticalCenter
-        visible: input.text.length > 0
+        visible: opacity > 0.01
+        opacity: input.text.length > 0 ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+        scale: input.text.length > 0 ? 1.0 : 0.8
+        Behavior on scale { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easePop } }
         SIcon { anchors.centerIn: parent; name: "x"; size: 11; color: clearHover.containsMouse ? Theme.fg2 : Theme.fg3 }
         MouseArea {
             id: clearHover

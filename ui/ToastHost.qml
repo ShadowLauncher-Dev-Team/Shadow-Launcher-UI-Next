@@ -89,6 +89,8 @@ Item {
                                                 : (isSuccess ? Theme.ok : Theme.accent)
 
                 opacity: 0
+                // 入场：从右滑进 + 轻微过冲放大（"弹"出来），出栈仍走快速淡出
+                scale: 0.94
                 transform: Translate {
                     id: shift
                     x: 14
@@ -100,6 +102,7 @@ Item {
                     id: enterAnim
                     NumberAnimation { target: wrap; property: "opacity"; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
                     NumberAnimation { target: shift; property: "x"; to: 0; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                    NumberAnimation { target: wrap; property: "scale"; to: 1; duration: Theme.durPage; easing.type: Theme.easePop }
                 }
 
                 // 出栈：横向滑回 + 淡出，动画结束才真正从 model 删除（否则会硬切）
@@ -109,6 +112,7 @@ Item {
                     id: exitAnim
                     NumberAnimation { target: wrap; property: "opacity"; to: 0; duration: Theme.durFast; easing.type: Theme.easeExit }
                     NumberAnimation { target: shift; property: "x"; to: 14; duration: Theme.durFast; easing.type: Theme.easeExit }
+                    NumberAnimation { target: wrap; property: "scale"; to: 0.96; duration: Theme.durFast; easing.type: Theme.easeExit }
                     onStarted: wrap.closing = true
                     onFinished: root.removeToast(model.tid)
                 }

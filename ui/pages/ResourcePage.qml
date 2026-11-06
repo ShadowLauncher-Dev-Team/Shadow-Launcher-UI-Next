@@ -31,6 +31,22 @@ Item {
     property bool busy: false
     property bool _autoOpened: false
 
+    // ── 动效：入场预算 ──
+    // 后端是渐进式推送：一次搜索会多次 applyPool（清空+重填），如果每批都跑逐条入场，
+    // 网格会反复"抖"一遍。所以只给每次新搜索的前 staggerMax 个 delegate 发放延迟预算，
+    // 后续渐进补进来的条目直接到位。
+    property int staggerBudget: 0
+    // 骨架屏 / 卡片高光共用的相位（0..1），由本页统一推进，delegate 不各自持有动画
+    property real shinePhase: 0
+    NumberAnimation {
+        target: page; property: "shinePhase"
+        from: 0; to: 1
+        duration: Theme.marquee
+        loops: Animation.Infinite
+        running: page.busy || listModel.count > 0
+        easing.type: Theme.easeLoop
+    }
+
     signal openDetail(string kind, var item)
 
     // 列数按「侧栏展开时的内容宽度」决定，而不是自身实时宽度。
@@ -72,6 +88,7 @@ Item {
         if (!page.b) return
         page.pageNo = (pageNum === undefined) ? 0 : Math.max(0, pageNum)
         page.busy = true
+        page.staggerBudget = Theme.staggerMax
         var q = page.query.trim()
         var off = page.pageNo * page.pageSize
         if (page.tabIndex === 1) {
@@ -276,11 +293,16 @@ Item {
             }
         }
 
-        // ── 网格 ──
-        GridView {
-            id: grid
+        // ── 网格（宿主：承载网格本体 + 骨架屏 + 上下渐隐）──
+        // 三者必须叠在同一个 fillHeight 槽位里：如果各自作为 ColumnLayout 的 fillHeight 子项，
+        // 可用高度会被平分，网格和骨架屏各拿一半（历史上就是这种"半屏"bug）。
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
+
+            GridView {
+            id: grid
+            anchors.fill: parent
             clip: true
             model: listModel
             readonly property int gap: 10
@@ -290,31 +312,139 @@ Item {
             cellWidth: Math.floor(width / page.cols)
             cellHeight: 156
 
-            delegate: ResourceTile {
+            delegate: Item {
+                id: cell
                 readonly property bool lastCol: (index % page.cols) === (page.cols - 1)
                 width: grid.cellWidth - (lastCol ? 0 : grid.gap)
                 height: grid.cellHeight - grid.gap
-                title: model.title
-                zh: model.zh
-                description: model.desc
-                iconUrl: model.icon
-                slug: model.slug
-                downloads: model.downloads
-                source: model.source
-                dateModified: model.dateModified
-                onClicked: page.openDetail(page.kind, {
-                    slug: model.slug, title: model.title, zh: model.zh,
-                    desc: model.desc, icon: model.icon, downloads: model.downloads,
-                    source: model.source, dateModified: model.dateModified
-                })
+
+                // 入场：从下方 14px + 0 透明浮上来，按格子序号错峰
+                property bool shown: false
+                opacity: cell.shown ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                transform: Translate {
+                    y: cell.shown ? 0 : 14
+                    Behavior on y { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                }
+                Timer {
+                    id: cellDelay
+                    onTriggered: cell.shown = true
+                }
+                Component.onCompleted: {
+                    if (page.staggerBudget > 0) {
+                        page.staggerBudget--
+                        cellDelay.interval = Math.min(index, Theme.staggerMax) * Theme.staggerStep
+                        cellDelay.start()
+                    } else {
+                        cell.shown = true
+                    }
+                }
+
+                ResourceTile {
+                    anchors.fill: parent
+                    title: model.title
+                    zh: model.zh
+                    description: model.desc
+                    iconUrl: model.icon
+                    slug: model.slug
+                    downloads: model.downloads
+                    source: model.source
+                    dateModified: model.dateModified
+                    shimmerPhase: page.shinePhase
+                    onClicked: page.openDetail(page.kind, {
+                        slug: model.slug, title: model.title, zh: model.zh,
+                        desc: model.desc, icon: model.icon, downloads: model.downloads,
+                        source: model.source, dateModified: model.dateModified
+                    })
+                }
+            }
+            }   // GridView
+
+        // ── 骨架屏：首次加载时用"形状"占位，而不是一片空白 ──
+        // 只在列表还空的时候出现，已有内容时用顶部进度条表示在拉数据（不闪掉已有卡片）。
+        Grid {
+            id: skeleton
+            readonly property bool on: page.busy && listModel.count === 0
+            visible: on
+            anchors.fill: parent
+            anchors.leftMargin: 0
+            columns: page.cols
+            columnSpacing: 10
+            rowSpacing: 10
+            Repeater {
+                model: page.cols * 3
+                delegate: Rectangle {
+                    width: (skeleton.width - (page.cols - 1) * 10) / page.cols
+                    height: 146
+                    radius: Theme.rMd
+                    color: "#0b0e13"
+                    border.width: 1
+                    border.color: Theme.line
+                    clip: true
+
+                    // 图标块
+                    Rectangle {
+                        x: 12; y: 12
+                        width: 40; height: 40; radius: Theme.rSm
+                        color: "#12161c"
+                    }
+                    // 标题 / 副标题 / 简介两行
+                    Column {
+                        x: 62; y: 14
+                        spacing: 8
+                        Rectangle { width: Math.min(120, parent.parent.width - 90); height: 12; radius: 6; color: "#12161c" }
+                        Rectangle { width: Math.min(76, parent.parent.width - 120); height: 9; radius: 5; color: "#0f1319" }
+                    }
+                    Column {
+                        x: 12; y: 66
+                        spacing: 7
+                        Rectangle { width: parent.parent.width - 24; height: 9; radius: 5; color: "#0f1319" }
+                        Rectangle { width: (parent.parent.width - 24) * 0.72; height: 9; radius: 5; color: "#0f1319" }
+                    }
+                    Column {
+                        x: 12; y: 116
+                        spacing: 6
+                        Rectangle { width: 54; height: 8; radius: 4; color: "#0f1319" }
+                    }
+                    // 扫光（统一相位，不各自跑动画）
+                    SShimmer {
+                        anchors.fill: parent
+                        phase: page.shinePhase
+                        bandWidth: 140
+                        strength: 0.05
+                    }
+                }
             }
         }
+
+            // ── 上下渐隐：网格贴边滚动时内容不是被硬切断，而是淡进背景 ──
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: 18
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Theme.bg }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 22
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "transparent" }
+                    GradientStop { position: 1.0; color: Theme.bg }
+                }
+            }
+        }   // 网格宿主
 
         // ── 空态 / 加载态 ──
         Column {
             Layout.alignment: Qt.AlignHCenter
             spacing: 10
-            visible: listModel.count === 0
+            visible: listModel.count === 0 && !page.busy
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: page.busy ? "正在加载…" : "没有找到匹配的资源"

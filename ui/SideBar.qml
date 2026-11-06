@@ -14,6 +14,21 @@ Item {
     implicitWidth: narrow ? Theme.sideWNarrow : Theme.sideW
     clip: true
 
+    // ── 选中滑块（动效系统 P1）──
+    // 之前每个导航项各自长一条 2px 竖条：切换是"一条缩回去、另一条长出来"，两段无关的动作。
+    // 现在整块选中态是一个对象，切页时**从旧位置滑到新位置**，方向感直接读出来。
+    // 几何由每个 row 自己上报（mapToItem 到本层），因为 ColumnLayout 会重排 y。
+    property var _geom: ({})
+    function reportGeom(label, item) {
+        var pt = item.mapToItem(root, 0, 0)
+        var m = {}
+        for (var k in root._geom) m[k] = root._geom[k]
+        m[label] = { y: pt.y, h: item.height }
+        root._geom = m
+    }
+    readonly property var selGeom: root._geom[root.currentLabel] || null
+    readonly property int rowInset: root.narrow ? 8 : 12
+
     readonly property var mainItems: [
         { ic: "play",        label: "启动",     group: "main" },
         { ic: "download",    label: "下载",     group: "main" },
@@ -47,6 +62,35 @@ Item {
                 root.hostWindow.x += m.x - pressPos.x
                 root.hostWindow.y += m.y - pressPos.y
             }
+        }
+    }
+
+    // 选中滑块：位于导航项之下，随 currentLabel 滑动
+    Item {
+        id: selPill
+        x: root.rowInset
+        width: Math.max(0, root.width - root.rowInset * 2)
+        visible: root.selGeom !== null
+        y: root.selGeom ? root.selGeom.y : 0
+        height: root.selGeom ? root.selGeom.h : 0
+
+        Behavior on y { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+        Behavior on height { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: Theme.rSm
+            color: "#151a23"
+        }
+        // 左侧强调条跟着滑块一起走（不再是"旧的缩回去、新的长出来"）
+        Rectangle {
+            width: 2
+            radius: 1
+            anchors.left: parent.left
+            anchors.leftMargin: -6
+            anchors.verticalCenter: parent.verticalCenter
+            height: parent.height * 0.42
+            color: Theme.accent
         }
     }
 
@@ -107,24 +151,18 @@ Item {
             // 子项（下载进度等）也能被高亮：选中态就是"当前导航项"
             readonly property bool sel: root.currentLabel === modelData.label
 
+            // 只画 hover 底色；选中底色由 root 的滑块统一提供
             Rectangle {
                 anchors.fill: parent
                 radius: Theme.rSm
-                color: row.sel ? "#151a23" : (rowHover.containsMouse ? "#12151c" : "transparent")
+                color: (!row.sel && rowHover.containsMouse) ? "#12151c" : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
             }
-            // 选中指示条：高度从 0 长出来，退选时缩回去（不是硬切）
-            Rectangle {
-                width: 2
-                height: row.sel ? parent.height - 20 : 0
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: root.narrow ? -8 : -12
-                color: Theme.accent
-                Behavior on height {
-                    NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
-                }
-            }
+            // 几何上报：ColumnLayout 重排 / 侧栏收窄都会改 y 与高度，跟着更新滑块位置
+            function sync() { root.reportGeom(modelData.label, row) }
+            Component.onCompleted: row.sync()
+            onYChanged: row.sync()
+            onHeightChanged: row.sync()
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: root.narrow ? 0 : 10
@@ -134,6 +172,9 @@ Item {
                     size: 17
                     color: row.sel ? "#ffffff" : Theme.fg2
                     Layout.alignment: root.narrow ? Qt.AlignHCenter : Qt.AlignLeft
+                    // 选中瞬间轻微弹一下（过冲缓动），提示"落到这一项了"
+                    scale: row.sel ? 1.0 : 0.94
+                    Behavior on scale { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easePop } }
                 }
                 Text {
                     visible: !root.narrow

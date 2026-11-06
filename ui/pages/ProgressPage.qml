@@ -226,6 +226,17 @@ Item {
                     font.pixelSize: 22
                     font.weight: Font.Bold
                     horizontalAlignment: Text.AlignLeft
+                    // 百分比变化时脉冲一下：大盘数字是这一页的"心跳"
+                    SequentialAnimation on scale {
+                        id: pctPulse
+                        running: false
+                        NumberAnimation { to: 1.06; duration: Theme.durPress; easing.type: Theme.easeStandard }
+                        NumberAnimation { to: 1.0;  duration: Theme.durBase; easing.type: Theme.easeEnter }
+                    }
+                    Connections {
+                        target: page
+                        function onTotalProgressChanged() { pctPulse.restart() }
+                    }
                 }
                 Rectangle {
                     width: parent.width
@@ -360,6 +371,18 @@ Item {
             delegate: Rectangle {
                 id: tcard
                 width: taskList.width
+                // 入场：新任务卡从下方 12px + 0.98 缩放入位。
+                // 卡片会随 400ms 轮询原地更新，所以用"第一次出现才播"的开关，不随数据刷新重播。
+                property bool cardShown: false
+                opacity: cardShown ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                scale: cardShown ? 1.0 : 0.98
+                Behavior on scale { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                transform: Translate {
+                    y: tcard.cardShown ? 0 : 12
+                    Behavior on y { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                }
+                Component.onCompleted: cardShown = true
                 // 高度只依赖 stepCount（计数），不依赖 cardSteps 数组，
                 // 否则 height <-> cardSteps 会形成 binding loop，delegate 反复重建、动画被重置。
                 height: 46 + 10 + 3 + 8 + stepCount * 23 + 12 + 32 + 12

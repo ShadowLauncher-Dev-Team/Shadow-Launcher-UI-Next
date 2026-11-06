@@ -60,4 +60,15 @@ QtObject {
 
     // 循环型动效（不确定进度条、骨架屏）的周期，不属于过渡时长
     readonly property int marquee: 1150
+
+    // ── 动效系统（2026-11-06 补全）──
+    // 按压缩放用 durPress：比 durFast 更短，按下即到位，松开靠 pop 回弹
+    readonly property int durPress: 90
+    // 一次性高光扫过（最新版卡 sheen / 骨架屏）
+    readonly property int durSheen: 900
+    // 回弹缓动：过冲 ~8% 再收回，用于"按下-松开""选中弹一下"这类需要活泼感的瞬间。
+    // 注意：不是弹簧物理动画（会发散到 ±Infinity，契约禁止），是固定过冲的贝塞尔。
+    readonly property int easePop: Easing.OutBack
+    // 逐条入场的行数上限：超过之后统一在第 N 行同时出现，避免长列表拖沓
+    readonly property int staggerMax: 12
 }

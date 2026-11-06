@@ -218,6 +218,9 @@ Item {
                 x: (root.downloadOpen || root.progressOpen || root.fullOpen) ? -22 : 0
                 Behavior on x { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
             }
+            // 回主页时也带一点"顶回来"的缩放，和全屏页入场保持同一套语言
+            scale: (root.downloadOpen || root.progressOpen || root.fullOpen) ? 0.99 : 1.0
+            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
             StagePage {
                 anchors.fill: parent
                 enabled: !root.fullOpen && !root.downloadOpen && !root.progressOpen
@@ -259,6 +262,8 @@ Item {
             anchors.fill: parent
             x: root.versionsOpen ? 0 : 24
             Behavior on x { NumberAnimation { duration: root.versionsOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
+            scale: root.versionsOpen ? 1 : 0.988
+            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
         VersionPage {
             anchors.fill: parent
             toast: toastHost
@@ -281,6 +286,8 @@ Item {
             anchors.fill: parent
             y: root.accountOpen ? 0 : 40
             Behavior on y { NumberAnimation { duration: root.accountOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
+            scale: root.accountOpen ? 1 : 0.988
+            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
         AccountPage {
             anchors.fill: parent
             toast: toastHost
@@ -306,6 +313,8 @@ Item {
             anchors.fill: parent
             x: root.downloadOpen ? 0 : 24
             Behavior on x { NumberAnimation { duration: root.downloadOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
+            scale: root.downloadOpen ? 1 : 0.988
+            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
         DownloadPage {
             id: downloadPage
             anchors.fill: parent
@@ -340,6 +349,8 @@ Item {
             anchors.fill: parent
             y: root.resDetailOpen ? 0 : 12
             Behavior on y { NumberAnimation { duration: root.resDetailOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
+            scale: root.resDetailOpen ? 1 : 0.988
+            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
         ResourceDetailPage {
             id: resDetail
             anchors.fill: parent
@@ -373,6 +384,8 @@ Item {
             anchors.fill: parent
             y: root.progressOpen ? 0 : 12
             Behavior on y { NumberAnimation { duration: root.progressOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
+            scale: root.progressOpen ? 1 : 0.988
+            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
         ProgressPage {
             id: progressPage
             anchors.fill: parent

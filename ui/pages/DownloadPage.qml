@@ -47,6 +47,9 @@ Item {
     property bool nameEdited: false
     // 程序回写 TextInput 时置真，避免把"自动改名"误判成"用户手动编辑"
     property bool syncingName: false
+    // 自动改名序号：只有"程序改写安装名"（选加载器 / 选 Fabric API）才让输入框脉冲，
+    // 用户自己打字时不闪（否则每敲一个字边框都在跳，很吵）。
+    property int autoNameTick: 0
     property string activeLoader: ""
     property string selectedVersion: ""
     property string fabricApiVersion: ""
@@ -189,7 +192,10 @@ Item {
     // 同时写属性与输入框：TextInput.text 一旦被用户编辑过，绑定就断了，
     // 只改 instName 不会回显，所以这里显式双写。
     function applyName(n) {
-        if (page.instName !== n) page.instName = n
+        if (page.instName !== n) {
+            page.instName = n
+            page.autoNameTick++
+        }
         if (nameInput.text !== n) {
             page.syncingName = true
             nameInput.text = n
@@ -281,6 +287,25 @@ Item {
         }
         if (toast) toast.show("已开始安装 " + name, 2600, "info")
         page.openProgress()
+    }
+
+    // ── 高光扫过（最新版卡）──
+    // 相位由页面统一推进：卡片自己不持有动画，换 tab / 重排都不会留下半截动画
+    property real sheenPhase: 0
+    NumberAnimation {
+        id: sheenAnim
+        target: page; property: "sheenPhase"
+        from: 0; to: 1
+        duration: Theme.durSheen
+        easing.type: Theme.easeLoop
+    }
+    Timer {
+        id: sheenTimer
+        interval: 9000
+        repeat: true
+        triggeredOnStart: true
+        running: page.visible && page.mode === 0 && page.tab === 0
+        onTriggered: sheenAnim.restart()
     }
 
     // 手动刷新的一次性状态：等后端 versionRefreshFinished 回来再提示
@@ -382,17 +407,36 @@ Item {
             height: parent.height
             clip: true
 
+            // 选中滑块：先铺在下面，tab 只负责文字与 hover。
+            // 之前选中态是"每个 tab 自己的底色"，切换永远是一硬切；
+            // 现在是一块底色从旧 tab 滑到新 tab，切页有方向感。
+            Rectangle {
+                id: tabPill
+                z: 0
+                height: 28
+                radius: Theme.rSm
+                color: "#1b2433"
+                anchors.verticalCenter: parent.verticalCenter
+                readonly property var sel: tabRep.itemAt(page.tab)
+                x: tabsRow.x + (sel ? sel.x : 0)
+                width: sel ? sel.width : 0
+                Behavior on x { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                Behavior on width { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+            }
+
             Row {
                 id: tabsRow
+                z: 1
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 0
                 Repeater {
+                    id: tabRep
                     model: page.tabs
                     delegate: Rectangle {
                         height: 28
                         width: tabTxt.implicitWidth + 14
                     radius: Theme.rSm
-                    color: page.tab === index ? "#1b2433" : (tabHover.containsMouse ? "#12151c" : "transparent")
+                    color: tabHover.containsMouse && page.tab !== index ? "#12151c" : "transparent"
                     Text {
                         id: tabTxt
                         anchors.centerIn: parent
@@ -469,8 +513,22 @@ Item {
     }
 
     // ══════════ 列表态 ══════════
+    // 列表 ↔ 配置是一次"横向推拉"：进入配置时列表左移退场，返回列表时右移回来。
+    // 之前列表是 visible 硬切，只有配置页单向淡入 —— 返回时"啪"一下就换了，方向感为零。
     Item {
-        visible: page.mode === 0
+        id: listLayer
+        visible: page.mode === 0 || opacity > 0.01
+        opacity: page.mode === 0 ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation {
+                duration: page.mode === 0 ? Theme.durBase : Theme.durFast
+                easing.type: page.mode === 0 ? Theme.easeEnter : Theme.easeExit
+            }
+        }
+        transform: Translate {
+            x: page.mode === 0 ? 0 : -22
+            Behavior on x { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+        }
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: topBar.bottom
@@ -501,17 +559,33 @@ Item {
             border.color: Theme.line2
             border.width: 1
 
+            // 选中滑块（与 tab 同一套语言）：一块底色在分段控件里平移
+            Rectangle {
+                id: segPill
+                height: 28
+                radius: 6
+                color: "#20262f"
+                readonly property int idx: page.filter
+                readonly property var sel: segRep.itemAt(idx)
+                x: segContent.x + (sel ? sel.x : 0)
+                y: segContent.y
+                width: sel ? sel.width : 0
+                Behavior on x { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                Behavior on width { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+            }
+
             Row {
                 id: segContent
                 anchors.centerIn: parent
                 spacing: 2
                 Repeater {
+                    id: segRep
                     model: page.filters
                     delegate: Rectangle {
                         height: 28
                         width: segLabel.implicitWidth + segCnt.implicitWidth + 24
                         radius: 6
-                        color: page.filter === modelData.key ? "#20262f" : "transparent"
+                        color: "transparent"
                         Row {
                             anchors.centerIn: parent
                             spacing: 5
@@ -554,6 +628,17 @@ Item {
             color: "#0b0d12"
             border.color: Theme.line2
             border.width: 1
+            clip: true
+
+            // 高光扫过：进页面时扫一次，之后每 9 秒一次（像被"擦亮"）。
+            // 用页面级 phase 驱动，自己不跑动画；扫光被卡片 clip 住，不会越到相邻卡片。
+            SShimmer {
+                anchors.fill: parent
+                phase: page.sheenPhase
+                bandWidth: 180
+                strength: hoverLatest.containsMouse ? 0.10 : 0.045
+                tint: "#ffffff"
+            }
 
             Text {
                 anchors.left: parent.left
@@ -593,9 +678,21 @@ Item {
                 SIcon { name: "chevron-right"; size: 15; color: "#8fb6f8"; anchors.verticalCenter: parent.verticalCenter }
             }
             MouseArea {
+                id: hoverLatest
                 anchors.fill: parent
+                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: page.pickVersion(page.releaseV[0])
+                onClicked: {
+                    latestRipple.burst(hoverLatest.mouseX, hoverLatest.mouseY)
+                    page.pickVersion(page.releaseV[0])
+                }
+            }
+            // 点击涟漪：从按下的点扩散，作为"要进配置页了"的确认
+            SRipple {
+                id: latestRipple
+                anchors.fill: parent
+                color: "#8fb6f8"
+                maxRadius: 160
             }
         }
 
@@ -620,6 +717,38 @@ Item {
                 color: hoverCard.containsMouse ? "#101419" : "#0b0d12"
                 border.color: hoverCard.containsMouse ? "#243040" : "#161a21"
                 border.width: 1
+                Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+
+                // 逐条入场：前 staggerMax 行按 index 错峰，之后统一出现（长列表不拖沓）。
+                // 只在"列表被重建/切筛选"时跑一次，滚动复用 delegate 不会再触发。
+                property bool rowShown: false
+                opacity: rowShown ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                transform: Translate {
+                    y: vcard.rowShown ? 0 : 8
+                    Behavior on y { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                }
+                Component.onCompleted: {
+                    rowDelay.interval = Math.min(index, Theme.staggerMax) * Theme.staggerStep
+                    rowDelay.start()
+                }
+                Timer {
+                    id: rowDelay
+                    onTriggered: vcard.rowShown = true
+                }
+
+                // hover 时左侧强调条从中间长出来（不是整条变色，视线先落在这里）
+                Rectangle {
+                    width: 2
+                    radius: 1
+                    color: Theme.accent
+                    anchors.left: parent.left
+                    anchors.leftMargin: 1
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: hoverCard.containsMouse ? parent.height - 16 : 0
+                    Behavior on height { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter } }
+                }
 
                 Row {
                     anchors.left: parent.left
@@ -680,7 +809,15 @@ Item {
                             font.pixelSize: 11
                         }
                     }
-                    SIcon { name: "chevron-right"; size: 14; color: Theme.fg3; anchors.verticalCenter: parent.verticalCenter }
+                    SIcon {
+                        name: "chevron-right"; size: 14
+                        color: hoverCard.containsMouse ? Theme.fg2 : Theme.fg3
+                        anchors.verticalCenter: parent.verticalCenter
+                        transform: Translate {
+                            x: hoverCard.containsMouse ? 3 : 0
+                            Behavior on x { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter } }
+                        }
+                    }
                 }
 
                 MouseArea {
@@ -705,11 +842,17 @@ Item {
 
     // ══════════ 配置态 ══════════
     Item {
+        id: cfgLayer
         visible: page.mode === 1 || opacity > 0.01
         opacity: page.mode === 1 ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: page.mode === 1 ? Theme.easeEnter : Theme.easeExit } }
+        Behavior on opacity {
+            NumberAnimation {
+                duration: page.mode === 1 ? Theme.durBase : Theme.durFast
+                easing.type: page.mode === 1 ? Theme.easeEnter : Theme.easeExit
+            }
+        }
         transform: Translate {
-            x: page.mode === 1 ? 0 : 16
+            x: page.mode === 1 ? 0 : 22
             Behavior on x { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
         }
         anchors.left: parent.left
@@ -755,6 +898,7 @@ Item {
                         font.weight: Font.Bold
                     }
                     Rectangle {
+                        id: nameBox
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.leftMargin: 16
@@ -764,8 +908,41 @@ Item {
                         height: 34
                         radius: Theme.rSm
                         color: "#0d1016"
-                        border.color: nameInput.activeFocus ? Theme.accent : Theme.line2
+                        border.color: page.nameConflict ? "#b3454f"
+                                    : (nameInput.activeFocus || pulse.running ? Theme.accent : Theme.line2)
                         border.width: 1
+                        Behavior on border.color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+
+                        // 抖动：横向 3 次小位移，幅度递减。只在"第一次检测到冲突"时跑，
+                        // 打字过程中持续冲突不重复抖（否则输入会疯）。
+                        transform: Translate {
+                            id: nameShift
+                            x: 0
+                        }
+                        SequentialAnimation {
+                            id: shake
+                            NumberAnimation { target: nameShift; property: "x"; to: -6; duration: Theme.durPress; easing.type: Theme.easeStandard }
+                            NumberAnimation { target: nameShift; property: "x"; to: 5;  duration: Theme.durPress; easing.type: Theme.easeStandard }
+                            NumberAnimation { target: nameShift; property: "x"; to: -3; duration: Theme.durPress; easing.type: Theme.easeStandard }
+                            NumberAnimation { target: nameShift; property: "x"; to: 0;  duration: Theme.durFast; easing.type: Theme.easeEnter }
+                        }
+                        // 边框脉冲：安装名被自动改写（选加载器 / 选 Fabric API）时闪一下，
+                        // 明确告诉用户"这个名字变了，是程序改的，不是你打错了"
+                        property bool pulseOn: false
+                        SequentialAnimation {
+                            id: pulse
+                            running: false
+                            PropertyAction { target: nameBox; property: "pulseOn"; value: true }
+                            PauseAnimation { duration: Theme.durBase }
+                            PropertyAction { target: nameBox; property: "pulseOn"; value: false }
+                        }
+                        Connections {
+                            target: page
+                            function onAutoNameTickChanged() { pulse.restart() }
+                            function onNameConflictChanged() {
+                                if (page.nameConflict) shake.restart()
+                            }
+                        }
                         TextInput {
                             id: nameInput
                             anchors.fill: parent
@@ -908,8 +1085,10 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 name: "chevron-down"
                                 size: 14
-                                color: Theme.fg3
+                                color: page.expandedLoader === loaderCard.lkey ? Theme.fg2 : Theme.fg3
                                 rotation: page.expandedLoader === loaderCard.lkey ? 180 : 0
+                                // 展开/收起时箭头转过去，而不是瞬间翻面
+                                Behavior on rotation { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter } }
                             }
                             MouseArea {
                                 anchors.fill: parent
@@ -942,11 +1121,21 @@ Item {
                             Repeater {
                                 model: loaderCard.loaderVersions.slice(0, 6)
                                 delegate: Rectangle {
-                                    width: loaderCard.width - 20
-                                    x: 10
+                                    width: loaderCard.width - 20 - (lvHover.containsMouse ? 3 : 0)
                                     height: 28
                                     radius: 6
                                     readonly property string ver: (typeof modelData === "string") ? modelData : (modelData.version || "")
+                                    // 展开瞬间逐条落下（按行号错峰），收起时同时淡出
+                                    readonly property bool opened: page.expandedLoader === loaderCard.lkey
+                                    opacity: opened ? 1 : 0
+                                    Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter } }
+                                    transform: Translate {
+                                        y: opened ? 0 : -4
+                                        Behavior on y { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter } }
+                                    }
+                                    // hover 时整行向右轻推一点（列表有"被摸到"的手感）
+                                    x: 10 + (lvHover.containsMouse ? 3 : 0)
+                                    Behavior on x { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                                     color: ((loaderCard.lkey === "fabric_api" ? page.fabricApiVersion : page.selectedVersion) === ver
                                             && (loaderCard.lkey === "fabric_api" || page.activeLoader === loaderCard.lkey))
                                            ? Qt.rgba(0.231, 0.510, 0.965, .16) : (lvHover.containsMouse ? "#12151c" : "transparent")
@@ -1063,26 +1252,47 @@ Item {
             }
 
             Rectangle {
+                id: installBtn
                 width: 120; height: 40; radius: Theme.rSm
                 anchors.right: parent.right
                 anchors.rightMargin: page.padR
                 anchors.verticalCenter: parent.verticalCenter
-                color: page.canInstall() ? Theme.accentTop : "#2a2f3a"
+                readonly property bool ready: page.canInstall()
+                color: ready ? (installPress.containsMouse ? Theme.accent : Theme.accentTop) : "#2a2f3a"
+                border.width: ready ? 0 : 1
+                border.color: "#333b48"
+                clip: true
+                // 可用 / 不可用之间有颜色与轻微缩放过渡（选择加载器版本后按钮"亮起来"）
+                Behavior on color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+                scale: (ready && installPress.pressed) ? 0.965 : (ready ? 1.0 : 0.985)
+                Behavior on scale { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easePop } }
                 Text {
                     anchors.centerIn: parent
-                    text: page.canInstall() ? "开始安装"
+                    text: installBtn.ready ? "开始安装"
                           : (page.activeLoader.length > 0 && page.selectedVersion.length === 0
                              ? "请选择版本" : "开始安装")
-                    color: page.canInstall() ? "#ffffff" : Theme.fg3
+                    color: installBtn.ready ? "#ffffff" : Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
+                    Behavior on color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+                }
+                SRipple {
+                    id: installRipple
+                    anchors.fill: parent
+                    color: "#ffffff"
+                    maxRadius: 140
                 }
                 MouseArea {
+                    id: installPress
                     anchors.fill: parent
+                    hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     enabled: page.canInstall()
-                    onClicked: page.startInstall()
+                    onClicked: {
+                        installRipple.burst(installPress.mouseX, installPress.mouseY)
+                        page.startInstall()
+                    }
                 }
             }
         }
