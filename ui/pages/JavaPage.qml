@@ -27,6 +27,7 @@ Item {
     property var detected: []
     property var cached: []
     property bool scanning: false
+    property bool scanToastPending: false
 
     // ── 下载/安装状态 ──
     property string installingMajor: ""
@@ -41,8 +42,9 @@ Item {
     property string msiSavedPath: ""
 
     // ── 动效状态（与资源库/下载页同一套语言） ──
-    property real reveal: 1        // 当前卡片入场进度（0..1）
-    property int stepTick: 0       // 步进节拍，用来重启动画
+    property real reveal: 1        // 当前步骤内容的入场进度（0..1）
+    property real enter: 0         // 整页进场进度（0..1）
+    property int stepTick: 0       // 步进节拍
 
     readonly property bool zipInstalling: installingMajor.length > 0 && installingMajor === selVersion
     readonly property bool anyBusy: installingMajor.length > 0 || msiBusy
@@ -59,11 +61,22 @@ Item {
     // ── 生命周期 ──
     function refreshLocal() {
         if (!java) return
+        if (scanning) return
         scanning = true
         // 扫描是异步的（内部并发探测每个 java.exe），完成时 emit systemJavaScanFinished
         detected = java.scanSystemJavas()
         cached = java.javaCacheRuntimes()
+    }
+
+    // 扫描完成：结束 scanning 态；用户手动点过就回一句 toast
+    function finishScan() {
+        detected = java.detectedSystemJavas()
+        cached = java.javaCacheRuntimes()
         scanning = false
+        if (scanToastPending) {
+            scanToastPending = false
+            if (toast) toast.show("已重新扫描：" + (localChips().length) + " 个运行时")
+        }
     }
 
     function resetChoices() {
@@ -152,6 +165,21 @@ Item {
 
     Component.onCompleted: refreshLocal()
 
+    // 进入 Java 页：整页淡入 + 8px 上浮，内容不抢在边框之前出现
+    onVisibleChanged: {
+        if (visible) { enter = 0; pageIn.restart() }
+    }
+
+    NumberAnimation {
+        id: pageIn
+        target: page
+        property: "enter"
+        from: 0
+        to: 1
+        duration: Theme.durPage
+        easing.type: Theme.easeEnter
+    }
+
     // 换步：卡片重新入场（淡入 + 8px 上浮 + 0.99 缩放归位）；回到第 1 步不播
     onStepChanged: {
         stepTick++
@@ -180,7 +208,7 @@ Item {
             if (page.installingMajor.length === 0) page.refreshLocal()
         }
         function onJavaCacheListChanged() { page.refreshLocal() }
-        function onSystemJavaScanFinished() { page.refreshLocal() }
+        function onSystemJavaScanFinished() { page.finishScan() }
         function onJavaArchsChanged() { page.autoPickArchOs() }
         function onJavaOSesChanged() { page.autoPickArchOs() }
         function onDownloadProgress(pct, dl, total, speed) {
@@ -227,6 +255,8 @@ Item {
         anchors.right: parent.right
         anchors.top: parent.top
         spacing: 0
+        opacity: page.enter
+        transform: Translate { y: (1 - page.enter) * 8 }
 
         // ── 步骤条 ──
         Item {
@@ -276,51 +306,73 @@ Item {
                             }
                         }
 
-                        // 到下一个节点的连线（已走过 = accent 55%）
-                        Rectangle {
+                        // 连接到下一个节点：已走过 = accent；当前步 → 下一步 = 淡蓝荧光呼吸 + 粒子
+                        Item {
                             id: wire
                             visible: !parent.last
                             anchors.verticalCenter: parent.verticalCenter
                             x: nodeRow.x + nodeRow.width + 10
-                            width: parent.width - nodeRow.width - 22
-                            height: 1
-                            color: page.step > index ? Theme.accent : "#20252e"
-                            opacity: page.step > index ? 0.55 : 1
-                            clip: true
+                            width: parent.width - nodeRow.width - 12
+                            height: 14
 
-                            // 步进瞬间，刚走过去的那条线从左到右扫一道淡蓝光
+                            readonly property bool done: page.step > index
+                            readonly property bool active: page.step === index
+
+                            // 底线
                             Rectangle {
-                                id: flow
-                                visible: false
-                                width: Math.min(64, wire.width)
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width
                                 height: 1
-                                x: -width
-                                gradient: Gradient {
-                                    orientation: Gradient.Horizontal
-                                    GradientStop { position: 0.0; color: "#00a8ccff" }
-                                    GradientStop { position: 0.5; color: "#a8ccff" }
-                                    GradientStop { position: 1.0; color: "#00a8ccff" }
+                                color: wire.done ? Theme.accent : "#20252e"
+                                opacity: wire.done ? 0.55 : 1
+                            }
+
+                            // 荧光：3px 淡蓝光晕，只亮在"当前步到下一步"那一段，缓慢呼吸
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width
+                                height: 3
+                                radius: 1.5
+                                visible: wire.active
+                                color: Theme.accent
+                                opacity: 0.18
+                                SequentialAnimation on opacity {
+                                    running: wire.active
+                                    loops: Animation.Infinite
+                                    NumberAnimation { from: 0.14; to: 0.34; duration: Theme.durSheen; easing.type: Theme.easeStandard }
+                                    NumberAnimation { from: 0.34; to: 0.14; duration: Theme.durSheen; easing.type: Theme.easeStandard }
                                 }
                             }
 
-                            NumberAnimation {
-                                id: flowAnim
-                                target: flow
-                                property: "x"
-                                from: -flow.width
-                                to: wire.width
-                                duration: Theme.durSlow
-                                easing.type: Theme.easeStandard
-                                onFinished: flow.visible = false
+                            // 亮的芯线
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width
+                                height: 1
+                                visible: wire.active
+                                color: "#8fb6f8"
                             }
 
-                            Connections {
-                                target: page
-                                function onStepChanged() {
-                                    // index = 起点节点序号；刚走过的是 index === step - 1 那条
-                                    if (index === page.step - 1) {
-                                        flow.visible = true
-                                        flowAnim.restart()
+                            // 粒子：3 颗小光点沿这段线缓慢漂过，透明度各自呼吸
+                            Repeater {
+                                model: wire.active ? 3 : 0
+                                delegate: Rectangle {
+                                    id: particle
+                                    width: 3; height: 3; radius: 1.5
+                                    y: (wire.height - height) / 2
+                                    color: "#bcd8ff"
+                                    opacity: 0
+                                    SequentialAnimation {
+                                        running: true
+                                        loops: Animation.Infinite
+                                        PauseAnimation { duration: index * Theme.durSheen / 3 }
+                                        NumberAnimation { target: particle; property: "x"; from: 0; to: wire.width; duration: Theme.durSheen * 2; easing.type: Theme.easeStandard }
+                                    }
+                                    SequentialAnimation on opacity {
+                                        running: true
+                                        loops: Animation.Infinite
+                                        NumberAnimation { from: 0; to: 0.85; duration: Theme.durSlow; easing.type: Theme.easeEnter }
+                                        NumberAnimation { from: 0.85; to: 0; duration: Theme.durSlow * 3; easing.type: Theme.easeExit }
                                     }
                                 }
                             }
@@ -404,9 +456,8 @@ Item {
             color: "#0b0d12"
             border.width: 1
             border.color: "#2a3a54"
-            opacity: page.reveal
-            transform: Translate { y: (1 - page.reveal) * 8 }
-            scale: 1 - (1 - page.reveal) * 0.01
+            // 高度随内容变化时平滑过渡，避免换步瞬间"跳一格"
+            Behavior on height { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
 
             Column {
                 id: cardCol
@@ -415,6 +466,9 @@ Item {
                 anchors.top: parent.top
                 anchors.margins: 18
                 spacing: 12
+                // 换步时只有内容轻轻浮现：不外扩、不缩放，观感是"展开"而不是"弹一下"
+                opacity: page.reveal
+                transform: Translate { y: (1 - page.reveal) * 4 }
 
                 Row {
                     width: parent.width
@@ -531,7 +585,7 @@ Item {
             border.width: 1
             border.color: Theme.line2
             opacity: page.reveal
-            transform: Translate { y: (1 - page.reveal) * 8 }
+            transform: Translate { y: (1 - page.reveal) * 4 }
 
             Row {
                 anchors.fill: parent
@@ -677,12 +731,12 @@ Item {
                         onExited: fileCard.hovered = false
                     }
 
-                    Row {
+                    Item {
                         anchors.fill: parent
                         anchors.margins: 14
-                        spacing: 14
                         Rectangle {
                             width: 38; height: 38; radius: 9
+                            anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             color: modelData.isZip ? "#0c1626" : "#12151a"
                             border.width: 1
@@ -697,7 +751,11 @@ Item {
                             }
                         }
                         Column {
-                            width: parent.width - 38 - 14 - 190
+                            // 图标与动作区之间铺满：不手算 38/14/190 这类魔法数（算错就会挤出卡外）
+                            anchors.left: parent.left
+                            anchors.leftMargin: 38 + 14
+                            anchors.right: parent.right
+                            anchors.rightMargin: 118 + 14
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 5
                             Text {
@@ -718,9 +776,10 @@ Item {
                             }
                         }
                         Item {
-                            width: 170
+                            width: 118
                             height: 40
                             anchors.verticalCenter: parent.verticalCenter
+                            anchors.right: parent.right
 
                             // ZIP：安装中显示进度
                             Column {
@@ -828,6 +887,8 @@ Item {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         height: localCol.implicitHeight + 28
+        opacity: page.enter
+        transform: Translate { y: (1 - page.enter) * 8 }
             radius: Theme.rMd
             color: "#0b0d12"
             border.width: 1
@@ -860,16 +921,39 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Item { width: 1; height: 1 }
-                    Text {
-                        text: page.scanning ? "扫描中…" : "重新扫描"
-                        color: Theme.accent
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
+                    Rectangle {
+                        id: rescanBtn
+                        property bool hovered: false
+                        height: 22
+                        width: rescanText.implicitWidth + 16
+                        radius: 5
                         anchors.verticalCenter: parent.verticalCenter
+                        color: page.scanning ? "#12161d" : (hovered ? "#161c25" : "transparent")
+                        border.width: 1
+                        border.color: page.scanning ? Theme.line2 : (hovered ? "#334054" : "transparent")
+                        Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                        Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+
+                        Text {
+                            id: rescanText
+                            anchors.centerIn: parent
+                            text: page.scanning ? "扫描中…" : "重新扫描"
+                            color: page.scanning ? Theme.fg3 : Theme.accent
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+
                         MouseArea {
                             anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: page.refreshLocal()
+                            cursorShape: page.scanning ? Qt.ArrowCursor : Qt.PointingHandCursor
+                            hoverEnabled: true
+                            onEntered: rescanBtn.hovered = true
+                            onExited: rescanBtn.hovered = false
+                            onClicked: {
+                                if (page.scanning) return
+                                page.scanToastPending = true
+                                page.refreshLocal()
+                            }
                         }
                     }
                 }
