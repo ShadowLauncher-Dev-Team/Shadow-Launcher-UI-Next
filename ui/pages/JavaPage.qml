@@ -40,6 +40,10 @@ Item {
     property real msiSpeed: 0
     property string msiSavedPath: ""
 
+    // ── 动效状态（与资源库/下载页同一套语言） ──
+    property real reveal: 1        // 当前卡片入场进度（0..1）
+    property int stepTick: 0       // 步进节拍，用来重启动画
+
     readonly property bool zipInstalling: installingMajor.length > 0 && installingMajor === selVersion
     readonly property bool anyBusy: installingMajor.length > 0 || msiBusy
 
@@ -148,6 +152,24 @@ Item {
 
     Component.onCompleted: refreshLocal()
 
+    // 换步：卡片重新入场（淡入 + 8px 上浮 + 0.99 缩放归位）；回到第 1 步不播
+    onStepChanged: {
+        stepTick++
+        if (step === 0) { reveal = 1; return }
+        reveal = 0
+        cardIn.restart()
+    }
+
+    NumberAnimation {
+        id: cardIn
+        target: page
+        property: "reveal"
+        from: 0
+        to: 1
+        duration: Theme.durBase
+        easing.type: Theme.easePop
+    }
+
     Connections {
         target: page.java
         enabled: page.java !== null
@@ -254,8 +276,9 @@ Item {
                             }
                         }
 
-                        // 到下一个节点的连线（动效阶段这里会做淡蓝流光）
+                        // 到下一个节点的连线（已走过 = accent 55%）
                         Rectangle {
+                            id: wire
                             visible: !parent.last
                             anchors.verticalCenter: parent.verticalCenter
                             x: nodeRow.x + nodeRow.width + 10
@@ -263,6 +286,44 @@ Item {
                             height: 1
                             color: page.step > index ? Theme.accent : "#20252e"
                             opacity: page.step > index ? 0.55 : 1
+                            clip: true
+
+                            // 步进瞬间，刚走过去的那条线从左到右扫一道淡蓝光
+                            Rectangle {
+                                id: flow
+                                visible: false
+                                width: Math.min(64, wire.width)
+                                height: 1
+                                x: -width
+                                gradient: Gradient {
+                                    orientation: Gradient.Horizontal
+                                    GradientStop { position: 0.0; color: "#00a8ccff" }
+                                    GradientStop { position: 0.5; color: "#a8ccff" }
+                                    GradientStop { position: 1.0; color: "#00a8ccff" }
+                                }
+                            }
+
+                            NumberAnimation {
+                                id: flowAnim
+                                target: flow
+                                property: "x"
+                                from: -flow.width
+                                to: wire.width
+                                duration: Theme.durSlow
+                                easing.type: Theme.easeStandard
+                                onFinished: flow.visible = false
+                            }
+
+                            Connections {
+                                target: page
+                                function onStepChanged() {
+                                    // index = 起点节点序号；刚走过的是 index === step - 1 那条
+                                    if (index === page.step - 1) {
+                                        flow.visible = true
+                                        flowAnim.restart()
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -290,6 +351,12 @@ Item {
                     border.color: Theme.line2
                     border.width: 1
                     anchors.verticalCenter: parent.verticalCenter
+                    NumberAnimation on scale {
+                        from: 0.92; to: 1
+                        duration: Theme.durBase
+                        easing.type: Theme.easePop
+                    }
+                    transformOrigin: Item.Left
                     Row {
                         id: chipRow
                         anchors.centerIn: parent
@@ -337,6 +404,9 @@ Item {
             color: "#0b0d12"
             border.width: 1
             border.color: "#2a3a54"
+            opacity: page.reveal
+            transform: Translate { y: (1 - page.reveal) * 8 }
+            scale: 1 - (1 - page.reveal) * 0.01
 
             Column {
                 id: cardCol
@@ -372,12 +442,21 @@ Item {
                     Repeater {
                         model: page.optionsForStep(page.step)
                         delegate: Rectangle {
+                            id: pill
+                            property bool hovered: false
+                            property bool pressed: false
                             height: 34
                             width: pillRow.width + 32
                             radius: Theme.rSm
-                            color: page.isPicked(page.step, modelData) ? "#10203a" : "#0d1016"
+                            color: page.isPicked(page.step, modelData) ? "#10203a"
+                                 : hovered ? "#12161d" : "#0d1016"
                             border.width: 1
-                            border.color: page.isPicked(page.step, modelData) ? Theme.accent : Theme.line2
+                            border.color: page.isPicked(page.step, modelData) ? Theme.accent
+                                        : hovered ? "#39424f" : Theme.line2
+                            scale: pressed ? 0.97 : 1
+                            Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                            Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                            Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop } }
                             // 主字与小字按基线对齐：Row 的垂直居中会让 10px 的小字视觉上下沉
                             Item {
                                 id: pillRow
@@ -403,10 +482,25 @@ Item {
                                     font.pixelSize: 10
                                 }
                             }
+                            SRipple {
+                                id: pillRipple
+                                anchors.fill: parent
+                                color: "#ffffff"
+                                maxRadius: 90
+                            }
+
                             MouseArea {
+                                id: pillPress
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: page.choose(page.step, modelData)
+                                hoverEnabled: true
+                                onEntered: pill.hovered = true
+                                onExited: pill.hovered = false
+                                onPressedChanged: pill.pressed = pressed
+                                onClicked: function (mouse) {
+                                    pillRipple.burst(mouse.x, mouse.y)
+                                    page.choose(page.step, modelData)
+                                }
                             }
                         }
                     }
@@ -436,6 +530,8 @@ Item {
             color: "#0b0d12"
             border.width: 1
             border.color: Theme.line2
+            opacity: page.reveal
+            transform: Translate { y: (1 - page.reveal) * 8 }
 
             Row {
                 anchors.fill: parent
@@ -556,13 +652,30 @@ Item {
             Repeater {
                 model: page.fileRows()
                 delegate: Rectangle {
+                    id: fileCard
+                    property bool hovered: false
+                    property bool pressed: false
                     width: parent.width
                     height: 88
                     radius: Theme.rMd
-                    color: "#0b0d12"
+                    color: hovered ? "#0e1117" : "#0b0d12"
                     border.width: 1
-                    border.color: modelData.isZip && page.zipInstalling ? "#2a3a54" : "#262b35"
+                    border.color: (modelData.isZip && page.zipInstalling) || hovered ? "#2a3a54" : "#262b35"
                     clip: true
+                    scale: pressed ? 0.995 : 1
+                    opacity: page.reveal
+                    transform: Translate { y: (1 - page.reveal) * 6 }
+                    Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                    Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop } }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.NoButton
+                        hoverEnabled: true
+                        onEntered: fileCard.hovered = true
+                        onExited: fileCard.hovered = false
+                    }
 
                     Row {
                         anchors.fill: parent
@@ -673,8 +786,9 @@ Item {
                         }
                     }
 
-                    // 卡内进度条
+                    // 卡内进度条（流光裁在已填充段内）
                     Rectangle {
+                        id: bar
                         anchors.left: parent.left
                         anchors.bottom: parent.bottom
                         height: 2
@@ -682,6 +796,24 @@ Item {
                                                                 : page.msiPct) / 100
                         visible: modelData.isZip ? page.zipInstalling : page.msiBusy
                         color: Theme.accent
+                        clip: true
+
+                        Rectangle {
+                            width: 90
+                            height: 2
+                            x: -width
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: "#00ffffff" }
+                                GradientStop { position: 0.5; color: "#ccffffff" }
+                                GradientStop { position: 1.0; color: "#00ffffff" }
+                            }
+                            SequentialAnimation {
+                                running: bar.visible
+                                loops: Animation.Infinite
+                                NumberAnimation { target: parent; property: "x"; from: -90; to: bar.width; duration: Theme.durSheen; easing.type: Theme.easeStandard }
+                            }
+                        }
                     }
                 }
             }
