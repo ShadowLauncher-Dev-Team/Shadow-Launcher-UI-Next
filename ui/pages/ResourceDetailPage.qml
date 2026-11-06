@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import QtQuick
+import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Dialogs
 import ShadowLauncher.Next
@@ -19,7 +20,9 @@ Item {
     readonly property string slug: item.slug || ""
     readonly property int padL: narrow ? 32 : Theme.padL
     readonly property int padR: narrow ? 32 : Theme.padR
-    readonly property bool narrow: width < 900
+    // 窗口宽度而非自身宽度：侧栏收起/展开时自身宽度会变，用它判断会在动画最后一帧
+    // 突然从宽布局切到窄布局（用户看到的「最后一刻震动卡一下」）
+    readonly property bool narrow: (Window.window ? Window.window.width : width) < 900
 
     property var versions: []
     property var gameList: []

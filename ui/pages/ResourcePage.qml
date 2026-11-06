@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import QtQuick
+import QtQuick.Window
 import QtQuick.Layouts
 import QtQuick.Controls
 import ShadowLauncher.Next
@@ -16,7 +17,7 @@ Item {
 
     readonly property var kindList: ["", "mod", "shader", "resourcepack", "modpack", "datapack"]
     readonly property string kind: kindList[tabIndex] || "mod"
-    readonly property bool narrow: parent ? parent.width < 900 : false
+    readonly property bool narrow: (Window.window ? Window.window.width : (parent ? parent.width : width)) < 900
 
     property string query: ""
     property int source: 0           // 0 全部 1 Modrinth 2 CurseForge

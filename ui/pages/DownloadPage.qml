@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import QtQuick
+import QtQuick.Window
 import QtQuick.Layouts
 import ShadowLauncher.Next
 
@@ -14,7 +15,9 @@ Item {
     id: page
     property var toast: null
     readonly property var b: (typeof backend !== "undefined") ? backend : null
-    readonly property bool narrow: width < 900
+    // 窗口宽度而非自身宽度：侧栏收起/展开时自身宽度会变，用它判断会在动画最后一帧
+    // 突然从宽布局切到窄布局（用户看到的「最后一刻震动卡一下」）
+    readonly property bool narrow: (Window.window ? Window.window.width : width) < 900
     readonly property int padH: narrow ? 32 : 72
     readonly property int padR: narrow ? 28 : 72
     readonly property int topH: narrow ? 56 : 64
@@ -347,17 +350,29 @@ Item {
         }
 
         // tab pills（只在列表态显示）
-        Row {
+        // 放在裁剪容器里：宽布局下 7 个 tab 加上搜索框会挤到重叠，
+        // 这里让 tab 区右边界锁在搜索框左侧，超了裁掉也不压搜索框。
+        Item {
+            id: tabClip
             visible: page.mode === 0
             anchors.left: topLeft.right
-            anchors.leftMargin: 28
+            anchors.leftMargin: 16
+            anchors.right: headerSearch.left
+            anchors.rightMargin: 14
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 2
-            Repeater {
-                model: page.tabs
-                delegate: Rectangle {
-                    height: 30
-                    width: tabTxt.implicitWidth + 22
+            // 必须要高度：clip 容器高度默认 0 时，里面整排 tab 会被裁没（表现为"tab 消失"）
+            height: parent.height
+            clip: true
+
+            Row {
+                id: tabsRow
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 0
+                Repeater {
+                    model: page.tabs
+                    delegate: Rectangle {
+                        height: 28
+                        width: tabTxt.implicitWidth + 14
                     radius: Theme.rSm
                     color: page.tab === index ? "#1b2433" : (tabHover.containsMouse ? "#12151c" : "transparent")
                     Text {
@@ -366,15 +381,16 @@ Item {
                         text: modelData
                         color: page.tab === index ? "#ffffff" : Theme.fg2
                         font.family: Theme.fontFamily
-                        font.pixelSize: 13
+                        font.pixelSize: 12
                         font.weight: page.tab === index ? Font.DemiBold : Font.Normal
                     }
-                    MouseArea {
-                        id: tabHover
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: page.tab = index
+                        MouseArea {
+                            id: tabHover
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: page.tab = index
+                        }
                     }
                 }
             }
@@ -382,6 +398,7 @@ Item {
 
         // 搜索 + 刷新（列表态）：搜索框全 tab 常驻，位置固定在顶栏右侧
         Row {
+            id: headerSearch
             visible: page.mode === 0
             anchors.right: parent.right
             anchors.rightMargin: page.padR + 96

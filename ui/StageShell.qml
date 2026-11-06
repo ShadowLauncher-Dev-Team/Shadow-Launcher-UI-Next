@@ -87,9 +87,14 @@ Item {
             }
             // 其余子项（帮助文档 / 实用网站）暂未实现：保持当前页面不动
         }
-        // 快起：前 40% 时间就收掉大部分宽度，与页面淡入同帧开始，视觉上是一次动作
+        // 快起：前 40% 时间就收掉大部分宽度，与页面淡入同帧开始，视觉上是一次动作。
+        // 复原（关闭全屏页）时 duration 归 0：那一刻全屏页还完全不透明，宽度跳变看不见；
+        // 若也给 320ms，下面的列表要在整段动画里连续重排，最后半段露出来时就是一顿。
         Behavior on width {
-            NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
+            NumberAnimation {
+                duration: root.fullOpen ? Theme.durPage : 0
+                easing.type: Theme.easeEnter
+            }
         }
     }
 
