@@ -544,10 +544,33 @@ void HttpClient::runChunked(const QString& finalUrl, qint64 total,
     auto dlTimer = std::make_shared<QElapsedTimer>();
     dlTimer->start();
 
+    // 分片整体失败时只降级一次到单连接（2026-11-06）：
+    // 探测失败会降级（startChunked），但"某一片耗尽重试"以前直接判死整单。
+    // Java 大包（141-190MB，8 片）最容易因为个别连接被重置而整单失败，
+    // 而单连接走的是既有"镜像优先 + 官方兜底 + 停滞检测"路径。
+    auto fellBackToSingle = std::make_shared<bool>(false);
+
     // ── 整体收尾（仅一次）──
     auto finishAll = [this, ctx, file, savePath, tmpPath, total,
-                      done, expectedSize, expectedSha1, dlTimer, handle](bool ok, const QString& err) {
+                      done, progress, expectedSize, expectedSha1, dlTimer, handle,
+                      fellBackToSingle, finalUrl](bool ok, const QString& err) {
         if (ctx->finished) return;
+        // 分片失败 → 先尝试整包单连接重下一次，再决定是否报错
+        if (!ok && !*fellBackToSingle && !(handle && handle->m_aborted)) {
+            *fellBackToSingle = true;
+            qCInfo(logDownload).noquote()
+                << QStringLiteral("[驿道] 分片失败(%1)，降级整包单连接重下 %2").arg(err, finalUrl);
+            ctx->finished = true;
+            if (ctx->file) {
+                ctx->file->close();
+                delete ctx->file;
+                ctx->file = nullptr;
+            }
+            QFile::remove(tmpPath);
+            startSingle(finalUrl, savePath, progress, done,
+                        -1, expectedSize, expectedSha1, handle);
+            return;
+        }
         ctx->finished = true;
         if (ctx->file) {
             ctx->file->close();

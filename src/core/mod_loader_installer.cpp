@@ -2652,6 +2652,107 @@ static QString findJavaExeRecursive(const QString& dir) {
 
 /** Auto-download Java from Tuna Adoptium mirror, extract ZIP to java_cache/{minVersion}/.
  *  Returns path to java.exe, or empty on failure. */
+
+// ── Java 下载辅助（2026-11-06）──────────────────────────────────────────────
+// 为什么要自建 QNetworkAccessManager：全进程单例 HttpClient 的 manager 属于主线程，
+// 而本函数运行在 QtConcurrent worker 里；跨线程调用 manager->get() 会让 reply 的
+// 线程归属错乱（信号投递到主线程的事件循环），属于隐患。
+// 这里在"当前线程"建一个临时 manager：归属正确、用完即弃。
+//
+// idleMs 是「无数据超时」而不是总时长：只要还在持续收到数据就不会超时，
+// 这样 190MB 慢速下载不会因为总时长被判死。
+static bool blockingGet(const QUrl& url, int idleMs, QString* textOut,
+                        QString* errOut, const QString& savePath = QString())
+{
+    QNetworkAccessManager nam;   // 本线程创建、本线程使用
+    QNetworkRequest req(url);
+    req.setRawHeader("User-Agent", "ShadowLauncher/1.0");
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                     QNetworkRequest::NoLessSafeRedirectPolicy);
+
+    QFile out;
+    if (!savePath.isEmpty()) {
+        out.setFileName(savePath);
+        if (!out.open(QIODevice::WriteOnly)) {
+            if (errOut) *errOut = QStringLiteral("无法写入 %1").arg(savePath);
+            return false;
+        }
+    }
+
+    QNetworkReply* reply = nam.get(req);
+    QEventLoop loop;
+    QTimer idle;
+    idle.setSingleShot(true);
+    QObject::connect(&idle, &QTimer::timeout, &loop, &QEventLoop::quit);
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QObject::connect(reply, &QNetworkReply::readyRead, &loop, [&]() {
+        const QByteArray chunk = reply->readAll();
+        if (out.isOpen()) out.write(chunk);
+        if (textOut) textOut->append(QString::fromUtf8(chunk));
+        idle.start(idleMs);   // 有数据 → 重置"无数据超时"
+    });
+    idle.start(idleMs);
+    loop.exec();
+
+    if (!reply->isFinished())
+        reply->abort();
+
+    const bool netOk = (reply->error() == QNetworkReply::NoError);
+    const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const bool httpOk = (status == 0 || status == 200 || status == 206);
+    if (!netOk || !httpOk) {
+        if (errOut) *errOut = netOk ? QStringLiteral("HTTP %1").arg(status) : reply->errorString();
+        if (out.isOpen()) { out.close(); out.remove(); }
+        reply->deleteLater();
+        return false;
+    }
+    if (out.isOpen()) {
+        out.close();
+        if (out.size() <= 0) {   // 空文件几乎必然是失败（例如被网关拦截返回 200 空体）
+            if (errOut) *errOut = QStringLiteral("下载内容为空");
+            out.remove();
+            reply->deleteLater();
+            return false;
+        }
+    }
+    reply->deleteLater();
+    return true;
+}
+
+// 按版本号数值挑最新（替代"字符串序 = 最新"的假设；8u99 会排在 8u504 之后）
+static QString pickNewestJavaZip(const QStringList& zipUrls)
+{
+    auto versionOf = [](const QString& fileName) {
+        static const QRegularExpression re8(QStringLiteral("_(\\d+)u(\\d+)(?:b(\\d+))?"));
+        static const QRegularExpression re9(QStringLiteral("_(\\d+)\\.(\\d+)\\.(\\d+)"));
+        QVector<int> v;
+        auto m8 = re8.match(fileName);
+        if (m8.hasMatch()) {
+            v << m8.captured(1).toInt() << m8.captured(2).toInt()
+              << (m8.captured(3).isEmpty() ? 0 : m8.captured(3).toInt());
+            return v;
+        }
+        auto m9 = re9.match(fileName);
+        if (m9.hasMatch())
+            v << m9.captured(1).toInt() << m9.captured(2).toInt() << m9.captured(3).toInt();
+        return v;
+    };
+    if (zipUrls.isEmpty()) return QString();
+    QString best = zipUrls.first();
+    QVector<int> bestV = versionOf(QFileInfo(best).fileName());
+    for (const QString& u : zipUrls) {
+        const QVector<int> v = versionOf(QFileInfo(u).fileName());
+        if (v.size() != bestV.size()) continue;
+        for (int i = 0; i < v.size(); ++i) {
+            if (v[i] != bestV[i]) {
+                if (v[i] > bestV[i]) { best = u; bestV = v; }
+                break;
+            }
+        }
+    }
+    return best;
+}
+
 QString ModLoaderInstaller::downloadAndExtractJava(int minVersion) {
     const QString baseDir = QCoreApplication::applicationDirPath() + QStringLiteral("/java_cache/");
     const QString javaDir = baseDir + QString::number(minVersion);
@@ -2699,28 +2800,12 @@ QString ModLoaderInstaller::downloadAndExtractJava(int minVersion) {
     // 但保证所有加载器安装器可用）；与一键安装 Java（全 JDK）共享 java_cache。
     const QString mirrorBase = QStringLiteral("https://mirrors.tuna.tsinghua.edu.cn/Adoptium/%1/jdk/x64/windows/")
                                    .arg(minVersion);
-    QNetworkAccessManager* nam = HttpClient::instance().manager();
-    QNetworkRequest req;
-    req.setUrl(QUrl(mirrorBase));
-    req.setRawHeader("User-Agent", "ShadowLauncher/1.0");
-    QNetworkReply* reply = nam->get(req);
-    QEventLoop loop;
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    QTimer timer;
-    timer.setSingleShot(true);
-    QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
-    timer.start(15000);
-    loop.exec();
-
-    if (reply->error() != QNetworkReply::NoError || !timer.isActive()) {
-        qCWarning(logLoader) << QStringLiteral("[安装] 获取 Java %1 文件列表失败: %2").arg(minVersion).arg(reply->errorString());
-        reply->deleteLater();
+    QString html;
+    QString httpErr;
+    if (!blockingGet(QUrl(mirrorBase), 20000, &html, &httpErr)) {
+        qCWarning(logLoader) << QStringLiteral("[安装] 获取 Java %1 文件列表失败: %2").arg(minVersion).arg(httpErr);
         return {};
     }
-
-    // Parse HTML for .zip file links
-    QString html = QString::fromUtf8(reply->readAll());
-    reply->deleteLater();
     static QRegularExpression zipRe(QLatin1String("<a href=\"([^\"]+\\.zip)\""));
     QStringList zipUrls;
     auto it = zipRe.globalMatch(html);
@@ -2733,48 +2818,40 @@ QString ModLoaderInstaller::downloadAndExtractJava(int minVersion) {
         return {};
     }
 
-    // Download the latest .zip (last entry in alphabetical order)
-    const QString zipUrl = zipUrls.last();
+    // ── 2026-11-06 重写：直接落盘流式下载 + 自动重试 ──
+    // 旧实现三个问题：①180s 固定超时（190MB 需 ≥1.06MB/s，慢网必挂）
+    //                ②readAll() 整包进内存（JDK17 190MB，峰值 ~400MB）
+    //                ③无重试，一次抖动就整个安装失败
+    const QString zipUrl = pickNewestJavaZip(zipUrls);
     const QString zipPath = baseDir + QStringLiteral("/jdk-%1.zip").arg(minVersion);
     QDir().mkpath(baseDir);
 
-    qCInfo(logLoader) << QStringLiteral("[安装] 正在下载 Java %1").arg(minVersion);
+    qCInfo(logLoader) << QStringLiteral("[安装] 正在下载 Java %1: %2").arg(QString::number(minVersion), zipUrl);
     emit progressChanged(3, m_totalSteps, QStringLiteral("正在下载 Java %1...").arg(minVersion));
 
-    QNetworkRequest zipReq;
-    zipReq.setUrl(QUrl(zipUrl));
-    zipReq.setRawHeader("User-Agent", "ShadowLauncher/1.0");
-    QNetworkReply* zipReply = nam->get(zipReq);
-    QEventLoop zipLoop;
-    QObject::connect(zipReply, &QNetworkReply::finished, &zipLoop, &QEventLoop::quit);
-    QTimer zipTimer;
-    zipTimer.setSingleShot(true);
-    QObject::connect(&zipTimer, &QTimer::timeout, &zipLoop, &QEventLoop::quit);
-    // Large file: 3 minute timeout
-    zipTimer.start(180000);
-    zipLoop.exec();
-
-    if (zipReply->error() != QNetworkReply::NoError || !zipTimer.isActive()) {
-        qCWarning(logLoader) << QStringLiteral("[安装] 下载 Java %1 ZIP 失败: %2").arg(minVersion).arg(zipReply->errorString());
-        zipReply->deleteLater();
+    bool zipOk = false;
+    QString zipErr;
+    for (int attempt = 1; attempt <= 2 && !zipOk; ++attempt) {
+        if (attempt > 1) {
+            qCWarning(logLoader) << QStringLiteral("[安装] Java %1 下载失败（%2），1 秒后重试")
+                                        .arg(minVersion).arg(zipErr);
+            QThread::msleep(1000);
+        }
+        // 单次给 10 分钟：190MB 在 0.4MB/s 也能下完；下载中有数据就不算超时（见 blockingGet 实现）
+        zipOk = blockingGet(QUrl(zipUrl), 600000, nullptr, &zipErr, zipPath);
+    }
+    if (!zipOk) {
+        QFile::remove(zipPath);
+        qCWarning(logLoader) << QStringLiteral("[安装] 下载 Java %1 ZIP 失败: %2").arg(minVersion).arg(zipErr);
         return {};
     }
 
-    QByteArray zipData = zipReply->readAll();
-    zipReply->deleteLater();
-
-    // Extract ZIP using QZipReader
+    // Extract ZIP using QZipReader（直接从文件读，不再整包进内存）
     qCInfo(logLoader) << QStringLiteral("[安装] 正在解压 Java %1").arg(minVersion);
     emit progressChanged(3, m_totalSteps, QStringLiteral("正在解压 Java %1...").arg(minVersion));
 
-    QBuffer buf;
-    buf.setData(zipData);
-    if (!buf.open(QIODevice::ReadOnly)) {
-        QFile::remove(zipPath);
-        return {};
-    }
     {
-        QZipReader reader(&buf);
+        QZipReader reader(zipPath);
         const QList<QZipReader::FileInfo> entries = reader.fileInfoList();
 
         // Adoptium ZIP 顶层自带一层 jdk-17.0.x+x/ 目录（Tuna 镜像同构）；
@@ -2817,6 +2894,9 @@ QString ModLoaderInstaller::downloadAndExtractJava(int minVersion) {
         reader.close();
         qCInfo(logLoader) << QStringLiteral("[安装] Java %1 解压完成: %2 个文件").arg(minVersion).arg(extracted);
     }
+
+    // 解压完成即删掉临时 zip（190MB，留着没意义；与 JavaRuntimeInstaller 的行为一致）
+    QFile::remove(zipPath);
 
     if (!QFile::exists(javaExe)) {
         // 兜底：非标准 ZIP 布局时递归查找 bin/java.exe

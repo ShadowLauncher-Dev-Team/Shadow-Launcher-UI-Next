@@ -40,6 +40,45 @@ namespace ShadowLauncher {
 // 构造 / 架构检测
 // ============================================================
 
+// 从 Adoptium 文件名里抓版本号并按数值比较（2026-11-06）
+// 例：OpenJDK8U-jdk_x64_windows_hotspot_8u504b01.zip → (8, 504, 1)
+//     OpenJDK17U-jdk_x64_windows_hotspot_17.0.20.1_1.zip → (17, 20, 1)
+// 目的：镜像里同时存在多个补丁版时，用数值挑最新，而不是字符串序（8u99 会排在 8u504 之后）。
+static QVector<int> parseJavaZipVersion(const QString& fileName)
+{
+    static const QRegularExpression re8(QStringLiteral("_(\d+)u(\d+)(?:b(\d+))?"));
+    static const QRegularExpression re9(QStringLiteral("_(\d+)\.(\d+)\.(\d+)"));
+    QVector<int> v;
+    auto m8 = re8.match(fileName);
+    if (m8.hasMatch()) {
+        v << m8.captured(1).toInt() << m8.captured(2).toInt()
+          << (m8.captured(3).isEmpty() ? 0 : m8.captured(3).toInt());
+        return v;
+    }
+    auto m9 = re9.match(fileName);
+    if (m9.hasMatch())
+        v << m9.captured(1).toInt() << m9.captured(2).toInt() << m9.captured(3).toInt();
+    return v;
+}
+
+QString JavaRuntimeInstaller::pickNewestZip(const QStringList& zipUrls)
+{
+    if (zipUrls.isEmpty()) return {};
+    QString best = zipUrls.first();
+    QVector<int> bestV = parseJavaZipVersion(QFileInfo(best).fileName());
+    for (const QString& u : zipUrls) {
+        const QVector<int> v = parseJavaZipVersion(QFileInfo(u).fileName());
+        if (v.size() != bestV.size()) continue;   // 解析不出/长度不同 → 不参与比较
+        for (int i = 0; i < v.size(); ++i) {
+            if (v[i] != bestV[i]) {
+                if (v[i] > bestV[i]) { best = u; bestV = v; }
+                break;
+            }
+        }
+    }
+    return best;
+}
+
 JavaRuntimeInstaller::JavaRuntimeInstaller(QObject* parent)
     : QObject(parent)
     , m_cpuArch(detectCpuArch())
@@ -67,26 +106,28 @@ void JavaRuntimeInstaller::cleanupStaleCache()
         qCInfo(logJava) << QStringLiteral("[Java安装] 清理残留临时文件: %1").arg(f);
     }
 
-    // 2. 残缺版本目录（有 bin/java.exe 但校验失败，或目录非空但无有效 java）
+    // 2. 半解压残留目录（**只删 java.exe 都不存在的**）
+    // ── 2026-11-06 修正 ──
+    // 旧逻辑会在这里对每个目录跑 java -version（waitForFinished 8s）来判断完整性，
+    // 超时就当成"残缺"→ removeRecursively()。冷盘/杀软正在扫刚解压的 190MB JDK 时，
+    // 8 秒很容易不够 → 下次启动把刚装好的 Java 删掉，用户看到"装了又没了"。
+    // 现在只做确定性判断：没有 bin/java.exe 的目录才是残留；
+    // 有 java.exe 的一律留给安装流程校验（installJavaAsync 会 verifyJavaMajor + isJavaComplete，
+    // 失败时删了重装，那条路径有明确日志，不会静默消失）。
     const QStringList dirs = root.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
     for (const QString& d : dirs) {
         bool ok = false;
         d.toInt(&ok);
         if (!ok) continue;  // 只处理数字版本目录
         const QString exe = cacheRoot + QStringLiteral("/") + d + QStringLiteral("/bin/java.exe");
-        if (QFile::exists(exe)) {
-            // 完整校验：版本匹配 + 核心文件齐全（防"-version 能跑但 lib 缺失"的残缺）
-            const int major = verifyJavaMajor(exe);
-            if (major == d.toInt() && isJavaComplete(exe))
-                continue;  // 有效缓存，保留
-        }
-        // 目录存在但 java.exe 缺失或校验失败 → 半解压残留
+        if (QFile::exists(exe))
+            continue;  // 有 java.exe → 交给安装流程判断，这里不动
         QDir sub(cacheRoot + QStringLiteral("/") + d);
         if (sub.isEmpty()) {
             sub.rmdir(cacheRoot + QStringLiteral("/") + d);  // 空目录
         } else {
             sub.removeRecursively();
-            qCInfo(logJava) << QStringLiteral("[Java安装] 清理残缺 Java 缓存目录: %1").arg(d);
+            qCInfo(logJava) << QStringLiteral("[Java安装] 清理半解压残留目录: %1").arg(d);
         }
     }
 }
@@ -612,6 +653,15 @@ QString JavaRuntimeInstaller::existingJavaPath(int major) const
 void JavaRuntimeInstaller::installJavaAsync(int majorVersion, const QString& type,
                                             std::function<void(bool, const QString&, const QString&)> onDone)
 {
+    // ── 单任务互斥（2026-11-06）──
+    // 下面会整体重置 m_job。若已有任务在跑（设置页一键安装 + 启动流程同时要 Java），
+    // 直接拒绝，避免前一个任务的回调被吞掉 → 永久"正在安装"、m_running 卡死。
+    if (m_jobActive) {
+        qCWarning(logJava) << QStringLiteral("[Java安装] 已有安装任务在跑，拒绝并发请求 major=%1").arg(majorVersion);
+        if (onDone) onDone(false, tr("已有 Java 安装任务在进行中，请等待完成"), QString());
+        return;
+    }
+    m_jobActive = true;
     m_job = InstallJob{};
     m_job.major = majorVersion;
     m_job.type = type;
@@ -698,6 +748,13 @@ void JavaRuntimeInstaller::stepFetchZipList()
     if (arch == QLatin1String("aarch64"))
         arch = QStringLiteral("x64");
 
+    // 32 位镜像只到 Java 17；21/25 没有 x86-32 构建（2026-11-06 实测 404）。
+    // 提前给明确文案，而不是让用户看到"获取文件列表失败 404"。
+    if (arch == QLatin1String("x32") && m_job.major >= 21) {
+        failJob(tr("Java %1 没有 32 位版本（镜像仅提供 64 位）。32 位系统请改用 Java 17。").arg(m_job.major));
+        return;
+    }
+
     const QString mirrorBase = QStringLiteral("https://mirrors.tuna.tsinghua.edu.cn/Adoptium/%1/%2/%3/windows/")
                                    .arg(m_job.major).arg(m_job.type, arch);
 
@@ -721,7 +778,7 @@ void JavaRuntimeInstaller::stepFetchZipList()
             failJob(tr("镜像中未找到 Java %1 (%2) 的 .zip 文件").arg(m_job.major).arg(m_job.type));
             return;
         }
-        m_job.zipUrl = zipUrls.last();  // 字母序最新
+        m_job.zipUrl = pickNewestZip(zipUrls);  // 按版本号数值取最新（不是字符串序）
         stepDownloadZip();
     });
 }
@@ -889,6 +946,7 @@ void JavaRuntimeInstaller::failJob(const QString& error)
     }
     auto cb = std::move(m_job.onDone);
     m_job = InstallJob{};
+    m_jobActive = false;
     if (cb) cb(false, error, {});
 }
 
@@ -907,6 +965,7 @@ void JavaRuntimeInstaller::finishJob(const QString& javaExe)
     auto cb = std::move(m_job.onDone);
     const QString exeCopy = javaExe;  // 拷贝：m_job 即将被清空
     m_job = InstallJob{};
+    m_jobActive = false;
     if (cb) cb(true, {}, exeCopy);
 }
 

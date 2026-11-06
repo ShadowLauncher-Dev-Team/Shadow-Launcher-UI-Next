@@ -8,6 +8,7 @@
 #include <QFileInfo>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QCoreApplication>
 
 using namespace ShadowDownloader;
 
@@ -305,8 +306,11 @@ QString JavaBackend::fileDownloadUrl(const QString &filename) const
 
 QString JavaBackend::javaInstallDir() const
 {
-    // Save to launcher's java cache directory
-    return QDir::currentPath() + "/java_cache";
+    // 必须与另外两条通路（JavaRuntimeInstaller / ModLoaderInstaller）以及
+    // scanSystemJavas 的扫描根保持一致：exe 所在目录，而不是进程工作目录。
+    // 用 currentPath 时，从快捷方式/别的程序拉起（CWD != exeDir）会把 Java 存到
+    // 一个启动器永远不会扫描的目录 → 表现为"下载好了但没有 Java"。
+    return QCoreApplication::applicationDirPath() + "/java_cache";
 }
 
 void JavaBackend::downloadJavaFileTo(const QString &filename, const QString &outDir, qint64 expectedSize)

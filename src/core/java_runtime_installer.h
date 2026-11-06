@@ -110,6 +110,8 @@ signals:
 private:
     /// 递归查找 bin/java.exe（非标准 ZIP 布局兜底）
     static QString findJavaExeRecursive(const QString& dir);
+    /// 从候选 zip 列表里按版本号数值挑最新（替代 zipUrls.last() 的字符串序假设）
+    static QString pickNewestZip(const QStringList& zipUrls);
 
     /// 扫描完成后执行实际安装流程（由 scanSystemJavas 的完成回调触发）
     void runInstallAfterScan();
@@ -169,6 +171,10 @@ private:
         int retryCount = 0;   // 已重试次数（网络抖动自动重试 1 次）
     };
     InstallJob m_job;
+    /// 单任务互斥：installJavaAsync 会整体重置 m_job，若同一时刻有第二个调用进来
+    /// （典型：设置页一键安装 Java 8 的同时，用户点启动 → 启动流程要 Java 17），
+    /// 前一个任务的 onDone 会被吞掉，界面永久"正在安装"、m_running 卡 true。
+    bool m_jobActive = false;
     void stepFetchZipList();
     void stepDownloadZip();
     void stepExtractZip();
