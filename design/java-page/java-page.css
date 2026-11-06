@@ -93,3 +93,47 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 
 /* A/B/C 标题条（概念稿标注，仅在稿里出现） */
 .tag { position: absolute; left: 48px; top: 8px; font-size: 11px; color: #5d6673; letter-spacing: 1px; }
+
+/* ── 交互式抵近（D 版）专用 ── */
+.rail { display: flex; align-items: center; gap: 0; height: 52px; }
+.node { display: flex; align-items: center; gap: 8px; }
+.dot2 { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #2b313c; display: flex;
+        align-items: center; justify-content: center; font-size: 10px; color: #5d6673; flex: none; }
+.node.done .dot2 { background: #1d4ed8; border-color: #2563eb; color: #fff; }
+.node.cur .dot2 { background: #0d1016; border-color: #3b82f6; color: #8fb6f8; box-shadow: 0 0 0 3px rgba(59,130,246,.18); }
+.node .lab { font-size: 12px; color: #5d6673; white-space: nowrap; }
+.node.done .lab { color: #c3cbd8; }
+.node.cur .lab { color: #ffffff; font-weight: 600; }
+.rail .wire { flex: 1; height: 1px; background: #1b1f27; margin: 0 10px; min-width: 18px; }
+.rail .wire.on { background: #2563eb; }
+
+.stepcard { border: 1px solid #262b35; border-radius: 10px; background: #0b0d12; padding: 16px 18px; }
+.stepcard.live { border-color: #2a3a54; box-shadow: 0 0 0 1px rgba(59,130,246,.10) inset; }
+.stepcard.ghost { border-color: #161a21; background: #0a0c10; }
+.stepno { font-size: 11px; letter-spacing: 1px; color: #3b82f6; font-weight: 600; }
+.ghost .stepno { color: #3a4150; }
+.stepttl { font-size: 15px; color: #e8ebf2; font-weight: 600; }
+.ghost .stepttl { color: #4b5361; }
+.hint { font-size: 11px; color: #5d6673; line-height: 1.7; border-left: 2px solid #1b1f27; padding-left: 10px; margin-top: 12px; }
+.pillrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill { height: 34px; padding: 0 16px; border-radius: 8px; border: 1px solid #262b35; background: #0d1016;
+        display: flex; align-items: center; gap: 8px; font-size: 13px; color: #c3cbd8; }
+.pill .sub { font-size: 10px; color: #5d6673; }
+.pill.on { border-color: #3b82f6; background: #10203a; color: #fff; }
+.pill.on .sub { color: #8fb6f8; }
+.pill.dim { color: #4b5361; border-color: #161a21; }
+
+.chosen { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; border-radius: 8px;
+          background: #0b0d12; border: 1px solid #1d2430; }
+.chosen .k { font-size: 11px; color: #5d6673; }
+.chosen .v { font-size: 13px; color: #e8ebf2; }
+.sepdot { width: 3px; height: 3px; border-radius: 50%; background: #39404d; }
+
+.filecard { height: 96px; border-radius: 10px; border: 1px solid #262b35; background: #0b0d12;
+            padding: 14px 16px; display: flex; align-items: center; gap: 14px; position: relative; overflow: hidden; }
+.filecard.hot { border-color: #2a3a54; background: #0c1119; }
+.filecard .fmt { width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center;
+                 justify-content: center; font-size: 10px; font-weight: 700; letter-spacing: .5px; flex: none; }
+.fmt.zip { background: #0c1626; color: #8fb6f8; border: 1px solid #1e324f; }
+.fmt.msi { background: #12151a; color: #98a1ae; border: 1px solid #2b3038; }
+.pbar { position: absolute; left: 0; bottom: 0; height: 2px; background: linear-gradient(90deg,#4b8cf7,#2563eb); }

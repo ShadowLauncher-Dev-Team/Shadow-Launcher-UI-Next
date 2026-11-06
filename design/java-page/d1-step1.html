@@ -1,0 +1,80 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8">
+<title>Java 下载页</title><link rel="stylesheet" href="java-page.css"></head><body>
+<div class="win">
+  <aside class="side">
+    <div class="brand">SHADOW</div>
+    <nav class="nav">
+      <a><svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg><span>启动</span></a>
+      <a class="on"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>下载</span></a>
+      <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span>联机</span></a>
+      <a><svg viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>统计</span></a>
+      <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>设置</span></a>
+    </nav>
+    <div class="divider"></div>
+    <nav class="nav">
+      <a><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><span>下载进度</span></a>
+      <a><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span>帮助文档</span></a>
+      <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.2 7.8 14.1 14.1 7.8 16.2 9.9 9.9 16.2 7.8"/></svg><span>实用网站</span></a>
+    </nav>
+    <div class="foot">v1.0.4</div>
+  </aside>
+  <main class="main">
+    <div class="top">
+      <div class="title">下载</div>
+      <div class="tabs">
+        <div class="tab">MC 版本</div><div class="tab">Mod</div><div class="tab">光影</div>
+        <div class="tab">资源包</div><div class="tab">整合包</div><div class="tab">数据包</div>
+        <div class="tab on">Java</div>
+      </div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>搜索版本 / 文件名</span></div>
+      <div class="refresh" style="margin-right:96px;"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div>
+    </div>
+
+
+    <div class="body">
+      <div class="rail" style="margin-bottom:16px;">
+        <div class="node cur"><i class="dot2">1</i><span class="lab">选择 Java 版本</span></div><div class="wire"></div>
+        <div class="node"><i class="dot2">2</i><span class="lab">JRE / JDK</span></div><div class="wire"></div>
+        <div class="node"><i class="dot2">3</i><span class="lab">架构</span></div><div class="wire"></div>
+        <div class="node"><i class="dot2">4</i><span class="lab">系统</span></div><div class="wire"></div>
+        <div class="node"><i class="dot2">5</i><span class="lab">下载</span></div>
+      </div>
+
+      <div class="stepcard live">
+        <div class="row" style="justify-content:space-between;">
+          <div class="row" style="gap:9px;">
+            <span class="stepno">STEP 1</span>
+            <span class="stepttl">选择 Java 版本</span>
+          </div>
+          <span class="dim" style="font-size:11px;">镜像已列出 8 个主版本</span>
+        </div>
+        <div class="pillrow" style="margin-top:14px;">
+          <span class="pill"><b>8</b><span class="sub">旧版整合包</span></span>
+          <span class="pill"><b>11</b></span>
+          <span class="pill on"><b>17</b><span class="sub">主流</span></span>
+          <span class="pill"><b>21</b><span class="sub">1.20.5+</span></span>
+          <span class="pill"><b>25</b><span class="sub">最新</span></span>
+        </div>
+        <div class="hint">选启动器/游戏需要的那个主版本。拿不准就选 <b style="color:#98a1ae;">17</b>——它覆盖目前绝大多数整合包与 Forge。</div>
+      </div>
+
+      <div class="stepcard ghost" style="margin-top:10px;height:64px;display:flex;align-items:center;justify-content:space-between;">
+        <div class="row" style="gap:9px;"><span class="stepno">STEP 2</span><span class="stepttl">JRE 还是 JDK</span></div>
+        <span class="dim" style="font-size:11px;">选完上一步后展开</span>
+      </div>
+      <div class="stepcard ghost" style="margin-top:10px;height:64px;display:flex;align-items:center;justify-content:space-between;">
+        <div class="row" style="gap:9px;"><span class="stepno">STEP 3</span><span class="stepttl">CPU 架构</span></div>
+        <span class="dim" style="font-size:11px;">选完上一步后展开</span>
+      </div>
+      <div class="stepcard ghost" style="margin-top:10px;height:64px;display:flex;align-items:center;justify-content:space-between;">
+        <div class="row" style="gap:9px;"><span class="stepno">STEP 4</span><span class="stepttl">操作系统</span></div>
+        <span class="dim" style="font-size:11px;">选完上一步后展开</span>
+      </div>
+      <div class="stepcard ghost" style="margin-top:10px;height:64px;display:flex;align-items:center;justify-content:space-between;">
+        <div class="row" style="gap:9px;"><span class="stepno">STEP 5</span><span class="stepttl">安装形式</span></div>
+        <span class="dim" style="font-size:11px;">选完上一步后展开</span>
+      </div>
+    </div>
+  </main>
+</div>
+</body></html>
