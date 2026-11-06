@@ -58,6 +58,13 @@ Item {
     property string expandedLoader: ""
 
     readonly property var tabs: ["MC 版本", "Mod", "光影", "资源包", "整合包", "数据包", "Java"]
+
+    // 资源库搜索防抖：不用每敲一个字就发一次请求
+    Timer {
+        id: resourceTimer
+        interval: 450
+        onTriggered: if (resourceView) resourceView.doSearch(0)
+    }
     readonly property var filters: [
         { key: 0, label: "正式版" },
         { key: 1, label: "快照版" },
@@ -373,45 +380,39 @@ Item {
             }
         }
 
-        // 搜索 + 刷新（列表态）
+        // 搜索 + 刷新（列表态）：搜索框全 tab 常驻，位置固定在顶栏右侧
         Row {
-            visible: page.mode === 0 && page.tab === 0
+            visible: page.mode === 0
             anchors.right: parent.right
             anchors.rightMargin: page.padR + 96
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
 
-            Rectangle {
-                width: 200; height: 32; radius: Theme.rSm
-                color: "#0d1016"
-                border.color: searchInput.activeFocus ? Theme.accent : Theme.line2
-                border.width: 1
-                Row {
-                    anchors.fill: parent
-                    anchors.leftMargin: 10
-                    anchors.rightMargin: 10
-                    spacing: 7
-                    SIcon { name: "search"; size: 14; color: Theme.fg3; anchors.verticalCenter: parent.verticalCenter }
-                    TextInput {
-                        id: searchInput
-                        width: parent.width - 26
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: page.search
-                        color: Theme.fg
-                        selectionColor: Theme.accent
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 13
-                        clip: true
-                        onTextChanged: page.search = text
-                        Text {
-                            visible: parent.text.length === 0
-                            text: "搜索版本号"
-                            color: Theme.fg3
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 13
-                        }
-                    }
+            SField {
+                id: globalSearch
+                width: 220; height: 34
+                anchors.verticalCenter: parent.verticalCenter
+                label: page.tab === 0 ? "搜索版本号"
+                     : page.tab === 1 ? "搜索 Mod"
+                     : page.tab === 2 ? "搜索光影"
+                     : page.tab === 3 ? "搜索资源包"
+                     : page.tab === 4 ? "搜索整合包" : "搜索数据包"
+                onEdited: (v) => {
+                    if (page.tab === 0) page.search = v
+                    else if (resourceView) { resourceView.query = v; resourceTimer.restart() }
                 }
+                onAccepted: {
+                    if (page.tab !== 0 && resourceView) resourceView.doSearch(0)
+                }
+            }
+            // 外部状态 → 输入框（聚焦时不覆盖，避免打断输入）
+            Binding {
+                target: globalSearch
+                property: "text"
+                value: page.tab === 0 ? page.search
+                     : (resourceView ? resourceView.query : "")
+                when: !globalSearch.input.activeFocus
+                restoreMode: Binding.RestoreNone
             }
             Rectangle {
                 width: 32; height: 32; radius: Theme.rSm

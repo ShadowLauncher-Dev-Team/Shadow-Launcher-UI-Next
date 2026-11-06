@@ -36,7 +36,9 @@ Item {
         radius: root.thickness / 2
         color: root.color
         x: -width
-        visible: root.running
+        // 不要用 visible: running —— 一停就瞬间消失，只剩底轨淡出，看着像"硬切"。
+        // 跟随容器 opacity 一起淡出（Behavior on opacity 已在根上定义）。
+        visible: opacity > 0.01
 
         SequentialAnimation on x {
             running: root.running

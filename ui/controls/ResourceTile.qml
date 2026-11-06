@@ -91,10 +91,17 @@ Rectangle {
             elide: Text.ElideRight
         }
 
-        Row {
+        // 底部三列：左=下载量，中=更新日期，右=来源（全称，不再缩写）。
+        // 用锚点而不是 Row + 硬编码宽度：之前 Item{width: parent.width-150} 让三列各自偏移，
+        // 卡片宽度一变就错位。
+        Item {
             width: parent.width
-            spacing: 8
+            height: 13
+
             Text {
+                id: dlText
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
                 text: tile.downloads >= 100000000 ? (tile.downloads / 100000000).toFixed(1) + "亿"
                     : tile.downloads >= 10000 ? (tile.downloads / 10000).toFixed(0) + "万" : tile.downloads.toString()
                 color: Theme.fg3
@@ -102,18 +109,20 @@ Rectangle {
                 font.pixelSize: 11
             }
             Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
                 text: tile.dateModified.length >= 10 ? tile.dateModified.substring(0, 10) : ""
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
             }
-            Item { width: parent.width - 150; height: 1 }
             Text {
-                text: tile.source === "CurseForge" ? "CF" : "MR"
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                text: tile.source === "CurseForge" ? "CurseForge" : "Modrinth"
                 color: tile.source === "CurseForge" ? Theme.warn : Theme.ok
                 font.family: Theme.fontFamily
                 font.pixelSize: 10
-                font.weight: Font.DemiBold
             }
         }
     }

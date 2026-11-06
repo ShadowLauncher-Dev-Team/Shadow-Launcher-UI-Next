@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import ShadowLauncher.Next
 
 // 资源库列表（A 方案「货架式」）：五类共用，按 tabIndex 参数化
@@ -34,6 +35,29 @@ Item {
     readonly property int cols: width >= 1000 ? 4 : (width >= 740 ? 3 : 2)
 
     function sourceArg() { return page.source === 1 ? "modrinth" : (page.source === 2 ? "curseforge" : "") }
+
+    // 加载器下拉选项：只从本轮实际返回的条目里取（不写死 fabric/forge/neoforge）
+    readonly property var loaderOptions: {
+        var set = {}
+        for (var i = 0; i < page.pool.length; ++i) {
+            var r = page.pool[i] || ({})
+            if (r.loader) set[r.loader] = true
+            var ll = r.loadersList
+            if (ll && ll.length) {
+                for (var k = 0; k < ll.length; ++k) if (ll[k]) set[ll[k]] = true
+            }
+        }
+        var keys = []
+        for (var key in set) keys.push(key)
+        keys.sort()
+        var out = [{ label: "全部加载器", value: "" }]
+        for (var n = 0; n < keys.length; ++n)
+            out.push({ label: keys[n].charAt(0).toUpperCase() + keys[n].slice(1), value: keys[n] })
+        return out
+    }
+
+    // 顶栏搜索框输入 → 防抖后再发请求（外部改 query 也走这里）
+    onQueryChanged: queryTimer.restart()
 
     function doSearch(pageNum) {
         if (!page.b) return
@@ -106,6 +130,13 @@ Item {
 
     Component.onCompleted: page.doSearch(0)
 
+    // 顶栏搜索防抖
+    Timer {
+        id: queryTimer
+        interval: 450
+        onTriggered: page.doSearch(0)
+    }
+
     // 后端还在拉（progressive emit）：轮询 pending，归零才关条
     Timer {
         id: settleTimer
@@ -151,55 +182,25 @@ Item {
         anchors.fill: parent
         spacing: 12
 
-        // ── 搜索 + 来源 ──
+        // ── 来源 + 重置 ──
         RowLayout {
             Layout.fillWidth: true
-            spacing: 10
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 36
-                radius: Theme.rSm
-                color: "#0d1016"
-                border.width: 1
-                border.color: searchInput.activeFocus ? Theme.accent : Theme.line2
-                TextInput {
-                    id: searchInput
-                    anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    verticalAlignment: TextInput.AlignVCenter
-                    color: Theme.fg
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 12
-                    selectByMouse: true
-                    clip: true
-                    Text {
-                        visible: searchInput.text.length === 0
-                        text: "搜索名称 / 英文名 / 标签"
-                        color: Theme.fg3
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 12
-                    }
-                    onTextChanged: page.query = text
-                    Keys.onReturnPressed: page.doSearch(0)
-                }
-            }
+            spacing: 8
 
             Repeater {
                 model: [{ t: "全部来源", v: 0 }, { t: "Modrinth", v: 1 }, { t: "CurseForge", v: 2 }]
                 delegate: Rectangle {
-                    Layout.preferredHeight: 36
-                    implicitWidth: srcTxt.implicitWidth + 24
-                    radius: Theme.rSm
-                    color: page.source === modelData.v ? "#1b2433" : "#0d1016"
+                    Layout.preferredHeight: 28
+                    implicitWidth: srcTxt.implicitWidth + 22
+                    radius: 14
+                    color: page.source === modelData.v ? "#1b2433" : "transparent"
                     border.width: 1
                     border.color: page.source === modelData.v ? "#2c3a4f" : Theme.line2
                     Text {
                         id: srcTxt
                         anchors.centerIn: parent
                         text: modelData.t
-                        color: page.source === modelData.v ? Theme.fg : Theme.fg2
+                        color: page.source === modelData.v ? Theme.fg : Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                     }
@@ -211,18 +212,48 @@ Item {
                 }
             }
 
+            Item { Layout.fillWidth: true }
+
+            // ── 筛选下拉：选项来自本轮实际返回的数据，不写死 ──
+            LoaderDropdown {
+                visible: page.loaderOptions.length > 1
+                label: "加载器"
+                placeholder: "全部加载器"
+                current: page.loader
+                options: page.loaderOptions
+                onPicked: (v) => { page.loader = v; page.doSearch(0) }
+            }
+
+            LoaderDropdown {
+                visible: page.tabIndex === 1
+                label: "环境"
+                placeholder: "全部环境"
+                current: page.env
+                options: [{ label: "全部环境", value: "" }, { label: "客户端", value: "client" }, { label: "服务端", value: "server" }]
+                onPicked: (v) => { page.env = v; page.doSearch(0) }
+            }
+
+            LoaderDropdown {
+                visible: page.tabIndex === 5
+                label: "排序"
+                placeholder: "下载量"
+                current: page.dpSort
+                options: [{ label: "下载量", value: "" }, { label: "最近更新", value: "updated" }, { label: "名称", value: "name" }]
+                onPicked: (v) => { page.dpSort = v; page.doSearch(0) }
+            }
+
             Rectangle {
-                Layout.preferredHeight: 36
-                implicitWidth: resetTxt.implicitWidth + 24
-                radius: Theme.rSm
+                Layout.preferredHeight: 28
+                implicitWidth: resetTxt.implicitWidth + 22
+                radius: 14
                 color: resetHover.containsMouse ? "#141922" : "transparent"
                 border.width: 1
                 border.color: Theme.line2
                 Text {
                     id: resetTxt
                     anchors.centerIn: parent
-                    text: "重置筛选"
-                    color: Theme.fg2
+                    text: "重置"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                 }
@@ -231,74 +262,9 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: { searchInput.text = ""; page.query = ""; page.source = 0; page.loader = ""; page.env = ""; page.dpSort = ""; page.doSearch(0) }
+                    onClicked: { page.query = ""; page.source = 0; page.loader = ""; page.env = ""; page.dpSort = ""; page.doSearch(0) }
                 }
             }
-        }
-
-        // ── 筛选（按类别能力显示不同项）──
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 6
-            visible: page.tabIndex === 1 || page.tabIndex === 5
-
-            Repeater {
-                model: page.tabIndex === 5
-                    ? [{ t: "下载量", v: "" }, { t: "最近更新", v: "updated" }, { t: "名称", v: "name" }]
-                    : [{ t: "全部加载器", v: "" }, { t: "Fabric", v: "fabric" }, { t: "Forge", v: "forge" }, { t: "NeoForge", v: "neoforge" }]
-                delegate: Rectangle {
-                    Layout.preferredHeight: 26
-                    implicitWidth: chipTxt.implicitWidth + 18
-                    radius: 13
-                    property bool sel: page.tabIndex === 5 ? (page.dpSort === modelData.v) : (page.loader === modelData.v)
-                    color: sel ? "#1b2433" : "transparent"
-                    border.width: 1
-                    border.color: sel ? "#2c3a4f" : Theme.line2
-                    Text {
-                        id: chipTxt
-                        anchors.centerIn: parent
-                        text: modelData.t
-                        color: parent.sel ? Theme.fg : Theme.fg3
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (page.tabIndex === 5) page.dpSort = modelData.v
-                            else page.loader = modelData.v
-                            page.doSearch(0)
-                        }
-                    }
-                }
-            }
-
-            Repeater {
-                model: page.tabIndex === 1 ? [{ t: "全部环境", v: "" }, { t: "客户端", v: "client" }, { t: "服务端", v: "server" }] : []
-                delegate: Rectangle {
-                    Layout.preferredHeight: 26
-                    implicitWidth: envTxt.implicitWidth + 18
-                    radius: 13
-                    color: page.env === modelData.v ? "#1b2433" : "transparent"
-                    border.width: 1
-                    border.color: page.env === modelData.v ? "#2c3a4f" : Theme.line2
-                    Text {
-                        id: envTxt
-                        anchors.centerIn: parent
-                        text: modelData.t
-                        color: page.env === modelData.v ? Theme.fg : Theme.fg3
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: { page.env = modelData.v; page.doSearch(0) }
-                    }
-                }
-            }
-            Item { Layout.fillWidth: true }
         }
 
         // ── 网格 ──
@@ -412,6 +378,88 @@ Item {
                     id: nextHover; anchors.fill: parent; hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: if (page.hasMore()) page.doSearch(page.pageNo + 1)
+                }
+            }
+        }
+    }
+
+    // 下拉筛选：触发器 + 挂在触发器上的弹层（不会盖住自己）
+    component LoaderDropdown: Rectangle {
+        id: dd
+        property string label: ""
+        property string placeholder: ""
+        property string current: ""
+        property var options: []
+        signal picked(string value)
+
+        readonly property string shown: {
+            for (var i = 0; i < options.length; ++i)
+                if (options[i].value === current) return options[i].label
+            return placeholder
+        }
+
+        implicitHeight: 28
+        implicitWidth: ddTxt.implicitWidth + 30
+        radius: 14
+        color: ddHover.containsMouse || ddPop.visible ? "#141922" : "transparent"
+        border.width: 1
+        border.color: current.length > 0 ? "#2c3a4f" : Theme.line2
+
+        Text {
+            id: ddTxt
+            anchors.left: parent.left; anchors.leftMargin: 11
+            anchors.verticalCenter: parent.verticalCenter
+            text: dd.shown
+            color: dd.current.length > 0 ? Theme.fg : Theme.fg3
+            font.family: Theme.fontFamily
+            font.pixelSize: 11
+        }
+        SIcon {
+            anchors.right: parent.right; anchors.rightMargin: 9
+            anchors.verticalCenter: parent.verticalCenter
+            name: "chevron-down"; size: 10; color: Theme.fg3
+        }
+        MouseArea {
+            id: ddHover
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: ddPop.open()
+        }
+
+        Popup {
+            id: ddPop
+            parent: dd
+            x: 0
+            y: dd.height + 6
+            width: Math.max(dd.width, 150)
+            height: Math.min(260, dd.options.length * 32 + 8)
+            padding: 4
+            closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+            background: Rectangle { color: "#0d1016"; border.width: 1; border.color: Theme.line2; radius: Theme.rSm }
+            contentItem: ListView {
+                clip: true
+                model: dd.options
+                delegate: Rectangle {
+                    width: ddPop.width - 8; height: 32; radius: 4
+                    color: (dd.current === modelData.value) ? "#16202e" : (optHover.containsMouse ? "#121a26" : "transparent")
+                    Text {
+                        anchors.left: parent.left; anchors.leftMargin: 10
+                        anchors.right: parent.right; anchors.rightMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: modelData.label
+                        color: dd.current === modelData.value ? Theme.fg : Theme.fg2
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                        elide: Text.ElideRight
+                    }
+                    MouseArea {
+                        id: optHover
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: { dd.picked(modelData.value); ddPop.close() }
+                    }
                 }
             }
         }

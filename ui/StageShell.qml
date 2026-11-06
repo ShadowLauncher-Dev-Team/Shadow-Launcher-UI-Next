@@ -22,13 +22,14 @@ Item {
     property bool progressOpen: false
     // 资源详情页（从资源库卡片打开）
     property bool resDetailOpen: false
-    readonly property bool fullOpen: versionsOpen || accountOpen
+    // 资源详情也按"全屏独立页"处理：打开时侧栏收起、页面铺满整窗（与版本页/账户页同一套）
+    readonly property bool fullOpen: versionsOpen || accountOpen || resDetailOpen
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
     // 登录这类不确定等待 + 资源库在途请求，统一走顶部 SLoadingBar
     readonly property bool loading: (b ? b.microsoftLoginBusy : false)
         || (downloadPage ? downloadPage.resourceBusy : false)
-        || (resDetail ? resDetail.loading : false)
+        || (resDetail ? resDetail.loadingVersions : false)
 
     Component.onCompleted: {
         if (Qt.application.arguments.indexOf("--ui-versions") >= 0) root.versionsOpen = true
@@ -219,26 +220,29 @@ Item {
         }
     }
 
-    // 资源详情（覆盖在下载页之上，同层级淡入）
+    // 资源详情（全屏独立页：铺满整窗、不透明、拦截穿透；与版本页同构淡入）
     Item {
         id: resDetailHost
-        anchors.left: sideBar.right
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
+        anchors.fill: parent
         visible: root.resDetailOpen || opacity > 0.01
         opacity: root.resDetailOpen ? 1 : 0
         Behavior on opacity {
             NumberAnimation { duration: Theme.durBase; easing.type: root.resDetailOpen ? Theme.easeEnter : Theme.easeExit }
         }
-
+        transform: Translate {
+            y: root.resDetailOpen ? 0 : 8
+            Behavior on y {
+                NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
+            }
+        }
+        // 不透明底：全屏页下面就是资源库列表，不铺底会叠字
+        Rectangle {
+            anchors.fill: parent
+            color: Theme.bg
+        }
         ResourceDetailPage {
             id: resDetail
             anchors.fill: parent
-            anchors.leftMargin: 28
-            anchors.rightMargin: 28
-            anchors.topMargin: 16
-            anchors.bottomMargin: 20
             toast: toastHost
             onBack: root.resDetailOpen = false
         }
