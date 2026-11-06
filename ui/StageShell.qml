@@ -167,22 +167,32 @@ Item {
         id: versionsHost
         anchors.fill: parent
         visible: root.versionsOpen || opacity > 0.01
+        // 打开时立即不透明：否则在这 180ms 的淡入里，下层启动页会透出来
+        // （用户看到的"先闪一下启动页，再淡入目标页"就是这个）。
+        // 关闭时才淡出 —— 这时露出下层正是想要的。
         opacity: root.versionsOpen ? 1 : 0
-        // 透明度比位移先完成：用户先"看到内容"，再感受滑动，
-        // 避免出现"侧栏收走了、页面还是空的"这种先后感
         Behavior on opacity {
-            NumberAnimation { duration: Theme.durBase; easing.type: root.versionsOpen ? Theme.easeEnter : Theme.easeExit }
-        }
-        transform: Translate {
-            x: root.versionsOpen ? 0 : 16
-            Behavior on x {
-                NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
+            NumberAnimation {
+                duration: root.versionsOpen ? 0 : Theme.durBase
+                easing.type: root.versionsOpen ? Theme.easeEnter : Theme.easeExit
             }
         }
-        VersionPage {
+        // 页面实底：任何时刻都不透出下一层
+        Rectangle { anchors.fill: parent; color: Theme.bg }
+        // 内容层才有动效：底是自己的背景色，淡入期间看到的是背景，不是启动页
+        Item {
             anchors.fill: parent
-            toast: toastHost
-            onClose: root.versionsOpen = false
+            opacity: root.versionsOpen ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+            transform: Translate {
+                x: root.versionsOpen ? 0 : 16
+                Behavior on x { NumberAnimation { duration: root.versionsOpen ? 0 : Theme.durPage; easing.type: Theme.easeEnter } }
+            }
+            VersionPage {
+                anchors.fill: parent
+                toast: toastHost
+                onClose: root.versionsOpen = false
+            }
         }
     }
 
@@ -193,20 +203,26 @@ Item {
         visible: root.accountOpen || opacity > 0.01
         opacity: root.accountOpen ? 1 : 0
         Behavior on opacity {
-            NumberAnimation { duration: Theme.durBase; easing.type: root.accountOpen ? Theme.easeEnter : Theme.easeExit }
-        }
-        // 账户页从下方浮起（与版本页的横移区分开）。
-        // 20px 在 320ms 里几乎看不出方向，实测被当成"没生效"，所以给到 48px。
-        transform: Translate {
-            y: root.accountOpen ? 0 : 48
-            Behavior on y {
-                NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
+            NumberAnimation {
+                duration: root.accountOpen ? 0 : Theme.durBase
+                easing.type: root.accountOpen ? Theme.easeEnter : Theme.easeExit
             }
         }
-        AccountPage {
+        Rectangle { anchors.fill: parent; color: Theme.bg }
+        Item {
             anchors.fill: parent
-            toast: toastHost
-            onClose: root.accountOpen = false
+            opacity: root.accountOpen ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+            // 账户页从下方浮起（与版本页的横移区分开）。48px 才看得出方向。
+            transform: Translate {
+                y: root.accountOpen ? 0 : 48
+                Behavior on y { NumberAnimation { duration: root.accountOpen ? 0 : Theme.durPage; easing.type: Theme.easeEnter } }
+            }
+            AccountPage {
+                anchors.fill: parent
+                toast: toastHost
+                onClose: root.accountOpen = false
+            }
         }
     }
 
@@ -220,14 +236,20 @@ Item {
         visible: root.downloadOpen || opacity > 0.01
         opacity: root.downloadOpen ? 1 : 0
         Behavior on opacity {
-            NumberAnimation { duration: Theme.durBase; easing.type: root.downloadOpen ? Theme.easeEnter : Theme.easeExit }
-        }
-        transform: Translate {
-            y: root.downloadOpen ? 0 : 8
-            Behavior on y {
-                NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
+            NumberAnimation {
+                duration: root.downloadOpen ? 0 : Theme.durBase
+                easing.type: root.downloadOpen ? Theme.easeEnter : Theme.easeExit
             }
         }
+        Rectangle { anchors.fill: parent; color: Theme.bg }
+        Item {
+            anchors.fill: parent
+            opacity: root.downloadOpen ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+            transform: Translate {
+                y: root.downloadOpen ? 0 : 8
+                Behavior on y { NumberAnimation { duration: root.downloadOpen ? 0 : Theme.durPage; easing.type: Theme.easeEnter } }
+            }
         DownloadPage {
             id: downloadPage
             anchors.fill: parent
@@ -245,6 +267,7 @@ Item {
                 root.resDetailOpen = true
             }
         }
+        }
     }
 
     // 资源详情（全屏独立页：铺满整窗、不透明、拦截穿透；与版本页同构淡入）
@@ -254,24 +277,27 @@ Item {
         visible: root.resDetailOpen || opacity > 0.01
         opacity: root.resDetailOpen ? 1 : 0
         Behavior on opacity {
-            NumberAnimation { duration: Theme.durBase; easing.type: root.resDetailOpen ? Theme.easeEnter : Theme.easeExit }
-        }
-        transform: Translate {
-            y: root.resDetailOpen ? 0 : 8
-            Behavior on y {
-                NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
+            NumberAnimation {
+                duration: root.resDetailOpen ? 0 : Theme.durBase
+                easing.type: root.resDetailOpen ? Theme.easeEnter : Theme.easeExit
             }
         }
         // 不透明底：全屏页下面就是资源库列表，不铺底会叠字
-        Rectangle {
+        Rectangle { anchors.fill: parent; color: Theme.bg }
+        Item {
             anchors.fill: parent
-            color: Theme.bg
-        }
-        ResourceDetailPage {
-            id: resDetail
-            anchors.fill: parent
-            toast: toastHost
-            onBack: root.resDetailOpen = false
+            opacity: root.resDetailOpen ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+            transform: Translate {
+                y: root.resDetailOpen ? 0 : 8
+                Behavior on y { NumberAnimation { duration: root.resDetailOpen ? 0 : Theme.durPage; easing.type: Theme.easeEnter } }
+            }
+            ResourceDetailPage {
+                id: resDetail
+                anchors.fill: parent
+                toast: toastHost
+                onBack: root.resDetailOpen = false
+            }
         }
     }
 
@@ -285,18 +311,25 @@ Item {
         visible: root.progressOpen || opacity > 0.01
         opacity: root.progressOpen ? 1 : 0
         Behavior on opacity {
-            NumberAnimation { duration: Theme.durBase; easing.type: root.progressOpen ? Theme.easeEnter : Theme.easeExit }
-        }
-        transform: Translate {
-            y: root.progressOpen ? 0 : 8
-            Behavior on y {
-                NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter }
+            NumberAnimation {
+                duration: root.progressOpen ? 0 : Theme.durBase
+                easing.type: root.progressOpen ? Theme.easeEnter : Theme.easeExit
             }
         }
-        ProgressPage {
-            id: progressPage
+        Rectangle { anchors.fill: parent; color: Theme.bg }
+        Item {
             anchors.fill: parent
-            toast: toastHost
+            opacity: root.progressOpen ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+            transform: Translate {
+                y: root.progressOpen ? 0 : 8
+                Behavior on y { NumberAnimation { duration: root.progressOpen ? 0 : Theme.durPage; easing.type: Theme.easeEnter } }
+            }
+            ProgressPage {
+                id: progressPage
+                anchors.fill: parent
+                toast: toastHost
+            }
         }
     }
 
