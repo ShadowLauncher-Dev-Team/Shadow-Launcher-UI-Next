@@ -501,7 +501,8 @@ Item {
                 id: globalSearch
                 width: 220; height: 34
                 anchors.verticalCenter: parent.verticalCenter
-                label: page.tab === 0 ? "搜索版本号"
+                label: page.tab === 6 ? "Java 无需搜索"
+                     : page.tab === 0 ? "搜索版本号"
                      : page.tab === 1 ? "搜索 Mod"
                      : page.tab === 2 ? "搜索光影"
                      : page.tab === 3 ? "搜索资源包"
@@ -569,10 +570,18 @@ Item {
         anchors.bottomMargin: 24
 
         // 资源库五类（Mod / 光影 / 资源包 / 整合包 / 数据包）：同一页参数化
+        // ── Java Tab（2026-11-07）──
+        JavaPage {
+            id: javaView
+            anchors.fill: parent
+            visible: page.tab === 6
+            toast: page.toast
+        }
+
         ResourcePage {
             id: resourceView
             anchors.fill: parent
-            visible: page.tab !== 0
+            visible: page.tab !== 0 && page.tab !== 6
             tabIndex: page.tab
             toast: page.toast
             onOpenDetail: (kind, item) => page.openResourceDetail(kind, item)

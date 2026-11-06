@@ -251,6 +251,7 @@ set_source_files_properties(ui/controls/SField.qml PROPERTIES QT_RESOURCE_ALIAS 
 set_source_files_properties(ui/controls/SShimmer.qml PROPERTIES QT_RESOURCE_ALIAS controls/SShimmer.qml)
 set_source_files_properties(ui/controls/SRipple.qml PROPERTIES QT_RESOURCE_ALIAS controls/SRipple.qml)
 set_source_files_properties(ui/pages/ResourcePage.qml PROPERTIES QT_RESOURCE_ALIAS pages/ResourcePage.qml)
+set_source_files_properties(ui/pages/JavaPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/JavaPage.qml)
 set_source_files_properties(ui/pages/ResourceDetailPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/ResourceDetailPage.qml)
 set_source_files_properties(ui/ToastHost.qml PROPERTIES QT_RESOURCE_ALIAS ToastHost.qml)
 
@@ -282,6 +283,7 @@ qt_add_qml_module(ShadowLauncher
     ui/controls/SRipple.qml
         ui/pages/ResourcePage.qml
         ui/pages/ResourceDetailPage.qml
+        ui/pages/JavaPage.qml
         ui/ToastHost.qml
 )
 

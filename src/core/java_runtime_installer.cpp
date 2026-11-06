@@ -651,7 +651,8 @@ QString JavaRuntimeInstaller::existingJavaPath(int major) const
 // ============================================================
 
 void JavaRuntimeInstaller::installJavaAsync(int majorVersion, const QString& type,
-                                            std::function<void(bool, const QString&, const QString&)> onDone)
+                                            std::function<void(bool, const QString&, const QString&)> onDone,
+                                            const QString& archOverride)
 {
     // ── 单任务互斥（2026-11-06）──
     // 下面会整体重置 m_job。若已有任务在跑（设置页一键安装 + 启动流程同时要 Java），
@@ -665,6 +666,7 @@ void JavaRuntimeInstaller::installJavaAsync(int majorVersion, const QString& typ
     m_job = InstallJob{};
     m_job.major = majorVersion;
     m_job.type = type;
+    m_job.arch = archOverride;
     m_job.retryCount = 0;
     m_job.javaDir = QCoreApplication::applicationDirPath() + QStringLiteral("/java_cache/%1").arg(majorVersion);
     m_job.javaExe = m_job.javaDir + QStringLiteral("/bin/java.exe");
@@ -743,8 +745,8 @@ void JavaRuntimeInstaller::installJavaAsync(int majorVersion, const QString& typ
 
 void JavaRuntimeInstaller::stepFetchZipList()
 {
-    // 架构降级：ARM64 → x64（Prism 模拟）
-    QString arch = m_cpuArch;
+    // 架构优先级：页面显式选的 > 自动检测；ARM64 → x64（Prism 模拟）
+    QString arch = m_job.arch.isEmpty() ? m_cpuArch : m_job.arch;
     if (arch == QLatin1String("aarch64"))
         arch = QStringLiteral("x64");
 

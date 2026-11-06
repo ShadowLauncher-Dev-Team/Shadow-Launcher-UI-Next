@@ -92,7 +92,8 @@ public:
     /// 安装单个版本（异步入口：列目录→下载→解压→验证→回调）。
     /// onDone(ok, errorMsg, javaExe)
     void installJavaAsync(int majorVersion, const QString& type,
-                          std::function<void(bool, const QString&, const QString&)> onDone);
+                          std::function<void(bool, const QString&, const QString&)> onDone,
+                          const QString& archOverride = QString());
 
 signals:
     void progressChanged();
@@ -161,6 +162,7 @@ private:
     struct InstallJob {
         int major = 0;
         QString type;
+        QString arch;      // 空 = 用 detectCpuArch()；页面选了 x32 就带 x32
         QString zipUrl;
         QString zipPath;     // 临时 zip 文件路径
         QString javaDir;

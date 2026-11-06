@@ -35,6 +35,13 @@ class JavaBackend : public QObject
     Q_PROPERTY(qint64 javaDownloadBytes READ javaDownloadBytes NOTIFY javaDownloadProgressChanged)
     Q_PROPERTY(qint64 javaDownloadTotal READ javaDownloadTotal NOTIFY javaDownloadProgressChanged)
     Q_PROPERTY(double javaDownloadSpeedMBps READ javaDownloadSpeedMBps NOTIFY javaDownloadProgressChanged)
+    // ── 下载页 Java Tab ──
+    /// 正在安装（解压/校验）的主版本号，"" = 空闲
+    Q_PROPERTY(QString installingMajor READ installingMajor NOTIFY javaInstallStateChanged)
+    /// 安装阶段文案（"正在下载 Java 17…" / "正在解压 Java 17…"）
+    Q_PROPERTY(QString installStatusText READ installStatusText NOTIFY javaInstallStateChanged)
+    /// 已装到 java_cache 的运行时 [{major, version, path, isJdk, size}]
+    Q_PROPERTY(QVariantList javaCacheList READ javaCacheRuntimes NOTIFY javaCacheListChanged)
 
 public:
     explicit JavaBackend(QObject *parent = nullptr);
@@ -68,6 +75,15 @@ public:
 
     // ── 一键安装所需 Java ──
     Q_INVOKABLE void installRequiredJavas();
+    /// 下载页：把某个主版本装进 java_cache（ZIP → 解压 → 校验）。
+    /// arch 为空则用自动检测；页面选了 x32 就传 "x32"。
+    Q_INVOKABLE void installJavaRuntime(int major, const QString& type, const QString& arch);
+    /// 下载页：MSI 等"交给系统安装"的文件，直接存到用户选定的完整路径
+    Q_INVOKABLE void downloadJavaFileToPath(const QString& url, const QString& savePath, qint64 expectedSize = 0);
+    /// 下载页：java_cache 里的已装运行时
+    Q_INVOKABLE QVariantList javaCacheRuntimes() const;
+    QString installingMajor() const { return m_installingMajor; }
+    QString installStatusText() const;
     Q_INVOKABLE void cancelJavaInstall();
     /// 启动流程自动安装单个版本 Java（worker 下载/解压，回调回主线程）：
     /// onProgress(pct, status) 下载进度（可选）；onDone(ok, error, javaExe)。
@@ -108,6 +124,7 @@ signals:
 
     // ── 一键安装所需 Java ──
     void javaInstallStateChanged();
+    void javaCacheListChanged();
     void javaInstalled(const QString &label, const QString &path, bool skipped);
     void javaInstallFinished(bool ok, const QString &error);
     /// 前置检测完成
@@ -138,6 +155,7 @@ private:
     QString m_selOS;
 
     JavaRuntimeInstaller* m_runtimeInstaller = nullptr;
+    QString m_installingMajor;
 };
 
 } // namespace ShadowLauncher

@@ -38,6 +38,15 @@ JavaBackend::JavaBackend(QObject *parent)
             this, &JavaBackend::systemJavaScanFinished);
     connect(m_runtimeInstaller, &JavaRuntimeInstaller::downloadProgressChanged,
             this, &JavaBackend::javaDownloadProgressChanged);
+    // 每装完一个就刷新 java_cache 列表（页面上的"已装"状态）
+    connect(m_runtimeInstaller, &JavaRuntimeInstaller::javaInstalled,
+            this, [this](const QString&, const QString&, bool) { emit javaCacheListChanged(); });
+    connect(m_runtimeInstaller, &JavaRuntimeInstaller::finished,
+            this, [this](bool, const QString&) {
+                m_installingMajor.clear();
+                emit javaInstallStateChanged();
+                emit javaCacheListChanged();
+            });
 }
 
 // ── Setters trigger cascading fetches ──
@@ -364,10 +373,88 @@ void JavaBackend::cancelDownload()
 {
     qCInfo(logJava) << QStringLiteral("取消Java下载");
     if (m_downloader) {
-        // FileDownloader doesn't have cancel, but we can delete it
+        // FileDownloader 支持 cancel()：会 abort 在途请求并停止写盘（2026-11-07 起不再只 deleteLater）
+        m_downloader->cancel();
         m_downloader->deleteLater();
         m_downloader = nullptr;
     }
+}
+
+// ── 下载页 Java Tab ──
+
+QString JavaBackend::installStatusText() const
+{
+    return m_runtimeInstaller ? m_runtimeInstaller->statusText() : QString();
+}
+
+void JavaBackend::installJavaRuntime(int major, const QString& type, const QString& arch)
+{
+    if (major <= 0) { emit logMessage(QStringLiteral("无效的 Java 主版本")); return; }
+    if (m_runtimeInstaller->running()) {
+        emit logMessage(QStringLiteral("已有 Java 任务在进行中，请稍候"));
+        return;
+    }
+    m_installingMajor = QString::number(major);
+    emit javaInstallStateChanged();
+    qCInfo(logJava) << QStringLiteral("Java页安装 major=%1 type=%2 arch=%3")
+                           .arg(major).arg(type, arch);
+    m_runtimeInstaller->installJavaAsync(major, type,
+        [this](bool ok, const QString& err, const QString& exe) {
+            m_installingMajor.clear();
+            emit javaInstallStateChanged();
+            emit javaCacheListChanged();
+            emit javaInstallFinished(ok, err.isEmpty() ? exe : err);
+        },
+        arch);
+}
+
+void JavaBackend::downloadJavaFileToPath(const QString& url, const QString& savePath, qint64 expectedSize)
+{
+    if (url.isEmpty() || savePath.isEmpty()) return;
+    if (m_downloader) {
+        m_downloader->cancel();
+        m_downloader->deleteLater();
+        m_downloader = nullptr;
+    }
+    m_downloader = new FileDownloader(this);
+    m_downloader->setMaxThreads(1);
+    connect(m_downloader, &FileDownloader::progressChanged, this,
+            [this](int, int, qint64 dl, qint64 total) {
+                const int pct = total > 0 ? qMin(100, static_cast<int>(dl * 100 / total)) : 0;
+                emit downloadProgress(pct, dl, total, m_downloader->currentSpeedMBps());
+            });
+    connect(m_downloader, &FileDownloader::fileFinished, this,
+            [this](const QString& path, bool ok) { emit downloadFinished(ok, path); });
+    connect(m_downloader, &FileDownloader::logMessage, this,
+            [this](const QString& msg) { emit logMessage(msg); });
+
+    qCInfo(logJava) << QStringLiteral("Java页保存文件 url=%1 目标=%2").arg(url, savePath);
+    m_downloader->addFile(savePath, QFileInfo(savePath).fileName(), {url}, expectedSize, QByteArray());
+    m_downloader->start();
+}
+
+QVariantList JavaBackend::javaCacheRuntimes() const
+{
+    QVariantList out;
+    const QString root = QCoreApplication::applicationDirPath() + QStringLiteral("/java_cache");
+    QDir dir(root);
+    if (!dir.exists()) return out;
+    for (const QString& sub : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        bool ok = false;
+        const int major = sub.toInt(&ok);
+        if (!ok) continue;
+        const QString exe = root + QStringLiteral("/") + sub + QStringLiteral("/bin/java.exe");
+        if (!QFile::exists(exe)) continue;
+        QVariantMap m;
+        m[QStringLiteral("major")] = major;
+        m[QStringLiteral("path")] = exe;
+        m[QStringLiteral("isJdk")] = QFile::exists(root + QStringLiteral("/") + sub + QStringLiteral("/bin/javac.exe"));
+        m[QStringLiteral("version")] = JavaRuntimeInstaller::verifyJavaMajor(exe) > 0
+            ? QString::number(JavaRuntimeInstaller::verifyJavaMajor(exe)) : QString();
+        m[QStringLiteral("complete")] = JavaRuntimeInstaller::isJavaComplete(exe);
+        out.append(m);
+    }
+    return out;
 }
 
 // ============================================================
