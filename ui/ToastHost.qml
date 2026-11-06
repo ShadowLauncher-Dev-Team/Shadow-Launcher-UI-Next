@@ -24,7 +24,24 @@ Item {
 
     signal toastClicked(string message)
 
+    // 同一件事可能被两处同时播报（下载完成 / 安装完成），用"主题"去重：
+    // 去掉结尾的完成/失败字样后，5 秒内同主题只弹第一条。
+    property var _recent: ({})
+    function _subjectOf(msg) {
+        return String(msg).replace(/\s*(下载完成|安装完成|下载失败|安装失败)$/, "")
+    }
+    function _seenRecently(msg) {
+        var key = root._subjectOf(msg)
+        var now = Date.now()
+        var prev = root._recent[key] || 0
+        var m = {}
+        for (var k in root._recent) if (now - root._recent[k] < 6000) m[k] = root._recent[k]
+        m[key] = now
+        root._recent = m
+        return prev > 0 && (now - prev) < 5000
+    }
     function show(message, duration, style) {
+        if (root._seenRecently(message)) return
         root.add(message, duration, style, null)
     }
 

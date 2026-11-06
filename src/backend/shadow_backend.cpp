@@ -2131,6 +2131,17 @@ QObject* ShadowBackend::multiplayer() const
     return m_multiplayer;
 }
 
+// 原生"选择保存文件夹"对话框。
+// 这里用 QFileDialog（QtWidgets）而不是 QML 的 FolderDialog：本程序是 QApplication + Widgets 构建，
+// QML FolderDialog 在 Windows 上会静默失败（不显示、还会把后续 SaveFile 对话框一起卡住）。
+QString ShadowBackend::pickFolder(const QString &initialDir) {
+    QString start = initialDir;
+    if (start.isEmpty() || !QDir(start).exists())
+        start = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+    return QFileDialog::getExistingDirectory(nullptr, tr("选择保存文件夹"), start,
+        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+}
+
 QString ShadowBackend::resolveIconUrl(const QString &url)
 {
     return m_fetchEngine ? m_fetchEngine->iconLocalPath(url) : url;

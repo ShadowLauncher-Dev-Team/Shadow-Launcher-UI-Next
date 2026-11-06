@@ -967,6 +967,12 @@ public:
     ResourceFetchEngine* fetchEngine() const { return m_fetchEngine; }
 
     // ── Icon cache (QML-callable methods: mod / shader / rp) ──
+    // 原生"选择文件夹"对话框（Win32 IFileOpenDialog + FOS_PICKFOLDERS）。
+    // 为什么不用 Qt 的 FolderDialog：本程序未链接 QtWidgets，FolderDialog.open() 会静默失败，
+    // 既不显示窗口、还会把后续的 SaveFile 对话框一起卡住。
+    // 返回空串表示用户取消。
+    Q_INVOKABLE QString pickFolder(const QString &initialDir = QString());
+
     Q_INVOKABLE QString resolveIconUrl(const QString &url);
     Q_INVOKABLE void cacheIconBatchAsync(const QStringList &urls);
     Q_INVOKABLE QString resolveShaderIconUrl(const QString &url);

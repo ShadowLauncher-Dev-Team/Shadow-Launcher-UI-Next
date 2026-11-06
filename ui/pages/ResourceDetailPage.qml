@@ -43,6 +43,11 @@ Item {
     // 批量下载：一次选文件夹，全部文件按各自文件名落盘（保存对话框一次只能选一个文件，
     // 逐个弹框既慢又不符合"一起下载"的语义）。
     property string targetDir: ""
+    // 批量模式：第一份走"另存为"，其余用它的目录
+    property bool batchMode: false
+    property bool batchStarted: false
+    property bool batchFilling: false
+    property int planTotal: 0
     property bool dialogBusy: false
     property var planJobs: []
     property var pendingDeps: ({})
@@ -277,6 +282,9 @@ Item {
 
     function installLatest() {
         page.submitted = 0
+        page.dialogBusy = false
+        page.dlQueue = []
+        page.batchMode = false
         page.targetDir = ""          // 单文件：仍然走"另存为"
         var v = page.latest
         if (!v || v.url.length === 0) { page.status = "该组合没有可下载文件"; return }
@@ -309,45 +317,66 @@ Item {
 
     function installAll() {
         page.submitted = 0
+        // 复位上一次可能残留的对话框占用与队列（强行关闭对话框时回调可能不触发）
+        page.dialogBusy = false
+        page.dlQueue = []
+        page.pendingJob = null
         if (page.depsLoading) { page.status = "前置还在解析，请稍候"; return }
         var jobs = page.buildJobs()
         if (jobs.length === 0) { page.status = "该组合没有可下载文件"; return }
         if (jobs.length === 1) {
+            page.batchMode = false
             page.targetDir = ""
             page.planJobs = jobs
             page.startPlan()
             return
         }
-        // 多个文件 → 选一次文件夹，全部落进去
+        // 多个文件：弹一次"选择保存文件夹"（原生 QFileDialog，由后端 pickFolder 提供），
+        // 选完目录后所有文件按各自文件名写进去，不再逐个弹框。
         page.planJobs = jobs
-        folderDialog.folder = "file:///" + (page.lastDir.length > 0 ? page.lastDir : "")
-        folderDialog.open()
+        page.planTotal = jobs.length
+        var dir = page.b ? page.b.pickFolder(page.lastDir) : ""
+        if (dir.length === 0) { page.planJobs = []; page.status = "已取消"; return }
+        page.batchMode = true
+        page.targetDir = dir
+        page.lastDir = dir
+        page.startPlan()
     }
 
     function startPlan() {
         var jobs = page.planJobs || []
+        // 先把整批任务全部压进队列，再统一开跑：
+        // 之前 pushJob 会立刻把"队列长度为 1"的任务发出去，于是第一个文件下载时队列又空了
+        // → finishBatch() 提前触发（跳进度页），后续前置还没入队就被打断。
+        page.batchFilling = true
+        var missing = 0
         for (var i = 0; i < jobs.length; ++i) {
             var j = jobs[i]
             if (j.url.length > 0) {
                 page.pushJob(j.url, j.filename, j.size, j.sha1, j.label)
             } else if (j.versionId.length > 0) {
-                // 前置文件元数据未解析 → 先取，回来再入队（之前这里直接丢了，前置永远下不下来）
+                // 前置文件元数据未解析 → 先取，回来再入队
                 var m = {}
                 for (var k in page.pendingDeps) m[k] = page.pendingDeps[k]
                 m[j.versionId] = j
                 page.pendingDeps = m
                 page.b.fetchVersionFile(j.versionId)
+            } else {
+                missing++
             }
         }
+        page.batchFilling = false
         page.planJobs = []
-        if (page.dlQueue.length === 0) page.status = "没有可下载的文件"
+        if (page.dlQueue.length > 0) page.nextInQueue()
+        else page.status = missing > 0 ? "有前置缺少下载信息" : "没有可下载的文件"
     }
 
     function pushJob(url, filename, size, sha1, label) {
         var q = page.dlQueue.slice()
         q.push({ url: url, filename: filename || "download.jar", size: size || 0, sha1: sha1 || "", label: label || "" })
         page.dlQueue = q
-        if (q.length === 1) page.nextInQueue()
+        // 批量装填阶段不要自动开跑（由 startPlan 装完统一启动）
+        if (q.length === 1 && !page.batchFilling) page.nextInQueue()
     }
 
     function nextInQueue() {
@@ -372,6 +401,7 @@ Item {
     }
 
     function finishBatch() {
+        page.batchMode = false
         page.status = "已提交 " + page.submitted + " 个文件"
         if (page.submitted > 0) page.downloadsStarted()
     }
@@ -389,33 +419,23 @@ Item {
         }
     }
 
-    // 批量下载：选一次目录，全部文件按各自名字写进去
-    FolderDialog {
-        id: folderDialog
-        title: "选择保存文件夹"
-        onAccepted: {
-            var p = String(folder).replace(/^file:\/{2,3}/i, "")
-            page.targetDir = p
-            page.lastDir = p
-            page.startPlan()
-        }
-        onRejected: {
-            page.targetDir = ""
-            page.planJobs = []
-            page.status = "已取消"
-        }
-    }
-
     FileDialog {
         id: saveDialog
         fileMode: FileDialog.SaveFile
-        title: "选择保存位置"
+        // 批量时标题要说明"其余文件会存到同一目录"，避免用户以为还要再选 N 次
+        title: page.batchMode
+               ? ("选择保存位置（共 " + (page.planTotal) + " 个文件，其余存入同一文件夹）")
+               : "选择保存位置"
         onAccepted: {
             var j = page.pendingJob
             var p = String(selectedFile)
             var path = p.replace(/^file:\/{2,3}/i, "")
             var cut = path.lastIndexOf("/")
-            if (cut > 0) page.lastDir = path.substring(0, cut)
+            if (cut > 0) {
+                page.lastDir = path.substring(0, cut)
+                // 批量模式：这一份选在哪，其余就写在哪，不再逐个弹框
+                if (page.batchMode) page.targetDir = path.substring(0, cut)
+            }
             if (j && page.b) {
                 var dlId = page.b.downloadModFile(j.url, path, j.filename, j.size, j.sha1)
                 if (dlId > 0) { page.myIds = page.myIds.concat([dlId]); page.submitted++ }
@@ -423,7 +443,14 @@ Item {
             }
             page.popQueue()
         }
-        onRejected: page.popQueue()
+        onRejected: {
+            page.batchMode = false
+            page.targetDir = ""
+            page.dlQueue = []
+            page.pendingJob = null
+            page.dialogBusy = false
+            page.status = "已取消"
+        }
     }
 
     // ══ 顶栏：返回 ══

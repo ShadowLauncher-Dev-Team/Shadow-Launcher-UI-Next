@@ -125,7 +125,8 @@ Item {
     // 登录这类不确定等待 + 资源库在途请求，统一走顶部 SLoadingBar
     readonly property bool loading: (b ? b.microsoftLoginBusy : false)
         || (downloadPage ? downloadPage.resourceBusy : false)
-        || (resDetail ? resDetail.loadingVersions : false)
+        // 只在详情页还开着的时候算它：关掉后残留的请求不该让顶部继续转
+        || (root.resDetailOpen && resDetail ? resDetail.loadingVersions : false)
 
     Component.onCompleted: {
         if (Qt.application.arguments.indexOf("--ui-versions") >= 0) root.versionsOpen = true

@@ -1744,6 +1744,8 @@ void ModManager::getModDependencies(const QString& slug, const QString& gameVers
                             QJsonObject depObj;
                             depObj[QStringLiteral("project_id")] = it.key();
                             depObj[QStringLiteral("dependency_type")] = it.value().first;
+                            // 前置对应到具体文件版本：前端要靠它去取 url/filename/size/sha1
+                            depObj[QStringLiteral("version_id")] = it.value().second;
 
                             auto resolved = projMap.value(it.key());
                             depObj[QStringLiteral("slug")] = resolved.value(QStringLiteral("slug"));
@@ -1774,6 +1776,7 @@ void ModManager::getModDependencies(const QString& slug, const QString& gameVers
                             QJsonObject depObj;
                             depObj[QStringLiteral("project_id")] = it.key();
                             depObj[QStringLiteral("dependency_type")] = it.value().first;
+                            depObj[QStringLiteral("version_id")] = it.value().second;
                             depObj[QStringLiteral("title")] = it.key();  // fallback to ID
                             result.append(depObj);
                         }

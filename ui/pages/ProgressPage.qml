@@ -114,7 +114,11 @@ Item {
             if (done) {
                 if (!page._doneAt[r.iid]) {
                     page._doneAt[r.iid] = Date.now()
-                    if (page.toast) page.toast.show((r.name || "任务") + " 安装完成", 2600, "success")
+                    // 卡片名是文件名（.jar/.zip）时说明这是"下载"任务，措辞跟着变，
+                    // 避免同一个动作一处说"下载完成"、一处说"安装完成"
+                    var nm = r.name || "任务"
+                    var isFile = /\.(jar|zip|mrpack)$/i.test(nm)
+                    if (page.toast) page.toast.show(nm + (isFile ? " 下载完成" : " 安装完成"), 2600, "success")
                     if (page.b.refreshInstalled) page.b.refreshInstalled()
                 }
                 continue

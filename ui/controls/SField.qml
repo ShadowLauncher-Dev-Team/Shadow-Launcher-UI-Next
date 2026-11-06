@@ -31,18 +31,7 @@ Item {
         border.width: 1
         border.color: input.activeFocus ? Theme.accent : Theme.line2
         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
-        clip: true
 
-        // 聚焦下划线：从中间向两侧展开
-        Rectangle {
-            anchors.bottom: parent.bottom
-            anchors.horizontalCenter: parent.horizontalCenter
-            height: 1
-            width: (parent.width - 2) * (input.activeFocus ? 1 : 0)
-            radius: 1
-            color: Theme.accent
-            Behavior on width { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter } }
-        }
     }
 
     SIcon {
