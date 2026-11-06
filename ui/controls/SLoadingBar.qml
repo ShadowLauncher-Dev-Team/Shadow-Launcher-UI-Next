@@ -3,9 +3,15 @@ import QtQuick
 import ShadowLauncher.Next
 
 // 顶部不确定进度条（Material / Google 线性进度风格）
-// 用途：知道"在做事"但不知道还剩多久 —— 登录、检查更新、扫描这类。
-// 有确定进度时不要用它，用真正的进度条。
-// 用法：running: true 开始扫动；false 时淡出。
+// 用途：知道"在做事"但不知道还剩多久 —— 登录、检查更新、扫描、资源库拉取这类。
+// 用法：running: true 开始扫动；false 时淡出（不硬切）。
+//
+// 2026-11-06 修「硬消失」：
+//   ① 之前 opacity 绑在 running 上用 Behavior 动画，绑定更新与动画竞争，实测结束瞬间直接归零；
+//     改成显式 NumberAnimation，running 变化时手动 start/stop，时序完全可控。
+//   ② 淡出用 durSlow(260) 而不是 durFast(120)：3px 的条在 120ms 内淡完，眼睛只会看到"没了"。
+//   ③ 停下时扫动段**继续扫**（running || opacity > 0.02），否则它定在屏幕中间变成一块静止色块，
+//      再配合淡出就像被人一把抹掉。
 Item {
     id: root
 
@@ -15,10 +21,30 @@ Item {
 
     implicitHeight: thickness
     clip: true
-    visible: opacity > 0.01
-    opacity: running ? 1 : 0
-    Behavior on opacity {
-        NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+    opacity: 0
+    visible: opacity > 0.001
+
+    onRunningChanged: {
+        if (running) {
+            fadeOut.stop()
+            fadeIn.start()
+        } else {
+            fadeIn.stop()
+            fadeOut.start()
+        }
+    }
+
+    Component.onCompleted: opacity = running ? 1 : 0
+
+    NumberAnimation {
+        id: fadeIn
+        target: root; property: "opacity"; to: 1
+        duration: Theme.durFast; easing.type: Theme.easeStandard
+    }
+    NumberAnimation {
+        id: fadeOut
+        target: root; property: "opacity"; to: 0
+        duration: Theme.durSlow; easing.type: Theme.easeStandard
     }
 
     // 极淡底轨：空档期不会看着像闪一下
@@ -36,12 +62,10 @@ Item {
         radius: root.thickness / 2
         color: root.color
         x: -width
-        // 不要用 visible: running —— 一停就瞬间消失，只剩底轨淡出，看着像"硬切"。
-        // 跟随容器 opacity 一起淡出（Behavior on opacity 已在根上定义）。
-        visible: opacity > 0.01
 
         SequentialAnimation on x {
-            running: root.running
+            // 淡出期间继续扫：停住 + 淡出会读成"硬消失"
+            running: root.running || root.opacity > 0.02
             loops: Animation.Infinite
             NumberAnimation {
                 from: -bar.width
