@@ -18,8 +18,9 @@ Item {
     // 窗口宽度而非自身宽度：侧栏收起/展开时自身宽度会变，用它判断会在动画最后一帧
     // 突然从宽布局切到窄布局（用户看到的「最后一刻震动卡一下」）
     readonly property bool narrow: (Window.window ? Window.window.width : width) < 900
-    readonly property int padH: narrow ? 32 : 72
-    readonly property int padR: narrow ? 28 : 72
+    // 宽布局边距 72 → 48：1100 窗口下内容区从 748 加到 796，三列卡片才不至于挤成一团
+    readonly property int padH: narrow ? 32 : 48
+    readonly property int padR: narrow ? 28 : 48
     readonly property int topH: narrow ? 56 : 64
     signal close()
     /// 资源库点了卡片：交给外壳打开详情页

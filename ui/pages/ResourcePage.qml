@@ -33,7 +33,15 @@ Item {
 
     signal openDetail(string kind, var item)
 
-    readonly property int cols: width >= 1000 ? 4 : (width >= 740 ? 3 : 2)
+    // 列数按「侧栏展开时的内容宽度」决定，而不是自身实时宽度。
+    // 侧栏收起/展开属于整页切换：若按自身宽度算，1100 窗口下 3 列会在中途跳到 4 列，
+    // 卡片瞬间从 278 宽缩到 206 宽（高度不变）——看起来就是"所有卡片一下变长"。
+    // 用固定基准后，无论侧栏在动与否，列数恒定，只有卡片宽度平滑变化。
+    readonly property int cols: {
+        var winW = Window.window ? Window.window.width : (width + Theme.sideW)
+        var ref = winW - Theme.sideW - 96         // 96 = DownloadPage 宽布局左右内边距之和（48+48）
+        return ref >= 860 ? 4 : (ref >= 600 ? 3 : 2)
+    }
 
     function sourceArg() { return page.source === 1 ? "modrinth" : (page.source === 2 ? "curseforge" : "") }
 
@@ -276,11 +284,15 @@ Item {
             clip: true
             model: listModel
             readonly property int gap: 10
-            cellWidth: Math.floor((width - (page.cols - 1) * gap) / page.cols)
+            // GridView 按 cellWidth 决定换行，所以 cellWidth 必须 ≤ width/cols（否则第 3 张会被挤到下一行）。
+            // 但 delegate 一律按 cellWidth-gap 算宽，最后又会空出「一个 gap + 取整余数」——
+            // 就是用户看到的「三列没铺满、右边留一条」。折中：非最后一列扣 gap，最后一列吃满 cellWidth。
+            cellWidth: Math.floor(width / page.cols)
             cellHeight: 156
 
             delegate: ResourceTile {
-                width: grid.cellWidth - grid.gap
+                readonly property bool lastCol: (index % page.cols) === (page.cols - 1)
+                width: grid.cellWidth - (lastCol ? 0 : grid.gap)
                 height: grid.cellHeight - grid.gap
                 title: model.title
                 zh: model.zh

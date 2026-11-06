@@ -22,8 +22,29 @@ Item {
     property bool progressOpen: false
     // 资源详情页（从资源库卡片打开）
     property bool resDetailOpen: false
-    // 资源详情也按"全屏独立页"处理：打开时侧栏收起、页面铺满整窗（与版本页/账户页同一套）
+    // 资源详情按"全屏独立页"处理：打开时侧栏收起、页面铺满整窗（与版本页/账户页同一套）
+    //
+    // 但侧栏收起会改变下面列表页的宽度 → 列数 3↔4、卡片尺寸全部重排。
+    // 如果收起的同一帧就开始，用户会在详情页还半透明时看到身后整片卡片"跳一下"。
+    // 所以详情页的收起延后到页面已经完全不透明之后再执行（那一刻重排在纯不透明页后面，看不见）。
+    property bool sideNarrowed: false          // 侧栏是否已真正收起（与页面可见性解耦）
+    // fullOpen：页面是否处于"全屏页"状态（拦住底下页面的交互）
     readonly property bool fullOpen: versionsOpen || accountOpen || resDetailOpen
+    // sideCollapsed：侧栏是否应该收起。版本页/账户页立刻收；资源详情延后收（见 onResDetailOpenChanged）
+    readonly property bool sideCollapsed: versionsOpen || accountOpen || sideNarrowed
+    onResDetailOpenChanged: {
+        if (resDetailOpen) {
+            narrowDelay.restart()
+        } else {
+            narrowDelay.stop()
+            sideNarrowed = false               // 复原立刻执行：此刻详情页仍不透明
+        }
+    }
+    Timer {
+        id: narrowDelay
+        interval: Theme.durSlow
+        onTriggered: root.sideNarrowed = root.resDetailOpen
+    }
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
     // 登录这类不确定等待 + 资源库在途请求，统一走顶部 SLoadingBar
@@ -66,7 +87,7 @@ Item {
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        width: root.fullOpen ? 0 : root.sideW
+        width: root.sideCollapsed ? 0 : root.sideW
         narrow: root.narrow
         hostWindow: root.hostWindow
         // 点击侧栏"下载"进下载页；点其它主项离开（侧栏常驻，页面内不需要返回键）
@@ -92,7 +113,8 @@ Item {
         // 若也给 320ms，下面的列表要在整段动画里连续重排，最后半段露出来时就是一顿。
         Behavior on width {
             NumberAnimation {
-                duration: root.fullOpen ? Theme.durPage : 0
+                // 版本页/账户页照旧给动画；资源详情只在"延后收起"那一刻给动画（页面已不透明）；还原一律立刻
+                duration: (root.sideNarrowed || root.versionsOpen || root.accountOpen) ? Theme.durPage : 0
                 easing.type: Theme.easeEnter
             }
         }
