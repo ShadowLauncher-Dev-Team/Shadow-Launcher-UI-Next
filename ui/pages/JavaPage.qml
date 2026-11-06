@@ -278,6 +278,7 @@ Item {
                             id: nodeRow
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 8
+                            z: 1
                             Rectangle {
                                 width: 18; height: 18; radius: 9
                                 anchors.verticalCenter: parent.verticalCenter
@@ -306,73 +307,72 @@ Item {
                             }
                         }
 
-                        // 连接到下一个节点：已走过 = accent；当前步 → 下一步 = 淡蓝荧光呼吸 + 粒子
+                        // 连接到下一个节点：已走过 = accent；当前步 → 下一步 = 常亮淡蓝荧光（柔光 + 朦胧浮尘）
                         Item {
                             id: wire
                             visible: !parent.last
                             anchors.verticalCenter: parent.verticalCenter
-                            x: nodeRow.x + nodeRow.width + 10
-                            width: parent.width - nodeRow.width - 12
-                            height: 14
+                            // 设计稿 D：连线铺在「标签 → 下一个圆点」之间的空档，左右各留 12，两端间距一致
+                            x: nodeRow.x + nodeRow.width + 12
+                            width: Math.max(18, parent.width - nodeRow.width - 24)
+                            height: 16
 
                             readonly property bool done: page.step > index
                             readonly property bool active: page.step === index
 
-                            // 底线
+                            // 底色线
                             Rectangle {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: parent.width
                                 height: 1
-                                color: wire.done ? Theme.accent : "#20252e"
-                                opacity: wire.done ? 0.55 : 1
+                                color: (wire.done || wire.active) ? Theme.accent : "#20252e"
+                                opacity: wire.done ? 0.55 : (wire.active ? 0.9 : 1)
                             }
 
-                            // 荧光：3px 淡蓝光晕，只亮在"当前步到下一步"那一段，缓慢呼吸
-                            Rectangle {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width
-                                height: 3
-                                radius: 1.5
+                            // 荧光 + 浮尘：只在「当前步 → 下一步」这一段亮
+                            Item {
+                                anchors.fill: parent
                                 visible: wire.active
-                                color: Theme.accent
-                                opacity: 0.18
-                                SequentialAnimation on opacity {
-                                    running: wire.active
-                                    loops: Animation.Infinite
-                                    NumberAnimation { from: 0.14; to: 0.34; duration: Theme.durSheen; easing.type: Theme.easeStandard }
-                                    NumberAnimation { from: 0.34; to: 0.14; duration: Theme.durSheen; easing.type: Theme.easeStandard }
-                                }
-                            }
 
-                            // 亮的芯线
-                            Rectangle {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width
-                                height: 1
-                                visible: wire.active
-                                color: "#8fb6f8"
-                            }
-
-                            // 粒子：3 颗小光点沿这段线缓慢漂过，透明度各自呼吸
-                            Repeater {
-                                model: wire.active ? 3 : 0
-                                delegate: Rectangle {
-                                    id: particle
-                                    width: 3; height: 3; radius: 1.5
-                                    y: (wire.height - height) / 2
-                                    color: "#bcd8ff"
-                                    opacity: 0
-                                    SequentialAnimation {
-                                        running: true
-                                        loops: Animation.Infinite
-                                        PauseAnimation { duration: index * Theme.durSheen / 3 }
-                                        NumberAnimation { target: particle; property: "x"; from: 0; to: wire.width; duration: Theme.durSheen * 2; easing.type: Theme.easeStandard }
-                                    }
+                                // 荧光：一张"中间亮、上下渐隐、两端收口"的光晕贴图横向拉伸（真高斯那种柔边，不是画个胶囊）
+                                Image {
+                                    anchors.centerIn: parent
+                                    width: wire.width + 14
+                                    height: 26
+                                    fillMode: Image.Stretch
+                                    smooth: true
+                                    source: "qrc:/ui/rail-glow.png"
+                                    opacity: 0.75
                                     SequentialAnimation on opacity {
-                                        running: true
+                                        running: wire.active
                                         loops: Animation.Infinite
-                                        NumberAnimation { from: 0; to: 0.85; duration: Theme.durSlow; easing.type: Theme.easeEnter }
-                                        NumberAnimation { from: 0.85; to: 0; duration: Theme.durSlow * 3; easing.type: Theme.easeExit }
+                                        NumberAnimation { from: 0.62; to: 0.88; duration: Theme.durSheen * 2; easing.type: Theme.easeStandard }
+                                        NumberAnimation { from: 0.88; to: 0.62; duration: Theme.durSheen * 2; easing.type: Theme.easeStandard }
+                                    }
+                                }
+
+                                // 朦胧浮尘：极淡、极小、慢慢漂、慢慢明灭（不是珠子）
+                                Repeater {
+                                    model: wire.active ? 4 : 0
+                                    delegate: Rectangle {
+                                        id: mote
+                                        width: 2; height: 2; radius: 1
+                                        color: "#c8dbff"
+                                        opacity: 0
+                                        // 散布在光带上下 ±3px，读起来像从光里飘出来的细尘
+                                        y: wire.height / 2 - 1 + ((index % 3) - 1) * 2
+                                        SequentialAnimation {
+                                            running: true
+                                            loops: Animation.Infinite
+                                            PauseAnimation { duration: index * Theme.durSheen / 6 }
+                                            NumberAnimation { target: mote; property: "x"; from: -4; to: wire.width; duration: Theme.durSheen * 3; easing.type: Theme.easeStandard }
+                                        }
+                                        SequentialAnimation on opacity {
+                                            running: true
+                                            loops: Animation.Infinite
+                                            NumberAnimation { from: 0; to: 0.18; duration: Theme.durSlow * 2; easing.type: Theme.easeEnter }
+                                            NumberAnimation { from: 0.18; to: 0; duration: Theme.durSlow * 4; easing.type: Theme.easeExit }
+                                        }
                                     }
                                 }
                             }
