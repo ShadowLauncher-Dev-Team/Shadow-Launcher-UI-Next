@@ -100,3 +100,31 @@
 
 - 若你认同"抵近"这个方向，D 比 A/B/C 更适合"新旧通吃"：流程是老的，观感是新的；对第一次用的人也比 5 个下拉友好。
 - 实现上逐步卡片正好对应 `selectedVersion → selectedType → selectedArch → selectedOS → javaFiles` 这四级联动，QML 里就是一个 `step` 整数 + 4 个条件渲染块，比 A 的四组分段更好写。
+
+## D 版已确认的两个细节（2026-11-07）
+
+### 1. MSI 走「保存文件」，不弹目录选择
+
+| | ZIP（便携版 Portable） | MSI（安装版 Installer） |
+|---|---|---|
+| 启动器做什么 | 下载 → 解压到 `<exeDir>/java_cache/{major}`（剥顶层）→ 校验 → 自动出现在 Java 列表 | **只下载**，不执行 |
+| 落盘位置 | `java_cache/{major}` | 系统「下载」目录（`QStandardPaths::DownloadLocation`），默认不弹框；卡片右侧留「另存为」 |
+| 为什么 | 便携包，启动器能自己管 | .msi 要 UAC 提权、写 Program Files / 注册表 / PATH / JAVA_HOME，属于修改用户系统，启动器不代劳 |
+| 装完谁认 | `scanSystemJavas` 扫 `java_cache/*` | 同一函数扫 `Program Files\Eclipse Adoptium` 等常见目录 |
+
+文案随之分开（不再对 MSI 说"自动加入列表"）：
+
+- ZIP：`便携版（Portable）· 解压后由启动器托管，不写注册表`
+- MSI：`安装版（Installer）· 写入系统目录与 PATH / JAVA_HOME，需管理员权限`
+
+### 2. 进度只在 Java 页本页，不进「下载进度」页
+
+理由：
+
+1. 「下载进度」是**批量资源下载**的聚合页；Java 只有 1 个文件，属于单件操作，混进去会稀释那张页面的语义；
+2. Java 的链路是 **下载 → 解压 → 校验 → 登记**，后三步只有 Java 页有语境（哪个主版本、装到哪、为什么失败）；
+3. 沿用既有教训：一处操作只在一处显示进度（两处进度必然打架）。
+
+切走后仍要看得见：**Java tab 上带一个小进度指示**（下载中＝细环，完成＝绿点随即消失），点回 tab 就在卡片里看实时进度。启动流程里的 Java 自动安装属于「启动浮层」的节点，不在这个页面，两者互不干扰。
+
+> 实现提示：ZIP 的"下载并安装"接到 `JavaRuntimeInstaller::installJavaAsync`（已有 下载→解压→校验 全链路 + `downloadProgressChanged`）；MSI 走 `JavaBackend::downloadJavaFileTo` 只下载。
