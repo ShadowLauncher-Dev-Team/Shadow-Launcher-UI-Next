@@ -1,0 +1,121 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8">
+<title>Java 下载页</title><link rel="stylesheet" href="java-page.css"></head><body>
+<div class="win">
+  <aside class="side">
+    <div class="brand">SHADOW</div>
+    <nav class="nav">
+      <a><svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg><span>启动</span></a>
+      <a class="on"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>下载</span></a>
+      <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span>联机</span></a>
+      <a><svg viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>统计</span></a>
+      <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>设置</span></a>
+    </nav>
+    <div class="divider"></div>
+    <nav class="nav">
+      <a><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><span>下载进度</span></a>
+      <a><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span>帮助文档</span></a>
+      <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.2 7.8 14.1 14.1 7.8 16.2 9.9 9.9 16.2 7.8"/></svg><span>实用网站</span></a>
+    </nav>
+    <div class="foot">v1.0.4</div>
+  </aside>
+  <main class="main">
+    <div class="top">
+      <div class="title">下载</div>
+      <div class="tabs">
+        <div class="tab">MC 版本</div><div class="tab">Mod</div><div class="tab">光影</div>
+        <div class="tab">资源包</div><div class="tab">整合包</div><div class="tab">数据包</div>
+        <div class="tab on">Java</div>
+      </div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>搜索版本 / 文件名</span></div>
+      <div class="refresh" style="margin-right:96px;"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div>
+    </div>
+
+    <div class="body" style="padding-bottom:20px;">
+      <div style="display:flex;gap:16px;flex:1;min-height:0;">
+        <!-- 左筛选 -->
+        <div style="width:200px;flex:none;">
+          <div style="font-size:11px;letter-spacing:1px;color:#5d6673;margin-bottom:10px;">版本</div>
+          <div class="vlist">
+            <div class="vrow" style="height:36px;padding:0 12px;"><span class="name" style="font-size:12px;">Java 25</span></div>
+            <div class="vrow hover" style="height:36px;padding:0 12px;display:block;">
+              <div class="row" style="height:36px;">
+                <span class="name" style="font-size:12px;color:#fff;font-weight:600;">Java 17</span>
+                <span style="flex:1"></span>
+                <svg viewBox="0 0 24 24" style="width:13px;height:13px;color:#98a1ae;transform:rotate(90deg)"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+            </div>
+            <div style="padding-left:12px;display:flex;flex-direction:column;gap:4px;margin-top:-2px;">
+              <div class="vrow soft hover" style="height:32px;padding:0 10px;border-color:#243040;background:#101419;"><span style="font-size:12px;color:#cfe0ff;">JDK</span><span style="flex:1"></span><span class="dim" style="font-size:11px;">x64</span></div>
+              <div class="vrow soft" style="height:32px;padding:0 10px;"><span class="dim" style="font-size:12px;">JRE</span><span style="flex:1"></span><span class="dim" style="font-size:11px;">x64</span></div>
+            </div>
+            <div class="vrow" style="height:36px;padding:0 12px;"><span class="name" style="font-size:12px;">Java 11</span></div>
+            <div class="vrow" style="height:36px;padding:0 12px;"><span class="name" style="font-size:12px;">Java 8</span></div>
+          </div>
+          <div style="font-size:11px;letter-spacing:1px;color:#5d6673;margin:16px 0 10px;">系统</div>
+          <div class="seg sm" style="display:flex;width:200px;"><span class="on" style="flex:1;justify-content:center;">Windows</span><span style="flex:1;justify-content:center;">Linux</span></div>
+        </div>
+
+        <!-- 右表 -->
+        <div style="flex:1;min-width:0;">
+          <div class="row" style="height:30px;padding:0 14px;">
+            <span style="flex:3.4;font-size:11px;color:#5d6673;">文件名</span>
+            <span style="flex:.5;font-size:11px;color:#5d6673;">类型</span>
+            <span style="flex:.7;font-size:11px;color:#5d6673;text-align:right;padding-right:14px;">大小</span>
+            <span style="flex:.62;font-size:11px;color:#5d6673;text-align:right;">更新时间</span>
+            <span style="width:88px;"></span>
+          </div>
+          <div class="vlist" style="margin-top:6px;">
+            
+            <div class="vrow hover">
+              <span style="flex:3.2;min-width:0;font-size:11px;color:#e8ebf2;white-space:nowrap;">OpenJDK17U-jdk_x64_windows_hotspot_17.0.20.1_1.zip</span>
+              <span style="flex:.5;"><span class="badge b-zip">ZIP</span></span>
+              <span style="flex:.7;text-align:right;font-size:11px;color:#98a1ae;white-space:nowrap;padding-right:14px;">182.0 MiB</span>
+              <span style="flex:.62;text-align:right;font-size:11px;color:#5d6673;white-space:nowrap;">2026-08-24</span>
+              <span style="width:88px;display:flex;justify-content:flex-end;"><a class="cta " style="height:28px;padding:0 12px;font-size:12px;">下载</a></span>
+            </div>
+            <div class="vrow ">
+              <span style="flex:3.2;min-width:0;font-size:11px;color:#e8ebf2;white-space:nowrap;">OpenJDK17U-jdk_x64_windows_hotspot_17.0.20.1_1.msi</span>
+              <span style="flex:.5;"><span class="badge b-msi">MSI</span></span>
+              <span style="flex:.7;text-align:right;font-size:11px;color:#98a1ae;white-space:nowrap;padding-right:14px;">160.6 MiB</span>
+              <span style="flex:.62;text-align:right;font-size:11px;color:#5d6673;white-space:nowrap;">2026-08-24</span>
+              <span style="width:88px;display:flex;justify-content:flex-end;"><a class="cta ghost" style="height:28px;padding:0 12px;font-size:12px;">下载</a></span>
+            </div>
+            <div class="vrow ">
+              <span style="flex:3.2;min-width:0;font-size:11px;color:#e8ebf2;white-space:nowrap;">OpenJDK17U-jdk_x64_windows_hotspot_17.0.17_10.zip</span>
+              <span style="flex:.5;"><span class="badge b-zip">ZIP</span></span>
+              <span style="flex:.7;text-align:right;font-size:11px;color:#98a1ae;white-space:nowrap;padding-right:14px;">181.4 MiB</span>
+              <span style="flex:.62;text-align:right;font-size:11px;color:#5d6673;white-space:nowrap;">2026-06-11</span>
+              <span style="width:88px;display:flex;justify-content:flex-end;"><a class="cta ghost" style="height:28px;padding:0 12px;font-size:12px;">下载</a></span>
+            </div>
+            <div class="vrow ">
+              <span style="flex:3.2;min-width:0;font-size:11px;color:#e8ebf2;white-space:nowrap;">OpenJDK17U-jdk_x64_windows_hotspot_17.0.17_10.msi</span>
+              <span style="flex:.5;"><span class="badge b-msi">MSI</span></span>
+              <span style="flex:.7;text-align:right;font-size:11px;color:#98a1ae;white-space:nowrap;padding-right:14px;">159.8 MiB</span>
+              <span style="flex:.62;text-align:right;font-size:11px;color:#5d6673;white-space:nowrap;">2026-06-11</span>
+              <span style="width:88px;display:flex;justify-content:flex-end;"><a class="cta ghost" style="height:28px;padding:0 12px;font-size:12px;">下载</a></span>
+            </div>
+            <div class="vrow ">
+              <span style="flex:3.2;min-width:0;font-size:11px;color:#e8ebf2;white-space:nowrap;">OpenJDK17U-jdk_x64_windows_hotspot_17.0.13_11.zip</span>
+              <span style="flex:.5;"><span class="badge b-zip">ZIP</span></span>
+              <span style="flex:.7;text-align:right;font-size:11px;color:#98a1ae;white-space:nowrap;padding-right:14px;">180.9 MiB</span>
+              <span style="flex:.62;text-align:right;font-size:11px;color:#5d6673;white-space:nowrap;">2026-01-22</span>
+              <span style="width:88px;display:flex;justify-content:flex-end;"><a class="cta ghost" style="height:28px;padding:0 12px;font-size:12px;">下载</a></span>
+            </div>
+          </div>
+          <div class="card" style="margin-top:16px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+            <span class="kicker">本机</span>
+            <span class="dim" style="font-size:11px;">已检测到 21.0.12 · 17.0.20 · 25.0.1 · 1.8.0.51</span>
+            <span style="flex:1"></span>
+            <span class="dim" style="font-size:11px;">java_cache/17</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wbtns">
+      <div class="wbtn"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+      <div class="wbtn"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg></div>
+      <div class="wbtn"><svg viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
+    </div>
+  </main>
+</div>
+</body></html>

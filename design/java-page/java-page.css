@@ -1,0 +1,95 @@
+/* Java 下载页概念稿 —— 与 Shadow Launcher Next 的 token 对齐
+   bg #08090d / sidebar #0a0b0f / line #14171d / line2 #262b35
+   fg #e8ebf2 / fg2 #98a1ae / fg3 #5d6673 / accent #3b82f6
+   rSm 8 / rMd 10 / 字体 Microsoft YaHei UI
+   画布 1100x720（应用客户区） */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1100px; height: 720px; overflow: hidden; }
+body {
+  background: #08090d; color: #e8ebf2;
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.win { display: flex; width: 1100px; height: 720px; }
+
+/* ── 侧栏 ── */
+.side { width: 208px; background: #0a0b0f; display: flex; flex-direction: column; padding: 0 12px; }
+.brand { padding: 26px 0 0 14px; font-size: 15px; font-weight: 700; letter-spacing: 2px; color: #e8ebf2; }
+.nav { margin-top: 22px; display: flex; flex-direction: column; gap: 2px; }
+.nav a { display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 12px; border-radius: 8px;
+         color: #98a1ae; font-size: 13px; text-decoration: none; }
+.nav a svg { width: 17px; height: 17px; color: #7c8697; }
+.nav a.on { background: #12161d; color: #ffffff; }
+.nav a.on svg { color: #ffffff; }
+.nav a.on::before { content: ""; position: absolute; }
+.divider { height: 1px; background: #14171d; margin: 14px 12px; }
+.side .foot { margin-top: auto; padding: 0 0 16px 14px; font-size: 11px; color: #5d6673; }
+
+/* ── 主区 ── */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+.top { height: 64px; display: flex; align-items: center; padding: 0 48px; gap: 16px; flex: none; }
+.title { font-size: 20px; font-weight: 700; color: #e8ebf2; flex: none; }
+.tabs { display: flex; align-items: center; gap: 0; flex: 1; overflow: hidden; }
+.tab { height: 28px; padding: 0 7px; display: flex; align-items: center; font-size: 12px; color: #98a1ae;
+       border-radius: 8px; white-space: nowrap; }
+.tab.on { background: #1b2433; color: #ffffff; font-weight: 600; }
+.spacer { flex: 1; }
+.search { width: 220px; height: 34px; border: 1px solid #262b35; border-radius: 8px; display: flex;
+          align-items: center; gap: 8px; padding: 0 10px; color: #5d6673; font-size: 12px; flex: none; }
+.search svg { width: 15px; height: 15px; }
+.refresh { width: 32px; height: 32px; border: 1px solid #262b35; border-radius: 8px; display: flex;
+           align-items: center; justify-content: center; color: #98a1ae; flex: none; }
+.refresh svg { width: 14px; height: 14px; }
+.wbtns { position: absolute; right: 0; top: 0; display: flex; z-index: 5; }
+.wbtn { width: 44px; height: 32px; display: flex; align-items: center; justify-content: center; color: #6b7484; }
+.wbtn svg { width: 12px; height: 12px; }
+
+.body { flex: 1; padding: 16px 48px 24px; display: flex; flex-direction: column; min-height: 0; }
+.row { display: flex; align-items: center; }
+.muted { color: #98a1ae; }
+.dim { color: #5d6673; }
+
+/* seg 分段控件（与下载页同款） */
+.seg { display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 2px;
+       background: #0d1016; border: 1px solid #262b35; border-radius: 8px; }
+.seg > span { height: 28px; padding: 0 12px; display: flex; align-items: center; gap: 5px; border-radius: 6px;
+              font-size: 12px; color: #98a1ae; }
+.seg > span .n { font-size: 11px; color: #5d6673; }
+.seg > span.on { background: #20262f; color: #ffffff; font-weight: 600; }
+.seg > span.on .n { color: #9fb6d8; }
+.seg.sm > span { padding: 0 10px; font-size: 12px; }
+
+/* 卡 */
+.card { background: #0b0d12; border: 1px solid #262b35; border-radius: 10px; }
+.card.soft { border-color: #161a21; border-radius: 8px; }
+.kicker { font-size: 11px; font-weight: 600; letter-spacing: 1px; color: #3b82f6; }
+.big { font-size: 24px; font-weight: 700; color: #ffffff; }
+.cta { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 16px; border-radius: 8px;
+       background: linear-gradient(180deg, #4b8cf7, #2563eb); color: #fff; font-size: 13px; font-weight: 600; }
+.cta.ghost { background: none; border: 1px solid #262b35; color: #cfe0ff; font-weight: 500; }
+.cta svg { width: 15px; height: 15px; }
+.link { color: #8fb6f8; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.link svg { width: 15px; height: 15px; }
+
+/* 列表行（48 高，同版本列表） */
+.vlist { display: flex; flex-direction: column; gap: 4px; }
+.vrow { height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 14px;
+        background: #0b0d12; border: 1px solid #161a21; border-radius: 8px; }
+.vrow.hover { background: #101419; border-color: #243040; }
+.vrow .name { font-size: 13px; color: #e8ebf2; }
+.vrow .meta { font-size: 11px; color: #5d6673; }
+.badge { height: 20px; padding: 0 8px; border-radius: 6px; font-size: 11px; display: inline-flex;
+         align-items: center; border: 1px solid; }
+.b-release { color: #4ade80; border-color: #1e4632; background: #0d1a14; }
+.b-snapshot { color: #f59e0b; border-color: #4a3413; background: #1a1409; }
+.b-zip { color: #8fb6f8; border-color: #1e324f; background: #0c1626; }
+.b-msi { color: #98a1ae; border-color: #2b3038; background: #12151a; }
+.chip { height: 24px; padding: 0 10px; border-radius: 6px; font-size: 11px; display: inline-flex;
+        align-items: center; gap: 6px; border: 1px solid #262b35; background: #0d1016; color: #c3cbd8; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }
+.dot.warn { background: #f59e0b; }
+.dot.off { background: #5d6673; }
+
+/* A/B/C 标题条（概念稿标注，仅在稿里出现） */
+.tag { position: absolute; left: 48px; top: 8px; font-size: 11px; color: #5d6673; letter-spacing: 1px; }
