@@ -162,37 +162,23 @@ Item {
         anchors.bottom: parent.bottom
     }
 
+    // ══ 全屏页宿主 ══
+    // 菜单级切页一律「硬切」：不做 opacity 淡入淡出，也不做位移。
+    // 原因（实测）：只要过渡里有一帧半透明，下层一直亮着的启动页就会透出来，
+    // 观感就是"先淡出看到启动页，再淡入目标页"。硬切时新旧页在同一个事件循环里切换，
+    // 渲染只输出一帧结果，中间态根本不存在。
+    // 每个宿主自带不透明实底，保证任何时刻都不叠字。
+
     // 版本管理（全窗覆盖）
     Item {
         id: versionsHost
         anchors.fill: parent
-        visible: root.versionsOpen || opacity > 0.01
-        // 打开时立即不透明：否则在这 180ms 的淡入里，下层启动页会透出来
-        // （用户看到的"先闪一下启动页，再淡入目标页"就是这个）。
-        // 关闭时才淡出 —— 这时露出下层正是想要的。
-        opacity: root.versionsOpen ? 1 : 0
-        Behavior on opacity {
-            NumberAnimation {
-                duration: root.versionsOpen ? 0 : Theme.durBase
-                easing.type: root.versionsOpen ? Theme.easeEnter : Theme.easeExit
-            }
-        }
-        // 页面实底：任何时刻都不透出下一层
+        visible: root.versionsOpen
         Rectangle { anchors.fill: parent; color: Theme.bg }
-        // 内容层才有动效：底是自己的背景色，淡入期间看到的是背景，不是启动页
-        Item {
+        VersionPage {
             anchors.fill: parent
-            opacity: root.versionsOpen ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-            transform: Translate {
-                x: root.versionsOpen ? 0 : 16
-                Behavior on x { NumberAnimation { duration: root.versionsOpen ? 0 : Theme.durPage; easing.type: Theme.easeEnter } }
-            }
-            VersionPage {
-                anchors.fill: parent
-                toast: toastHost
-                onClose: root.versionsOpen = false
-            }
+            toast: toastHost
+            onClose: root.versionsOpen = false
         }
     }
 
@@ -200,56 +186,24 @@ Item {
     Item {
         id: accountHost
         anchors.fill: parent
-        visible: root.accountOpen || opacity > 0.01
-        opacity: root.accountOpen ? 1 : 0
-        Behavior on opacity {
-            NumberAnimation {
-                duration: root.accountOpen ? 0 : Theme.durBase
-                easing.type: root.accountOpen ? Theme.easeEnter : Theme.easeExit
-            }
-        }
+        visible: root.accountOpen
         Rectangle { anchors.fill: parent; color: Theme.bg }
-        Item {
+        AccountPage {
             anchors.fill: parent
-            opacity: root.accountOpen ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-            // 账户页从下方浮起（与版本页的横移区分开）。48px 才看得出方向。
-            transform: Translate {
-                y: root.accountOpen ? 0 : 48
-                Behavior on y { NumberAnimation { duration: root.accountOpen ? 0 : Theme.durPage; easing.type: Theme.easeEnter } }
-            }
-            AccountPage {
-                anchors.fill: parent
-                toast: toastHost
-                onClose: root.accountOpen = false
-            }
+            toast: toastHost
+            onClose: root.accountOpen = false
         }
     }
 
-    // 下载页（全窗，与版本页同构：淡入 + 右移 24px）
+    // 下载页
     Item {
         id: downloadHost
         anchors.left: sideBar.right
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        visible: root.downloadOpen || opacity > 0.01
-        opacity: root.downloadOpen ? 1 : 0
-        Behavior on opacity {
-            NumberAnimation {
-                duration: root.downloadOpen ? 0 : Theme.durBase
-                easing.type: root.downloadOpen ? Theme.easeEnter : Theme.easeExit
-            }
-        }
+        visible: root.downloadOpen
         Rectangle { anchors.fill: parent; color: Theme.bg }
-        Item {
-            anchors.fill: parent
-            opacity: root.downloadOpen ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-            transform: Translate {
-                y: root.downloadOpen ? 0 : 8
-                Behavior on y { NumberAnimation { duration: root.downloadOpen ? 0 : Theme.durPage; easing.type: Theme.easeEnter } }
-            }
         DownloadPage {
             id: downloadPage
             anchors.fill: parent
@@ -267,69 +221,35 @@ Item {
                 root.resDetailOpen = true
             }
         }
-        }
     }
 
-    // 资源详情（全屏独立页：铺满整窗、不透明、拦截穿透；与版本页同构淡入）
+    // 资源详情（全屏独立页，自带实底，拦截穿透）
     Item {
         id: resDetailHost
         anchors.fill: parent
-        visible: root.resDetailOpen || opacity > 0.01
-        opacity: root.resDetailOpen ? 1 : 0
-        Behavior on opacity {
-            NumberAnimation {
-                duration: root.resDetailOpen ? 0 : Theme.durBase
-                easing.type: root.resDetailOpen ? Theme.easeEnter : Theme.easeExit
-            }
-        }
-        // 不透明底：全屏页下面就是资源库列表，不铺底会叠字
+        visible: root.resDetailOpen
         Rectangle { anchors.fill: parent; color: Theme.bg }
-        Item {
+        ResourceDetailPage {
+            id: resDetail
             anchors.fill: parent
-            opacity: root.resDetailOpen ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-            transform: Translate {
-                y: root.resDetailOpen ? 0 : 8
-                Behavior on y { NumberAnimation { duration: root.resDetailOpen ? 0 : Theme.durPage; easing.type: Theme.easeEnter } }
-            }
-            ResourceDetailPage {
-                id: resDetail
-                anchors.fill: parent
-                toast: toastHost
-                onBack: root.resDetailOpen = false
-            }
+            toast: toastHost
+            onBack: root.resDetailOpen = false
         }
     }
 
-    // 下载进度（独立页，与下载页同构：淡入 + 轻微上移）
+    // 下载进度
     Item {
         id: progressHost
         anchors.left: sideBar.right
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        visible: root.progressOpen || opacity > 0.01
-        opacity: root.progressOpen ? 1 : 0
-        Behavior on opacity {
-            NumberAnimation {
-                duration: root.progressOpen ? 0 : Theme.durBase
-                easing.type: root.progressOpen ? Theme.easeEnter : Theme.easeExit
-            }
-        }
+        visible: root.progressOpen
         Rectangle { anchors.fill: parent; color: Theme.bg }
-        Item {
+        ProgressPage {
+            id: progressPage
             anchors.fill: parent
-            opacity: root.progressOpen ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-            transform: Translate {
-                y: root.progressOpen ? 0 : 8
-                Behavior on y { NumberAnimation { duration: root.progressOpen ? 0 : Theme.durPage; easing.type: Theme.easeEnter } }
-            }
-            ProgressPage {
-                id: progressPage
-                anchors.fill: parent
-                toast: toastHost
-            }
+            toast: toastHost
         }
     }
 
