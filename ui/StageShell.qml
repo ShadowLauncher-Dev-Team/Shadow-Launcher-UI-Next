@@ -200,23 +200,34 @@ Item {
     }
 
     // 启动页：始终在原地（被全屏页盖住），只关掉交互
-    StagePage {
+    // 启动页宿主：clip + 实底包一层。
+    // 之前直接给 StagePage 加 translate：位移不改变 anchors，页面左移后**压到了侧栏右缘上面**
+    // （侧栏先声明、启动页后声明 → 启动页在上），于是侧栏右边露出一条极光色的缝。
+    // 现在位移只作用在宿主内部，宿主 clip 住，越界部分画不出去。
+    Item {
+        id: stageHost
         anchors.left: sideBar.right
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        enabled: !root.fullOpen && !root.downloadOpen && !root.progressOpen
-        // 回到启动页也要有"入场"：离开时它被右移 22px（被不透明的全屏页盖住，看不见），
-        // 全屏页硬切消失后它滑回原位 —— 于是"从菜单页回主页"也是一次过渡，不是啪一下。
-        transform: Translate {
-            x: (root.downloadOpen || root.progressOpen || root.fullOpen) ? -22 : 0
-            Behavior on x { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+        clip: true
+        Rectangle { anchors.fill: parent; color: Theme.bg }
+        Item {
+            anchors.fill: parent
+            transform: Translate {
+                x: (root.downloadOpen || root.progressOpen || root.fullOpen) ? -22 : 0
+                Behavior on x { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+            }
+            StagePage {
+                anchors.fill: parent
+                enabled: !root.fullOpen && !root.downloadOpen && !root.progressOpen
+                hostWindow: root.hostWindow
+                narrow: root.narrow
+                toast: toastHost
+                onOpenVersions: root.versionsOpen = true
+                onOpenAccount: root.accountOpen = true
+            }
         }
-        hostWindow: root.hostWindow
-        narrow: root.narrow
-        toast: toastHost
-        onOpenVersions: root.versionsOpen = true
-        onOpenAccount: root.accountOpen = true
     }
 
     // 启动浮层（页面内，不新开窗口）；启动中压住一切
