@@ -37,6 +37,24 @@ Item {
     readonly property var installedV: b ? b.installedVersions : []
 
     property int tab: 0
+    // 分段控件几何表（key → {x,w}）。delegate 上报比 itemAt 可靠：首帧就能拿到。
+    property var segGeom: ({})
+    function reportSegGeom(key, item) {
+        var m = {}
+        for (var k in page.segGeom) m[k] = page.segGeom[k]
+        m[key] = { x: item.x, w: item.width }
+        page.segGeom = m
+    }
+    // 列表入场序号：每次页面显示时 +1，让所有已存在的行重播一次入场
+    property int listEntry: 0
+    function bumpListEntry() { page.listEntry++ }
+    property var tabGeom: ({})
+    function reportTabGeom(idx, item) {
+        var m = {}
+        for (var k in page.tabGeom) m[k] = page.tabGeom[k]
+        m[idx] = { x: item.x, w: item.width }
+        page.tabGeom = m
+    }
     property int mode: 0        // 0 列表 1 配置
     property int filter: 0      // 0 正式版 1 快照版 2 远古版 3 愚人节版
     property string search: ""
@@ -353,6 +371,16 @@ Item {
 
     Rectangle { anchors.fill: parent; color: Theme.bg }
 
+    // 点空白处收起搜索框焦点（放在最底层，只有没被其它控件吃掉的点击才会到这里）
+    MouseArea {
+        anchors.fill: parent
+        z: -1
+        onClicked: {
+            if (globalSearch) globalSearch.blur()
+            if (nameInput) nameInput.focus = false
+        }
+    }
+
     // ══════════ 顶部栏（两种状态共用同一高度，避免切换跳动）══════════
     Item {
         id: topBar
@@ -417,9 +445,9 @@ Item {
                 radius: Theme.rSm
                 color: "#1b2433"
                 anchors.verticalCenter: parent.verticalCenter
-                readonly property var sel: tabRep.itemAt(page.tab)
+                readonly property var sel: page.tabGeom[page.tab] || null
                 x: tabsRow.x + (sel ? sel.x : 0)
-                width: sel ? sel.width : 0
+                width: sel ? sel.w : 0
                 Behavior on x { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                 Behavior on width { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
             }
@@ -436,6 +464,10 @@ Item {
                         height: 28
                         width: tabTxt.implicitWidth + 14
                     radius: Theme.rSm
+                    function syncTabGeom() { page.reportTabGeom(index, this) }
+                    Component.onCompleted: syncTabGeom()
+                    onXChanged: syncTabGeom()
+                    onWidthChanged: syncTabGeom()
                     color: tabHover.containsMouse && page.tab !== index ? "#12151c" : "transparent"
                     Text {
                         id: tabTxt
@@ -451,7 +483,7 @@ Item {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: page.tab = index
+                            onClicked: { globalSearch.blur(); page.tab = index }
                         }
                     }
                 }
@@ -559,17 +591,18 @@ Item {
             border.color: Theme.line2
             border.width: 1
 
-            // 选中滑块（与 tab 同一套语言）：一块底色在分段控件里平移
+            // 选中滑块（与 tab 同一套语言）：一块底色在分段控件里平移。
+            // x/width 用 delegate 上报的几何，而不是 Repeater.itemAt：
+            // itemAt 在首帧可能还是 null，滑块宽度会是 0，整排"选中态"就消失了（用户报的"正式版 Tab 缺失"）。
             Rectangle {
                 id: segPill
                 height: 28
                 radius: 6
                 color: "#20262f"
-                readonly property int idx: page.filter
-                readonly property var sel: segRep.itemAt(idx)
+                readonly property var sel: page.segGeom[page.filter] || null
                 x: segContent.x + (sel ? sel.x : 0)
                 y: segContent.y
-                width: sel ? sel.width : 0
+                width: sel ? sel.w : 0
                 Behavior on x { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                 Behavior on width { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
             }
@@ -586,6 +619,11 @@ Item {
                         width: segLabel.implicitWidth + segCnt.implicitWidth + 24
                         radius: 6
                         color: "transparent"
+                        // 几何上报（首帧即写入，滑块不会出现"宽度 0"的空窗）
+                        function syncGeom() { page.reportSegGeom(modelData.key, this) }
+                        Component.onCompleted: syncGeom()
+                        onXChanged: syncGeom()
+                        onWidthChanged: syncGeom()
                         Row {
                             anchors.centerIn: parent
                             spacing: 5
@@ -608,7 +646,7 @@ Item {
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: page.filter = modelData.key
+                            onClicked: { globalSearch.blur(); page.filter = modelData.key }
                         }
                     }
                 }
@@ -636,7 +674,7 @@ Item {
                 anchors.fill: parent
                 phase: page.sheenPhase
                 bandWidth: 180
-                strength: hoverLatest.containsMouse ? 0.10 : 0.045
+                strength: 0.055
                 tint: "#ffffff"
             }
 
@@ -682,6 +720,8 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
+                // hover 立刻扫一道（之前只把强度 0.045→0.10，光带多数时间在卡片外，肉眼看不到）
+                onContainsMouseChanged: if (containsMouse) sheenAnim.restart()
                 onClicked: {
                     latestRipple.burst(hoverLatest.mouseX, hoverLatest.mouseY)
                     page.pickVersion(page.releaseV[0])
@@ -729,9 +769,16 @@ Item {
                     y: vcard.rowShown ? 0 : 8
                     Behavior on y { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                 }
-                Component.onCompleted: {
+                function playEntry() {
+                    vcard.rowShown = false
                     rowDelay.interval = Math.min(index, Theme.staggerMax) * Theme.staggerStep
                     rowDelay.start()
+                }
+                Component.onCompleted: playEntry()
+                // 页面重新显示时重播（delegate 会复用，不重播就永远看不到入场）
+                Connections {
+                    target: page
+                    function onListEntryChanged() { vcard.playEntry() }
                 }
                 Timer {
                     id: rowDelay
@@ -825,7 +872,7 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: page.pickVersion(modelData)
+                    onClicked: { globalSearch.blur(); page.pickVersion(modelData) }
                 }
             }
 

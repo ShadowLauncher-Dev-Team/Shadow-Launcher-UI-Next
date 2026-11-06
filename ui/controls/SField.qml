@@ -19,6 +19,10 @@ Item {
 
     readonly property bool active: input.activeFocus || input.text.length > 0
 
+    // 外部点击（页面空白、切 tab、点卡片）时主动收起焦点：
+    // 否则输入框会一直保持"聚焦态"，蓝边和聚焦下划线永远不消失（用户报的"一直显蓝"）。
+    function blur() { input.focus = false }
+
     Rectangle {
         id: bg
         anchors.fill: parent

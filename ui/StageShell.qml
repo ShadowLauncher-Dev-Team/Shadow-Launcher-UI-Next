@@ -32,6 +32,8 @@ Item {
     readonly property bool fullOpen: versionsOpen || accountOpen || resDetailOpen
     // sideCollapsed：侧栏是否应该收起。版本页/账户页立刻收；资源详情延后收（见 onResDetailOpenChanged）
     readonly property bool sideCollapsed: versionsOpen || accountOpen || sideNarrowed
+    // 进入下载页时让版本列表重播一次逐条入场（子项 visible 不随父级变化，必须显式通知）
+    onDownloadOpenChanged: if (downloadOpen && downloadPage) downloadPage.bumpListEntry()
     onResDetailOpenChanged: {
         if (resDetailOpen) {
             narrowDelay.restart()
@@ -51,6 +53,8 @@ Item {
     // 后端对 downloadModFile 只发信号（started/progress/finished/failed/cancelled），没有 model；
     // 详情页要就地显示进度、下载进度页也要能看到，所以统一在壳里收成一份表。
     property var fileDl: []
+    // 已提示过的下载 id（后端 finished/failed 可能都发，避免重复 toast）
+    property var _toasted: ({})
     function _dlIdx(id) {
         for (var i = 0; i < root.fileDl.length; ++i)
             if (root.fileDl[i].id === id) return i
@@ -94,11 +98,23 @@ Item {
                 name: displayName || "", state: success ? "done" : "fail", path: filePath || "",
                 speed: 0, received: -1, hideAt: Date.now() + 4000
             })
+            // 同一个下载 id 只提示一次：后端在失败路径上会先发 finished(false) 再发 failed，
+            // 不去重就会出现两条"下载失败/完成"（用户报的重复弹窗）
+            if (root._toasted[downloadId]) return
+            var m2 = {}
+            for (var k in root._toasted) m2[k] = root._toasted[k]
+            m2[downloadId] = true
+            root._toasted = m2
             if (success) toastHost.show((displayName || "文件") + " 下载完成", 2600, "success")
             else toastHost.show((displayName || "文件") + " 下载失败", 3200, "error")
         }
         function onModFileDownloadFailed(downloadId, errorDetail, displayName) {
             root._dlPatch(downloadId, { state: "fail", error: errorDetail || "", speed: 0, hideAt: Date.now() + 6000 })
+            if (root._toasted[downloadId]) return
+            var m3 = {}
+            for (var k in root._toasted) m3[k] = root._toasted[k]
+            m3[downloadId] = true
+            root._toasted = m3
             toastHost.show((displayName || "文件") + " 下载失败：" + (errorDetail || "未知错误"), 3600, "error")
         }
         function onModFileDownloadCancelled(downloadId, displayName) {

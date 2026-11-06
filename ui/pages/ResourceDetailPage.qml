@@ -40,16 +40,30 @@ Item {
     property var dlQueue: []
     property var pendingJob: null
     property string status: ""
-    // 入场：详情页打开后各区块错峰浮现（自上而下 0/60/120ms）
-    property bool detailShown: false
-    onVisibleChanged: {
-        // 每次重新打开都要重播：先把开关压回 false（此时页面不可见，不会闪），再延时抬起
-        if (visible) { page.detailShown = false; detailReveal.restart() }
+    // 批量下载：一次选文件夹，全部文件按各自文件名落盘（保存对话框一次只能选一个文件，
+    // 逐个弹框既慢又不符合"一起下载"的语义）。
+    property string targetDir: ""
+    property bool dialogBusy: false
+    property var planJobs: []
+    property var pendingDeps: ({})
+    // 入场：三段错峰浮现（选择器 → 文件卡 → 右栏），每段间隔 staggerStep。
+    // 之前用一个 bool 在 visible 变化的同一帧里翻 true/false：组件先被打回 0 再抬起来，
+    // 视觉上就是"整页抖一下"。现在用递增的段号，只往上走，不会来回翻。
+    property int revealStep: 0
+    function playReveal() {
+        page.revealStep = 0
+        revealTimer.restart()
     }
+    onVisibleChanged: if (visible) page.playReveal()
+    else page.revealStep = 0
     Timer {
-        id: detailReveal
-        interval: 30
-        onTriggered: page.detailShown = true
+        id: revealTimer
+        interval: Theme.staggerStep
+        repeat: true
+        onTriggered: {
+            if (page.revealStep < 3) page.revealStep++
+            else revealTimer.stop()
+        }
     }
     // 本页发起的文件下载（id 由 downloadModFile 返回）；数据表在 StageShell 里统一收
     property var fileDl: []
@@ -229,7 +243,14 @@ Item {
             for (var k in page.fileCache) m[k] = page.fileCache[k]
             m[versionId] = file || ({})
             page.fileCache = m
-            page.nextInQueue()
+            // 有等待中的前置就入队（这是"模组 + 前置一起下载"真正被触发的地方）
+            var pend = page.pendingDeps[versionId]
+            if (pend && file && file.url) {
+                var rest = {}
+                for (var k2 in page.pendingDeps) if (k2 !== versionId) rest[k2] = page.pendingDeps[k2]
+                page.pendingDeps = rest
+                page.pushJob(file.url, file.filename || pend.filename, file.size || 0, file.sha1 || "", pend.label)
+            }
         }
     }
 
@@ -256,23 +277,70 @@ Item {
 
     function installLatest() {
         page.submitted = 0
+        page.targetDir = ""          // 单文件：仍然走"另存为"
         var v = page.latest
         if (!v || v.url.length === 0) { page.status = "该组合没有可下载文件"; return }
         page.pushJob(v.url, v.filename, v.size, v.sha1, v.version)
     }
 
-    function installAll() {
-        page.submitted = 0
+    // 本次要下载的全部条目（主文件 + 勾选的前置）。url 为空表示元数据还没解析出来。
+    function buildJobs() {
+        var jobs = []
         var v = page.latest
-        if (!v || v.url.length === 0) { page.status = "该组合没有可下载文件"; return }
-        page.pushJob(v.url, v.filename, v.size, v.sha1, v.version)
+        if (v && v.url.length > 0)
+            jobs.push({ versionId: "", label: v.version || "",
+                        url: v.url, filename: v.filename || "download.jar",
+                        size: v.size || 0, sha1: v.sha1 || "" })
         for (var i = 0; i < page.deps.length; ++i) {
             var d = page.deps[i]
             if (!page.depChecked[d.project_id]) continue
-            var cached = page.fileCache[d.version_id]
-            if (cached && cached.url) page.pushJob(cached.url, cached.filename, cached.size, cached.sha1, d.version_number || "")
-            else if (d.version_id) page.b.fetchVersionFile(d.version_id)
+            var cached = page.fileCache[d.version_id] || null
+            jobs.push({
+                versionId: d.version_id || "",
+                label: d.version_number || d.project_id || "",
+                url: cached && cached.url ? cached.url : "",
+                filename: cached && cached.filename ? cached.filename : "",
+                size: cached ? (cached.size || 0) : 0,
+                sha1: cached ? (cached.sha1 || "") : ""
+            })
         }
+        return jobs
+    }
+
+    function installAll() {
+        page.submitted = 0
+        if (page.depsLoading) { page.status = "前置还在解析，请稍候"; return }
+        var jobs = page.buildJobs()
+        if (jobs.length === 0) { page.status = "该组合没有可下载文件"; return }
+        if (jobs.length === 1) {
+            page.targetDir = ""
+            page.planJobs = jobs
+            page.startPlan()
+            return
+        }
+        // 多个文件 → 选一次文件夹，全部落进去
+        page.planJobs = jobs
+        folderDialog.folder = "file:///" + (page.lastDir.length > 0 ? page.lastDir : "")
+        folderDialog.open()
+    }
+
+    function startPlan() {
+        var jobs = page.planJobs || []
+        for (var i = 0; i < jobs.length; ++i) {
+            var j = jobs[i]
+            if (j.url.length > 0) {
+                page.pushJob(j.url, j.filename, j.size, j.sha1, j.label)
+            } else if (j.versionId.length > 0) {
+                // 前置文件元数据未解析 → 先取，回来再入队（之前这里直接丢了，前置永远下不下来）
+                var m = {}
+                for (var k in page.pendingDeps) m[k] = page.pendingDeps[k]
+                m[j.versionId] = j
+                page.pendingDeps = m
+                page.b.fetchVersionFile(j.versionId)
+            }
+        }
+        page.planJobs = []
+        if (page.dlQueue.length === 0) page.status = "没有可下载的文件"
     }
 
     function pushJob(url, filename, size, sha1, label) {
@@ -283,16 +351,34 @@ Item {
     }
 
     function nextInQueue() {
-        if (page.dlQueue.length === 0) return
+        if (page.dlQueue.length === 0 || page.dialogBusy) return
         var j = page.dlQueue[0]
+        // 批量模式：目录已经选过，直接按文件名写盘，不再逐个弹对话框
+        if (page.targetDir.length > 0) {
+            var path = page.targetDir + "/" + j.filename
+            var dlId = page.b.downloadModFile(j.url, path, j.filename, j.size, j.sha1)
+            if (dlId > 0) { page.myIds = page.myIds.concat([dlId]); page.submitted++ }
+            page.dlQueue = page.dlQueue.slice(1)
+            page.pendingJob = null
+            if (page.dlQueue.length > 0) page.nextInQueue()
+            else page.finishBatch()
+            return
+        }
         page.pendingJob = j
+        page.dialogBusy = true
         // 预填文件名：selectedFile 可写（Qt 6.8 FileDialog 暴露 setSelectedFile）
         saveDialog.selectedFile = "file:///" + (page.lastDir.length > 0 ? page.lastDir + "/" : "") + j.filename
         saveDialog.open()
     }
 
+    function finishBatch() {
+        page.status = "已提交 " + page.submitted + " 个文件"
+        if (page.submitted > 0) page.downloadsStarted()
+    }
+
     property string lastDir: ""
     function popQueue() {
+        page.dialogBusy = false
         var q = page.dlQueue.slice(1)
         page.dlQueue = q
         page.pendingJob = null
@@ -300,6 +386,23 @@ Item {
         else {
             page.status = "已提交下载"
             if (page.submitted > 0) page.downloadsStarted()
+        }
+    }
+
+    // 批量下载：选一次目录，全部文件按各自名字写进去
+    FolderDialog {
+        id: folderDialog
+        title: "选择保存文件夹"
+        onAccepted: {
+            var p = String(folder).replace(/^file:\/{2,3}/i, "")
+            page.targetDir = p
+            page.lastDir = p
+            page.startPlan()
+        }
+        onRejected: {
+            page.targetDir = ""
+            page.planJobs = []
+            page.status = "已取消"
         }
     }
 
@@ -438,10 +541,10 @@ Item {
             anchors.right: parent.right; anchors.top: parent.top
             width: page.narrow ? 232 : 280
             height: installCard.height + 4
-            opacity: page.detailShown ? 1 : 0
+            opacity: page.revealStep >= 3 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
             transform: Translate {
-                x: page.detailShown ? 0 : 16
+                x: page.revealStep >= 3 ? 0 : 16
                 Behavior on x { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
             }
 
@@ -475,7 +578,7 @@ Item {
                     anchors.right: parent.right; anchors.rightMargin: 16
                     anchors.top: parent.top; anchors.topMargin: 88
                     implicitHeight: 38
-                    text: page.reqCount > 0 ? ("安装 " + (page.reqCount + 1) + " 项") : "下载"
+                    text: page.reqCount > 0 ? ("下载 " + (page.reqCount + 1) + " 个文件") : "下载"
                     enabled: page.latest !== null
                     onClicked: page.installAll()
                 }
@@ -483,7 +586,8 @@ Item {
                     anchors.left: parent.left; anchors.leftMargin: 16; anchors.right: parent.right; anchors.rightMargin: 16
                     anchors.top: parent.top; anchors.topMargin: 136
                     visible: page.myDls.length === 0
-                    text: page.status.length > 0 ? page.status : "下载时由你选择保存位置"
+                    text: page.status.length > 0 ? page.status
+                          : (page.reqCount > 0 ? "多文件：选一次文件夹，全部存入" : "下载时由你选择保存位置")
                     color: Theme.fg3
                     font.family: Theme.fontFamily; font.pixelSize: 10
                     elide: Text.ElideRight
@@ -520,10 +624,10 @@ Item {
                 anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
                 height: 124; radius: Theme.rSm
                 color: "#0b0e13"; border.width: 1; border.color: Theme.line
-                opacity: page.detailShown ? 1 : 0
+                opacity: page.revealStep >= 1 ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                 transform: Translate {
-                    y: page.detailShown ? 0 : 12
+                    y: page.revealStep >= 1 ? 0 : 12
                     Behavior on y { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                 }
 
@@ -550,7 +654,12 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         name: "chevron-down"; size: 12; color: Theme.fg3
                     }
-                    MouseArea { id: gameHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: gamePopup.open() }
+                    MouseArea {
+                        id: gameHover; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        // 再点一次收起（之前只会 open，closePolicy 又不覆盖触发框本身 → 永远展不开/收不回）
+                        onClicked: gamePopup.opened ? gamePopup.close() : gamePopup.open()
+                    }
                 }
                 Text {
                     id: lLabel
@@ -582,7 +691,7 @@ Item {
                         id: loaderHover; anchors.fill: parent; hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         enabled: page.selGame.length > 0
-                        onClicked: loaderPopup.open()
+                        onClicked: loaderPopup.opened ? loaderPopup.close() : loaderPopup.open()
                     }
                 }
                 Text {
@@ -602,10 +711,10 @@ Item {
                 anchors.top: pickCard.bottom; anchors.topMargin: 12
                 height: 92; radius: Theme.rSm
                 color: "#0b0e13"; border.width: 1; border.color: Theme.line
-                opacity: page.detailShown ? 1 : 0
+                opacity: (page.revealStep >= 2 ? 1 : 0)
                 Behavior on opacity { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                 transform: Translate {
-                    y: page.detailShown ? 0 : 12
+                    y: page.revealStep >= 2 ? 0 : 12
                     Behavior on y { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                 }
 
@@ -818,7 +927,17 @@ Item {
         width: gameBox.width
         height: Math.min(300, page.gameList.length * 34 + 8)
         padding: 4
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+        closePolicy: Popup.CloseOnPressOutsideParent | Popup.CloseOnEscape
+        // 开合动效：淡入 + 从触发框下方 6px 落下（原先 Popup 直接弹出来，没有任何过渡）
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { target: gamePopup.contentItem; property: "opacity"; from: 0; to: 1; duration: Theme.durFast; easing.type: Theme.easeEnter }
+                NumberAnimation { target: gamePopup; property: "y"; from: gameBox.height; to: gameBox.height + 6; duration: Theme.durBase; easing.type: Theme.easeEnter }
+            }
+        }
+        exit: Transition {
+            NumberAnimation { target: gamePopup.contentItem; property: "opacity"; from: 1; to: 0; duration: Theme.durFast; easing.type: Theme.easeExit }
+        }
         background: Rectangle { color: "#0d1016"; border.width: 1; border.color: Theme.line2; radius: Theme.rSm }
         contentItem: ListView {
             clip: true
@@ -850,7 +969,16 @@ Item {
         width: loaderBox.width
         height: Math.min(220, page.loaderList.length * 34 + 8)
         padding: 4
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+        closePolicy: Popup.CloseOnPressOutsideParent | Popup.CloseOnEscape
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { target: loaderPopup.contentItem; property: "opacity"; from: 0; to: 1; duration: Theme.durFast; easing.type: Theme.easeEnter }
+                NumberAnimation { target: loaderPopup; property: "y"; from: loaderBox.height; to: loaderBox.height + 6; duration: Theme.durBase; easing.type: Theme.easeEnter }
+            }
+        }
+        exit: Transition {
+            NumberAnimation { target: loaderPopup.contentItem; property: "opacity"; from: 1; to: 0; duration: Theme.durFast; easing.type: Theme.easeExit }
+        }
         background: Rectangle { color: "#0d1016"; border.width: 1; border.color: Theme.line2; radius: Theme.rSm }
         contentItem: ListView {
             clip: true
