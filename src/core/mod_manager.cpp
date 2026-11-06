@@ -1348,8 +1348,15 @@ void ModManager::fetchVersionDependencies(const QString& slug, const QString& ve
             auto verMap = std::make_shared<QMap<QString, QString>>();        // versionId → version_number
             auto pending = std::make_shared<int>(2);
 
-            auto commonDone = [this, versionId, depType, depVerId, results, verMap, pending]() {
-                if (--(*pending) > 0) return;
+            // Modrinth 对很多 required 前置**不给 version_id**（实测 entityculling 的
+            // Fabric API 依赖就是 "version_id": null）。这时前端既没有 url 也没有 version_id，
+            // 前置就会被静默跳过 —— 这就是"模组能下、前置永远下不下来"的真根因。
+            // 这里对缺失 version_id 的前置，按【本模组的 game_versions + loaders】去问
+            // /project/{id}/version，取最新匹配版本的首个文件，把 url/文件名/大小/sha1 直接回传。
+            auto resolvedFiles = std::make_shared<QMap<QString, QJsonObject>>();
+            auto pendingResolve = std::make_shared<int>(0);
+
+            auto emitList = [this, versionId, depType, depVerId, results, verMap, resolvedFiles]() {
                 QVariantList list;
                 for (auto it = depType.constBegin(); it != depType.constEnd(); ++it) {
                     QVariantMap e;
@@ -1360,10 +1367,16 @@ void ModManager::fetchVersionDependencies(const QString& slug, const QString& ve
                     e[QStringLiteral("title")] = title.isEmpty() ? it.key() : title;
                     e[QStringLiteral("slug")] = info.value(QStringLiteral("slug")).toString();
                     e[QStringLiteral("icon_url")] = info.value(QStringLiteral("icon_url")).toString();
-                    e[QStringLiteral("version_number")] = verMap->value(depVerId.value(it.key()));
-                    // 2026-11-06：一键安装前置需要精确版本 id（取该版本的文件 url/size/sha1），
-                    // 之前只在内部 depVerId 里用，没回传给 QML。
-                    e[QStringLiteral("version_id")] = depVerId.value(it.key());
+                    const QString vid = depVerId.value(it.key());
+                    QString vnum = verMap->value(vid);
+                    e[QStringLiteral("version_id")] = vid;
+                    const QJsonObject r = resolvedFiles->value(it.key());
+                    if (vnum.isEmpty()) vnum = r.value(QStringLiteral("version_number")).toString();
+                    e[QStringLiteral("version_number")] = vnum;
+                    e[QStringLiteral("url")] = r.value(QStringLiteral("url")).toString();
+                    e[QStringLiteral("filename")] = r.value(QStringLiteral("filename")).toString();
+                    e[QStringLiteral("size")] = static_cast<double>(r.value(QStringLiteral("size")).toDouble());
+                    e[QStringLiteral("sha1")] = r.value(QStringLiteral("sha1")).toString();
                     list.append(e);
                 }
                 // 必须前置在前、可选在后（与项目级依赖一致）
@@ -1375,6 +1388,58 @@ void ModManager::fetchVersionDependencies(const QString& slug, const QString& ve
                         return ta == QStringLiteral("required");
                     });
                 emit versionDependenciesResolved(versionId, list);
+            };
+
+            // 父版本的游戏版本 / 加载器，用来给"没给 version_id 的前置"找兼容文件
+            const QString gameVerJson = QString::fromUtf8(
+                QJsonDocument(ver.value(QStringLiteral("game_versions")).toArray()).toJson(QJsonDocument::Compact));
+            const QString loaderJson = QString::fromUtf8(
+                QJsonDocument(ver.value(QStringLiteral("loaders")).toArray()).toJson(QJsonDocument::Compact));
+
+            auto commonDone = [this, versionId, depType, depVerId, results, verMap, pending,
+                               resolvedFiles, pendingResolve, emitList, gameVerJson, loaderJson]() {
+                if (--(*pending) > 0) return;
+                // 哪些前置缺 version_id，需要自己找文件
+                QStringList need;
+                for (auto it = depType.constBegin(); it != depType.constEnd(); ++it)
+                    if (depVerId.value(it.key()).isEmpty()) need.append(it.key());
+                if (need.isEmpty()) { emitList(); return; }
+                *pendingResolve = need.size();
+                for (const QString& pid : need) {
+                    QUrl u(MODRINTH_API + QStringLiteral("/project/") + pid + QStringLiteral("/version"));
+                    QUrlQuery q;
+                    q.addQueryItem(QStringLiteral("game_versions"), gameVerJson);
+                    q.addQueryItem(QStringLiteral("loaders"), loaderJson);
+                    u.setQuery(q);
+                    auto settle = [resolvedFiles, pendingResolve, emitList, pid](const QJsonArray& arr) {
+                        if (!arr.isEmpty()) {
+                            const QJsonObject v0 = arr.first().toObject();
+                            const QJsonArray fs = v0.value(QStringLiteral("files")).toArray();
+                            QJsonObject picked;
+                            for (const QJsonValue& fv : fs) {
+                                const QJsonObject f = fv.toObject();
+                                if (f.value(QStringLiteral("primary")).toBool()) { picked = f; break; }
+                            }
+                            if (picked.isEmpty() && !fs.isEmpty()) picked = fs.first().toObject();
+                            if (!picked.isEmpty()) {
+                                QJsonObject r;
+                                r[QStringLiteral("url")] = picked.value(QStringLiteral("url"));
+                                r[QStringLiteral("filename")] = picked.value(QStringLiteral("filename"));
+                                r[QStringLiteral("size")] = picked.value(QStringLiteral("size"));
+                                r[QStringLiteral("sha1")] = picked.value(QStringLiteral("hashes")).toObject()
+                                                                  .value(QStringLiteral("sha1"));
+                                r[QStringLiteral("version_number")] = v0.value(QStringLiteral("version_number"));
+                                (*resolvedFiles)[pid] = r;
+                            }
+                        }
+                        if (--(*pendingResolve) == 0) emitList();
+                    };
+                    fetchViaSinan(u.toString(), true,
+                        [settle](int st, const QByteArray& b) {
+                            settle(st == 200 ? QJsonDocument::fromJson(b).array() : QJsonArray());
+                        },
+                        [settle](const QString&) { settle(QJsonArray()); });
+                }
             };
 
             // ── 并行: projects(名字) + versions(版本号) ──

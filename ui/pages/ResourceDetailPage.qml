@@ -303,13 +303,16 @@ Item {
             var d = page.deps[i]
             if (!page.depChecked[d.project_id]) continue
             var cached = page.fileCache[d.version_id] || null
+            // 后端现在会直接带回前置文件（Modrinth 对多数前置不给 version_id，
+            // 后端按 game_versions + loaders 自己查了版本 → url/filename/size/sha1）。
+            // fileCache 是"用户点过前置卡片"时的补充来源。
             jobs.push({
                 versionId: d.version_id || "",
                 label: d.version_number || d.project_id || "",
-                url: cached && cached.url ? cached.url : "",
-                filename: cached && cached.filename ? cached.filename : "",
-                size: cached ? (cached.size || 0) : 0,
-                sha1: cached ? (cached.sha1 || "") : ""
+                url: (cached && cached.url) ? cached.url : (d.url || ""),
+                filename: (cached && cached.filename) ? cached.filename : (d.filename || ""),
+                size: cached ? (cached.size || 0) : (d.size || 0),
+                sha1: cached ? (cached.sha1 || "") : (d.sha1 || "")
             })
         }
         return jobs
