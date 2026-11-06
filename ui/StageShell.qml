@@ -32,8 +32,6 @@ Item {
     readonly property bool fullOpen: versionsOpen || accountOpen || resDetailOpen
     // sideCollapsed：侧栏是否应该收起。版本页/账户页立刻收；资源详情延后收（见 onResDetailOpenChanged）
     readonly property bool sideCollapsed: versionsOpen || accountOpen || sideNarrowed
-    // 进入下载页时让版本列表重播一次逐条入场（子项 visible 不随父级变化，必须显式通知）
-    onDownloadOpenChanged: if (downloadOpen && downloadPage) downloadPage.bumpListEntry()
     onResDetailOpenChanged: {
         if (resDetailOpen) {
             narrowDelay.restart()

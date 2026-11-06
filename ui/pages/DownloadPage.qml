@@ -46,8 +46,6 @@ Item {
         page.segGeom = m
     }
     // 列表入场序号：每次页面显示时 +1，让所有已存在的行重播一次入场
-    property int listEntry: 0
-    function bumpListEntry() { page.listEntry++ }
     property var tabGeom: ({})
     function reportTabGeom(idx, item) {
         var m = {}
@@ -759,31 +757,6 @@ Item {
                 border.width: 1
                 Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                 Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-
-                // 逐条入场：前 staggerMax 行按 index 错峰，之后统一出现（长列表不拖沓）。
-                // 只在"列表被重建/切筛选"时跑一次，滚动复用 delegate 不会再触发。
-                property bool rowShown: false
-                opacity: rowShown ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
-                transform: Translate {
-                    y: vcard.rowShown ? 0 : 8
-                    Behavior on y { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
-                }
-                function playEntry() {
-                    vcard.rowShown = false
-                    rowDelay.interval = Math.min(index, Theme.staggerMax) * Theme.staggerStep
-                    rowDelay.start()
-                }
-                Component.onCompleted: playEntry()
-                // 页面重新显示时重播（delegate 会复用，不重播就永远看不到入场）
-                Connections {
-                    target: page
-                    function onListEntryChanged() { vcard.playEntry() }
-                }
-                Timer {
-                    id: rowDelay
-                    onTriggered: vcard.rowShown = true
-                }
 
                 // hover 时左侧强调条从中间长出来（不是整条变色，视线先落在这里）
                 Rectangle {
