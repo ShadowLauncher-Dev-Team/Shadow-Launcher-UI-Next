@@ -466,28 +466,29 @@ Item {
                     radius: 2
                     clip: true
                     color: "#181c24"
+                    // 已填充段：流光放在**这一层里面**，所以它永远只出现在已经走过的区域，
+                    // 不可能穿到未填充的轨道上（clip 就是"不穿模"的保证，不是靠算位置）。
                     Rectangle {
+                        id: fillBar
                         width: Math.max(0, Math.min(1, tcard.pv)) * parent.width
                         height: 3
                         radius: 2
                         color: tcard.isFailed ? "#f87171" : Theme.accent
+                        clip: true
                         // 真实进度也要平滑地"走过去"，而不是每 400ms 跳一格
                         Behavior on width { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
-                    }
-                    // 停滞时（速度归零但未完成）叠一条流光，表示"还在工作"而不是卡死。
-                    // 位置读页面级相位（不自己跑动画），显隐用 opacity 过渡：
-                    // 之前 visible 每 400ms 级切换 + 自身 NumberAnimation，会表现为"消失又出现/穿出轨道"。
-                    Rectangle {
-                        id: shine
-                        visible: bar.width > 0
-                        width: 72
-                        height: parent.height
-                        radius: height / 2
-                        color: "#8fb6f8"
-                        x: -80 + page.flowPhase * (parent.width + 160)
-                        opacity: tcard.stalled ? 0.55 : 0
-                        Behavior on opacity {
-                            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+
+                        // Google 风格流光：整段下载期间一直跑，而不是只在停滞时闪一下。
+                        // 宽度取自身宽度（父级），相位读页面级 flowPhase —— delegate 重建也不会打断。
+                        Rectangle {
+                            id: shine
+                            visible: fillBar.width > 6 && !tcard.isFailed && (tcard.pv < 1)
+                            width: Math.max(28, fillBar.width * 0.35)
+                            height: parent.height
+                            radius: height / 2
+                            color: "#dce9ff"
+                            opacity: 0.5
+                            x: -shine.width + page.flowPhase * (fillBar.width + shine.width)
                         }
                     }
                 }

@@ -16,6 +16,8 @@ Item {
     property var toast: null
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     signal back()
+    // 本页发起的文件下载全部提交完毕（保存对话框都走完了）
+    signal downloadsStarted()
 
     readonly property string slug: item.slug || ""
     readonly property int padL: narrow ? 32 : Theme.padL
@@ -41,6 +43,7 @@ Item {
     // 本页发起的文件下载（id 由 downloadModFile 返回）；数据表在 StageShell 里统一收
     property var fileDl: []
     property var myIds: []
+    property int submitted: 0
     readonly property var myDls: {
         var out = []
         for (var i = 0; i < fileDl.length; ++i)
@@ -241,12 +244,14 @@ Item {
     }
 
     function installLatest() {
+        page.submitted = 0
         var v = page.latest
         if (!v || v.url.length === 0) { page.status = "该组合没有可下载文件"; return }
         page.pushJob(v.url, v.filename, v.size, v.sha1, v.version)
     }
 
     function installAll() {
+        page.submitted = 0
         var v = page.latest
         if (!v || v.url.length === 0) { page.status = "该组合没有可下载文件"; return }
         page.pushJob(v.url, v.filename, v.size, v.sha1, v.version)
@@ -281,7 +286,10 @@ Item {
         page.dlQueue = q
         page.pendingJob = null
         if (q.length > 0) page.nextInQueue()
-        else page.status = "已提交下载"
+        else {
+            page.status = "已提交下载"
+            if (page.submitted > 0) page.downloadsStarted()
+        }
     }
 
     FileDialog {
@@ -296,7 +304,7 @@ Item {
             if (cut > 0) page.lastDir = path.substring(0, cut)
             if (j && page.b) {
                 var dlId = page.b.downloadModFile(j.url, path, j.filename, j.size, j.sha1)
-                if (dlId > 0) page.myIds = page.myIds.concat([dlId])
+                if (dlId > 0) { page.myIds = page.myIds.concat([dlId]); page.submitted++ }
                 if (page.toast) page.toast.show("开始下载 " + j.filename, 2400, "info")
             }
             page.popQueue()

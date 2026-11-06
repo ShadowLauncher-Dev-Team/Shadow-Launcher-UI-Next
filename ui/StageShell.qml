@@ -65,6 +65,21 @@ Item {
         if (i >= 0) arr[i] = o; else arr.push(o)
         root.fileDl = arr
     }
+    // 已结束的下载条目 4s 后从列表里移除：卡片消失，进度页不再挂一条"已完成"
+    Timer {
+        interval: 500
+        repeat: true
+        running: root.fileDl.length > 0
+        onTriggered: {
+            var now = Date.now(), keep = [], changed = false
+            for (var i = 0; i < root.fileDl.length; ++i) {
+                var d = root.fileDl[i]
+                if (d.state !== "run" && d.hideAt > 0 && d.hideAt <= now) { changed = true; continue }
+                keep.push(d)
+            }
+            if (changed) root.fileDl = keep
+        }
+    }
     Connections {
         target: root.b
         ignoreUnknownSignals: true
@@ -77,17 +92,17 @@ Item {
         function onModFileDownloadFinished(downloadId, success, filePath, displayName) {
             root._dlPatch(downloadId, {
                 name: displayName || "", state: success ? "done" : "fail", path: filePath || "",
-                speed: 0, received: -1
+                speed: 0, received: -1, hideAt: Date.now() + 4000
             })
             if (success) toastHost.show((displayName || "文件") + " 下载完成", 2600, "success")
             else toastHost.show((displayName || "文件") + " 下载失败", 3200, "error")
         }
         function onModFileDownloadFailed(downloadId, errorDetail, displayName) {
-            root._dlPatch(downloadId, { state: "fail", error: errorDetail || "", speed: 0 })
+            root._dlPatch(downloadId, { state: "fail", error: errorDetail || "", speed: 0, hideAt: Date.now() + 6000 })
             toastHost.show((displayName || "文件") + " 下载失败：" + (errorDetail || "未知错误"), 3600, "error")
         }
         function onModFileDownloadCancelled(downloadId, displayName) {
-            root._dlPatch(downloadId, { state: "fail", error: "已取消", speed: 0 })
+            root._dlPatch(downloadId, { state: "fail", error: "已取消", speed: 0, hideAt: Date.now() + 3000 })
         }
     }
     // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
@@ -191,6 +206,12 @@ Item {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         enabled: !root.fullOpen && !root.downloadOpen && !root.progressOpen
+        // 回到启动页也要有"入场"：离开时它被右移 22px（被不透明的全屏页盖住，看不见），
+        // 全屏页硬切消失后它滑回原位 —— 于是"从菜单页回主页"也是一次过渡，不是啪一下。
+        transform: Translate {
+            x: (root.downloadOpen || root.progressOpen || root.fullOpen) ? -22 : 0
+            Behavior on x { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+        }
         hostWindow: root.hostWindow
         narrow: root.narrow
         toast: toastHost
@@ -207,22 +228,31 @@ Item {
     }
 
     // ══ 全屏页宿主 ══
-    // 菜单级切页一律「硬切」：不做 opacity 淡入淡出，也不做位移。
-    // 原因（实测）：只要过渡里有一帧半透明，下层一直亮着的启动页就会透出来，
-    // 观感就是"先淡出看到启动页，再淡入目标页"。硬切时新旧页在同一个事件循环里切换，
-    // 渲染只输出一帧结果，中间态根本不存在。
-    // 每个宿主自带不透明实底，保证任何时刻都不叠字。
+    // 过渡的做法（两次翻车后的定论）：
+    //   · 宿主自身**从不做 opacity 动画**，一出现就是不透明实底 —— 半透明帧是"透出启动页"的唯一根因；
+    //   · 动效只做在宿主内部的位移上（内容从右/下方 12~40px 归位），且宿主 clip 住，
+    //     位移留下的缝露出的是宿主自己的底色，不是下层页面；
+    //   · 关闭方向是硬切（目标页本来就是下层），进入方向才有过渡。
 
     // 版本管理（全窗覆盖）
     Item {
         id: versionsHost
         anchors.fill: parent
         visible: root.versionsOpen
+        clip: true
         Rectangle { anchors.fill: parent; color: Theme.bg }
+        // 入场：内容从 右侧 挪回原位。
+        // 底已经是不透明的，且 clip 住宿主 —— 空隙里露出的是自己的底色，永远透不出下层启动页。
+        // 只做位移不做透明度：不会出现"先空一帧再显内容"。
+        Item {
+            anchors.fill: parent
+            x: root.versionsOpen ? 0 : 24
+            Behavior on x { NumberAnimation { duration: root.versionsOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
         VersionPage {
             anchors.fill: parent
             toast: toastHost
             onClose: root.versionsOpen = false
+        }
         }
     }
 
@@ -231,11 +261,20 @@ Item {
         id: accountHost
         anchors.fill: parent
         visible: root.accountOpen
+        clip: true
         Rectangle { anchors.fill: parent; color: Theme.bg }
+        // 入场：内容从 下方 挪回原位。
+        // 底已经是不透明的，且 clip 住宿主 —— 空隙里露出的是自己的底色，永远透不出下层启动页。
+        // 只做位移不做透明度：不会出现"先空一帧再显内容"。
+        Item {
+            anchors.fill: parent
+            y: root.accountOpen ? 0 : 40
+            Behavior on y { NumberAnimation { duration: root.accountOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
         AccountPage {
             anchors.fill: parent
             toast: toastHost
             onClose: root.accountOpen = false
+        }
         }
     }
 
@@ -247,7 +286,15 @@ Item {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         visible: root.downloadOpen
+        clip: true
         Rectangle { anchors.fill: parent; color: Theme.bg }
+        // 入场：内容从 右侧 挪回原位。
+        // 底已经是不透明的，且 clip 住宿主 —— 空隙里露出的是自己的底色，永远透不出下层启动页。
+        // 只做位移不做透明度：不会出现"先空一帧再显内容"。
+        Item {
+            anchors.fill: parent
+            x: root.downloadOpen ? 0 : 24
+            Behavior on x { NumberAnimation { duration: root.downloadOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
         DownloadPage {
             id: downloadPage
             anchors.fill: parent
@@ -265,6 +312,7 @@ Item {
                 root.resDetailOpen = true
             }
         }
+        }
     }
 
     // 资源详情（全屏独立页，自带实底，拦截穿透）
@@ -272,13 +320,28 @@ Item {
         id: resDetailHost
         anchors.fill: parent
         visible: root.resDetailOpen
+        clip: true
         Rectangle { anchors.fill: parent; color: Theme.bg }
+        // 入场：内容从 下方 挪回原位。
+        // 底已经是不透明的，且 clip 住宿主 —— 空隙里露出的是自己的底色，永远透不出下层启动页。
+        // 只做位移不做透明度：不会出现"先空一帧再显内容"。
+        Item {
+            anchors.fill: parent
+            y: root.resDetailOpen ? 0 : 12
+            Behavior on y { NumberAnimation { duration: root.resDetailOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
         ResourceDetailPage {
             id: resDetail
             anchors.fill: parent
             toast: toastHost
             fileDl: root.fileDl
+            onDownloadsStarted: {
+                // 下载已经在跑，直接把用户送到能看到它的地方
+                root.resDetailOpen = false
+                root.progressOpen = true
+                sideBar.currentLabel = "下载进度"
+            }
             onBack: root.resDetailOpen = false
+        }
         }
     }
 
@@ -290,12 +353,21 @@ Item {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         visible: root.progressOpen
+        clip: true
         Rectangle { anchors.fill: parent; color: Theme.bg }
+        // 入场：内容从 下方 挪回原位。
+        // 底已经是不透明的，且 clip 住宿主 —— 空隙里露出的是自己的底色，永远透不出下层启动页。
+        // 只做位移不做透明度：不会出现"先空一帧再显内容"。
+        Item {
+            anchors.fill: parent
+            y: root.progressOpen ? 0 : 12
+            Behavior on y { NumberAnimation { duration: root.progressOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
         ProgressPage {
             id: progressPage
             anchors.fill: parent
             toast: toastHost
             fileDl: root.fileDl
+        }
         }
     }
 
