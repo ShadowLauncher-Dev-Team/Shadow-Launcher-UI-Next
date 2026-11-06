@@ -115,8 +115,11 @@ Item {
     }
 
     function jumpTo(i) {
-        // 回到某一步：清掉它之后的选择
+        // 回到某一步：这一步之后的选择全部作废（含这一步本身），rail 文案随之回到初始
         if (i <= 0) { resetChoices(); return }
+        if (i <= 1) { selType = ""; if (java) java.selectedType = "" }
+        if (i <= 2) { selArch = ""; if (java) java.selectedArch = "" }
+        if (i <= 3) { selOS = ""; if (java) java.selectedOS = "" }
         step = i
     }
 
@@ -197,7 +200,10 @@ Item {
 
     // ══════════ 布局 ══════════
     Column {
-        anchors.fill: parent
+        id: topCol
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
         spacing: 0
 
         // ── 步骤条 ──
@@ -212,9 +218,12 @@ Item {
                 Repeater {
                     model: 5
                     delegate: Item {
+                        readonly property bool last: index === 4
                         width: rail.width / 5
                         height: 40
+
                         Row {
+                            id: nodeRow
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 8
                             Rectangle {
@@ -235,6 +244,7 @@ Item {
                                 }
                             }
                             Text {
+                                id: nodeLabel
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: page.stepValue(index)
                                 color: page.step >= index ? Theme.fg : Theme.fg3
@@ -243,17 +253,31 @@ Item {
                                 font.weight: page.step === index ? Font.DemiBold : Font.Normal
                             }
                         }
+
+                        // 到下一个节点的连线（动效阶段这里会做淡蓝流光）
+                        Rectangle {
+                            visible: !parent.last
+                            anchors.verticalCenter: parent.verticalCenter
+                            x: nodeRow.x + nodeRow.width + 10
+                            width: parent.width - nodeRow.width - 22
+                            height: 1
+                            color: page.step > index ? Theme.accent : "#20252e"
+                            opacity: page.step > index ? 0.55 : 1
+                        }
                     }
                 }
             }
         }
 
         // ── 已选 chips ──
-        Row {
+        Item {
+            width: parent.width
+            height: 34
+            Row {
             id: chips
             visible: page.step > 0
             width: parent.width
-            height: 30
+            height: 34
             spacing: 8
 
             Repeater {
@@ -269,8 +293,10 @@ Item {
                     Row {
                         id: chipRow
                         anchors.centerIn: parent
-                        spacing: 8
+                        spacing: 6
                         Text {
+                            id: chipText
+                            anchors.verticalCenter: parent.verticalCenter
                             text: page.stepValueShort(index)
                             color: Theme.fg
                             font.family: Theme.fontFamily
@@ -296,9 +322,10 @@ Item {
                 font.pixelSize: 11
                 anchors.verticalCenter: parent.verticalCenter
             }
+            }
         }
 
-        Item { width: 1; height: 12 }
+        Item { width: 1; height: 4 }
 
         // ── 当前步骤卡 ──
         Rectangle {
@@ -346,23 +373,30 @@ Item {
                         model: page.optionsForStep(page.step)
                         delegate: Rectangle {
                             height: 34
-                            width: pillRow.implicitWidth + 32
+                            width: pillRow.width + 32
                             radius: Theme.rSm
                             color: page.isPicked(page.step, modelData) ? "#10203a" : "#0d1016"
                             border.width: 1
                             border.color: page.isPicked(page.step, modelData) ? Theme.accent : Theme.line2
-                            Row {
+                            // 主字与小字按基线对齐：Row 的垂直居中会让 10px 的小字视觉上下沉
+                            Item {
                                 id: pillRow
                                 anchors.centerIn: parent
-                                spacing: 8
+                                height: pillMain.height
+                                width: pillMain.width + (pillSub.visible ? pillSub.width + 7 : 0)
                                 Text {
+                                    id: pillMain
+                                    x: 0; y: 0
                                     text: page.optionLabel(page.step, modelData)
                                     color: page.isPicked(page.step, modelData) ? "#ffffff" : "#c3cbd8"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 13
                                 }
                                 Text {
+                                    id: pillSub
                                     visible: page.optionSub(page.step, modelData).length > 0
+                                    x: pillMain.width + 7
+                                    anchors.baseline: pillMain.baseline
                                     text: page.optionSub(page.step, modelData)
                                     color: page.isPicked(page.step, modelData) ? "#8fb6f8" : Theme.fg3
                                     font.family: Theme.fontFamily
@@ -653,12 +687,15 @@ Item {
             }
         }
 
-        Item { width: 1; height: 14 }
+    }
 
-        // ── 本机已装 ──
-        Rectangle {
-            width: parent.width
-            height: localCol.implicitHeight + 28
+    // ── 本机已装（贴底常驻：上半部内容再多，页面也不会头重脚轻）──
+    Rectangle {
+        id: localCard
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: localCol.implicitHeight + 28
             radius: Theme.rMd
             color: "#0b0d12"
             border.width: 1
@@ -738,7 +775,6 @@ Item {
                 }
             }
         }
-    }
 
     // ══════════ 数据辅助 ══════════
     function optionsForStep(s) {
