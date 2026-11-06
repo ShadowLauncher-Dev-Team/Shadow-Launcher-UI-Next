@@ -591,6 +591,8 @@ public:
     Q_INVOKABLE void retryModFileDownload(int downloadId);
     /// 2026-08-15：版本级前置依赖（详情页悬停 tooltip）
     Q_INVOKABLE void fetchVersionDependencies(const QString& slug, const QString& versionId);
+    /// 按 versionId 取该版本主文件信息（url/filename/size/sha1）——一键安装前置用
+    Q_INVOKABLE void fetchVersionFile(const QString& versionId);
 
     // ═══ Wardrobe (衣帽间) ═══
     Q_INVOKABLE void browseSkin();  // File dialog
@@ -834,6 +836,7 @@ signals:
     void modFileDownloadCancelled(int downloadId, const QString& displayName);
     /// 2026-08-15：版本级前置依赖（悬停 tooltip）
     void versionDependenciesResolved(const QString& versionId, const QVariantList& deps);
+    void versionFileResolved(const QString& versionId, const QVariantMap& file);
     /// 2026-08-15：MC/加载器安装取消（转发自 VersionBackend，QML 弹 toast）
     void cancelNotification(const QString& installId, const QString& message);
     /// 整合包搜索完成（池子全量，QML 按页切片）

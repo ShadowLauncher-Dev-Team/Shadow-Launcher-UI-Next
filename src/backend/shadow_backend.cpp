@@ -855,6 +855,8 @@ ShadowBackend::ShadowBackend(QObject* parent)
     // ── 2026-08-15：版本级前置依赖（悬停 tooltip）转发 ──
     connect(m_resource, &ResourceBackend::versionDependenciesResolved,
             this, &ShadowBackend::versionDependenciesResolved);
+    connect(m_resource, &ResourceBackend::versionFileResolved,
+            this, &ShadowBackend::versionFileResolved);
     // 整合包搜索完成透传（QML 回填列表）
     connect(m_resource, &ResourceBackend::modpackSearchResultsReady,
             this, &ShadowBackend::modpackSearchResultsReady);
@@ -3789,6 +3791,10 @@ void ShadowBackend::retryModFileDownload(int downloadId) {
 // ── 2026-08-15：版本级前置依赖（详情页悬停 tooltip）──
 void ShadowBackend::fetchVersionDependencies(const QString& slug, const QString& versionId) {
     m_resource->fetchVersionDependencies(slug, versionId);
+}
+
+void ShadowBackend::fetchVersionFile(const QString& versionId) {
+    m_resource->fetchVersionFile(versionId);
 }
 
 // ═══ Wardrobe (衣帽间) ═══

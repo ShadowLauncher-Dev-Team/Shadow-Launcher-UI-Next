@@ -103,6 +103,8 @@ public:
     Q_INVOKABLE void retryModFileDownload(int downloadId);
     /// 2026-08-15：版本级前置依赖（详情页悬停 tooltip）
     Q_INVOKABLE void fetchVersionDependencies(const QString& slug, const QString& versionId);
+    /// 按 versionId 取该版本主文件（一键安装前置）
+    Q_INVOKABLE void fetchVersionFile(const QString& versionId);
     /// 汉化：英文名 → 中文名（查汉化表；无中文或与英文相同则返回空串，供 QML 用）
     Q_INVOKABLE QString resolveModZh(const QString& title) const;
 
@@ -139,6 +141,7 @@ signals:
     void modFileDownloadCancelled(int downloadId, const QString& displayName);
     /// 2026-08-15：版本级前置依赖（悬停 tooltip）
     void versionDependenciesResolved(const QString& versionId, const QVariantList& deps);
+    void versionFileResolved(const QString& versionId, const QVariantMap& file);
     /// 整合包搜索完成（池子全量，QML 按页切片）
     void modpackSearchResultsReady(const QVariantList& results);
     /// 数据包搜索完成（池子全量，QML 按页切片）

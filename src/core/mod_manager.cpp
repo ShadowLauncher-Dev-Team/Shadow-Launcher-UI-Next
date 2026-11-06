@@ -1361,6 +1361,9 @@ void ModManager::fetchVersionDependencies(const QString& slug, const QString& ve
                     e[QStringLiteral("slug")] = info.value(QStringLiteral("slug")).toString();
                     e[QStringLiteral("icon_url")] = info.value(QStringLiteral("icon_url")).toString();
                     e[QStringLiteral("version_number")] = verMap->value(depVerId.value(it.key()));
+                    // 2026-11-06：一键安装前置需要精确版本 id（取该版本的文件 url/size/sha1），
+                    // 之前只在内部 depVerId 里用，没回传给 QML。
+                    e[QStringLiteral("version_id")] = depVerId.value(it.key());
                     list.append(e);
                 }
                 // 必须前置在前、可选在后（与项目级依赖一致）
@@ -1424,6 +1427,37 @@ void ModManager::fetchVersionDependencies(const QString& slug, const QString& ve
             emit versionDependenciesResolved(versionId, QVariantList());
         }
     );
+}
+
+// ============================================================
+// 单版本文件（一键安装前置用，2026-11-06）
+// ============================================================
+void ModManager::fetchVersionFile(const QString& versionId)
+{
+    if (versionId.isEmpty()) { emit versionFileResolved(versionId, QVariantMap()); return; }
+    fetchViaSinan(MODRINTH_API + QStringLiteral("/version/") + versionId, true,
+        [this, versionId](int status, const QByteArray& body) {
+            if (status != 200) { emit versionFileResolved(versionId, QVariantMap()); return; }
+            const QJsonObject ver = QJsonDocument::fromJson(body).object();
+            const QJsonArray files = ver.value(QStringLiteral("files")).toArray();
+            QJsonObject picked;
+            for (const QJsonValue& fv : files) {
+                const QJsonObject f = fv.toObject();
+                if (f.value(QStringLiteral("primary")).toBool()) { picked = f; break; }
+            }
+            if (picked.isEmpty() && !files.isEmpty()) picked = files.first().toObject();
+            QVariantMap m;
+            if (!picked.isEmpty()) {
+                m[QStringLiteral("url")] = picked.value(QStringLiteral("url")).toString();
+                m[QStringLiteral("filename")] = picked.value(QStringLiteral("filename")).toString();
+                m[QStringLiteral("size")] = static_cast<qint64>(picked.value(QStringLiteral("size")).toDouble());
+                m[QStringLiteral("sha1")] = picked.value(QStringLiteral("hashes")).toObject()
+                                               .value(QStringLiteral("sha1")).toString();
+            }
+            m[QStringLiteral("version_number")] = ver.value(QStringLiteral("version_number")).toString();
+            emit versionFileResolved(versionId, m);
+        },
+        [this, versionId](const QString&) { emit versionFileResolved(versionId, QVariantMap()); });
 }
 
 // ============================================================

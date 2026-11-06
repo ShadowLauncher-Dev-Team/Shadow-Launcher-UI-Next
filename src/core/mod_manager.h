@@ -156,6 +156,8 @@ public:
     /// 2026-08-15：单版本前置依赖（悬停 tooltip）——/version/{id} → dependencies →
     /// 批量 /projects(名字) + /versions(版本号) → versionDependenciesResolved
     void fetchVersionDependencies(const QString& slug, const QString& versionId);
+    /// 按 versionId 取该版本的主文件（url/filename/size/sha1），供「一键安装前置」使用
+    void fetchVersionFile(const QString& versionId);
 
     // Popular mods (offline data)
     static QMap<QString, QJsonObject> getPopularMods(const QString& loader);
@@ -204,6 +206,7 @@ signals:
     /// 2026-08-15：版本级前置依赖（详情页版本卡片悬停 tooltip 用）
     /// deps 每项: {project_id, dependency_type, title, slug, icon_url, version_number}
     void versionDependenciesResolved(const QString& versionId, const QVariantList& deps);
+    void versionFileResolved(const QString& versionId, const QVariantMap& file);
 
     void shaderVersionsLoaded(const QVariantMap& slugToVersions);
     void shaderVersionsPartial(const QString& slug, const QStringList& versions, const QVariantMap& details);

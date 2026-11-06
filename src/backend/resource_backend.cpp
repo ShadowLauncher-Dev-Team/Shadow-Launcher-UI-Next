@@ -256,6 +256,8 @@ ResourceBackend::ResourceBackend(QObject* parent)
             this, &ResourceBackend::modFileDownloadCancelled);
     connect(m_modMgr, &ModManager::versionDependenciesResolved,
             this, &ResourceBackend::versionDependenciesResolved);
+    connect(m_modMgr, &ModManager::versionFileResolved,
+            this, &ResourceBackend::versionFileResolved);
 
     loadModTranslations();
     loadMcmodMap();
@@ -2644,6 +2646,11 @@ void ResourceBackend::retryModFileDownload(int downloadId)
 void ResourceBackend::fetchVersionDependencies(const QString& slug, const QString& versionId)
 {
     m_modMgr->fetchVersionDependencies(slug, versionId);
+}
+
+void ResourceBackend::fetchVersionFile(const QString& versionId)
+{
+    m_modMgr->fetchVersionFile(versionId);
 }
 
 void ResourceBackend::onModFileDownloadStarted(int downloadId, const QString& fileName,
