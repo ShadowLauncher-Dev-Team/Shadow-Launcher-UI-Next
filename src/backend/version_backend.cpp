@@ -5632,14 +5632,12 @@ if (!loaderDlUrl.isEmpty()) {
             // ── 2026-08-14 修复：校验步骤按名字找，不再依赖 loaderDlStepIdx+1 ──
             // 步骤顺序已调整为：主文件(idx=4) → 安装器库(idx=5) → 校验(idx=6)。
             // +1 会错指向安装器库。
-            int verifyStep = -1;
-            for (int i = 0; i < ds->steps.size(); ++i) {
-                QString nm = ds->steps[i].toMap().value(QStringLiteral("name")).toString();
-                if (nm.contains(QStringLiteral("校验")) && !nm.contains(QStringLiteral("资源"))) {
-                    verifyStep = i;
-                    break;
-                }
-            }
+            // ── 2026-11-06：按 key 找加载器校验步骤，禁止按中文名模糊匹配 ──
+            // 旧实现 nm.contains("校验") && !nm.contains("资源")——步骤显示名统一后
+            // 基础校验叫"校验游戏文件"（不含"资源"），于是这里误命中 MC 校验(idx=3)：
+            // 加载器主文件一下完就把"校验游戏文件"点亮，MC 还在下载，用户看到
+            // "MC 未下完但校验已激活"（实测 Forge/NeoForge 必现）。
+            const int verifyStep = stepIndexByKey(installName, StepKeys::loaderVerify());
             if (verifyStep >= 0 && ds->steps.size() > verifyStep) {
                 showStep(installName, verifyStep);
                 updateStep(installName, verifyStep, QStringLiteral("active"), 0);
@@ -6509,13 +6507,10 @@ ModLoaderInstaller* VersionBackend::createLoaderInstaller(const QString& install
 
         int loaderStepIdx = ds->loaderStepIdx;
         if (loaderStepIdx < 0) {
-            for (int i = 0; i < ds->steps.size(); i++) {
-                if (ds->steps[i].toMap().value(QStringLiteral("name")).toString()
-                    .contains(QStringLiteral("verify"), Qt::CaseInsensitive)) {
-                    loaderStepIdx = i;
-                    break;
-                }
-            }
+            // 2026-11-06：按 key 找加载器校验步骤（旧实现按 "verify" 英文子串，永远找不到）
+            const auto evMap = ShadowLauncher::LoaderEvents::forLoader(ds->loaderType);
+            if (!evMap.verifyKey.isEmpty())
+                loaderStepIdx = stepIndexByKey(installId, evMap.verifyKey);
         }
         if (loaderStepIdx >= 0) {
             updateStep(installId, loaderStepIdx, QStringLiteral("active"), 0);
@@ -6529,20 +6524,16 @@ ModLoaderInstaller* VersionBackend::createLoaderInstaller(const QString& install
 
         auto* ds = dlSession(installId);
         if (!ds) return;
-        // ── 2026-08-14 修复：不再用 ds->loaderStepIdx ──
-        // loaderStepIdx 在 verify 完成瞬间可能已被 installerLibsStarted 改为
-        // 安装器库步骤（idx=6），用它标 completed 会把安装器库误标 100% 完成，
-        // 随后下载进度又拉回 active → UI 出现"100% + 剩余62"的矛盾闪烁。
-        // 明确找"校验"步骤（主文件校验 idx=5）标记完成；找不到则不动。
-        for (int i = 0; i < ds->steps.size(); ++i) {
-            QString name = ds->steps[i].toMap().value(QStringLiteral("name")).toString();
-            if (name.contains(QStringLiteral("校验")) || name.contains(QStringLiteral("verify"), Qt::CaseInsensitive)) {
-                // 跳过 MC 资源校验（"校验游戏资源完整性"），只标加载器校验步骤
-                if (name.contains(QStringLiteral("资源"))) continue;
-                updateStep(installId, i, ok ? QStringLiteral("completed")
-                                            : QStringLiteral("failed"), ok ? 100 : 0);
-                break;
-            }
+        // ── 2026-08-14：不用 ds->loaderStepIdx（可能已被改为安装器库步骤）──
+        // ── 2026-11-06：按 key 精确找加载器校验步骤 ──
+        // 旧实现按中文名"校验"模糊匹配并只排除含"资源"的步骤：显示名统一成
+        // "校验游戏文件"后，MC 校验会被误命中并标 completed/failed。
+        const auto evMap = ShadowLauncher::LoaderEvents::forLoader(ds->loaderType);
+        if (!evMap.verifyKey.isEmpty()) {
+            const int verifyIdx = stepIndexByKey(installId, evMap.verifyKey);
+            if (verifyIdx >= 0)
+                updateStep(installId, verifyIdx, ok ? QStringLiteral("completed")
+                                                    : QStringLiteral("failed"), ok ? 100 : 0);
         }
     });
 
@@ -9214,7 +9205,22 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
         [this, installId](int step, int percentage) {
             auto* ds = dlSession(installId);
             if (!ds) return;
-            int stepIdx = ds->isMerged() ? (step - 1 + 4) : (step - 1);
+            // ── 2026-11-06：语义映射，不再用 step-1+4 ──
+            // 安装器语义固定为 1=主文件/配置、2=校验（Fabric 无校验，2=依赖库）、3=安装，
+            // 但 Fabric 的步骤序列是 配置/依赖库/安装（没有校验），算术偏移会把
+            // stepProgress(2) 之后的分步进度对错位置；Forge 的 stepProgress(3) 会被
+            // 算到依赖库而不是"安装 Forge"。
+            int stepIdx = step - 1;
+            if (ds->isMerged()) {
+                const auto evMap = ShadowLauncher::LoaderEvents::forLoader(ds->loaderType);
+                if (step <= 1)
+                    stepIdx = stepIndexByKey(installId, evMap.artifactKey);
+                else if (step == 2)
+                    stepIdx = stepIndexByKey(installId,
+                        evMap.verifyKey.isEmpty() ? evMap.libsKey : evMap.verifyKey);
+                else
+                    stepIdx = stepIndexByKey(installId, evMap.installKey);
+            }
             // Don't overwrite already-completed steps (e.g. forgeStep1_verify maps to download step 4)
             if (stepIdx >= 0 && stepIdx < ds->steps.size()) {
                 auto curStep = ds->steps[stepIdx].toMap();
@@ -9248,6 +9254,20 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
             if (ds->isMerged()) {
                 // 安装器语义 → 步骤 key：由 LoaderEvents 表决定（C 项：事件与步骤解耦）
                 const auto evMap = ShadowLauncher::LoaderEvents::forLoader(ds->loaderType);
+                // ── 2026-11-06：进入下一步 = 上一步已完成 ──
+                // 旧实现漏了这步：Fabric 配置步（step1）只被置 active，永远没人标 completed，
+                // 步骤一直显示"下载 Fabric 配置 0%"直到安装器整体结束被兜底标绿
+                // （用户看到的"Fabric 进度恒为 0、等 MC 下完瞬间 100%"）。
+                if (step > 1) {
+                    int prevIdx = -1;
+                    if (step == 2)
+                        prevIdx = stepIndexByKey(installId, evMap.artifactKey);
+                    else if (step == 3)
+                        prevIdx = stepIndexByKey(installId,
+                            evMap.verifyKey.isEmpty() ? evMap.libsKey : evMap.verifyKey);
+                    if (prevIdx >= 0)
+                        updateStep(installId, prevIdx, QStringLiteral("completed"), 100);
+                }
                 if (step <= 1)      stepIdx = stepIndexByKey(installId, evMap.artifactKey);
                 else if (step == 2) stepIdx = evMap.verifyKey.isEmpty()
                                                  ? -1 : stepIndexByKey(installId, evMap.verifyKey);
@@ -9315,13 +9335,15 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
             auto* ds = dlSession(installId);
             if (!ds) return;
             ds->loaderDownloadActive = true;   // 2026-08-15：安装器库下载计入速度
-            for (int i = 0; i < ds->steps.size(); ++i) {
-                if (ds->steps[i].toMap().value(QStringLiteral("name")).toString()
-                        .contains(QStringLiteral("安装器库"))) {
-                    ds->loaderStepIdx = i;   // byteProgress 落到安装器库步骤（不再污染主文件步骤）
-                    updateStep(installId, i, QStringLiteral("active"), 0);
-                    break;
-                }
+            // ── 2026-11-06：按 key 找步骤，不再按中文名"安装器库" ──
+            // 步骤显示名早已统一为"下载 <Loader> 依赖库"（StepKeys::displayName），
+            // 名称里没有"安装器库"三字 → 旧匹配永远失败：步骤既不 active 也没进度，
+            // 只在安装器整体结束时被兜底标绿（Forge/NeoForge 实测）。
+            const auto evMap = ShadowLauncher::LoaderEvents::forLoader(ds->loaderType);
+            const int libsIdx = stepIndexByKey(installId, evMap.libsKey);
+            if (libsIdx >= 0) {
+                ds->loaderStepIdx = libsIdx;   // byteProgress 落到依赖库步骤（不再污染主文件步骤）
+                updateStep(installId, libsIdx, QStringLiteral("active"), 0);
             }
         });
     connect(ctx->installer, &ModLoaderInstaller::installerLibsFailed, this,
@@ -9332,83 +9354,63 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
             // 原实现 installerLibsDone 无条件标 completed，srgutils 所有源失败也
             // 显示 100% 完成（日志铁证 23:08:29.872）。失败应如实显示。
             qCWarning(logVersion) << QStringLiteral("[安装] 安装器库下载失败，安装器库步骤标 failed: %1").arg(err);
-            for (int i = 0; i < ds->steps.size(); ++i) {
-                if (ds->steps[i].toMap().value(QStringLiteral("name")).toString()
-                        .contains(QStringLiteral("安装器库"))) {
-                    updateStep(installId, i, QStringLiteral("failed"), 0);
-                    break;
-                }
-            }
+            const auto evMap = ShadowLauncher::LoaderEvents::forLoader(ds->loaderType);
+            const int libsIdx = stepIndexByKey(installId, evMap.libsKey);
+            if (libsIdx >= 0)
+                updateStep(installId, libsIdx, QStringLiteral("failed"), 0);
         });
     connect(ctx->installer, &ModLoaderInstaller::installerLibsDone, this,
         [this, installId]() {
             auto* ds = dlSession(installId);
             if (!ds) return;
             ds->loaderDownloadActive = false;   // 2026-08-15：安装器库下载结束
-            for (int i = 0; i < ds->steps.size(); ++i) {
-                if (ds->steps[i].toMap().value(QStringLiteral("name")).toString()
-                        .contains(QStringLiteral("安装器库"))) {
-                    // ── 2026-08-15：若 installerLibsFailed 已把本步骤标 failed，
-                    // 不得再用 completed 覆盖（否则"失败也标绿"）──
-                    QString curStatus = ds->steps[i].toMap()
-                                            .value(QStringLiteral("status")).toString();
-                    if (curStatus != QStringLiteral("failed"))
-                        updateStep(installId, i, QStringLiteral("completed"), 100);
-                    // ── 2026-08-14 修复：完成后清空 detail ──
-                    // 最后一条 installerLibsFileProgress 可能在 done 接近 total 时
-                    // 把 detail 设为"剩余 N"，installerLibsDone 标 completed 后若不
-                    // 清空，UI 会显示"100% + 剩余 N"自相矛盾。completed 步骤的
-                    // detail 应为空。
-                    if (auto* node = ds->pipeline()->stepNode(i))
-                        node->setDetail(QString());
-                    // ── 2026-08-15 重写：loaderStepIdx 复位到安装步骤 ──
-                    // 安装器库完成后的 byteProgress（安装阶段）不应再写安装器库步骤，
-                    // 否则"安装 NeoForge"进行中安装器库仍显示 active。
-                    // ⚠ 2026-08-14 用 nm.startsWith("安装") 匹配——"下载 X 安装器库"
-                    // 不以"安装"开头（"下载"在前），但为统一改用精确查找，杜绝歧义。
-                    const auto evMap = ShadowLauncher::LoaderEvents::forLoader(ds->loaderType);
-                    int installIdx = stepIndexByKey(installId, evMap.installKey);
-                    if (installIdx >= 0)
-                        ds->loaderStepIdx = installIdx;
-                    break;
-                }
+            // 按 key 找依赖库步骤（显示名是"下载 <Loader> 依赖库"，不含"安装器库"）
+            const auto evMap = ShadowLauncher::LoaderEvents::forLoader(ds->loaderType);
+            const int libsIdx = stepIndexByKey(installId, evMap.libsKey);
+            if (libsIdx >= 0) {
+                // ── 2026-08-15：若 installerLibsFailed 已把本步骤标 failed，
+                // 不得再用 completed 覆盖（否则"失败也标绿"）──
+                QString curStatus = ds->steps[libsIdx].toMap()
+                                        .value(QStringLiteral("status")).toString();
+                if (curStatus != QStringLiteral("failed"))
+                    updateStep(installId, libsIdx, QStringLiteral("completed"), 100);
+                // ── 2026-08-14：完成后清空 detail（否则"100% + 剩余 N"自相矛盾）──
+                if (auto* node = ds->pipeline()->stepNode(libsIdx))
+                    node->setDetail(QString());
             }
+            // ── 2026-08-15：loaderStepIdx 复位到安装步骤 ──
+            // 依赖库完成后的 byteProgress（安装阶段）不应再写依赖库步骤。
+            int installIdx = stepIndexByKey(installId, evMap.installKey);
+            if (installIdx >= 0)
+                ds->loaderStepIdx = installIdx;
         });
     connect(ctx->installer, &ModLoaderInstaller::installerLibsFileProgress, this,
         [this, installId](int done, int total) {
             auto* ds = dlSession(installId);
             if (!ds) return;
             const int remain = qMax(0, total - done);
-            for (int i = 0; i < ds->steps.size(); ++i) {
-                if (ds->steps[i].toMap().value(QStringLiteral("name")).toString()
-                        .contains(QStringLiteral("安装器库"))) {
-                    // ── 2026-08-14 修复：改走 updateStep（统一钳制 + 状态机保护）──
-                    // 原实现直接 node->setDetail/setPercentage，绕过 updateStep 的
-                    // percentage 钳制与 completed 状态保护，导致：
-                    //   · done 超 total 时百分比破 100%（主文件 120% 同类问题）
-                    //   · 安装器库已完成（100%）后被迟到的 installerLibsFileProgress
-                    //     把 detail 覆盖成"剩余 X 个文件"（自相矛盾显示）
-                    // 这里通过 updateStep 更新百分比（钳制 0-100；已完成步骤不被
-                    // active 降级），detail 用 StepNode 的 setDetail——但仅在步骤
-                    // 未完成时允许覆盖，已完成步骤保留空 detail。
-                    int pct = (total > 0) ? qBound(0, done * 100 / total, 100) : 0;
-                    // 更新百分比（updateStep 内部会钳制 + 状态保护）
-                    updateStep(installId, i, QStringLiteral("active"), pct, 0, 0);
-                    // detail：仅未完成时更新（已完成步骤不再显示"剩余 X"）
-                    auto* node = ds->pipeline()->stepNode(i);
-                    if (node) {
-                        QString curStatus = ds->steps[i].toMap()
-                                                .value(QStringLiteral("status")).toString();
-                        bool terminal = (curStatus == QStringLiteral("completed")
-                                      || curStatus == QStringLiteral("failed")
-                                      || curStatus == QStringLiteral("skipped"));
-                        if (!terminal) {
-                            node->setDetail(remain > 0
-                                ? QStringLiteral("剩余 %1 个文件").arg(remain)
-                                : QString());
-                        }
-                    }
-                    break;
+            // 按 key 找依赖库步骤（2026-11-06：旧实现按名称"安装器库"匹配，
+            // 步骤显示名早已改成"下载 <Loader> 依赖库"，于是这里永远不命中 →
+            // Forge/NeoForge 的依赖库步骤全程没有百分比）。
+            const auto evMap = ShadowLauncher::LoaderEvents::forLoader(ds->loaderType);
+            const int libsIdx = stepIndexByKey(installId, evMap.libsKey);
+            if (libsIdx < 0) return;
+            // ── 2026-08-14：改走 updateStep（统一钳制 + 状态机保护）──
+            // 原实现直接 node->setDetail/setPercentage，绕过 percentage 钳制与
+            // completed 状态保护（done 超 total 时破 100%；完成步骤被迟到回调改 detail）。
+            int pct = (total > 0) ? qBound(0, done * 100 / total, 100) : 0;
+            updateStep(installId, libsIdx, QStringLiteral("active"), pct, 0, 0);
+            // detail：仅未完成时更新（已完成步骤不再显示"剩余 X"）
+            if (auto* node = ds->pipeline()->stepNode(libsIdx)) {
+                QString curStatus = ds->steps[libsIdx].toMap()
+                                        .value(QStringLiteral("status")).toString();
+                bool terminal = (curStatus == QStringLiteral("completed")
+                              || curStatus == QStringLiteral("failed")
+                              || curStatus == QStringLiteral("skipped"));
+                if (!terminal) {
+                    node->setDetail(remain > 0
+                        ? QStringLiteral("剩余 %1 个文件").arg(remain)
+                        : QString());
                 }
             }
         });

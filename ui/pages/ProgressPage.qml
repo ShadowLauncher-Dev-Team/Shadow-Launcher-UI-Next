@@ -520,9 +520,11 @@ Item {
                     anchors.topMargin: tcard.isFailed ? 30 : 8
                     spacing: 0
                     Repeater {
-                        // 固定 4 个槽位：step 数据每 400ms 变一次。
-                        // 若模型是"数组"，数组一换 delegate 就重建，Canvas 动画会每 400ms 重启 → 抽搐。
-                        model: 4
+                        // 步骤数必须动态：合并安装 = MC 4 步 + 加载器 3~4 步（旧实现写死 4，
+                        // 加载器/ Fabric API 步骤被整段裁掉，用户只看得到 MC 的四步）。
+                        // 步骤数组只在重建步骤时改长度（下载热路径只改字段），delegate 不会反复重建；
+                        // 转圈是 C++ 场景图 item，即使重建也不会打断动画。
+                        model: page.countSteps(steps)
                         delegate: Item {
                             width: stepsCol.width
                             // 只绑原始值（字符串/数字），不绑对象：返回对象会让 QML 认为

@@ -3879,10 +3879,33 @@ void ModLoaderInstaller::fabricStep2_downloadLibraries(const QByteArray& profile
         QString failErr;
         qint64 doneBytes = 0;              // 已完成库字节
         QHash<int, qint64> inflightRecv;   // 在途任务当前 received（实时速度统计用）
+        QHash<int, qint64> inflightTotal;  // 在途文件总字节（Content-Length，未知记 0）
+        int lastStepPct = -1;              // 上一次上报的百分比（去重，最多 101 次）
     };
     auto st = std::make_shared<DlState>();
+    // ── 2026-11-06：字节感知的步骤百分比 ──
+    // 旧实现只在"每个文件下载完成"时发 stepProgress(2, 文件数百分比)：
+    // 7 个依赖库 = 0→14→28…，单个文件下载期间（可能几十 MB）百分比完全不动，
+    // 观感就是"Fabric 进度恒为 0"，直到文件完成才跳一格。
+    // 现在 = (已完成文件数 + 在途文件字节完成度) / 文件数：分母固定为文件数，
+    // 在途多个文件每个最多计 1 份，百分比单调且随字节平滑变化。
+    auto emitStepPct = [this, st]() {
+        const int n = m_fabricLibTasks.size();
+        if (n <= 0) return;
+        qreal units = st->done;
+        for (auto it = st->inflightRecv.cbegin(); it != st->inflightRecv.cend(); ++it) {
+            const qint64 tot = st->inflightTotal.value(it.key(), 0);
+            if (tot > 0)
+                units += qMin<qreal>(1.0, qreal(it.value()) / qreal(tot));
+        }
+        const int pct = qBound(0, int(units * 100.0 / n), 100);
+        if (pct != st->lastStepPct) {
+            st->lastStepPct = pct;
+            emit stepProgress(2, pct);
+        }
+    };
     auto pump = std::make_shared<std::function<void()>>();
-    *pump = [this, st, pump, mirrors, profileData]() {
+    *pump = [this, st, pump, mirrors, profileData, emitStepPct]() {
         if (m_cancelled) {
             emit finished(false, "用户取消");
             m_running = false;
@@ -3897,7 +3920,7 @@ void ModLoaderInstaller::fabricStep2_downloadLibraries(const QByteArray& profile
             QDir().mkpath(QFileInfo(taskSavePath).absolutePath());
 
             auto tryMirror = std::make_shared<std::function<void(int)>>();
-            *tryMirror = [this, taskIdx, taskUrl, taskSavePath, st, pump, tryMirror, mirrors](int idx) {
+            *tryMirror = [this, taskIdx, taskUrl, taskSavePath, st, pump, tryMirror, mirrors, emitStepPct](int idx) {
                 if (m_cancelled) { st->active--; (*pump)(); return; }
                 if (idx >= mirrors.size()) {
                     st->active--;
@@ -3912,35 +3935,37 @@ void ModLoaderInstaller::fabricStep2_downloadLibraries(const QByteArray& profile
                 qCInfo(logLoader) << QStringLiteral("[安装] Fabric 库 #%1 下载中（并发 %2/%3）").arg(taskIdx).arg(st->active).arg(kFabricConcurrency);
                 // rawProgress：实时累计字节 → 卡片速度显示（并发下用全局字节，避免单文件跳变）
                 downloadToFile(url, taskSavePath,
-                    [this, taskIdx, taskSavePath, st, pump, tryMirror, idx](bool ok, const QString& err) {
+                    [this, taskIdx, taskSavePath, st, pump, tryMirror, idx, emitStepPct](bool ok, const QString& err) {
                         if (ok) {
                             const qint64 fileSize = QFileInfo(taskSavePath).size();
                             m_fabricLibBytesDone += fileSize;
                             st->doneBytes += fileSize;
                             st->inflightRecv.remove(taskIdx);
+                            st->inflightTotal.remove(taskIdx);
                             st->done++;
                             st->active--;
-                            const int pct = m_fabricLibTasks.size() > 0
-                                ? static_cast<int>(st->done * 100 / m_fabricLibTasks.size()) : 100;
-                            emit stepProgress(2, pct);
+                            emitStepPct();   // 文件完成 → 进度立即推进（含在途字节部分）
                             emit byteProgress(QFileInfo(taskSavePath).fileName(),
                                               st->doneBytes,
                                               st->doneBytes, 0);
                             (*pump)();
                         } else {
                             st->inflightRecv.remove(taskIdx);
+                            st->inflightTotal.remove(taskIdx);
                             qCInfo(logLoader) << QStringLiteral("[安装] Fabric 库 #%1 下载失败: %2").arg(taskIdx).arg(err);
                             (*tryMirror)(idx + 1);
                         }
                     },
                     false,
-                    [this, taskIdx, taskSavePath, st](qint64 recv, qint64 total) {
+                    [this, taskIdx, taskSavePath, st, emitStepPct](qint64 recv, qint64 total) {
                         if (m_cancelled) return;
                         st->inflightRecv[taskIdx] = recv;
+                        if (total > 0) st->inflightTotal[taskIdx] = total;   // 字节分母
                         qint64 totalRecv = st->doneBytes;
                         for (auto it = st->inflightRecv.begin(); it != st->inflightRecv.end(); ++it)
                             totalRecv += it.value();
                         emitByteProgress(QFileInfo(taskSavePath).fileName(), totalRecv, totalRecv);
+                        emitStepPct();   // 正在下载的字节也要反映到步骤百分比
                     });
             };
             (*tryMirror)(0);
@@ -3952,6 +3977,7 @@ void ModLoaderInstaller::fabricStep2_downloadLibraries(const QByteArray& profile
                 m_running = false;
                 return;
             }
+            emit stepProgress(2, 100);   // 兜底：确保收尾 100%
             emit progressChanged(2, m_totalSteps, "Fabric 依赖库下载完成");
             if (m_parallelMode) { m_fabricProfileData = profileData; emit waitingForMC(); }
             else fabricStep3_writeVersion(profileData);
