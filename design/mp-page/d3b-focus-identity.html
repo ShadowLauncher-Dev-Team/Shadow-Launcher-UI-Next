@@ -3,6 +3,7 @@
 <link rel="stylesheet" href="mp.css">
 <style>
 .stage{display:none}
+body[data-state="rename"] .s-rename{display:flex}
 body[data-state] .stage{display:block}
 .center{height:100%;display:flex}
 .screen{align-items:center;justify-content:center;width:100%}
@@ -37,6 +38,12 @@ body[data-state] .stage{display:block}
 .mrow .lat{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ok)}
 .mrow .lat.mid{color:var(--warn)}
 .mrow .lat.none{color:var(--fg3)}
+.editbox{display:flex;align-items:center;gap:8px;border:1px solid rgba(59,130,246,.5);border-radius:10px;background:#0d1016;padding:0 12px;height:44px}
+.editinp{flex:1;background:transparent;border:0;outline:0;color:var(--fg);font-size:15px;font-family:var(--font)}
+.cnt{font-size:10px;color:var(--fg3);font-family:var(--mono)}
+.editrow{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--fg3);padding:0 2px}
+.editrow b{color:var(--fg2);font-weight:600}
+.editrow .reset{margin-left:auto;color:#7fb0ff;cursor:pointer}
 .mrow.empty{border-style:dashed;background:transparent;color:var(--fg3);font-size:11px;justify-content:center;height:38px}
 </style></head>
 <body data-state="idle">
@@ -197,6 +204,22 @@ body[data-state] .stage{display:block}
         <div class="tip">其他常见：房间已满（5/5）· 未找到联机中心 · 操作过于频繁</div>
       </div></section>
 
+
+      <!-- 11 改昵称 -->
+      <section class="screen s-rename"><div class="focus">
+        <div class="dots"><span class="d on"></span><span class="d"></span><span class="d"></span><span class="d"></span></div>
+        <div class="title">这台设备的昵称</div>
+        <div class="sub">别人在成员列表里看到的就是它。只影响这块牌子，不改设备、不改 MC 账号。</div>
+        <div class="editbox">
+          <input class="editinp" value="影的电脑" maxlength="16" autofocus>
+          <div class="cnt">5 / 16</div>
+        </div>
+        <div class="editrow"><span>设备码</span><b class="mono">A3F1</b><span class="muted" style="margin-left:auto;font-size:10px">固定不变，用于区分同名设备</span></div>
+        <div class="editrow"><span>默认值</span><span class="muted">电脑名 · 取不到时用「玩机者 A3F1」</span><span class="reset">恢复默认</span></div>
+        <div class="acts"><button class="btn primary wide" style="height:40px">保存</button><button class="btn wide">取消</button></div>
+        <div class="tip">房间里改名会即时同步给其他人（需要补后端：房主侧心跳目前只更新延迟，不更新名字）。</div>
+      </div></section>
+
       <!-- 10 房主离开 -->
       <section class="screen s-hostgone"><div class="focus bad">
         <div class="dots"><span class="d on" style="background:var(--err)"></span><span class="d"></span><span class="d"></span><span class="d"></span></div>
@@ -210,7 +233,7 @@ body[data-state] .stage{display:block}
     </div></div>
   </main>
 </div>
-<nav class="switcher"><b>切换状态（也可以按数字键 1–0）</b><button data-go="idle" class="on">空闲</button><button data-go="creating">创建中</button><button data-go="joining">加入中</button><button data-go="discovering">找中心</button><button data-go="waitmc">等开服</button><button data-go="host">房间·房主</button><button data-go="verifying">验证 MC</button><button data-go="guest">房间·访客</button><button data-go="error">错误</button><button data-go="hostgone">房主离开</button></nav>
+<nav class="switcher"><b>切换状态（也可以按数字键 1–0）</b><button data-go="idle" class="on">空闲</button><button data-go="creating">创建中</button><button data-go="joining">加入中</button><button data-go="discovering">找中心</button><button data-go="waitmc">等开服</button><button data-go="host">房间·房主</button><button data-go="verifying">验证 MC</button><button data-go="guest">房间·访客</button><button data-go="error">错误</button><button data-go="hostgone">房主离开</button><button data-go="rename">改昵称</button></nav>
 <script>
 const btns=[...document.querySelectorAll('.switcher button')];
 function go(s){document.body.dataset.state=s;btns.forEach(x=>x.classList.toggle('on',x.dataset.go===s))}
