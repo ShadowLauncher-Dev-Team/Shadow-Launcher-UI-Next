@@ -725,6 +725,15 @@ if(WIN32)
             "$<TARGET_FILE_DIR:ShadowLauncher>/qml/agreements"
         COMMENT "Copying agreement HTMLs for dev-mode..."
     )
+    # 联机隧道（EasyTier）：运行期按 applicationDirPath()/bin/easytier-core.exe 查找，缺它建房直接失败。
+    # 二进制放 vendor/easytier/（2.6.4），构建后同步到 exe 旁的 bin/。
+    add_custom_command(TARGET ShadowLauncher POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:ShadowLauncher>/bin"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/vendor/easytier"
+            "$<TARGET_FILE_DIR:ShadowLauncher>/bin"
+        COMMENT "Copying EasyTier runtime into bin/..."
+    )
 endif()
 
 option(SHADOW_BUILD_UI_NEXT_TESTS "Build next-generation UI foundation tests" OFF)
