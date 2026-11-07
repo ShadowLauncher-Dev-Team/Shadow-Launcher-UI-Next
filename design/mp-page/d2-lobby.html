@@ -193,10 +193,13 @@ body[data-state] .stage{display:block}
     </div>
   </main>
 </div>
-<nav class="switcher"><b>状态切换（设计稿用，10 个状态都在同一个文件里）</b><button data-go="idle" class="on">空闲</button><button data-go="creating">创建中</button><button data-go="joining">加入中</button><button data-go="discovering">找中心</button><button data-go="waitmc">等开服</button><button data-go="host">房间·房主</button><button data-go="verifying">验证 MC</button><button data-go="guest">房间·访客</button><button data-go="error">错误</button><button data-go="hostgone">房主离开</button></nav>
+<nav class="switcher"><b>切换状态（也可以按数字键 1–0）</b><button data-go="idle" class="on">空闲</button><button data-go="creating">创建中</button><button data-go="joining">加入中</button><button data-go="discovering">找中心</button><button data-go="waitmc">等开服</button><button data-go="host">房间·房主</button><button data-go="verifying">验证 MC</button><button data-go="guest">房间·访客</button><button data-go="error">错误</button><button data-go="hostgone">房主离开</button></nav>
 <script>
 const btns=[...document.querySelectorAll('.switcher button')];
 function go(s){document.body.dataset.state=s;btns.forEach(x=>x.classList.toggle('on',x.dataset.go===s))}
 btns.forEach(b=>b.onclick=()=>go(b.dataset.go));
 const q=new URLSearchParams(location.search).get('s'); if(q) go(q);
+// 数字键 1-9 / 0 直接切状态
+const order=btns.map(b=>b.dataset.go);
+addEventListener('keydown',e=>{const n=parseInt(e.key,10);if(!n&&e.key!=='0')return;const i=(e.key==='0'?10:n)-1;if(order[i])go(order[i])});
 </script></body></html>

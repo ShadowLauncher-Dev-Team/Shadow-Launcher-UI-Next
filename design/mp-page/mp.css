@@ -11,7 +11,7 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#05060a;font-family:var(--font);color:var(--fg)}
-body{padding:28px 0 96px;display:flex;flex-direction:column;align-items:center;gap:22px}
+body{padding:62px 0 40px;display:flex;flex-direction:column;align-items:center;gap:22px}
 
 /* ── 窗口外壳 ── */
 .win{width:1100px;height:720px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-win);overflow:hidden;display:flex;box-shadow:0 24px 60px rgba(0,0,0,.55)}
@@ -72,10 +72,13 @@ code.c{font-family:var(--mono);font-size:19px;letter-spacing:1.2px;color:#8fb6f8
 .lat.hard{color:var(--err)}
 
 /* 状态切换器（仅设计稿） */
-.switcher{width:1100px;display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;border:1px dashed #1d2430;border-radius:10px;background:#080a0e}
-.switcher b{font-size:10px;color:var(--fg3);letter-spacing:1px;width:100%;margin-bottom:2px}
-.switcher button{height:26px;padding:0 10px;font-size:11px;border-radius:6px;border:1px solid var(--line2);background:#0c0f14;color:var(--fg2);cursor:pointer;font-family:var(--font)}
-.switcher button.on{background:var(--accent-soft);border-color:rgba(59,130,246,.5);color:#9dc0ff}
+/* 固定顶栏：滚到哪都能切状态 */
+.switcher{position:fixed;top:0;left:0;right:0;z-index:100;width:auto;display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+  padding:9px 16px;background:#07090d;border-bottom:1px solid #1a2130}
+.switcher b{font-size:11px;color:var(--fg2);letter-spacing:.5px;width:auto;margin:0 10px 0 0;white-space:nowrap}
+.switcher button{height:26px;padding:0 11px;font-size:11px;border-radius:6px;border:1px solid var(--line2);background:#0c0f14;color:var(--fg2);cursor:pointer;font-family:var(--font)}
+.switcher button:hover{color:var(--fg);border-color:#39424f}
+.switcher button.on{background:var(--accent-soft);border-color:rgba(59,130,246,.55);color:#9dc0ff}
 .screen{display:none;height:100%}
 body[data-state="idle"] .s-idle{display:flex}
 body[data-state="creating"] .s-creating{display:flex}
