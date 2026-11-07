@@ -246,6 +246,7 @@ void MultiplayerManager::leaveRoom()
 
     setState(Idle, QString());
     setRole(None);
+    emit canRenameChanged();   // role 与 state 都复位了，canRename 才真正变 true
     emit roomCodeChanged();
     emit playersChanged();
 
@@ -474,6 +475,7 @@ void MultiplayerManager::setRole(Role r)
     if (m_role != r) {
         m_role = r;
         emit roleChanged();
+        emit canRenameChanged();   // 角色变了，能不能改名也跟着变
     }
 }
 

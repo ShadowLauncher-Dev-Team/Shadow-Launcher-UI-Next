@@ -17,7 +17,9 @@ Item {
     readonly property string code: (mp && mp.roomCode) ? mp.roomCode : ""
     readonly property string devName: (mp && mp.deviceName) ? mp.deviceName : ""
     readonly property string devCode: (mp && mp.deviceCode) ? mp.deviceCode : ""
-    readonly property bool canRename: mp ? mp.canRename : false
+    // 自己算，不读 backend.canRename：那个属性的 NOTIFY 只有 stateChanged，
+    // leaveRoom() 里先 setIdle 再 setRole(None)，读值会在 role 复位前被缓存成 false 且永不刷新。
+    readonly property bool canRename: page.role === 0 && page.st === 0
     readonly property var members: (mp && mp.players) ? mp.players : []
 
     property string errorText: ""
@@ -33,6 +35,8 @@ Item {
 
     // 阶段点：0 建房/入网 · 1 找中心 · 2 等开服 · 3 已连通
     readonly property int stage: {
+        // 空闲态也要点亮第一格，否则四个点全暗、看着像"没有阶段"
+        if (st === 0) return 0
         if (st === 1) return 0
         if (st === 2) return 1
         if (st === 3 || st === 4 || st === 7) return 2
@@ -138,7 +142,8 @@ Item {
     }
     function openRename() {
         if (!page.canRename) {
-            if (page.toast) page.toast.show("房间里不能改名，请先离开房间")
+            // force：用户主动点击的反馈不能被 toast 的 5 秒同文去重吞掉
+            if (page.toast) page.toast.show("房间里不能改名，请先离开房间", undefined, "warning", true)
             return
         }
         page.renameDraft = page.devName
@@ -150,7 +155,7 @@ Item {
         if (!page.mp) return
         if (page.mp.setDeviceName(renameInput.text)) {
             page.renameOpen = false
-            if (page.toast) page.toast.show("已保存")
+            if (page.toast) page.toast.show("已保存", undefined, "success", true)
         }
     }
 
@@ -664,7 +669,7 @@ Item {
                         text: "复制房间码"
                         onClicked: {
                             if (page.mp) page.mp.copyRoomCode()
-                            if (page.toast) page.toast.show("房间码已复制")
+                            if (page.toast) page.toast.show("房间码已复制", undefined, "success", true)
                         }
                     }
 

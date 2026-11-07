@@ -97,7 +97,7 @@ public:
     // deviceName = 用户可改的昵称（存 QSettings，跟设备走）；deviceCode = machine_id 前 4 位，固定，用于区分同名设备。
     Q_PROPERTY(QString deviceName READ deviceName NOTIFY deviceNameChanged)
     Q_PROPERTY(QString deviceCode READ deviceCode NOTIFY deviceCodeChanged)
-    Q_PROPERTY(bool canRename READ canRename NOTIFY stateChanged)
+    Q_PROPERTY(bool canRename READ canRename NOTIFY canRenameChanged)
 
     // Force recalculation of connection difficulty (host: queries EasyTier for local NAT)
     Q_INVOKABLE void requestDifficultyUpdate();
@@ -111,6 +111,7 @@ signals:
     void minecraftPortReady(int port);
     void errorOccurred(const QString& msg);
     void playerNameChanged();
+    void canRenameChanged();
     void deviceNameChanged();
     void deviceCodeChanged();
     void connectionDifficultyChanged();

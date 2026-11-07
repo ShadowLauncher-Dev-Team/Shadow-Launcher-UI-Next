@@ -40,8 +40,9 @@ Item {
         root._recent = m
         return prev > 0 && (now - prev) < 5000
     }
-    function show(message, duration, style) {
-        if (root._seenRecently(message)) return
+    // force=true：用户主动点击触发的反馈，绕开"5 秒同文去重"（否则连点两次第二次静默）
+    function show(message, duration, style, force) {
+        if (force !== true && root._seenRecently(message)) return
         root.add(message, duration, style, null)
     }
 
