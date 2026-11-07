@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>联机页 · D3 聚焦</title>
+<link rel="stylesheet" href="mp.css">
+<style>
+/* D3 聚焦：单列居中 560，状态用顶部四点 */
+.stage{display:none}
+body[data-state] .stage{display:block}
+.center{height:100%;display:flex}
+.screen{align-items:center;justify-content:center;width:100%}
+.focus{width:560px;border-radius:14px;border:1px solid var(--line2);background:radial-gradient(90% 120% at 50% 0%,rgba(59,130,246,.10),rgba(0,0,0,0) 60%),#0b0d12;padding:26px 30px 22px;display:flex;flex-direction:column;gap:14px}
+.focus.bad{border-color:rgba(239,68,68,.38);background:radial-gradient(90% 120% at 50% 0%,rgba(239,68,68,.10),rgba(0,0,0,0) 60%),#0b0d12}
+.dots{display:flex;align-items:center;gap:6px}
+.dots .d{height:3px;flex:1;border-radius:2px;background:#181d26}
+.dots .d.on{background:var(--accent)}
+.dots .d.done{background:rgba(59,130,246,.45)}
+.title{font-size:19px;font-weight:600;letter-spacing:.4px}
+.sub{font-size:12px;color:var(--fg3);line-height:1.7}
+.codebig{font-family:var(--mono);font-size:26px;letter-spacing:2.4px;color:#a9c8ff;font-weight:600;text-align:center;padding:10px 0 4px}
+.codebig.ghost{color:#39424f}
+.avas{display:flex;gap:8px;align-items:center;justify-content:center;padding:4px 0}
+.av{width:38px;height:38px;border-radius:10px;border:1px solid var(--line2);background:#10141b;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--fg2)}
+.av.host{border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.10);color:var(--warn)}
+.av.me{border-color:rgba(59,130,246,.5);background:var(--accent-soft);color:#9dc0ff}
+.av.empty{border-style:dashed;color:#333c48;font-size:11px}
+.acts{display:flex;flex-direction:column;gap:8px;margin-top:2px}
+.linkrow{display:flex;justify-content:center;gap:16px;font-size:11px;color:var(--fg3)}
+.linkrow span{text-decoration:underline;text-underline-offset:3px}
+.inp{width:100%;height:36px;background:#0d1016;border:1px solid var(--line2);border-radius:9px;color:#a9c8ff;padding:0 12px;font-family:var(--mono);font-size:13px;letter-spacing:1px}
+.tip{font-size:10px;color:#3f4753;text-align:center;line-height:1.6;margin-top:4px}
+.meta{display:flex;justify-content:center;gap:14px;font-size:11px;color:var(--fg3)}
+</style></head>
+<body data-state="idle">
+<div class="win">
+  <aside class="side"><div class="brand">SHADOW</div><div class="nav"><span class="ic"></span>启动</div><div class="nav"><span class="ic"></span>下载</div><div class="nav on"><span class="bar-left"></span><span class="ic"></span>联机</div><div class="nav"><span class="ic"></span>统计</div><div class="nav"><span class="ic"></span>设置</div><div class="sep"></div><div class="nav"><span class="ic"></span>下载进度</div><div class="nav"><span class="ic"></span>帮助文档</div><div class="nav"><span class="ic"></span>实用网站</div></aside>
+  <main class="main">
+    <header class="top"><h1>联机</h1><div class="right"><span class="chip"><span class="k"></span>xiaole1173</span></div></header>
+    <div class="stage"><div class="center">
+
+      <!-- 1 空闲 -->
+      <section class="screen s-idle"><div class="focus">
+        <div class="dots"><span class="d on"></span><span class="d"></span><span class="d"></span><span class="d"></span></div>
+        <div class="title">和朋友一起玩</div>
+        <div class="sub">房主在自己游戏里「对局域网开放」，其他人凭房间码加入。<br>不用公网 IP、不用开端口，最多 5 人。</div>
+        <div class="acts"><button class="btn primary wide" style="height:40px">创建房间</button></div>
+        <div style="display:flex;gap:8px"><input class="inp" placeholder="粘贴房间码  U/0000-0000-0000-0000"><button class="btn" style="height:36px;flex:0 0 78px">加入</button></div>
+        <div class="tip">使用联机服务，即表示您承诺，在多人联机全过程中，您将严格遵守您所在国家或地区的全部法律法规。</div>
+      </div></section>
+
+      <!-- 2 创建中 -->
+      <section class="screen s-creating"><div class="focus">
+        <div class="dots"><span class="d on"></span><span class="d"></span><span class="d"></span><span class="d"></span></div>
+        <div class="title">正在创建房间…</div>
+        <div class="sub">生成房间码并启动隧道，通常 2–5 秒。</div>
+        <div class="bar"><i></i></div>
+        <div class="avas"><div class="av host">房</div><div class="av empty">2</div><div class="av empty">3</div><div class="av empty">4</div><div class="av empty">5</div></div>
+        <div class="acts"><button class="btn wide">取消</button></div>
+      </div></section>
+
+      <!-- 3 加入中 -->
+      <section class="screen s-joining"><div class="focus">
+        <div class="dots"><span class="d done"></span><span class="d on"></span><span class="d"></span><span class="d"></span></div>
+        <div class="title">正在加入联机网络…</div>
+        <div class="codebig" style="font-size:19px;padding-top:0">U/8F3K-2QW1-7ZP4-9XLK</div>
+        <div class="bar"><i></i></div>
+        <div class="sub" style="text-align:center">正在建立到房主的隧道。</div>
+        <div class="acts"><button class="btn wide">取消</button></div>
+      </div></section>
+
+      <!-- 4 找中心 -->
+      <section class="screen s-discovering"><div class="focus">
+        <div class="dots"><span class="d done"></span><span class="d done"></span><span class="d on"></span><span class="d"></span></div>
+        <div class="title">正在查找联机中心…</div>
+        <div class="codebig" style="font-size:19px;padding-top:0">U/8F3K-2QW1-7ZP4-9XLK</div>
+        <div class="bar"><i></i></div>
+        <div class="sub" style="text-align:center">房主刚创建房间时可能需要多等几秒。<br>一直找不到，多半是房主那边还没建好或已关闭。</div>
+        <div class="acts"><button class="btn wide">取消</button></div>
+      </div></section>
+
+      <!-- 5 等开服 -->
+      <section class="screen s-waitmc"><div class="focus">
+        <div class="dots"><span class="d done"></span><span class="d on"></span><span class="d"></span><span class="d"></span></div>
+        <div class="title">房间已建好 · 还差游戏里开服</div>
+        <div class="codebig">U/8F3K-2QW1-7ZP4-9XLK</div>
+        <div class="meta"><span class="badge host">房主</span><span class="badge easy">直连</span><span class="mono" style="color:var(--warn)">1:42 后自动关闭</span></div>
+        <div class="sub" style="text-align:center;color:var(--fg2)">请打开游戏，进入单人世界后按 <span class="mono" style="color:#8fb6f8">Esc → 对局域网开放</span><br>开好后会自动识别，不用填端口。</div>
+        <div class="avas"><div class="av host">房</div><div class="av empty">2</div><div class="av empty">3</div><div class="av empty">4</div><div class="av empty">5</div></div>
+        <div class="acts"><button class="btn primary wide" style="height:40px">复制房间码</button><button class="btn wide">关闭房间</button></div>
+      </div></section>
+
+      <!-- 6 房主房间 -->
+      <section class="screen s-host"><div class="focus">
+        <div class="dots"><span class="d done"></span><span class="d done"></span><span class="d done"></span><span class="d on"></span></div>
+        <div class="title">房间在线 · 3/5</div>
+        <div class="codebig">U/8F3K-2QW1-7ZP4-9XLK</div>
+        <div class="meta"><span>世界「新的世界」</span><span>端口 25565</span><span>已运行 12:36</span></div>
+        <div class="avas">
+          <div class="av host" title="房主">房</div><div class="av" title="阿澈 38ms">阿</div><div class="av" title="Linsanity 128ms">L</div>
+          <div class="av empty">4</div><div class="av empty">5</div>
+        </div>
+        <div class="sub" style="text-align:center">朋友在「多人游戏 → 局域网世界」里能直接看到，无需输入 IP。</div>
+        <div class="acts"><button class="btn primary wide" style="height:40px">复制房间码</button><button class="btn wide">关闭房间</button></div>
+      </div></section>
+
+      <!-- 7 验证 MC -->
+      <section class="screen s-verifying"><div class="focus">
+        <div class="dots"><span class="d done"></span><span class="d done"></span><span class="d done"></span><span class="d on"></span></div>
+        <div class="title">正在验证 MC 连接…</div>
+        <div class="sub" style="text-align:center">第 <span class="mono">3</span> / 8 次尝试 · 8 次不过也会放行，先进游戏再看。</div>
+        <div class="bar"><i></i></div>
+        <div class="avas"><div class="av host">房</div><div class="av me">我</div><div class="av empty">3</div><div class="av empty">4</div><div class="av empty">5</div></div>
+        <div class="acts"><button class="btn wide">取消</button></div>
+      </div></section>
+
+      <!-- 8 访客房间 -->
+      <section class="screen s-guest"><div class="focus">
+        <div class="dots"><span class="d done"></span><span class="d done"></span><span class="d done"></span><span class="d on"></span></div>
+        <div class="title">已加入 · xiaole1173 的房间</div>
+        <div class="codebig">U/8F3K-2QW1-7ZP4-9XLK</div>
+        <div class="meta"><span class="badge guest">访客</span><span class="badge mid">简单</span><span class="mono" style="color:var(--ok)">42ms</span></div>
+        <div class="sub" style="text-align:center;color:var(--fg2)">打开 Minecraft → 多人游戏 → 局域网世界，直接进去即可。</div>
+        <div class="avas"><div class="av host">房</div><div class="av me">我</div><div class="av">L</div><div class="av empty">4</div><div class="av empty">5</div></div>
+        <div class="acts"><button class="btn wide" style="height:40px">离开房间</button></div>
+      </div></section>
+
+      <!-- 9 错误 -->
+      <section class="screen s-error"><div class="focus bad">
+        <div class="dots"><span class="d on" style="background:var(--err)"></span><span class="d"></span><span class="d"></span><span class="d"></span></div>
+        <div class="title" style="color:#fca5a5">房间码无效</div>
+        <div class="codebig ghost" style="font-size:19px">U/8F3K-2QW1-7ZP4-9XL</div>
+        <div class="sub" style="text-align:center">少了 1 位，或者校验位不对。<br>连续 3 次失败会冷却 60 秒。</div>
+        <div class="acts"><button class="btn primary wide" style="height:40px">重新输入</button><button class="btn wide">关闭</button></div>
+        <div class="tip">其他常见：房间已满（5/5）· 未找到联机中心 · 操作过于频繁</div>
+      </div></section>
+
+      <!-- 10 房主离开 -->
+      <section class="screen s-hostgone"><div class="focus bad">
+        <div class="dots"><span class="d on" style="background:var(--err)"></span><span class="d"></span><span class="d"></span><span class="d"></span></div>
+        <div class="title" style="color:#fca5a5">房主已离开</div>
+        <div class="codebig ghost" style="font-size:19px">U/8F3K-2QW1-7ZP4-9XLK</div>
+        <div class="sub" style="text-align:center">房间已自动退出。可以重新加入，或者自己开一间。</div>
+        <div class="acts"><button class="btn primary wide" style="height:40px">重新加入</button><button class="btn wide">创建房间</button></div>
+        <div class="tip">15 秒收不到房主心跳就判定离开，不需要手动退出。</div>
+      </div></section>
+
+    </div></div>
+  </main>
+</div>
+<nav class="switcher"><b>状态切换（设计稿用，10 个状态都在同一个文件里）</b><button data-go="idle" class="on">空闲</button><button data-go="creating">创建中</button><button data-go="joining">加入中</button><button data-go="discovering">找中心</button><button data-go="waitmc">等开服</button><button data-go="host">房间·房主</button><button data-go="verifying">验证 MC</button><button data-go="guest">房间·访客</button><button data-go="error">错误</button><button data-go="hostgone">房主离开</button></nav>
+<script>
+const btns=[...document.querySelectorAll('.switcher button')];
+function go(s){document.body.dataset.state=s;btns.forEach(x=>x.classList.toggle('on',x.dataset.go===s))}
+btns.forEach(b=>b.onclick=()=>go(b.dataset.go));
+const q=new URLSearchParams(location.search).get('s'); if(q) go(q);
+</script></body></html>

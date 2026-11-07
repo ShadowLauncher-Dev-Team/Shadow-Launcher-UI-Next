@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>联机页 · D1 控制台</title>
+<link rel="stylesheet" href="mp.css">
+<style>
+/* D1 控制台：左 300 状态栏 + 右主区 */
+.stage{display:none}
+body[data-state] .stage{display:block}
+.grid{display:grid;grid-template-columns:300px 1fr;gap:16px;height:100%}
+.colL{display:flex;flex-direction:column;gap:10px}
+.colR{display:flex;flex-direction:column;gap:10px;min-width:0}
+.roleline{display:flex;align-items:center;gap:8px}
+.st{font-size:13px;color:var(--fg);font-weight:600}
+.stsub{font-size:11px;color:var(--fg3);line-height:1.6}
+.codecard{padding:14px 16px}
+.codecard .lab{font-size:10px;letter-spacing:1px;color:var(--fg3);margin-bottom:6px}
+.codecard .row{display:flex;align-items:center;gap:8px}
+.seats{display:flex;flex-direction:column;gap:8px}
+.seats h3{margin:0 0 2px;font-size:12px;color:var(--fg2);font-weight:600}
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #10141a}
+.step:last-child{border-bottom:0}
+.step .n{width:16px;height:16px;border-radius:8px;border:1px solid var(--line2);font-size:9px;display:flex;align-items:center;justify-content:center;color:var(--fg3);flex:0 0 auto;margin-top:1px}
+.step.on .n{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.step.done .n{border-color:rgba(74,222,128,.5);color:var(--ok)}
+.step .t{font-size:12px;color:var(--fg3)}
+.step.on .t{color:var(--fg)}
+.step .d{font-size:11px;color:#39424f;margin-top:2px;line-height:1.5}
+.big{padding:16px 18px;border-radius:var(--r-md);border:1px solid rgba(59,130,246,.35);background:linear-gradient(180deg,rgba(59,130,246,.10),rgba(59,130,246,.03))}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--fg3);text-align:center}
+.foot{margin-top:auto;font-size:10px;color:#3f4753;line-height:1.6}
+.errbox{border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.06)}
+</style></head>
+<body data-state="idle">
+<div class="win">
+  <aside class="side"><div class="brand">SHADOW</div>
+      <div class="nav"><span class="ic"></span>启动</div>
+      <div class="nav"><span class="ic"></span>下载</div>
+      <div class="nav on"><span class="bar-left"></span><span class="ic"></span>联机</div>
+      <div class="nav"><span class="ic"></span>统计</div>
+      <div class="nav"><span class="ic"></span>设置</div>
+      <div class="sep"></div>
+      <div class="nav"><span class="ic"></span>下载进度</div>
+      <div class="nav"><span class="ic"></span>帮助文档</div>
+      <div class="nav"><span class="ic"></span>实用网站</div>
+  </aside>
+  <main class="main">
+    <header class="top"><h1>联机</h1>
+      <div class="right"><span class="chip"><span class="k"></span>昵称 xiaole1173</span></div>
+    </header>
+
+    <div class="stage">
+      <!-- ── 1 空闲 ── -->
+      <section class="screen s-idle"><div class="grid">
+        <div class="colL">
+          <div class="card tight">
+            <div class="kicker">开始</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+              <button class="btn primary wide">创建房间（我是房主）</button>
+              <button class="btn wide">加入房间…</button>
+            </div>
+            <div class="hint" style="margin-top:10px">房主在自己游戏里「对局域网开放」，其他人凭房间码加入，最多 5 人。</div>
+          </div>
+          <div class="card tight">
+            <div class="lab" style="font-size:10px;letter-spacing:1px;color:var(--fg3);margin-bottom:6px">房间码</div>
+            <input class="inp mono" placeholder="U/0000-0000-0000-0000" style="width:100%;height:34px;background:#0d1016;border:1px solid var(--line2);border-radius:8px;color:#8fb6f8;padding:0 10px;font-family:var(--mono);font-size:13px">
+            <button class="btn wide" style="margin-top:8px">加入</button>
+          </div>
+        </div>
+        <div class="colR">
+          <div class="empty">
+            <div style="font-size:13px;color:var(--fg2)">还没有房间</div>
+            <div class="hint" style="max-width:420px">创建房间后你会拿到一个房间码，发给朋友即可。<br>不需要公网 IP、不需要开端口——走隧道，能连就能玩。</div>
+          </div>
+          <div class="foot">使用联机服务，即表示您承诺，在多人联机全过程中，您将严格遵守您所在国家或地区的全部法律法规。您不得将多人联机功能用于除多人联机外的其他用途。</div>
+        </div>
+      </div></section>
+
+      <!-- ── 2 创建中 ── -->
+      <section class="screen s-creating"><div class="grid">
+        <div class="colL">
+          <div class="card tight">
+            <div class="roleline"><span class="dot live"></span><span class="badge host">房主</span></div>
+            <div class="st" style="margin-top:8px">正在创建房间…</div>
+            <div class="bar" style="margin-top:10px"><i></i></div>
+            <div class="hint" style="margin-top:8px">正在生成房间码并启动隧道，通常 2–5 秒。</div>
+          </div>
+          <button class="btn wide">取消</button>
+        </div>
+        <div class="colR">
+          <div class="card tight">
+            <div class="seats"><h3>进度</h3>
+              <div class="steps">
+                <div class="step on"><span class="n">1</span><div><div class="t">生成房间码</div><div class="d">U/NNNN-NNNN-SSSS-SSSS，带校验位</div></div></div>
+                <div class="step"><span class="n">2</span><div><div class="t">启动联机隧道</div></div></div>
+                <div class="step"><span class="n">3</span><div><div class="t">启动房间服务</div></div></div>
+                <div class="step"><span class="n">4</span><div><div class="t">等待你在游戏里开服</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></section>
+
+      <!-- ── 3 加入中 ── -->
+      <section class="screen s-joining"><div class="grid">
+        <div class="colL">
+          <div class="card tight">
+            <div class="roleline"><span class="dot live"></span><span class="badge guest">访客</span></div>
+            <div class="st" style="margin-top:8px">正在加入联机网络…</div>
+            <div class="bar" style="margin-top:10px"><i></i></div>
+            <div class="codecard" style="padding:10px 0 0"><div class="lab">目标房间</div><code class="c" style="font-size:15px">U/8F3K-2QW1-7ZP4-9XLK</code></div>
+          </div>
+          <button class="btn wide">取消</button>
+        </div>
+        <div class="colR">
+          <div class="card tight steps">
+            <h3>进度</h3>
+            <div class="step done"><span class="n">✓</span><div><div class="t">校验房间码</div></div></div>
+            <div class="step on"><span class="n">2</span><div><div class="t">加入联机网络</div><div class="d">建立到房主的隧道</div></div></div>
+            <div class="step"><span class="n">3</span><div><div class="t">查找联机中心</div></div></div>
+            <div class="step"><span class="n">4</span><div><div class="t">连接并验证</div></div></div>
+          </div>
+        </div>
+      </div></section>
+
+      <!-- ── 4 查找/连接中心 ── -->
+      <section class="screen s-discovering"><div class="grid">
+        <div class="colL">
+          <div class="card tight">
+            <div class="roleline"><span class="dot live"></span><span class="badge guest">访客</span></div>
+            <div class="st" style="margin-top:8px">正在查找联机中心…</div>
+            <div class="bar" style="margin-top:10px"><i></i></div>
+            <div class="hint" style="margin-top:8px">如果房主刚创建房间，可能需要多等几秒。</div>
+          </div>
+          <button class="btn wide">取消</button>
+        </div>
+        <div class="colR">
+          <div class="card tight steps">
+            <div class="step done"><span class="n">✓</span><div><div class="t">校验房间码</div></div></div>
+            <div class="step done"><span class="n">✓</span><div><div class="t">加入联机网络</div></div></div>
+            <div class="step on"><span class="n">3</span><div><div class="t">查找联机中心</div><div class="d">scaffolding-mc-server-*</div></div></div>
+            <div class="step"><span class="n">4</span><div><div class="t">连接并验证</div></div></div>
+          </div>
+        </div>
+      </div></section>
+
+      <!-- ── 5 等 MC 开服（房主）── -->
+      <section class="screen s-waitmc"><div class="grid">
+        <div class="colL">
+          <div class="card codecard">
+            <div class="roleline"><span class="dot warn"></span><span class="badge host">房主</span><span class="badge easy">直连</span></div>
+            <div class="lab" style="margin-top:10px">房间码（发给朋友）</div>
+            <div class="row"><code class="c">U/8F3K-2QW1-7ZP4-9XLK</code></div>
+            <div style="display:flex;gap:6px;margin-top:10px"><button class="btn sm">复制</button><button class="btn sm ghost">换一个</button></div>
+          </div>
+          <button class="btn wide">关闭房间</button>
+        </div>
+        <div class="colR">
+          <div class="big">
+            <div class="kicker">还差一步</div>
+            <div style="font-size:17px;font-weight:600;margin-top:6px">请打开游戏，进入单人世界后按 <span class="mono" style="color:#8fb6f8">Esc → 对局域网开放</span></div>
+            <div class="hint" style="margin-top:8px">开好之后这里会自动识别，不需要填端口。剩余 <span class="mono" style="color:var(--warn)">1:42</span> 没检测到就自动关闭房间。</div>
+            <div class="bar" style="margin-top:14px"><i></i></div>
+          </div>
+          <div class="seats"><h3>在线成员 (1/5)</h3>
+            <div class="seat filled"><div class="avatar host">房</div><div style="flex:1">xiaole1173 <span class="badge host" style="margin-left:6px">房主</span></div><span class="lat">—</span></div>
+            <div class="seat">等待好友加入…</div><div class="seat">空位</div><div class="seat">空位</div>
+          </div>
+        </div>
+      </div></section>
+
+      <!-- ── 6 房间在线（房主）── -->
+      <section class="screen s-host"><div class="grid">
+        <div class="colL">
+          <div class="card codecard">
+            <div class="roleline"><span class="dot ok"></span><span class="badge host">房主</span><span class="badge easy">直连</span></div>
+            <div class="lab" style="margin-top:10px">房间码（发给朋友）</div>
+            <div class="row"><code class="c">U/8F3K-2QW1-7ZP4-9XLK</code></div>
+            <div style="display:flex;gap:6px;margin-top:10px"><button class="btn sm">复制</button></div>
+            <div class="hint" style="margin-top:10px">世界：<span style="color:var(--fg2)">新的世界</span> · 端口 <span class="mono">25565</span></div>
+          </div>
+          <button class="btn wide">关闭房间</button>
+        </div>
+        <div class="colR">
+          <div class="seats"><h3>在线成员 (3/5)</h3>
+            <div class="seat filled"><div class="avatar host">房</div><div style="flex:1">xiaole1173 <span class="badge host" style="margin-left:6px">房主</span></div><span class="lat">—</span></div>
+            <div class="seat filled"><div class="avatar">阿</div><div style="flex:1">阿澈 <span class="muted" style="font-size:10px">shadow</span></div><span class="lat">38ms</span></div>
+            <div class="seat filled"><div class="avatar">L</div><div style="flex:1">Linsanity <span class="muted" style="font-size:10px">shadow</span></div><span class="lat mid">128ms</span></div>
+            <div class="seat">空位</div><div class="seat">空位</div>
+          </div>
+          <div class="hint">朋友在游戏里「多人游戏 → 加入服务器」就能看到这个房间，无需输入 IP。</div>
+        </div>
+      </div></section>
+
+      <!-- ── 7 验证 MC（访客）── -->
+      <section class="screen s-verifying"><div class="grid">
+        <div class="colL">
+          <div class="card tight">
+            <div class="roleline"><span class="dot live"></span><span class="badge guest">访客</span></div>
+            <div class="st" style="margin-top:8px">正在验证 MC 连接…</div>
+            <div class="bar" style="margin-top:10px"><i></i></div>
+            <div class="hint" style="margin-top:8px">第 <span class="mono">3</span> / 8 次尝试。8 次不过也会放行，与 Terracotta 一致。</div>
+          </div>
+          <button class="btn wide">取消</button>
+        </div>
+        <div class="colR">
+          <div class="card tight steps">
+            <div class="step done"><span class="n">✓</span><div><div class="t">校验房间码</div></div></div>
+            <div class="step done"><span class="n">✓</span><div><div class="t">加入联机网络</div></div></div>
+            <div class="step done"><span class="n">✓</span><div><div class="t">连接联机中心</div></div></div>
+            <div class="step on"><span class="n">4</span><div><div class="t">验证 MC 连接</div><div class="d">0xFE 握手，最多 8 次</div></div></div>
+          </div>
+        </div>
+      </div></section>
+
+      <!-- ── 8 房间在线（访客）── -->
+      <section class="screen s-guest"><div class="grid">
+        <div class="colL">
+          <div class="card codecard">
+            <div class="roleline"><span class="dot ok"></span><span class="badge guest">访客</span><span class="badge mid">简单</span></div>
+            <div class="lab" style="margin-top:10px">已加入</div>
+            <div style="font-size:15px;font-weight:600">xiaole1173 的房间</div>
+            <div class="hint" style="margin-top:6px">房间码 <span class="mono">U/8F3K-2QW1-7ZP4-9XLK</span></div>
+            <div class="hint" style="margin-top:8px">延迟 <span class="mono" style="color:var(--ok)">42ms</span></div>
+          </div>
+          <button class="btn wide">离开房间</button>
+        </div>
+        <div class="colR">
+          <div class="big">
+            <div class="kicker">已经可以玩了</div>
+            <div style="font-size:16px;font-weight:600;margin-top:6px">打开 Minecraft → 多人游戏 → 局域网世界</div>
+            <div class="hint" style="margin-top:8px">启动器已经在你的机器上伪造了一个局域网世界，直接点进去即可，不用填 IP。</div>
+          </div>
+          <div class="seats"><h3>在线成员 (3/5)</h3>
+            <div class="seat filled"><div class="avatar host">房</div><div style="flex:1">xiaole1173 <span class="badge host" style="margin-left:6px">房主</span></div><span class="lat">42ms</span></div>
+            <div class="seat filled"><div class="avatar">我</div><div style="flex:1">xiaole1173 的访客（你）</div><span class="lat">—</span></div>
+            <div class="seat filled"><div class="avatar">L</div><div style="flex:1">Linsanity</div><span class="lat mid">126ms</span></div>
+            <div class="seat">空位</div><div class="seat">空位</div>
+          </div>
+        </div>
+      </div></section>
+
+      <!-- ── 9 错误 ── -->
+      <section class="screen s-error"><div class="grid">
+        <div class="colL">
+          <div class="card tight errbox">
+            <div class="roleline"><span class="dot err"></span><span class="st">房间码无效</span></div>
+            <div class="hint" style="margin-top:8px">请检查后重试。连续 3 次失败会冷却 60 秒。</div>
+            <div style="display:flex;gap:8px;margin-top:12px"><button class="btn primary" style="flex:1">重新输入</button><button class="btn ghost">关闭</button></div>
+          </div>
+        </div>
+        <div class="colR">
+          <div class="card tight">
+            <div class="lab" style="font-size:10px;letter-spacing:1px;color:var(--fg3);margin-bottom:8px">常见错误</div>
+            <div class="hint" style="line-height:2">
+              · <span style="color:var(--fg2)">房间码无效</span> — 位数不足或校验位不对<br>
+              · <span style="color:var(--fg2)">房间已满（5/5）</span> — 房主那边人满了<br>
+              · <span style="color:var(--fg2)">未找到联机中心</span> — 房主还没创建成功，或已关闭<br>
+              · <span style="color:var(--fg2)">操作过于频繁</span> — 冷却中，等 60 秒
+            </div>
+          </div>
+        </div>
+      </div></section>
+
+      <!-- ── 10 房主离开 ── -->
+      <section class="screen s-hostgone"><div class="grid">
+        <div class="colL">
+          <div class="card tight errbox">
+            <div class="roleline"><span class="dot err"></span><span class="st">房主已离开</span></div>
+            <div class="hint" style="margin-top:8px">房间已自动退出。可以重新加入，或自己开一间。</div>
+            <div style="display:flex;gap:8px;margin-top:12px"><button class="btn primary" style="flex:1">重新加入</button><button class="btn ghost">创建房间</button></div>
+          </div>
+        </div>
+        <div class="colR">
+          <div class="empty"><div style="font-size:13px;color:var(--fg2)">已回到空闲状态</div><div class="hint">刚才的房间 <span class="mono">U/8F3K-…</span> 已失效。</div></div>
+        </div>
+      </div></section>
+    </div>
+  </main>
+</div>
+<nav class="switcher"><b>状态切换（设计稿用，10 个状态都在同一个文件里）</b><button data-go="idle" class="on">空闲</button><button data-go="creating">创建中</button><button data-go="joining">加入中</button><button data-go="discovering">找中心</button><button data-go="waitmc">等开服</button><button data-go="host">房间·房主</button><button data-go="verifying">验证 MC</button><button data-go="guest">房间·访客</button><button data-go="error">错误</button><button data-go="hostgone">房主离开</button></nav>
+<script>
+const btns=[...document.querySelectorAll('.switcher button')];
+function go(s){document.body.dataset.state=s;btns.forEach(x=>x.classList.toggle('on',x.dataset.go===s))}
+btns.forEach(b=>b.onclick=()=>go(b.dataset.go));
+const q=new URLSearchParams(location.search).get('s'); if(q) go(q);
+</script>
+</body></html>

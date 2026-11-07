@@ -1,0 +1,89 @@
+/* Shadow Launcher · 联机页设计稿 · 共用样式（对齐 ui/Theme.qml 令牌） */
+:root{
+  --bg:#08090d; --sidebar:#0a0b0f; --line:#14171d; --line2:#262b35;
+  --fg:#e8ebf2; --fg2:#98a1ae; --fg3:#5d6673;
+  --accent:#3b82f6; --accent-dim:#1d4ed8; --accent-soft:rgba(59,130,246,.12);
+  --ok:#4ade80; --warn:#f59e0b; --err:#ef4444;
+  --r-sm:8px; --r-md:10px; --r-win:12px;
+  --side-w:208px; --top-h:52px; --pad-l:64px; --pad-r:104px;
+  --font:"Microsoft YaHei UI","Segoe UI",system-ui,sans-serif;
+  --mono:"Cascadia Mono","Consolas",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#05060a;font-family:var(--font);color:var(--fg)}
+body{padding:28px 0 96px;display:flex;flex-direction:column;align-items:center;gap:22px}
+
+/* ── 窗口外壳 ── */
+.win{width:1100px;height:720px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-win);overflow:hidden;display:flex;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+.side{width:var(--side-w);flex:0 0 var(--side-w);background:var(--sidebar);border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:2px}
+.brand{font-size:15px;font-weight:700;letter-spacing:3px;color:#c9d1de;padding:10px 12px 18px}
+.nav{display:flex;align-items:center;gap:10px;height:34px;padding:0 12px;border-radius:var(--r-sm);color:var(--fg2);font-size:12px}
+.nav .ic{width:14px;height:14px;border:1.5px solid currentColor;border-radius:3px;opacity:.75}
+.nav.on{background:#0f1218;color:var(--fg)}
+.nav .bar-left{position:absolute;margin-left:-10px;width:2px;height:18px;background:var(--accent);border-radius:2px}
+.sep{height:1px;background:var(--line);margin:10px 12px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.top{height:var(--top-h);flex:0 0 var(--top-h);display:flex;align-items:center;padding:0 var(--pad-r) 0 var(--pad-l);gap:14px;border-bottom:1px solid transparent}
+.top h1{margin:0;font-size:19px;font-weight:700;letter-spacing:1px}
+.top .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.chip{height:26px;padding:0 10px;border:1px solid var(--line2);border-radius:7px;display:flex;align-items:center;gap:7px;font-size:11px;color:var(--fg2)}
+.chip .k{width:6px;height:6px;border-radius:3px;background:var(--ok)}
+.stage{flex:1;min-height:0;padding:6px var(--pad-r) 18px var(--pad-l);overflow:hidden}
+
+/* ── 通用块 ── */
+.card{background:#0b0d12;border:1px solid var(--line2);border-radius:var(--r-md)}
+.card.tight{padding:14px 18px}
+.hint{font-size:11px;color:var(--fg3);line-height:1.6}
+.mono{font-family:var(--mono)}
+.kicker{font-size:10px;letter-spacing:1.6px;color:var(--accent);font-weight:600}
+.muted{color:var(--fg3)}
+.dim{color:var(--fg2)}
+.btn{height:34px;padding:0 16px;border-radius:8px;border:1px solid var(--line2);background:#101318;color:var(--fg);font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:var(--font)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.ghost{background:transparent}
+.btn.sm{height:26px;padding:0 10px;font-size:11px;border-radius:6px}
+.btn.wide{width:100%}
+.dot{width:8px;height:8px;border-radius:4px;background:var(--fg3);flex:0 0 auto}
+.dot.ok{background:var(--ok);box-shadow:0 0 0 3px rgba(74,222,128,.14)}
+.dot.warn{background:var(--warn);box-shadow:0 0 0 3px rgba(245,158,11,.14)}
+.dot.err{background:var(--err);box-shadow:0 0 0 3px rgba(239,68,68,.14)}
+.dot.live{background:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,.16)}
+.badge{height:20px;padding:0 7px;border-radius:5px;font-size:10px;display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line2);color:var(--fg2)}
+.badge.host{color:var(--warn);border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.10)}
+.badge.guest{color:var(--ok);border-color:rgba(74,222,128,.30);background:rgba(74,222,128,.10)}
+.badge.easy{color:var(--ok);border-color:rgba(74,222,128,.30);background:rgba(74,222,128,.10)}
+.badge.mid{color:var(--warn);border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.10)}
+.badge.hard{color:var(--err);border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.10)}
+code.c{font-family:var(--mono);font-size:19px;letter-spacing:1.2px;color:#8fb6f8;font-weight:600}
+
+/* 进度条（阶段式，非百分比） */
+.bar{height:3px;border-radius:2px;background:#151a22;overflow:hidden;position:relative}
+.bar i{position:absolute;inset:0;width:38%;border-radius:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:sweep 1.5s linear infinite}
+.bar.det i{width:64%;animation:none;background:var(--accent)}
+@keyframes sweep{0%{transform:translateX(-40%)}100%{transform:translateX(260%)}}
+
+/* 席位 */
+.seat{height:56px;border-radius:var(--r-sm);border:1px dashed var(--line2);display:flex;align-items:center;gap:10px;padding:0 12px;color:var(--fg3);font-size:12px}
+.seat.filled{border-style:solid;border-color:var(--line2);background:#0e1117;color:var(--fg)}
+.avatar{width:28px;height:28px;border-radius:6px;background:#141a24;border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--fg2);flex:0 0 auto}
+.avatar.host{background:rgba(245,158,11,.10);border-color:rgba(245,158,11,.35);color:var(--warn)}
+.lat{font-size:11px;font-family:var(--mono);color:var(--ok)}
+.lat.mid{color:var(--warn)}
+.lat.hard{color:var(--err)}
+
+/* 状态切换器（仅设计稿） */
+.switcher{width:1100px;display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;border:1px dashed #1d2430;border-radius:10px;background:#080a0e}
+.switcher b{font-size:10px;color:var(--fg3);letter-spacing:1px;width:100%;margin-bottom:2px}
+.switcher button{height:26px;padding:0 10px;font-size:11px;border-radius:6px;border:1px solid var(--line2);background:#0c0f14;color:var(--fg2);cursor:pointer;font-family:var(--font)}
+.switcher button.on{background:var(--accent-soft);border-color:rgba(59,130,246,.5);color:#9dc0ff}
+.screen{display:none;height:100%}
+body[data-state="idle"] .s-idle{display:flex}
+body[data-state="creating"] .s-creating{display:flex}
+body[data-state="joining"] .s-joining{display:flex}
+body[data-state="discovering"] .s-discovering{display:flex}
+body[data-state="waitmc"] .s-waitmc{display:flex}
+body[data-state="host"] .s-host{display:flex}
+body[data-state="verifying"] .s-verifying{display:flex}
+body[data-state="guest"] .s-guest{display:flex}
+body[data-state="error"] .s-error{display:flex}
+body[data-state="hostgone"] .s-hostgone{display:flex}
