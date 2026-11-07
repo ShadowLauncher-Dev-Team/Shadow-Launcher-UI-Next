@@ -475,10 +475,12 @@ Item {
 
             Rectangle {
                 id: transferBar
-                anchors.left: parent.left
+                readonly property real inset: Theme.rMd
+                x: inset
                 anchors.bottom: parent.bottom
                 height: 2
-                width: parent.width * page.transferPct() / 100
+                radius: 1
+                width: (parent.width - inset * 2) * page.transferPct() / 100
                 color: Theme.accent
                 clip: true
 
@@ -988,14 +990,16 @@ Item {
                         }
                     }
 
-                    // 卡内进度条（流光裁在已填充段内）
+                    // 卡内进度条：左右各内缩 = 卡片圆角半径，端点也圆化，不会在圆角处戳出直角
                     Rectangle {
                         id: bar
-                        anchors.left: parent.left
+                        readonly property real inset: Theme.rMd
+                        readonly property real pct: modelData.isZip ? (page.java ? page.java.javaDownloadPercent : 0) : page.msiPct
+                        x: inset
                         anchors.bottom: parent.bottom
                         height: 2
-                        width: parent.width * (modelData.isZip ? (page.java ? page.java.javaDownloadPercent : 0)
-                                                                : page.msiPct) / 100
+                        radius: 1
+                        width: (parent.width - inset * 2) * pct / 100
                         visible: modelData.isZip ? page.zipInstalling : page.msiBusy
                         color: Theme.accent
                         clip: true
