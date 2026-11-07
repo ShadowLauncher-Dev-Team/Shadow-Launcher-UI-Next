@@ -285,11 +285,23 @@ Item {
     }
 
     // ══════════ 布局 ══════════
-    Column {
-        id: topCol
+    // 内容可滚动：第 5 步文件多时不会顶到下方「本机已检测到」卡片
+    Flickable {
+        id: scrollArea
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
+        anchors.bottom: localCard.top
+        anchors.bottomMargin: 14
+        clip: true
+        contentWidth: width
+        contentHeight: topCol.implicitHeight
+        boundsBehavior: Flickable.StopAtBounds
+        flickableDirection: Flickable.VerticalFlick
+
+    Column {
+        id: topCol
+        width: scrollArea.width
         spacing: 0
         opacity: page.enter
         transform: Translate { y: (1 - page.enter) * 8 }
@@ -339,6 +351,9 @@ Item {
                             Text {
                                 id: nodeLabel
                                 anchors.verticalCenter: parent.verticalCenter
+                                // 固定宽度：文案随选择变长变短（"Java 版本" → "25"）时，连线起点不动
+                                width: 68
+                                elide: Text.ElideRight
                                 text: page.stepValue(index)
                                 color: page.step >= index ? Theme.fg : Theme.fg3
                                 font.family: Theme.fontFamily
@@ -353,9 +368,9 @@ Item {
                             id: wire
                             visible: !parent.last
                             anchors.verticalCenter: parent.verticalCenter
-                            // 设计稿 D：连线铺在「标签 → 下一个圆点」之间的空档，左右各留 12，两端间距一致
-                            x: nodeRow.x + nodeRow.width + 12
-                            width: Math.max(18, parent.width - nodeRow.width - 24)
+                            // 连线几何全部用常量：圆点 18 + 间距 8 + 标签 68 + 左右各 12 → 每段线长度、位置完全一致
+                            x: 18 + 8 + 68 + 12
+                            width: Math.max(18, parent.width - (18 + 8 + 68 + 12) - 12)
                             height: 16
 
                             readonly property bool done: page.step > index
@@ -436,7 +451,7 @@ Item {
                         onPressedChanged: chip.pressed = pressed
                         onClicked: function (mouse) {
                             chipRipple.burst(mouse.x, mouse.y)
-                            page.jumpTo(index)
+                            page.jumpTo(stepBox.stepIndex)
                         }
                     }
                 }
@@ -562,239 +577,118 @@ Item {
 
         Item { width: 1; height: page.anyBusy ? 10 : 0 }
 
-        // ── 当前步骤卡 ──
-        Rectangle {
-            id: stepCard
-            visible: page.step < 4
-            width: parent.width
-            radius: Theme.rMd
-            color: "#0b0d12"
-            border.width: 1
-            border.color: "#2a3a54"
-            // 换步时高度平滑过渡；用 cardH 兜一层，避免数据二次到达时先塌到最小再撑开（观感就是"抽搐"）
-            readonly property real contentH: cardCol.implicitHeight
-            property real cardH: 132
-            height: cardH
-            onContentHChanged: if (contentH > 60) cardH = contentH + 40
-            Behavior on height { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
-
-            Column {
-                id: cardCol
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.margins: 18
-                spacing: 12
-                // 换步时只有内容轻轻浮现：不外扩、不缩放，观感是"展开"而不是"弹一下"
-                opacity: page.reveal
-                transform: Translate { y: (1 - page.reveal) * 4 }
-
-                Row {
-                    width: parent.width
-                    spacing: 9
-                    Text {
-                        text: "STEP " + (page.step + 1)
-                        color: Theme.accent
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                        font.weight: Font.DemiBold
-                        font.letterSpacing: 1
-                    }
-                    Text {
-                        text: page.stepNames[Math.min(page.step, 4)]
-                        color: Theme.fg
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 15
-                        font.weight: Font.DemiBold
-                    }
-                }
-
-                Flow {
-                    width: parent.width
-                    spacing: 8
-                    Repeater {
-                        model: page.optionsForStep(page.step)
-                        delegate: Rectangle {
-                            id: pill
-                            property bool hovered: false
-                            property bool pressed: false
-                            height: 34
-                            width: pillRow.width + 32
-                            radius: Theme.rSm
-                            color: page.isPicked(page.step, modelData) ? "#10203a"
-                                 : hovered ? "#12161d" : "#0d1016"
-                            border.width: 1
-                            border.color: page.isPicked(page.step, modelData) ? Theme.accent
-                                        : hovered ? "#39424f" : Theme.line2
-                            scale: pressed ? 0.97 : 1
-                            Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-                            Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-                            Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop } }
-                            // 主字与小字按基线对齐：Row 的垂直居中会让 10px 的小字视觉上下沉
-                            Item {
-                                id: pillRow
-                                anchors.centerIn: parent
-                                height: pillMain.height
-                                width: pillMain.width + (pillSub.visible ? pillSub.width + 7 : 0)
-                                Text {
-                                    id: pillMain
-                                    x: 0; y: 0
-                                    text: page.optionLabel(page.step, modelData)
-                                    color: page.isPicked(page.step, modelData) ? "#ffffff" : "#c3cbd8"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 13
-                                }
-                                Text {
-                                    id: pillSub
-                                    visible: page.optionSub(page.step, modelData).length > 0
-                                    x: pillMain.width + 7
-                                    anchors.baseline: pillMain.baseline
-                                    text: page.optionSub(page.step, modelData)
-                                    color: page.isPicked(page.step, modelData) ? "#8fb6f8" : Theme.fg3
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 10
-                                }
-                            }
-                            SRipple {
-                                id: pillRipple
-                                anchors.fill: parent
-                                color: "#ffffff"
-                                maxRadius: 90
-                            }
-
-                            MouseArea {
-                                id: pillPress
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                hoverEnabled: true
-                                onEntered: pill.hovered = true
-                                onExited: pill.hovered = false
-                                onPressedChanged: pill.pressed = pressed
-                                onClicked: function (mouse) {
-                                    pillRipple.burst(mouse.x, mouse.y)
-                                    page.choose(page.step, modelData)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Text {
-                    visible: page.step < 4
-                    width: parent.width
-                    text: page.stepHints[Math.min(page.step, 4)]
-                    color: Theme.fg3
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
-                    wrapMode: Text.WordWrap
-                    lineHeight: 1.5
-                }
-            }
-        }
-
-        Item { width: 1; height: 14 }
-
-        // ── 第 5 步的已选摘要（替代 STEP 5 的空卡） ──
-        Rectangle {
-            visible: page.step === 4
-            width: parent.width
-            height: 56
-            radius: Theme.rMd
-            color: "#0b0d12"
-            border.width: 1
-            border.color: Theme.line2
-            opacity: page.reveal
-            transform: Translate { y: (1 - page.reveal) * 4 }
-
-            Row {
-                anchors.fill: parent
-                anchors.leftMargin: 18
-                anchors.rightMargin: 18
-                spacing: 10
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "已选"
-                    color: Theme.fg3
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
-                }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Java " + page.selVersion + " · " + page.selType.toUpperCase()
-                          + " · " + page.selArch + " · " + page.optionLabel(3, page.selOS)
-                    color: Theme.fg
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 13
-                    font.weight: Font.DemiBold
-                }
-                Item { width: 1; height: 1 }
-                Rectangle {
-                    id: reselectBtn
-                    property bool hovered: false
-                    property bool pressed: false
-                    height: 22
-                    width: reselectText.implicitWidth + 16
-                    radius: 5
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: hovered ? "#161c25" : "transparent"
-                    border.width: 1
-                    border.color: hovered ? "#334054" : "transparent"
-                    scale: pressed ? 0.96 : 1
-                    Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-                    Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-                    Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop } }
-
-                    Text {
-                        id: reselectText
-                        anchors.centerIn: parent
-                        text: "重新选择"
-                        color: Theme.accent
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-                    SRipple { id: reselectRipple; maxRadius: 56 }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        hoverEnabled: true
-                        onEntered: reselectBtn.hovered = true
-                        onExited: reselectBtn.hovered = false
-                        onPressedChanged: reselectBtn.pressed = pressed
-                        onClicked: function (mouse) {
-                            reselectRipple.burst(mouse.x, mouse.y)
-                            page.resetChoices()
-                        }
-                    }
-                }
-            }
-        }
-
-        Item { width: 1; height: 14 }
-
-        // ── 还没走到的步骤：占位卡（"抵近"的层次感，选中一步就往上顶一格） ──
+        // ── 步骤卡栈：选完的卡收起（不删除），下一张展开 ──
+        // 每张卡是独立实例，不共用同一个 Rectangle 换内容 —— 从结构上消除"同卡切内容"的闪
         Column {
+            id: stepStack
             width: parent.width
             spacing: 10
-            visible: page.step < 4
 
             Repeater {
-                model: 4 - page.step
+                model: 5
                 delegate: Rectangle {
-                    width: parent.width
-                    height: 60
-                    radius: Theme.rMd
-                    color: "#0a0c11"
-                    border.width: 1
-                    border.color: "#1b1f27"
+                    id: stepBox
+                    readonly property int stepIndex: index   // 卡片所属步骤（pill 里有自己的 index，必须区分）
+                    readonly property bool done: page.step > index
+                    readonly property bool active: page.step === index
+                    readonly property bool ghost: page.step < index
+                    readonly property real contentH: boxCol.implicitHeight
+                    property real boxH: 132
 
+                    width: parent.width
+                    height: done ? 56 : (active ? (index === 4 ? 64 : boxH) : 60)
+                    radius: Theme.rMd
+                    color: ghost ? "#0a0c11" : "#0b0d12"
+                    border.width: 1
+                    border.color: active ? "#2a3a54" : (done ? Theme.line2 : "#1b1f27")
+                    clip: true
+                    Behavior on height { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+                    Behavior on color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+                    // 只在"展开"时记录内容高度；退化的临时值（<60）忽略，避免先塌后撑
+                    onContentHChanged: if (contentH > 60 && stepIndex < 4) boxH = contentH + 40
+
+                    // ① 已选完：收起成一行（标题 · 已选值 · 修改）
                     Row {
+                        visible: stepBox.done
                         anchors.fill: parent
                         anchors.leftMargin: 18
                         anchors.rightMargin: 18
                         spacing: 10
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "STEP " + (page.step + index + 2)
+                            text: "STEP " + (stepBox.stepIndex + 1)
+                            color: Theme.accent
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                            font.weight: Font.DemiBold
+                            font.letterSpacing: 1
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: page.stepNames[stepBox.stepIndex]
+                            color: Theme.fg2
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 13
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: page.stepValue(stepBox.stepIndex)
+                            color: Theme.fg
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                        }
+                        Item { width: 1; height: 1 }
+                        Rectangle {
+                            id: editBtn
+                            property bool hovered: false
+                            property bool pressed: false
+                            height: 22
+                            width: editText.implicitWidth + 16
+                            radius: 5
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: hovered ? "#161c25" : "transparent"
+                            border.width: 1
+                            border.color: hovered ? "#334054" : "transparent"
+                            scale: pressed ? 0.96 : 1
+                            Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                            Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                            Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop } }
+                            Text {
+                                id: editText
+                                anchors.centerIn: parent
+                                text: "修改"
+                                color: Theme.accent
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+                            SRipple { id: editRipple; maxRadius: 56 }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                hoverEnabled: true
+                                onEntered: editBtn.hovered = true
+                                onExited: editBtn.hovered = false
+                                onPressedChanged: editBtn.pressed = pressed
+                                onClicked: function (mouse) {
+                                    editRipple.burst(mouse.x, mouse.y)
+                                    page.jumpTo(stepBox.stepIndex)
+                                }
+                            }
+                        }
+                    }
+
+                    // ② 还没走到：占位
+                    Row {
+                        visible: stepBox.ghost
+                        anchors.fill: parent
+                        anchors.leftMargin: 18
+                        anchors.rightMargin: 18
+                        spacing: 10
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "STEP " + (stepBox.stepIndex + 1)
                             color: "#3a424f"
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -803,7 +697,7 @@ Item {
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: page.stepNames[page.step + index + 1]
+                            text: page.stepNames[stepBox.stepIndex]
                             color: "#4a5361"
                             font.family: Theme.fontFamily
                             font.pixelSize: 14
@@ -816,6 +710,178 @@ Item {
                             color: "#333a45"
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
+                        }
+                    }
+
+                    // ③ 当前步（1~4）：展开内容
+                    Column {
+                        id: boxCol
+                        visible: stepBox.active && stepBox.stepIndex < 4
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 18
+                        spacing: 12
+
+                        Row {
+                            width: parent.width
+                            spacing: 9
+                            Text {
+                                text: "STEP " + (stepBox.stepIndex + 1)
+                                color: Theme.accent
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                                font.letterSpacing: 1
+                            }
+                            Text {
+                                text: page.stepNames[index]
+                                color: Theme.fg
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 15
+                                font.weight: Font.DemiBold
+                            }
+                        }
+
+                        Flow {
+                            width: parent.width
+                            spacing: 8
+                            Repeater {
+                                model: page.optionsForStep(stepBox.stepIndex)
+                                delegate: Rectangle {
+                                    id: pill
+                                    property bool hovered: false
+                                    property bool pressed: false
+                                    height: 34
+                                    width: pillRow.width + 32
+                                    radius: Theme.rSm
+                                    color: page.isPicked(stepBox.stepIndex, modelData) ? "#10203a"
+                                         : hovered ? "#12161d" : "#0d1016"
+                                    border.width: 1
+                                    border.color: page.isPicked(stepBox.stepIndex, modelData) ? Theme.accent
+                                                : hovered ? "#39424f" : Theme.line2
+                                    scale: pressed ? 0.97 : 1
+                                    Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                                    Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                                    Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop } }
+                                    // 主字与小字按基线对齐：Row 的垂直居中会让 10px 的小字视觉上下沉
+                                    Item {
+                                        id: pillRow
+                                        anchors.centerIn: parent
+                                        height: pillMain.height
+                                        width: pillMain.width + (pillSub.visible ? pillSub.width + 7 : 0)
+                                        Text {
+                                            id: pillMain
+                                            x: 0; y: 0
+                                            text: page.optionLabel(stepBox.stepIndex, modelData)
+                                            color: page.isPicked(stepBox.stepIndex, modelData) ? "#ffffff" : "#c3cbd8"
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 13
+                                        }
+                                        Text {
+                                            id: pillSub
+                                            visible: page.optionSub(stepBox.stepIndex, modelData).length > 0
+                                            x: pillMain.width + 7
+                                            anchors.baseline: pillMain.baseline
+                                            text: page.optionSub(stepBox.stepIndex, modelData)
+                                            color: page.isPicked(stepBox.stepIndex, modelData) ? "#8fb6f8" : Theme.fg3
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 10
+                                        }
+                                    }
+                                    SRipple {
+                                        id: pillRipple
+                                        anchors.fill: parent
+                                        color: "#ffffff"
+                                        maxRadius: 90
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        hoverEnabled: true
+                                        onEntered: pill.hovered = true
+                                        onExited: pill.hovered = false
+                                        onPressedChanged: pill.pressed = pressed
+                                        onClicked: function (mouse) {
+                                            pillRipple.burst(mouse.x, mouse.y)
+                                            page.choose(stepBox.stepIndex, modelData)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: page.stepHints[Math.min(stepBox.stepIndex, 4)]
+                            color: Theme.fg3
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                            wrapMode: Text.WordWrap
+                            lineHeight: 1.5
+                        }
+                    }
+
+                    // ④ 第 5 步：已选摘要 + 重新选择
+                    Row {
+                        visible: stepBox.active && stepBox.stepIndex === 4
+                        anchors.fill: parent
+                        anchors.leftMargin: 18
+                        anchors.rightMargin: 18
+                        spacing: 10
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "已选"
+                            color: Theme.fg3
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Java " + page.selVersion + " · " + page.selType.toUpperCase()
+                                  + " · " + page.selArch + " · " + page.optionLabel(3, page.selOS)
+                            color: Theme.fg
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                        }
+                        Item { width: 1; height: 1 }
+                        Rectangle {
+                            id: reselectBtn
+                            property bool hovered: false
+                            property bool pressed: false
+                            height: 22
+                            width: reselectText.implicitWidth + 16
+                            radius: 5
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: hovered ? "#161c25" : "transparent"
+                            border.width: 1
+                            border.color: hovered ? "#334054" : "transparent"
+                            scale: pressed ? 0.96 : 1
+                            Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                            Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                            Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop } }
+                            Text {
+                                id: reselectText
+                                anchors.centerIn: parent
+                                text: "重新选择"
+                                color: Theme.accent
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+                            SRipple { id: reselectRipple; maxRadius: 56 }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                hoverEnabled: true
+                                onEntered: reselectBtn.hovered = true
+                                onExited: reselectBtn.hovered = false
+                                onPressedChanged: reselectBtn.pressed = pressed
+                                onClicked: function (mouse) {
+                                    reselectRipple.burst(mouse.x, mouse.y)
+                                    page.resetChoices()
+                                }
+                            }
                         }
                     }
                 }
@@ -1030,6 +1096,7 @@ Item {
             }
         }
 
+    }
     }
 
     // ── 本机已装（贴底常驻：上半部内容再多，页面也不会头重脚轻）──
