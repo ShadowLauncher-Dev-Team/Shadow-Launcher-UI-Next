@@ -216,11 +216,10 @@ Item {
         easing.type: Theme.easeEnter
     }
 
-    // 换步：卡片重新入场（淡入 + 8px 上浮 + 0.99 缩放归位）；回到第 1 步不播
+    // 换步：内容轻轻浮现（从 0.6 起淡入，不从 0 起 —— 从 0 会有 1 帧全透明，观感是"闪一下"）
     onStepChanged: {
         stepTick++
         if (step === 0) { reveal = 1; return }
-        reveal = 0
         cardIn.restart()
     }
 
@@ -228,10 +227,10 @@ Item {
         id: cardIn
         target: page
         property: "reveal"
-        from: 0
+        from: 0.6
         to: 1
         duration: Theme.durBase
-        easing.type: Theme.easePop
+        easing.type: Theme.easeEnter
     }
 
     Connections {
@@ -324,6 +323,9 @@ Item {
                                 border.width: 1
                                 border.color: page.step > index ? Theme.accent
                                             : page.step === index ? Theme.accent : "#2b313c"
+                                // 状态切换走颜色过渡，不再硬切
+                                Behavior on color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+                                Behavior on border.color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                                 Text {
                                     anchors.centerIn: parent
                                     text: (index + 1)
@@ -331,6 +333,7 @@ Item {
                                          : page.step === index ? Theme.accent : Theme.fg3
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
+                                    Behavior on color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                                 }
                             }
                             Text {
@@ -341,6 +344,7 @@ Item {
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
                                 font.weight: page.step === index ? Font.DemiBold : Font.Normal
+                                Behavior on color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                             }
                         }
 
@@ -357,13 +361,15 @@ Item {
                             readonly property bool done: page.step > index
                             readonly property bool active: page.step === index
 
-                            // 底色线
+                            // 底色线：变蓝/变亮都走过渡（换步时这一段像被"填"上）
                             Rectangle {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: parent.width
                                 height: 1
                                 color: (wire.done || wire.active) ? Theme.accent : "#20252e"
                                 opacity: wire.done ? 0.55 : (wire.active ? 0.9 : 1)
+                                Behavior on color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+                                Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                             }
 
                         }
@@ -398,6 +404,8 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     scale: pressed ? 0.96 : 1
                     transformOrigin: Item.Left
+                    // 新 chip 淡入，不硬冒出来
+                    NumberAnimation on opacity { from: 0; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
                     Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                     Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                     Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop } }
