@@ -3,7 +3,7 @@
 //
 // 交互：按旧 UI 的五步级联思路，做成"逐级抵近"——
 //   ①版本 → ②JRE/JDK → ③架构 → ④系统 → ⑤分发形式（ZIP/ MSI）
-// 已选步骤收成上方 chips，当前步骤只展开一张卡；架构/系统按本机自动预选，可改。
+// 已选步骤在下方卡片栈里收成一行（带「修改」），当前步骤展开；架构/系统按本机自动预选，可改。
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
@@ -393,79 +393,6 @@ Item {
             }
         }
 
-        // ── 已选 chips ──
-        Item {
-            width: parent.width
-            height: 34
-            Row {
-            id: chips
-            visible: page.step > 0
-            width: parent.width
-            height: 34
-            spacing: 8
-
-            Repeater {
-                model: page.step
-                delegate: Rectangle {
-                    id: chip
-                    property bool hovered: false
-                    property bool pressed: false
-                    height: 24
-                    width: chipRow.implicitWidth + 20
-                    radius: 6
-                    color: hovered ? "#141a24" : "#0d1016"
-                    border.color: hovered ? "#334054" : Theme.line2
-                    border.width: 1
-                    anchors.verticalCenter: parent.verticalCenter
-                    scale: pressed ? 0.96 : 1
-                    transformOrigin: Item.Left
-                    // 新 chip 淡入，不硬冒出来
-                    NumberAnimation on opacity { from: 0; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
-                    Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-                    Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-                    Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop } }
-                    Row {
-                        id: chipRow
-                        anchors.centerIn: parent
-                        spacing: 6
-                        Text {
-                            id: chipText
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: page.stepValueShort(index)
-                            color: Theme.fg
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
-                        }
-                        SIcon {
-                            name: "x"; size: 11; color: Theme.fg3
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-                    SRipple { id: chipRipple; maxRadius: 60 }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        hoverEnabled: true
-                        onEntered: chip.hovered = true
-                        onExited: chip.hovered = false
-                        onPressedChanged: chip.pressed = pressed
-                        onClicked: function (mouse) {
-                            chipRipple.burst(mouse.x, mouse.y)
-                            page.jumpTo(stepBox.stepIndex)
-                        }
-                    }
-                }
-            }
-            Text {
-                visible: page.step > 0
-                text: "点 × 回到那一步重选"
-                color: Theme.fg3
-                font.family: Theme.fontFamily
-                font.pixelSize: 11
-                anchors.verticalCenter: parent.verticalCenter
-            }
-            }
-        }
 
 
         // ── 传输中常驻条：换步、重选都不受影响，进度不会丢（这里也能取消）──
@@ -1283,7 +1210,6 @@ Item {
         return stepNames[4]
     }
 
-    function stepValueShort(i) { return stepValue(i) }
 
     function choose(s, v) {
         if (s === 0) pickVersion(String(v))
