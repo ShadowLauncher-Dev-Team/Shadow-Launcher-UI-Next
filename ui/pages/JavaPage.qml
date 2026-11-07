@@ -40,13 +40,16 @@ Item {
     property int msiPct: 0
     property real msiSpeed: 0
     property string msiSavedPath: ""
+    property string transLabel: ""    // 传输条标题快照（重选后 selVersion 会被清空，不能现拼）
 
     // ── 动效状态（与资源库/下载页同一套语言） ──
     property real reveal: 1        // 当前步骤内容的入场进度（0..1）
     property real enter: 0         // 整页进场进度（0..1）
     property int stepTick: 0       // 步进节拍
 
-    readonly property bool zipInstalling: installingMajor.length > 0 && installingMajor === selVersion
+    // 传输条用：只要有任务在跑就算忙（重选会清空 selVersion，不能再比对它）
+    readonly property bool zipBusy: installingMajor.length > 0
+    readonly property bool zipInstalling: zipBusy && (selVersion.length === 0 || installingMajor === selVersion)
     readonly property bool anyBusy: installingMajor.length > 0 || msiBusy
 
     readonly property var stepNames: ["Java 版本", "JRE / JDK", "CPU 架构", "操作系统", "分发形式"]
@@ -142,11 +145,44 @@ Item {
 
     function majorOfVersion(v) { return parseInt(v) || 0 }
 
+    // ── 传输条（ZIP 安装 / MSI 保存共用一条，永不随换步消失）──
+    function transferName() {
+        if (anyBusy && transLabel.length > 0) return transLabel
+        if (zipBusy) return "Java " + selVersion + " · 便携版（ZIP）"
+        if (msiBusy) return pendingMsiName.length > 0 ? pendingMsiName : "MSI 安装包"
+        return ""
+    }
+    function transferPct() {
+        if (zipBusy) return java ? java.javaDownloadPercent : 0
+        return msiBusy ? msiPct : 0
+    }
+    function transferSpeed() {
+        if (zipBusy) return java ? java.javaDownloadSpeedMBps : 0
+        return msiBusy ? msiSpeed : 0
+    }
+    function transferCancel() {
+        if (zipBusy) {
+            if (java) java.cancelJavaInstall()
+            installingMajor = ""
+            installStatus = ""
+            transLabel = ""
+            return
+        }
+        if (msiBusy) {
+            if (java) java.cancelDownload()
+            msiBusy = false
+            transLabel = ""
+        }
+    }
+
     function startZipInstall(fileName) {
         if (!java || anyBusy) return
         var major = majorOfVersion(selVersion)
         if (major <= 0) return
         installingMajor = selVersion
+        transLabel = "Java " + selVersion + " · "
+                   + (selType.length > 0 ? String(selType).toUpperCase() : "JDK") + " · "
+                   + selArch + " · 便携版（ZIP）"
         installStatus = "正在下载 Java " + selVersion + "…"
         java.installJavaRuntime(major, selType.length > 0 ? selType : "jdk", selArch)
     }
@@ -205,7 +241,7 @@ Item {
             if (!page.java) return
             page.installingMajor = page.java.installingMajor
             page.installStatus = page.java.installStatusText
-            if (page.installingMajor.length === 0) page.refreshLocal()
+            if (page.installingMajor.length === 0) { page.transLabel = ""; page.refreshLocal() }
         }
         function onJavaCacheListChanged() { page.refreshLocal() }
         function onSystemJavaScanFinished() { page.finishScan() }
@@ -238,6 +274,7 @@ Item {
             var p = page.urlToPath(selectedFile)
             page.msiBusy = true
             page.msiPct = 0
+            page.transLabel = page.pendingMsiName
             if (page.java) page.java.downloadJavaFileToPath(page.pendingMsiUrl, p, page.pendingMsiSize)
         }
     }
@@ -307,7 +344,7 @@ Item {
                             }
                         }
 
-                        // 连接到下一个节点：已走过 = accent；当前步 → 下一步 = 常亮淡蓝荧光（柔光 + 朦胧浮尘）
+                        // 连接到下一个节点：已走过/当前段 = 蓝色细线，未到 = 深灰细线（不放光效）
                         Item {
                             id: wire
                             visible: !parent.last
@@ -329,53 +366,6 @@ Item {
                                 opacity: wire.done ? 0.55 : (wire.active ? 0.9 : 1)
                             }
 
-                            // 荧光 + 浮尘：只在「当前步 → 下一步」这一段亮
-                            Item {
-                                anchors.fill: parent
-                                visible: wire.active
-
-                                // 荧光：一张"中间亮、上下渐隐、两端收口"的光晕贴图横向拉伸（真高斯那种柔边，不是画个胶囊）
-                                Image {
-                                    anchors.centerIn: parent
-                                    width: wire.width + 14
-                                    height: 26
-                                    fillMode: Image.Stretch
-                                    smooth: true
-                                    source: "qrc:/ui/rail-glow.png"
-                                    opacity: 0.75
-                                    SequentialAnimation on opacity {
-                                        running: wire.active
-                                        loops: Animation.Infinite
-                                        NumberAnimation { from: 0.62; to: 0.88; duration: Theme.durSheen * 2; easing.type: Theme.easeStandard }
-                                        NumberAnimation { from: 0.88; to: 0.62; duration: Theme.durSheen * 2; easing.type: Theme.easeStandard }
-                                    }
-                                }
-
-                                // 朦胧浮尘：极淡、极小、慢慢漂、慢慢明灭（不是珠子）
-                                Repeater {
-                                    model: wire.active ? 4 : 0
-                                    delegate: Rectangle {
-                                        id: mote
-                                        width: 2; height: 2; radius: 1
-                                        color: "#c8dbff"
-                                        opacity: 0
-                                        // 散布在光带上下 ±3px，读起来像从光里飘出来的细尘
-                                        y: wire.height / 2 - 1 + ((index % 3) - 1) * 2
-                                        SequentialAnimation {
-                                            running: true
-                                            loops: Animation.Infinite
-                                            PauseAnimation { duration: index * Theme.durSheen / 6 }
-                                            NumberAnimation { target: mote; property: "x"; from: -4; to: wire.width; duration: Theme.durSheen * 3; easing.type: Theme.easeStandard }
-                                        }
-                                        SequentialAnimation on opacity {
-                                            running: true
-                                            loops: Animation.Infinite
-                                            NumberAnimation { from: 0; to: 0.18; duration: Theme.durSlow * 2; easing.type: Theme.easeEnter }
-                                            NumberAnimation { from: 0.18; to: 0; duration: Theme.durSlow * 4; easing.type: Theme.easeExit }
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
                 }
@@ -396,19 +386,21 @@ Item {
             Repeater {
                 model: page.step
                 delegate: Rectangle {
+                    id: chip
+                    property bool hovered: false
+                    property bool pressed: false
                     height: 24
                     width: chipRow.implicitWidth + 20
                     radius: 6
-                    color: "#0d1016"
-                    border.color: Theme.line2
+                    color: hovered ? "#141a24" : "#0d1016"
+                    border.color: hovered ? "#334054" : Theme.line2
                     border.width: 1
                     anchors.verticalCenter: parent.verticalCenter
-                    NumberAnimation on scale {
-                        from: 0.92; to: 1
-                        duration: Theme.durBase
-                        easing.type: Theme.easePop
-                    }
+                    scale: pressed ? 0.96 : 1
                     transformOrigin: Item.Left
+                    Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                    Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop } }
                     Row {
                         id: chipRow
                         anchors.centerIn: parent
@@ -426,10 +418,18 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
+                    SRipple { id: chipRipple; maxRadius: 60 }
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: page.jumpTo(index)
+                        hoverEnabled: true
+                        onEntered: chip.hovered = true
+                        onExited: chip.hovered = false
+                        onPressedChanged: chip.pressed = pressed
+                        onClicked: function (mouse) {
+                            chipRipple.burst(mouse.x, mouse.y)
+                            page.jumpTo(index)
+                        }
                     }
                 }
             }
@@ -444,19 +444,130 @@ Item {
             }
         }
 
-        Item { width: 1; height: 4 }
+
+        // ── 传输中常驻条：换步、重选都不受影响，进度不会丢（这里也能取消）──
+        Rectangle {
+            id: transferStrip
+            width: parent.width
+            height: page.anyBusy ? 46 : 0
+            visible: height > 1
+            radius: Theme.rMd
+            color: "#0b0d12"
+            border.width: 1
+            border.color: "#2a3a54"
+            clip: true
+            opacity: page.anyBusy ? 1 : 0
+            Behavior on height { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+
+            Text {
+                anchors.left: parent.left
+                anchors.leftMargin: 14
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: stripRight.left
+                anchors.rightMargin: 12
+                text: page.transferName()
+                color: Theme.fg
+                font.family: Theme.fontFamily
+                font.pixelSize: 12
+                elide: Text.ElideMiddle
+            }
+
+            Row {
+                id: stripRight
+                anchors.right: parent.right
+                anchors.rightMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 10
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Math.round(page.transferPct()) + "% · " + page.transferSpeed().toFixed(1) + " MB/s"
+                    color: "#8fb6f8"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                }
+
+                Rectangle {
+                    id: cancelBtn
+                    property bool hovered: false
+                    property bool pressed: false
+                    height: 22
+                    width: cancelText.implicitWidth + 16
+                    radius: 5
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: hovered ? "#161c25" : "transparent"
+                    border.width: 1
+                    border.color: hovered ? "#3a2b30" : Theme.line2
+                    scale: pressed ? 0.96 : 1
+                    Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                    Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop } }
+                    Text {
+                        id: cancelText
+                        anchors.centerIn: parent
+                        text: "取消"
+                        color: Theme.fg2
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        hoverEnabled: true
+                        onEntered: cancelBtn.hovered = true
+                        onExited: cancelBtn.hovered = false
+                        onPressedChanged: cancelBtn.pressed = pressed
+                        onClicked: page.transferCancel()
+                    }
+                }
+            }
+
+            Rectangle {
+                id: transferBar
+                anchors.left: parent.left
+                anchors.bottom: parent.bottom
+                height: 2
+                width: parent.width * page.transferPct() / 100
+                color: Theme.accent
+                clip: true
+
+                Rectangle {
+                    id: transferSheen
+                    width: 90
+                    height: 2
+                    x: -width
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0.0; color: "#00ffffff" }
+                        GradientStop { position: 0.5; color: "#ccffffff" }
+                        GradientStop { position: 1.0; color: "#00ffffff" }
+                    }
+                    SequentialAnimation {
+                        running: transferBar.visible
+                        loops: Animation.Infinite
+                        NumberAnimation { target: transferSheen; property: "x"; from: -90; to: transferBar.width; duration: Theme.durSheen; easing.type: Theme.easeStandard }
+                    }
+                }
+            }
+        }
+
+        Item { width: 1; height: page.anyBusy ? 10 : 0 }
 
         // ── 当前步骤卡 ──
         Rectangle {
             id: stepCard
             visible: page.step < 4
             width: parent.width
-            height: cardCol.implicitHeight + 40
             radius: Theme.rMd
             color: "#0b0d12"
             border.width: 1
             border.color: "#2a3a54"
-            // 高度随内容变化时平滑过渡，避免换步瞬间"跳一格"
+            // 换步时高度平滑过渡；用 cardH 兜一层，避免数据二次到达时先塌到最小再撑开（观感就是"抽搐"）
+            readonly property real contentH: cardCol.implicitHeight
+            property real cardH: 132
+            height: cardH
+            onContentHChanged: if (contentH > 60) cardH = contentH + 40
             Behavior on height { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
 
             Column {
@@ -609,16 +720,42 @@ Item {
                     font.weight: Font.DemiBold
                 }
                 Item { width: 1; height: 1 }
-                Text {
+                Rectangle {
+                    id: reselectBtn
+                    property bool hovered: false
+                    property bool pressed: false
+                    height: 22
+                    width: reselectText.implicitWidth + 16
+                    radius: 5
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "重新选择"
-                    color: Theme.accent
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
+                    color: hovered ? "#161c25" : "transparent"
+                    border.width: 1
+                    border.color: hovered ? "#334054" : "transparent"
+                    scale: pressed ? 0.96 : 1
+                    Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                    Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop } }
+
+                    Text {
+                        id: reselectText
+                        anchors.centerIn: parent
+                        text: "重新选择"
+                        color: Theme.accent
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+                    }
+                    SRipple { id: reselectRipple; maxRadius: 56 }
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: page.resetChoices()
+                        hoverEnabled: true
+                        onEntered: reselectBtn.hovered = true
+                        onExited: reselectBtn.hovered = false
+                        onPressedChanged: reselectBtn.pressed = pressed
+                        onClicked: function (mouse) {
+                            reselectRipple.burst(mouse.x, mouse.y)
+                            page.resetChoices()
+                        }
                     }
                 }
             }
@@ -862,7 +999,9 @@ Item {
                         color: Theme.accent
                         clip: true
 
+                        // 流光只动它自己（之前 target 写成 parent，动的是整条进度条的 x，看起来就是"从左划入"反复抽搐）
                         Rectangle {
+                            id: sheen
                             width: 90
                             height: 2
                             x: -width
@@ -875,7 +1014,7 @@ Item {
                             SequentialAnimation {
                                 running: bar.visible
                                 loops: Animation.Infinite
-                                NumberAnimation { target: parent; property: "x"; from: -90; to: bar.width; duration: Theme.durSheen; easing.type: Theme.easeStandard }
+                                NumberAnimation { target: sheen; property: "x"; from: -90; to: bar.width; duration: Theme.durSheen; easing.type: Theme.easeStandard }
                             }
                         }
                     }
@@ -936,8 +1075,11 @@ Item {
                         color: page.scanning ? "#12161d" : (hovered ? "#161c25" : "transparent")
                         border.width: 1
                         border.color: page.scanning ? Theme.line2 : (hovered ? "#334054" : "transparent")
+                        property bool pressed: false
+                        scale: pressed ? 0.96 : 1
                         Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                         Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                        Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop } }
 
                         Text {
                             id: rescanText
@@ -954,6 +1096,7 @@ Item {
                             hoverEnabled: true
                             onEntered: rescanBtn.hovered = true
                             onExited: rescanBtn.hovered = false
+                            onPressedChanged: if (!page.scanning) rescanBtn.pressed = pressed
                             onClicked: {
                                 if (page.scanning) return
                                 page.scanToastPending = true
@@ -969,12 +1112,22 @@ Item {
                     Repeater {
                         model: page.localChips()
                         delegate: Rectangle {
+                            id: localChip
+                            property bool hovered: false
                             height: 24
                             width: localChipRow.implicitWidth + 20
                             radius: 6
-                            color: "#0d1016"
+                            color: hovered ? "#141a24" : "#0d1016"
                             border.width: 1
-                            border.color: Theme.line2
+                            border.color: hovered ? "#334054" : Theme.line2
+                            Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                            Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onEntered: localChip.hovered = true
+                                onExited: localChip.hovered = false
+                            }
                             Row {
                                 id: localChipRow
                                 anchors.centerIn: parent

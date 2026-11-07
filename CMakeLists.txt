@@ -301,7 +301,6 @@ qt6_add_resources(ShadowLauncher "ui_stage_assets"
     BASE "ui/assets"
     FILES
         ui/assets/stage-aurora.jpg
-        ui/assets/rail-glow.png
 )
 
 # QML: bundled in qrc for memory-mapped loading + runtime caching

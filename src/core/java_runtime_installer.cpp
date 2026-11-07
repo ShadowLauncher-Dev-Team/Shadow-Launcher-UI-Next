@@ -935,8 +935,9 @@ void JavaRuntimeInstaller::failJob(const QString& error)
         m_job.dlHandle->abort();
         m_job.dlHandle = nullptr;
     }
-    // 清理残留：临时 zip + 半解压目录（避免下次检测到残缺 java.exe 误判"已安装"）
+    // 清理残留：临时 zip（含 .part 分片）+ 半解压目录（避免下次检测到残缺 java.exe 误判"已安装"）
     QFile::remove(m_job.zipPath);
+    QFile::remove(m_job.zipPath + QStringLiteral(".part"));
     if (!m_job.javaDir.isEmpty()) {
         QDir(m_job.javaDir).removeRecursively();
         qCInfo(logJava) << QStringLiteral("[Java安装] 已清理残留目录: %1").arg(m_job.javaDir);
@@ -959,6 +960,7 @@ void JavaRuntimeInstaller::finishJob(const QString& javaExe)
         m_job.dlHandle = nullptr;
     }
     QFile::remove(m_job.zipPath);
+    QFile::remove(m_job.zipPath + QStringLiteral(".part"));
     if (m_job.lock) {
         m_job.lock->unlock();
         delete m_job.lock;
