@@ -21,6 +21,7 @@
 #include <QRegularExpression>
 #include <QUdpSocket>
 #include <QDateTime>
+#include <QSettings>
 #include <QDebug>
 #include "../utils/logger.h"
 
@@ -30,7 +31,6 @@ MultiplayerManager::MultiplayerManager(QObject* parent)
     : QObject(parent)
     , m_easyTier(new EasyTierProcess(this))
     , m_guard(new ConnectionGuard(this))
-    , m_playerName(QStringLiteral("Steve"))
     , m_heartbeatTimer(new QTimer(this))
     , m_discoverTimer(new QTimer(this))
     , m_idleTimer(new QTimer(this))
@@ -48,6 +48,9 @@ MultiplayerManager::MultiplayerManager(QObject* parent)
             .toHex()
             .left(32)
     );
+
+    m_deviceCode = m_machineId.left(4).toUpper();
+    loadDeviceName();
 
     m_supportedProtocols = Scaffolding::basicProtocols();
     m_supportedProtocols << Scaffolding::kPlayerEasyTierId;
@@ -304,13 +307,71 @@ void MultiplayerManager::copyRoomCode()
     }
 }
 
+// ── 设备昵称 ────────────────────────────────────────────────
+// 联机身份是设备，不是账号：昵称存 QSettings（跟设备走），首次运行用电脑名。
+QString MultiplayerManager::sanitizeDeviceName(const QString& raw)
+{
+    QString s = raw;
+    s.replace(QRegularExpression(QStringLiteral("[\r\n\t]+")), QStringLiteral(" "));
+    s = s.trimmed();
+    if (s.size() > 16) s = s.left(16);
+    return s;
+}
+
+void MultiplayerManager::loadDeviceName()
+{
+    QSettings st(QCoreApplication::organizationName(), QCoreApplication::applicationName());
+    QString saved = sanitizeDeviceName(st.value(QStringLiteral("multiplayer/deviceName")).toString());
+    if (saved.isEmpty()) {
+        // 默认：电脑名（Windows 上通常是 DESKTOP-XXXX / 用户自起的名字）
+        QString host = QString::fromUtf8(qgetenv("COMPUTERNAME"));
+        if (host.isEmpty()) host = QSysInfo::machineHostName();
+        host = sanitizeDeviceName(host);
+        if (host.isEmpty()) host = QStringLiteral("玩机者 %1").arg(m_deviceCode);
+        m_deviceName = host;
+    } else {
+        m_deviceName = saved;
+    }
+    qCInfo(logNet) << QStringLiteral("[联机] 设备昵称=%1 设备码=%2").arg(m_deviceName, m_deviceCode);
+    emit deviceNameChanged();
+    emit playerNameChanged();
+}
+
+bool MultiplayerManager::setDeviceName(const QString& name)
+{
+    // 房间里不允许改名：state 必须 Idle 且没有角色
+    if (m_role != None || state() != Idle) {
+        emit errorOccurred(QStringLiteral("房间里不能改名，请先离开房间"));
+        return false;
+    }
+    QString s = sanitizeDeviceName(name);
+    if (s.isEmpty()) {
+        emit errorOccurred(QStringLiteral("昵称不能为空"));
+        return false;
+    }
+    if (s == m_deviceName) return true;
+    m_deviceName = s;
+    QSettings st(QCoreApplication::organizationName(), QCoreApplication::applicationName());
+    st.setValue(QStringLiteral("multiplayer/deviceName"), s);
+    st.sync();
+    qCInfo(logNet) << QStringLiteral("[联机] 设备昵称改为=%1").arg(s);
+    emit deviceNameChanged();
+    emit playerNameChanged();
+    return true;
+}
+
+void MultiplayerManager::resetDeviceName()
+{
+    QSettings st(QCoreApplication::organizationName(), QCoreApplication::applicationName());
+    st.remove(QStringLiteral("multiplayer/deviceName"));
+    st.sync();
+    loadDeviceName();
+}
+
+// 兼容旧调用（旧 UI 的「你的昵称」输入框）
 void MultiplayerManager::setPlayerName(const QString& name)
 {
-    QString trimmed = name.trimmed();
-    if (trimmed.isEmpty() || trimmed == m_playerName) return;
-    m_playerName = trimmed;
-    emit playerNameChanged();
-    qCInfo(logNet) << QStringLiteral("[联机] 玩家名设置 name=%1").arg(m_playerName);
+    setDeviceName(name);
 }
 
 void MultiplayerManager::prepareServerProperties(const QString& gameDir, const QString& versionId)
@@ -516,7 +577,7 @@ void MultiplayerManager::startHostServer()
 
     // Host adds self to player list
     QVariantMap hostPlayer;
-    hostPlayer["name"] = m_playerName;
+    hostPlayer["name"] = m_deviceName;
     hostPlayer["machine_id"] = m_machineId;
     hostPlayer["hostname"] = QSysInfo::machineHostName();
     hostPlayer["kind"] = QStringLiteral("HOST");
@@ -1299,7 +1360,7 @@ void MultiplayerManager::sendHeartbeat()
         return;
 
     QJsonObject heartbeat;
-    heartbeat[QStringLiteral("name")] = m_playerName;
+    heartbeat[QStringLiteral("name")] = m_deviceName;
     heartbeat[QStringLiteral("machine_id")] = m_machineId;
     heartbeat[QStringLiteral("hostname")] = QSysInfo::machineHostName();
     heartbeat[QStringLiteral("vendor")] = QStringLiteral("shadow");
@@ -1859,7 +1920,7 @@ void MultiplayerManager::completeGuestJoin(quint16 verifyPort, bool verified)
 
     // Add LOCAL profile for self (align with Terracotta ProfileKind::LOCAL)
     QVariantMap localSelf;
-    localSelf[QStringLiteral("name")] = m_playerName;
+    localSelf[QStringLiteral("name")] = m_deviceName;
     localSelf[QStringLiteral("machine_id")] = m_machineId;
     localSelf[QStringLiteral("hostname")] = QSysInfo::machineHostName();
     localSelf[QStringLiteral("kind")] = QStringLiteral("LOCAL");

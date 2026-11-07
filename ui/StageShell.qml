@@ -20,6 +20,8 @@ Item {
     property bool downloadOpen: false
     // 下载进度：独立页面（不再借用 DownloadPage 的 mode=2 视图）
     property bool progressOpen: false
+    // 联机：与下载页同一套宿主（侧栏常驻、页面自绘标题），不是全屏页
+    property bool multiplayerOpen: false
     // 资源详情页（从资源库卡片打开）
     property bool resDetailOpen: false
     // 资源详情按"全屏独立页"处理：打开时侧栏收起、页面铺满整窗（与版本页/账户页同一套）
@@ -171,14 +173,22 @@ Item {
                 downloadPage.resetToList()
                 root.downloadOpen = true
                 root.progressOpen = false
+                root.multiplayerOpen = false
             } else if (label === "下载进度") {
                 // 侧栏「下载进度」：独立页面，与「下载」互不捆绑
                 root.progressOpen = true
                 root.downloadOpen = false
+                root.multiplayerOpen = false
                 sideBar.currentLabel = "下载进度"
-            } else if (label === "启动" || label === "联机" || label === "统计" || label === "设置") {
+            } else if (label === "联机") {
+                // 联机页：与下载页同级，侧栏常驻
                 root.downloadOpen = false
                 root.progressOpen = false
+                root.multiplayerOpen = true
+            } else if (label === "启动" || label === "统计" || label === "设置") {
+                root.downloadOpen = false
+                root.progressOpen = false
+                root.multiplayerOpen = false
             }
             // 其余子项（帮助文档 / 实用网站）暂未实现：保持当前页面不动
         }
@@ -230,7 +240,7 @@ Item {
         Item {
             anchors.fill: parent
             transform: Translate {
-                x: (root.downloadOpen || root.progressOpen || root.fullOpen) ? -22 : 0
+                x: (root.downloadOpen || root.progressOpen || root.fullOpen || root.multiplayerOpen) ? -22 : 0
                 Behavior on x { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
             }
             // 回主页时也带一点"顶回来"的缩放，和全屏页入场保持同一套语言
@@ -238,7 +248,7 @@ Item {
             Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
             StagePage {
                 anchors.fill: parent
-                enabled: !root.fullOpen && !root.downloadOpen && !root.progressOpen
+                enabled: !root.fullOpen && !root.downloadOpen && !root.progressOpen && !root.multiplayerOpen
                 hostWindow: root.hostWindow
                 narrow: root.narrow
                 toast: toastHost
@@ -346,6 +356,30 @@ Item {
                 resDetail.item = item
                 root.resDetailOpen = true
             }
+        }
+        }
+    }
+
+    // 联机页（与下载页同一套：侧栏常驻，页面自绘标题与内容）
+    Item {
+        id: multiplayerHost
+        anchors.left: sideBar.right
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        visible: root.multiplayerOpen
+        clip: true
+        Rectangle { anchors.fill: parent; color: Theme.bg }
+        // 入场只做位移 + 轻微缩放，宿主不透明且 clip 住 —— 不会透出下层启动页
+        Item {
+            anchors.fill: parent
+            x: root.multiplayerOpen ? 0 : 24
+            Behavior on x { NumberAnimation { duration: root.multiplayerOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
+            scale: root.multiplayerOpen ? 1 : 0.988
+            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+        MultiplayerPage {
+            anchors.fill: parent
+            toast: toastHost
         }
         }
     }

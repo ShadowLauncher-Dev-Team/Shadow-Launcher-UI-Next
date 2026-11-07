@@ -2182,13 +2182,10 @@ void ShadowBackend::syncPlayerName()
 {
     if (!m_multiplayer) return;
 
-    // Priority: Microsoft name > offline name > default "Steve"
-    if (m_account->isOnline() && !m_account->username().isEmpty()) {
-        m_multiplayer->setPlayerName(m_account->username());
-    } else if (!m_account->offlineUsername().isEmpty()) {
-        m_multiplayer->setPlayerName(m_account->offlineUsername());
-    }
-    // else: keep default "Steve" from MultiplayerManager constructor
+    // 2026-11-07：联机身份改为「设备」而非账号。
+    // 昵称由 MultiplayerManager 自己从 QSettings(multiplayer/deviceName) 读取，首次取电脑名，
+    // 用户可在联机页自行修改；这里不再用账号名覆盖它。
+    // （旧 UI 的「你的昵称」输入框走 setPlayerName，仍等价 setDeviceName。）
 }
 
 bool ShadowBackend::openGameDir(const QString& versionId) {

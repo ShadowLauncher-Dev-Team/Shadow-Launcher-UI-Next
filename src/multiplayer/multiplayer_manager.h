@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 // Multiplayer Manager — orchestrates EasyTier + Scaffolding protocol
 #pragma once
@@ -69,7 +69,11 @@ public:
     int maxPlayers() const { return kMaxPlayers; }
     QVariantList players() const { return m_players; }
     Role role() const { return m_role; }
-    QString playerName() const { return m_playerName; }
+    QString playerName() const { return m_deviceName; }
+    QString deviceName() const { return m_deviceName; }
+    QString deviceCode() const { return m_deviceCode; }
+    // 房间里不允许改名：只有 Idle 且未入房时才能改
+    bool canRename() const { return m_role == None && static_cast<State>(m_state.load()) == Idle; }
     int connectionDifficulty() const { return static_cast<int>(m_connectionDifficulty); }
     QString mcServerName() const { return m_mcServerName; }
     int mcServerPort() const { return static_cast<int>(m_mcPort); }
@@ -83,10 +87,17 @@ public:
     Q_INVOKABLE void stopEasyTierNow();
     Q_INVOKABLE void copyRoomCode();
     Q_INVOKABLE void prepareServerProperties(const QString& gameDir, const QString& versionId);
-    Q_INVOKABLE void setPlayerName(const QString& name);
+    Q_INVOKABLE void setPlayerName(const QString& name);   // 兼容旧调用，等价 setDeviceName
+    Q_INVOKABLE bool setDeviceName(const QString& name);    // 1–16 字；房间里调用会被拒绝
+    Q_INVOKABLE void resetDeviceName();                     // 恢复默认（电脑名 / 玩机者+设备码）
 
     Q_PROPERTY(QString playerName READ playerName NOTIFY playerNameChanged)
     Q_PROPERTY(int connectionDifficulty READ connectionDifficulty NOTIFY connectionDifficultyChanged)
+    // 设备身份（2026-11-07）：联机认的是「这台机器」，不是账号。
+    // deviceName = 用户可改的昵称（存 QSettings，跟设备走）；deviceCode = machine_id 前 4 位，固定，用于区分同名设备。
+    Q_PROPERTY(QString deviceName READ deviceName NOTIFY deviceNameChanged)
+    Q_PROPERTY(QString deviceCode READ deviceCode NOTIFY deviceCodeChanged)
+    Q_PROPERTY(bool canRename READ canRename NOTIFY stateChanged)
 
     // Force recalculation of connection difficulty (host: queries EasyTier for local NAT)
     Q_INVOKABLE void requestDifficultyUpdate();
@@ -100,6 +111,8 @@ signals:
     void minecraftPortReady(int port);
     void errorOccurred(const QString& msg);
     void playerNameChanged();
+    void deviceNameChanged();
+    void deviceCodeChanged();
     void connectionDifficultyChanged();
     void mcServerInfoChanged();
 
@@ -262,7 +275,10 @@ private:
     quint16 m_mcPort = 0;
     quint16 m_localMcPort = 0;  // Guest: local port the MC port-forward listens on
     QString m_machineId;
-    QString m_playerName;
+    QString m_deviceName;      // 用户可改的联机昵称（QSettings: multiplayer/deviceName）
+    QString m_deviceCode;      // machine_id 前 4 位大写，固定
+    void loadDeviceName();
+    static QString sanitizeDeviceName(const QString& raw);
     QVariantList m_players;
     QStringList m_supportedProtocols;
     QStringList m_centerProtocols;
