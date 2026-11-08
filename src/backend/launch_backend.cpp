@@ -10,7 +10,13 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QDateTime>
+#include <QDateTime>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <algorithm>
+#include <QRegularExpression>
+#include <QTcpSocket>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -2468,6 +2474,70 @@ QString LaunchBackend::exportLaunchScript(const QString& versionId, const QStrin
     }
     return launcher.buildLaunchScript(versionId, javaPath, maxMemoryMB,
                                       effectiveJvmArgs, gameArgs, highPerfGpu);
+}
+
+// ── 从游戏日志文件兜底探测 LAN 端口（2026-11-08）──
+// 用途：游戏已经开着、但启动器重启过（detach 接管，没有 QProcess stdout 管道）时，
+// 仍能从 logs/latest.log 里找到最近一次 "Started serving on <port>"。
+// 会校验该端口当前是否真的在监听，避免拿到上一个已关闭世界的旧端口。
+int LaunchBackend::probeLanPortFromLogs() const
+{
+    static const QRegularExpression rx(QStringLiteral("Started serving on ([0-9]+)"));
+
+    QStringList candidates;
+    if (!m_versionGameDir.isEmpty())
+        candidates << m_versionGameDir + QStringLiteral("/logs/latest.log");
+    if (!m_gameDir.isEmpty()) {
+        candidates << m_gameDir + QStringLiteral("/logs/latest.log");
+        // 版本隔离：启动器重启后 m_versionGameDir 可能为空，
+        // 因此再按目录时间取最近改动的若干个版本目录，看它们的 isolated 日志。
+        QDir vroot(m_gameDir + QStringLiteral("/versions"));
+        const QFileInfoList dirs =
+            vroot.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::NoSort);
+        QList<QPair<QDateTime, QString>> logFiles;
+        logFiles.reserve(dirs.size());
+        for (const QFileInfo& d : dirs) {
+            const QString p = d.absoluteFilePath() + QStringLiteral("/logs/latest.log");
+            QFileInfo lg(p);
+            if (lg.exists())
+                logFiles.append({lg.lastModified(), p});
+        }
+        std::sort(logFiles.begin(), logFiles.end(),
+                  [](const QPair<QDateTime, QString>& a,
+                     const QPair<QDateTime, QString>& b) { return a.first > b.first; });
+        for (int i = 0; i < logFiles.size() && i < 3; ++i)
+            candidates << logFiles.at(i).second;
+    }
+
+    for (const QString& path : candidates) {
+        QFile f(path);
+        if (!f.open(QIODevice::ReadOnly))
+            continue;
+        // 只读尾部 256 KB：latest.log 可能很大，LAN 行总在最近
+        const qint64 size = f.size();
+        const qint64 from = qMax<qint64>(0, size - 256 * 1024);
+        f.seek(from);
+        const QString text = QString::fromUtf8(f.readAll());
+        f.close();
+
+        int lastPort = 0;
+        auto it = rx.globalMatch(text);
+        while (it.hasNext())
+            lastPort = it.next().captured(1).toInt();
+
+        if (lastPort <= 0 || lastPort >= 65536)
+            continue;
+
+        // 端口仍在监听才算数（旧世界的端口不会 Listen）
+        QTcpSocket probe;
+        probe.connectToHost(QStringLiteral("127.0.0.1"), static_cast<quint16>(lastPort));
+        if (probe.waitForConnected(500)) {
+            probe.disconnectFromHost();
+            qCInfo(logLaunch) << QStringLiteral("[联机] 从游戏日志探测到 LAN 端口 %1").arg(lastPort);
+            return lastPort;
+        }
+    }
+    return 0;
 }
 
 } // namespace ShadowLauncher

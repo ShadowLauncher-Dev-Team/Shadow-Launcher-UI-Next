@@ -294,8 +294,18 @@ ShadowBackend::ShadowBackend(QObject* parent)
                 m_multiplayer, &MultiplayerManager::notifyMcLanPort);
         connect(m_multiplayer, &MultiplayerManager::hostWaitingForMcServer,
                 this, [this]() {
-            if (m_launch && m_multiplayer)
-                m_multiplayer->notifyMcLanPort(m_launch->lastMcLanPort());
+            if (!m_launch || !m_multiplayer)
+                return;
+            // 1) 本进程捕获的 JVM 输出缓存（最准）
+            const int cached = m_launch->lastMcLanPort();
+            if (cached > 0) {
+                m_multiplayer->notifyMcLanPort(cached);
+                return;
+            }
+            // 2) 游戏已开着但启动器重启过（无 stdout 管道）→ 读日志文件兜底
+            const int fromLog = m_launch->probeLanPortFromLogs();
+            if (fromLog > 0)
+                m_multiplayer->notifyMcLanPort(fromLog);
         });
     }
     m_localMods = new LocalModManager(this);

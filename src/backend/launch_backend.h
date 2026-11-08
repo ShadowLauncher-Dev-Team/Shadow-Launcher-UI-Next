@@ -121,6 +121,10 @@ public:
     // ---- Called by ShadowBackend to sync game directory ----
     void setGameDir(const QString& dir);
 
+    /// 从游戏 logs/latest.log 探测最近一次 LAN 端口（0 = 没找到/端口已不监听）。
+    /// 覆盖“游戏已开启 LAN、启动器重启后接管进程（无 stdout 管道）”的场景。
+    int probeLanPortFromLogs() const;
+
     /// 最近一次「对局域网开放」的端口（0 = 未开放/已关闭）。
     /// 联机页在进入“等待 MC 服务器”状态时用它补拿缓存值——
     /// 玩家常先开 LAN 再点联机开房，信号那时已经发过了。
