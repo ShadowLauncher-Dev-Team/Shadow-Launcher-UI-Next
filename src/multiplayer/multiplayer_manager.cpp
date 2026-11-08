@@ -135,12 +135,11 @@ MultiplayerManager::MultiplayerManager(QObject* parent)
     });
     m_hostWatchdog->start();
 
-    // Host 延迟探测：定期给每个宾客发 c:player_ping（带本机时间戳），宾客原样回 pong，
-    // 用 now-ts 算真实 RTT。原来 host 从不发 ping，handlePlayerPong 永远不触发 →
-    // 宾客那行的延迟永远是 -1（UI 显示「—」）。
-    m_latencyProbeTimer = new QTimer(this);
-    m_latencyProbeTimer->setInterval(3000);
-    connect(m_latencyProbeTimer, &QTimer::timeout, this, &MultiplayerManager::sendLatencyProbes);
+    // 延迟一律「由宾客自报」，host 不主动发请求：
+    // Terracotta 客户端只处理「响应」，收到带类型的请求会把它当响应读、把后续流读错位，
+    // 实测（2026-11-08 10:24）host 每 3s 发一次 c:player_ping 后，Terracotta 宾客 20s 内就停止心跳、
+    // 被我们的 watchdog 判为离线（对面 UI 还显示正常，因为它的状态是旧的）。
+    // 所以 host 侧不再有任何发往宾客的主动请求。
 
     // MC LAN Scanner: initialize lazily when scanning starts
 }
@@ -273,8 +272,7 @@ void MultiplayerManager::leaveRoom()
     emit playersChanged();
 
     stopFakeServer();
-    if (m_latencyProbeTimer)
-        m_latencyProbeTimer->stop();
+    m_selfLatencyMs = -1;
 
     // Defer heavy cleanup to avoid UI freeze
     QTimer::singleShot(0, this, [this]() {
@@ -611,9 +609,6 @@ void MultiplayerManager::startHostServer()
     hostPlayer["latency"] = 0;
     m_players << hostPlayer;
     emit playersChanged();
-
-    if (m_latencyProbeTimer)
-        m_latencyProbeTimer->start();   // 3s 一轮 c:player_ping，量每个宾客的 RTT
 
     qCInfo(logNet) << QStringLiteral("[联机] 主机服务已启动 联机端口=%1 MC端口=%2").arg(m_centerPort).arg(m_mcPort);
 }
@@ -1076,6 +1071,7 @@ void MultiplayerManager::handleGuestResponse(quint8 status, const QByteArray& bo
         if (sentTs <= 0) return;
         int rtt = static_cast<int>(QDateTime::currentMSecsSinceEpoch() - sentTs);
         if (rtt < 0 || rtt > 10000) return;   // 明显异常（时钟被改过）就丢掉，别显示垃圾值
+        m_selfLatencyMs = rtt;
         QString hostMid = obj.value(QStringLiteral("machine_id")).toString();
         m_latency[hostMid] = rtt;
         for (int i = 0; i < m_players.size(); ++i) {
@@ -1346,6 +1342,10 @@ void MultiplayerManager::handlePlayerPing(const QByteArray& body, QTcpSocket* so
         player[QStringLiteral("machine_id")] = mid;
         player[QStringLiteral("hostname")] = obj[QStringLiteral("hostname")].toString(name);
         player[QStringLiteral("kind")] = QStringLiteral("GUEST");
+        // 采纳宾客自报的 RTT（宾客从我们 pong 回显的 ts 算出）；没有就保持 -1 显示「—」
+        const int selfReported = obj.value(QStringLiteral("latency")).toInt(-1);
+        if (selfReported >= 0 && selfReported < 10000)
+            m_latency[mid] = selfReported;
         player[QStringLiteral("latency")] = m_latency.value(mid, -1);
         if (obj.contains(QLatin1String("vendor")))
             player[QStringLiteral("vendor")] = obj[QLatin1String("vendor")].toString();
@@ -1360,6 +1360,9 @@ void MultiplayerManager::handlePlayerPing(const QByteArray& body, QTcpSocket* so
     } else {
         // Update heartbeat time for existing player
         m_lastHeartbeat[mid] = now;
+        const int selfReported = obj.value(QStringLiteral("latency")).toInt(-1);
+        if (selfReported >= 0 && selfReported < 10000)
+            m_latency[mid] = selfReported;
         for (int i = 0; i < m_players.size(); ++i) {
             QVariantMap p = m_players[i].toMap();
             if (p[QStringLiteral("machine_id")].toString() == mid) {
@@ -1419,6 +1422,9 @@ void MultiplayerManager::sendHeartbeat()
     heartbeat[QStringLiteral("vendor")] = shadowVendor();
     // 带上发送时刻：host（我们和 Terracotta）会把 ts 原样回显，宾客用 now-ts 算真实 RTT。
     heartbeat[QStringLiteral("ts")] = static_cast<double>(QDateTime::currentMSecsSinceEpoch());
+    // 自报延迟：房主没有别的办法知道我们的 RTT（它不该主动发请求，见构造函数注释）。
+    if (m_selfLatencyMs >= 0)
+        heartbeat[QStringLiteral("latency")] = m_selfLatencyMs;
 
     if (m_centerProtocols.contains(Scaffolding::kPlayerEasyTierId)) {
         heartbeat[QStringLiteral("easytier_id")] = QString();
@@ -1455,24 +1461,6 @@ void MultiplayerManager::handlePlayerPong(const QByteArray& body, QTcpSocket* so
             }
         }
         qCInfo(logNet) << QStringLiteral("[联机] 宾客延迟 RTT=%1ms id=%2").arg(rtt).arg(mid);
-    }
-}
-
-void MultiplayerManager::sendLatencyProbes()
-{
-    if (m_role != Host)
-        return;
-    const double ts = static_cast<double>(QDateTime::currentMSecsSinceEpoch());
-    for (auto it = m_guestIds.constBegin(); it != m_guestIds.constEnd(); ++it) {
-        QTcpSocket* sock = it.key();
-        if (!sock || sock->state() != QAbstractSocket::ConnectedState)
-            continue;
-        QJsonObject probe;
-        probe[QStringLiteral("ts")] = ts;
-        probe[QStringLiteral("machine_id")] = m_machineId;
-        sock->write(Scaffolding::buildPacket(
-            Scaffolding::kPlayerPing,
-            QJsonDocument(probe).toJson(QJsonDocument::Compact)));
     }
 }
 
