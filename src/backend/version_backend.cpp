@@ -3849,7 +3849,9 @@ void VersionBackend::VerifyWorker::process() {
 
 
 
-        if (!QFileInfo::exists(item.path)) {
+        const QFileInfo fi(item.path);
+
+        if (!fi.exists() || !fi.isFile()) {
 
             m_failed++;
 
@@ -3870,6 +3872,15 @@ void VersionBackend::VerifyWorker::process() {
                 m_failedPaths.append(item.path);
 
             }
+
+        } else if (item.size > 0 && fi.size() != item.size) {
+
+            // 版本 JSON 没给 sha1 时，至少比对大小，避免"只判存在"的假通过
+            m_failed++;
+
+            m_failedFiles.append(item.name + tr(" (大小不符)"));
+
+            m_failedPaths.append(item.path);
 
         }
 
@@ -3943,6 +3954,13 @@ void VersionBackend::verifyVersion(const QString& versionId)
     const QString rootDir = repairRootFor(versionId);
 
 
+    // Guard: 修复进行中不得并发校验（修复会先删文件再下载，边删边读会得到随机结果）
+    if (m_repairRunning.loadRelaxed()) {
+        m_pendingVerifyId = versionId;
+        emit logMessage(tr("正在修复文件，校验已排队，修复完成后自动继续"));
+        return;
+    }
+
     // Guard: don't allow concurrent verify
 
     if (m_verifyThread && m_verifyThread->isRunning()) {
@@ -3959,6 +3977,8 @@ void VersionBackend::verifyVersion(const QString& versionId)
 
 
     setInstallPhase(tr("校验中"));
+
+    m_repairCancelRequested.storeRelease(0);
 
     m_verifyChecked = 0;
 
@@ -4092,6 +4112,8 @@ void VersionBackend::verifyVersion(const QString& versionId)
 
             item.sha1 = client.value(QStringLiteral("sha1")).toString();
 
+            item.size = client.value(QStringLiteral("size")).toInteger(0);
+
             item.name = versionId + QStringLiteral(".jar");
 
             items.append(item);
@@ -4129,6 +4151,25 @@ void VersionBackend::verifyVersion(const QString& versionId)
             QJsonObject os = rule.value(QStringLiteral("os")).toObject();
 
             QString osName = os.value(QStringLiteral("name")).toString().toLower();
+            const QString osArch = os.value(QStringLiteral("arch")).toString().toLower();
+            const QJsonObject ruleFeatures = rule.value(QStringLiteral("features")).toObject();
+
+            // allow 规则若限定了 arch 或 features，本机不一定满足 → 保守跳过，避免"缺失"假阳性
+            if (action == QStringLiteral("allow") && !osArch.isEmpty() && osArch != QStringLiteral("x86_64")) {
+
+                allowWindows = false;
+
+                break;
+
+            }
+
+            if (action == QStringLiteral("allow") && !ruleFeatures.isEmpty()) {
+
+                allowWindows = false;
+
+                break;
+
+            }
 
             if (action == QStringLiteral("allow") && !osName.isEmpty() && osName != QStringLiteral("windows")) {
 
@@ -4170,6 +4211,8 @@ void VersionBackend::verifyVersion(const QString& versionId)
 
             item.sha1 = artifact.value(QStringLiteral("sha1")).toString();
 
+            item.size = artifact.value(QStringLiteral("size")).toInteger(0);
+
             item.name = QStringLiteral("libraries/%1").arg(path);
 
             items.append(item);
@@ -4196,6 +4239,8 @@ void VersionBackend::verifyVersion(const QString& versionId)
 
                 item.sha1 = clsArt.value(QStringLiteral("sha1")).toString();
 
+                item.size = clsArt.value(QStringLiteral("size")).toInteger(0);
+
                 item.name = QStringLiteral("libraries/%1").arg(path);
 
                 items.append(item);
@@ -4213,6 +4258,22 @@ void VersionBackend::verifyVersion(const QString& versionId)
     emit verifyProgress(10, 100);
 
 
+
+    // --- Asset index file itself ---
+    // 索引缺失/损坏时，下面的 assets 循环会被静默跳过，用户会看到"全部通过"但资源根本没校验。
+    // 先把索引本身作为校验项，让它成为一条明确的失败。
+    {
+        QJsonObject assetIdxInfo = versionJson.value(QStringLiteral("assetIndex")).toObject();
+        if (!assetIdxInfo.isEmpty()) {
+            const QString idxIdSelf = assetIdxInfo.value(QStringLiteral("id")).toString(QStringLiteral("legacy"));
+            VerifyItem idxItem;
+            idxItem.path = rootDir + QStringLiteral("/assets/indexes/") + idxIdSelf + QStringLiteral(".json");
+            idxItem.sha1 = assetIdxInfo.value(QStringLiteral("sha1")).toString();
+            idxItem.size = assetIdxInfo.value(QStringLiteral("size")).toInteger(0);
+            idxItem.name = QStringLiteral("assets/indexes/%1.json").arg(idxIdSelf);
+            items.append(idxItem);
+        }
+    }
 
     // --- Asset objects (from asset index) ---
 
@@ -4255,6 +4316,8 @@ void VersionBackend::verifyVersion(const QString& versionId)
                     item.path = objectsDir + QStringLiteral("/") + prefix + QStringLiteral("/") + sha1;
 
                     item.sha1 = sha1;
+
+                    item.size = obj.value(QStringLiteral("size")).toInteger(0);
 
                     item.name = QStringLiteral("assets/%1").arg(it.key());
 
@@ -4471,19 +4534,13 @@ void VersionBackend::cancelVerify()
     }
 
     if (m_repairRunning.loadRelaxed()) {
-
-        m_repairRunning.storeRelease(0);
-
-        emit repairRunningChanged();
-
-        setInstallPhase(tr("空闲"));
-
+        // 真取消：置标志 + abort 当前请求。pipeline 在 finished 回调里检测到标志后统一收尾，
+        // 不再像旧实现那样"界面已取消、后台还在下载并删文件"。
+        m_repairCancelRequested.storeRelease(1);
+        if (m_repairReply) {
+            m_repairReply->abort();
+        }
         emit logMessage(tr("正在取消修复..."));
-
-        emit verifyCancelled();
-
-        emit verifyFinished(false);
-
     }
 
 }
@@ -4627,6 +4684,8 @@ void VersionBackend::repairVersion(const QString& versionId)
 
         QString sha1;          // expected SHA-1 hash (empty for client.jar without sha1)
 
+        qint64 size = 0;       // 期望字节数（用于字节级进度，0 = 未知）
+
     };
 
     QList<RepairTarget> targets;
@@ -4699,7 +4758,8 @@ void VersionBackend::repairVersion(const QString& versionId)
 
             }
 
-            targets.append({jarPath, primary, fallback, sha1});
+            targets.append({jarPath, primary, fallback, sha1,
+                            client.value(QStringLiteral("size")).toInteger(0)});
 
         }
 
@@ -4757,13 +4817,79 @@ void VersionBackend::repairVersion(const QString& versionId)
 
             }
 
-            targets.append({fullPath, primary, fallback, sha1});
+            targets.append({fullPath, primary, fallback, sha1,
+                            artifact.value(QStringLiteral("size")).toInteger(0)});
 
+        }
+
+        // ── natives classifiers ──
+        // 校验阶段会检查 natives-windows*，修复阶段也必须能补；否则失败项永远匹配不到下载目标，
+        // 会落入下面的 targets.isEmpty() 分支反复重校验（死循环）。
+        for (const QJsonValue& libVal2 : libs) {
+            QJsonObject lib2 = libVal2.toObject();
+            QJsonObject cls = lib2.value(QStringLiteral("downloads")).toObject()
+                                 .value(QStringLiteral("classifiers")).toObject();
+            if (cls.isEmpty()) continue;
+
+            for (auto it2 = cls.constBegin(); it2 != cls.constEnd(); ++it2) {
+                if (!it2.key().toLower().contains(QStringLiteral("natives-windows"))) continue;
+
+                QJsonObject cArt = it2.value().toObject();
+                QString cPath = cArt.value(QStringLiteral("path")).toString();
+                if (cPath.isEmpty()) continue;
+
+                QString cFull = libsDir + QStringLiteral("/") + cPath;
+                if (!m_failedPathsCache.contains(cFull)) continue;
+
+                QString cSha1 = cArt.value(QStringLiteral("sha1")).toString();
+                QString cMojang = cArt.value(QStringLiteral("url")).toString();
+                QString cBmcl = bmclapiLibBase + QStringLiteral("/") + cPath;
+                QString cPri;
+                QString cFb;
+                if (fileSource == DownloadSourcePolicy::PreferOfficial) {
+                    cPri = cMojang;
+                    cFb  = cBmcl;
+                } else {
+                    cPri = cBmcl;
+                    cFb  = cMojang.isEmpty() ? cBmcl : cMojang;
+                }
+                targets.append({cFull, cPri, cFb, cSha1,
+                                cArt.value(QStringLiteral("size")).toInteger(0)});
+            }
         }
 
     }
 
 
+
+    // 2.5) Asset index file itself
+    // 索引丢了 → 资源清单也就没了，下面 assets 循环根本无法展开。
+    // 但 version.json 的 assetIndex 节点自带 url/sha1，所以索引是可自愈的：
+    // 先把它补回来，再重新校验即可拿到完整清单。
+    {
+        QJsonObject assetIdxMeta = versionJson.value(QStringLiteral("assetIndex")).toObject();
+        if (!assetIdxMeta.isEmpty()) {
+            const QString idxIdMeta = assetIdxMeta.value(QStringLiteral("id")).toString(QStringLiteral("legacy"));
+            QString idxFilePath = rootDir + QStringLiteral("/assets/indexes/") + idxIdMeta + QStringLiteral(".json");
+            if (m_failedPathsCache.contains(idxFilePath)) {
+                QString idxSha1 = assetIdxMeta.value(QStringLiteral("sha1")).toString();
+                QString idxOfficial = assetIdxMeta.value(QStringLiteral("url")).toString();
+                QString idxMirror = QStringLiteral("https://bmclapi2.bangbang93.com/assets/indexes/%1.json").arg(idxIdMeta);
+                QString iPri, iFb;
+                if (fileSource == DownloadSourcePolicy::PreferOfficial) {
+                    iPri = idxOfficial;
+                    iFb  = idxMirror;
+                } else {
+                    iPri = idxMirror;
+                    iFb  = idxOfficial.isEmpty() ? idxMirror : idxOfficial;
+                }
+                if (!iPri.isEmpty()) {
+                    targets.append({idxFilePath, iPri, iFb, idxSha1,
+                                    assetIdxMeta.value(QStringLiteral("size")).toInteger(0)});
+                }
+            }
+        }
+    }
 
     // 3) Assets (from the asset index)
 
@@ -4771,7 +4897,7 @@ void VersionBackend::repairVersion(const QString& versionId)
 
         QJsonObject assetIdx = versionJson.value(QStringLiteral("assetIndex")).toObject();
 
-        QString idxId = assetIdx.value(QStringLiteral("id")).toString();
+        QString idxId = assetIdx.value(QStringLiteral("id")).toString(QStringLiteral("legacy"));
 
         if (!idxId.isEmpty()) {
 
@@ -4821,7 +4947,8 @@ void VersionBackend::repairVersion(const QString& versionId)
 
                         }
 
-                        targets.append({assetPath, primary, fallback, sha1});
+                        targets.append({assetPath, primary, fallback, sha1,
+                                        obj.value(QStringLiteral("size")).toInteger(0)});
 
                     }
 
@@ -4838,36 +4965,34 @@ void VersionBackend::repairVersion(const QString& versionId)
     // If targets are empty (paths don't match version JSON), fallback to verify
 
     if (targets.isEmpty()) {
-
-        emit logMessage(tr("[警告] 损坏文件列表与版本 JSON 不匹配，重新校验..."));
-
-        verifyVersion(versionId);
-
+        // 旧实现直接 re-verify，会与同一批失败文件形成死循环（校验失败 → 修复 → 又校验失败）。
+        // 现在把"修不了的文件"逐条报出来，让界面能显示原因而不是无限转圈。
+        const int unmatched = m_failedPathsCache.size();
+        emit logMessage(tr("[失败] %1 个文件在版本元数据中找不到下载地址，无法自动修复").arg(unmatched));
+        for (const QString& fp : m_failedPathsCache) {
+            emit logMessage(tr("   无法修复: %1").arg(fp));
+        }
+        m_repairRunning.storeRelease(0);
+        emit repairRunningChanged();
+        setInstallPhase(tr("空闲"));
+        emit verifyFinished(false);
         return;
-
     }
 
 
 
-    // ── Delete corrupt files ──
-
-    int removed = 0;
-
-    for (const RepairTarget& t : targets) {
-
-        if (QFileInfo::exists(t.filePath) && QFile::remove(t.filePath))
-
-            removed++;
-
-    }
-
-    emit logMessage(tr("[修复] 开始修复 %1 个损坏文件").arg(targets.size()));
+    // ── 不预先删除损坏文件 ──
+    // 旧实现"先删再下"，一旦下载全失败文件就彻底没了，且无法回退。
+    // 新实现下载到 <path>.part，SHA1 通过后才原子替换（见下载完成处）。
+    emit logMessage(tr("[修复] 开始修复 %1 个文件").arg(targets.size()));
 
 
 
     // ── Inline download pipeline ──
 
     m_verifyRunning.storeRelease(1);
+
+    m_repairCancelRequested.storeRelease(0);
 
     m_repairRunning.storeRelease(1);
 
@@ -4885,265 +5010,210 @@ void VersionBackend::repairVersion(const QString& versionId)
 
 
 
-    // ── Sequential download pipeline ──
+    // ── Sequential download pipeline（带超时/重试/真取消/字节进度/原子落盘）──
 
-    struct RepairState {
-
+    struct RepairState : public QObject {
         int index = 0;
-
         int failCount = 0;
-
-        bool usingFallback = false;
-
+        int attempt = 0;              // 当前文件已尝试次数（前 2 次主源，后 2 次备源）
+        bool finishing = false;
+        qint64 bytesTotal = 0;
+        qint64 bytesDone = 0;
         QStringList remainingFailed;
-
-        VersionBackend* self;
-
-        QNetworkAccessManager* nam;
-
+        VersionBackend* self = nullptr;
+        QNetworkAccessManager* nam = nullptr;
+        QPointer<QNetworkReply> reply;
         QList<RepairTarget> targets;
-
         std::function<void()> downloadNext;
-
+        std::function<void()> finishAll;
     };
 
-
-
-    auto* state = new RepairState{};
-
+    auto* state = new RepairState();
     state->self = this;
-
     state->targets = targets;
-
-    for (const auto& t : targets)
-
+    for (const auto& t : targets) {
         state->remainingFailed.append(t.filePath);
-
+        state->bytesTotal += qMax<qint64>(0, t.size);
+    }
     state->nam = new QNetworkAccessManager(this);
 
-
-
-    // Recursive function stored in heap-allocated state to avoid dangling refs
-
-    state->downloadNext = [state]() {
+    // 收尾（只执行一次）
+    state->finishAll = [state]() {
+        if (state->finishing) return;
+        state->finishing = true;
 
         VersionBackend* self = state->self;
+        if (state->reply) {
+            state->reply->disconnect();
+            state->reply = nullptr;
+        }
+        if (state->nam) {
+            state->nam->deleteLater();
+            state->nam = nullptr;
+        }
 
+        const bool allPassed = (state->failCount == 0);
+        self->m_failedPathsCache = state->remainingFailed;
+        self->m_verifyRunning.storeRelease(0);
+        self->m_repairRunning.storeRelease(0);
+        emit self->repairRunningChanged();
+        self->setInstallPhase(tr("空闲"));
 
+        if (allPassed) {
+            self->m_failedPathsCache.clear();
+            emit self->logMessage(tr("[完成] 修复完成: 全部 %1 个文件已恢复").arg(state->targets.size()));
+            emit self->verifyFailedFiles({});
+        } else {
+            emit self->logMessage(tr("[失败] %1 个文件修复失败，请检查网络后重试")
+                                  .arg(state->remainingFailed.size()));
+            emit self->verifyFailedFiles(state->remainingFailed);
+        }
+        emit self->verifyFinished(allPassed);
 
-        // Check if all targets processed
+        state->deleteLater();
+    };
+
+    // 单个文件失败/成功后推进到下一个
+    auto advance = [state](bool ok, const QString& msg) {
+        VersionBackend* self = state->self;
+        if (!ok) {
+            state->failCount++;
+            emit self->logMessage(msg);
+        } else {
+            state->remainingFailed.removeOne(state->targets[state->index].filePath);
+            emit self->logMessage(msg);
+        }
+        state->index++;
+        state->attempt = 0;
+        self->m_verifyChecked = qMin(self->m_verifyChecked + 1, self->m_verifyTotal);
+        emit self->verifyProgress(self->m_verifyChecked, self->m_verifyTotal);
+        state->downloadNext();
+    };
+
+    state->downloadNext = [state, advance]() {
+        VersionBackend* self = state->self;
+
+        // 取消：真正停下，不再继续下载/删文件
+        if (self->m_repairCancelRequested.loadRelaxed()) {
+            if (state->reply) {
+                state->reply->disconnect();
+                state->reply->abort();
+                state->reply = nullptr;
+            }
+            if (state->nam) {
+                state->nam->deleteLater();
+                state->nam = nullptr;
+            }
+            self->m_verifyRunning.storeRelease(0);
+            self->m_repairRunning.storeRelease(0);
+            emit self->repairRunningChanged();
+            self->setInstallPhase(tr("空闲"));
+            emit self->logMessage(tr("[警告] 修复已取消"));
+            emit self->verifyCancelled();
+            emit self->verifyFinished(false);
+            state->deleteLater();
+            return;
+        }
 
         while (state->index < static_cast<int>(state->targets.size())) {
+            const RepairTarget target = state->targets[state->index];
+            const QString fileName = QFileInfo(target.filePath).fileName();
 
-            const RepairTarget& target = state->targets[state->index];
-
-
-
-            // Determine which URL to try
-
-            QString urlToTry = state->usingFallback ? target.fallbackUrl : target.primaryUrl;
-
-
-
-            if (urlToTry.isEmpty()) {
-
-                state->self->emit logMessage(
-
-                    tr("[失败] 下载失败: %1 (无可用源)").arg(QFileInfo(target.filePath).fileName()));
-
-                state->failCount++;
-
-                state->index++;
-
-                state->usingFallback = false;
-
-                self->m_verifyChecked = qMin(self->m_verifyChecked + 1, self->m_verifyTotal);
-
-                emit self->verifyProgress(self->m_verifyChecked, self->m_verifyTotal);
-
-                continue;
-
+            // 每个文件最多 4 次：主源 2 次 + 备源 2 次
+            if (state->attempt >= 4) {
+                advance(false, tr("[失败] 下载失败: %1").arg(fileName));
+                return;
             }
 
+            const bool useFallback = (state->attempt >= 2);
+            const QString urlToTry = useFallback ? target.fallbackUrl : target.primaryUrl;
 
+            if (urlToTry.isEmpty()) {
+                if (!useFallback) {
+                    state->attempt = 2;      // 主源为空，直接跳备源
+                    continue;
+                }
+                advance(false, tr("[失败] 下载失败: %1 (无可用源)").arg(fileName));
+                return;
+            }
 
+            state->attempt++;
             QDir().mkpath(QFileInfo(target.filePath).absolutePath());
 
-            auto* reply = state->nam->get(QNetworkRequest(QUrl(urlToTry)));
+            QNetworkRequest req{QUrl(urlToTry)};
+            req.setTransferTimeout(20000);   // 20s 无响应即失败，避免永久挂住
 
+            auto* reply = state->nam->get(req);
+            state->reply = reply;
 
+            // 字节进度（按文件下载进度累加）
+            connect(reply, &QNetworkReply::downloadProgress, self,
+                    [state](qint64 recv, qint64) {
+                emit state->self->repairProgress(state->bytesDone + recv, state->bytesTotal);
+            });
 
-            connect(reply, &QNetworkReply::finished, state->self,
-
-                    [state, reply, target]() {
-
-                reply->deleteLater();
-
+            connect(reply, &QNetworkReply::finished, self, [state, reply, target, urlToTry, advance]() {
                 VersionBackend* self = state->self;
+                reply->deleteLater();
+                if (state->reply == reply) state->reply = nullptr;
 
-
-
-                // Helper to advance with failure
-
-                auto failAdvance = [self, state](const QString& msg) {
-
-                    self->emit logMessage(msg);
-
-                    state->failCount++;
-
-                    state->index++;
-
-                    state->usingFallback = false;
-
-                    self->m_verifyChecked = qMin(self->m_verifyChecked + 1, self->m_verifyTotal);
-
-                    emit self->verifyProgress(self->m_verifyChecked, self->m_verifyTotal);
-
+                if (self->m_repairCancelRequested.loadRelaxed()) {
                     state->downloadNext();
-
-                };
-
-
-
-                if (reply->error() != QNetworkReply::NoError) {
-
-                    if (!state->usingFallback && !target.fallbackUrl.isEmpty()) {
-
-                        state->usingFallback = true;
-
-                        state->downloadNext();
-
-                    } else {
-
-                        failAdvance(tr("[失败] 下载失败: %1").arg(QFileInfo(target.filePath).fileName()));
-
-                    }
-
                     return;
-
                 }
 
+                const QString fileName = QFileInfo(target.filePath).fileName();
 
+                if (reply->error() != QNetworkReply::NoError) {
+                    // 主源失败 → 下次自动走备源（attempt 已自增）
+                    state->downloadNext();
+                    return;
+                }
 
                 QByteArray data = reply->readAll();
 
-
-
-                // SHA1 verification
-
                 if (!target.sha1.isEmpty()) {
-
                     const QString hash = sha1Hex(data);
-
-                    if (hash != target.sha1) {
-
-                        if (!state->usingFallback && !target.fallbackUrl.isEmpty()) {
-
-                            state->usingFallback = true;
-
-                            state->downloadNext();
-
-                        } else {
-
-                            failAdvance(tr("[失败] SHA1 不匹配: %1").arg(QFileInfo(target.filePath).fileName()));
-
-                        }
-
+                    if (hash.compare(target.sha1, Qt::CaseInsensitive) != 0) {
+                        state->downloadNext();   // 换源/重试
                         return;
-
                     }
-
+                } else if (target.size > 0 && data.size() != target.size) {
+                    state->downloadNext();
+                    return;
                 }
 
-
-
-                // Write to disk
-
-                QFile file(target.filePath);
-
-                if (file.open(QIODevice::WriteOnly)) {
-
-                    file.write(data);
-
-                    file.close();
-
-                    state->remainingFailed.removeOne(target.filePath);
-
-                    self->emit logMessage(tr("[完成] 已修复: %1").arg(QFileInfo(target.filePath).fileName()));
-
-                } else {
-
-                    state->failCount++;
-
-                    self->emit logMessage(tr("[失败] 写入文件失败: %1").arg(target.filePath));
-
+                // 原子落盘：先写 .part，成功后再替换，失败不会毁掉原文件
+                const QString partPath = target.filePath + QStringLiteral(".part");
+                QFile part(partPath);
+                bool ok = false;
+                if (part.open(QIODevice::WriteOnly)) {
+                    ok = (part.write(data) == data.size());
+                    part.close();
+                }
+                if (!ok) {
+                    QFile::remove(partPath);
+                    advance(false, tr("[失败] 写入文件失败: %1").arg(target.filePath));
+                    return;
+                }
+                QFile::remove(target.filePath);
+                if (!QFile::rename(partPath, target.filePath)) {
+                    QFile::remove(partPath);
+                    advance(false, tr("[失败] 无法写入: %1").arg(target.filePath));
+                    return;
                 }
 
-
-
-                state->index++;
-
-                state->usingFallback = false;
-
-                self->m_verifyChecked = qMin(self->m_verifyChecked + 1, self->m_verifyTotal);
-
-                emit self->verifyProgress(self->m_verifyChecked, self->m_verifyTotal);
-
-                state->downloadNext();
-
+                state->bytesDone += qMax<qint64>(0, target.size > 0 ? target.size : data.size());
+                emit self->repairProgress(state->bytesDone, state->bytesTotal);
+                advance(true, tr("[完成] 已修复: %1").arg(fileName));
             });
 
-
-
-            return;  // waiting for async completion
-
+            return;   // 等异步完成
         }
 
-
-
-        // ── All targets processed ──
-
-        state->nam->deleteLater();
-
-        bool allPassed = (state->failCount == 0);
-
-        self->m_failedPathsCache = state->remainingFailed;
-
-        self->m_verifyRunning.storeRelease(0);
-
-        self->m_repairRunning.storeRelease(0);
-
-        emit self->repairRunningChanged();
-
-        self->setInstallPhase(tr("空闲"));
-
-
-
-        if (allPassed) {
-
-            self->m_failedPathsCache.clear();
-
-            self->emit logMessage(tr("[完成] 修复完成: 全部 %1 个文件已恢复").arg(state->targets.size()));
-
-            self->emit verifyFailedFiles({});
-
-        } else {
-
-            self->emit logMessage(
-
-                tr("[失败] %1 个文件修复失败，请检查网络后重试").arg(state->remainingFailed.size()));
-
-            self->emit verifyFailedFiles(state->remainingFailed);
-
-        }
-
-        self->emit verifyFinished(allPassed);
-
-        delete state;
-
+        // 全部处理完
+        state->finishAll();
     };
-
-
 
     // Kick off
 

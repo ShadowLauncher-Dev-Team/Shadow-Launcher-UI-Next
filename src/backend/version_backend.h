@@ -16,6 +16,7 @@
 #include <QSet>
 #include <QVector>
 #include <QNetworkReply>
+#include <QPointer>
 #include <QHash>
 #include <QAbstractListModel>
 #include <memory>
@@ -340,6 +341,8 @@ signals:
     void verifyStarted();
     void verifyProgress(int checked, int total);
     void verifyProgressChanged(int checked, int total);
+    /// 修复（补全）的字节级进度：done/total 由 RepaiTarget.size 累加而来
+    void repairProgress(qint64 done, qint64 total);
     void verifyFinished(bool allPassed);
     void cancelNotification(const QString& installId, const QString& message);
     void verifyFailedFiles(const QStringList& failedFiles);
@@ -539,12 +542,17 @@ private:
     QAtomicInt m_verifyRunning = 0;
     QAtomicInt m_repairRunning = 0;
     QAtomicInt m_verifyCancelled = 0;
+    /// 修复取消请求：pipeline 每步检查，abort 当前 reply 后优雅收尾（不再"假取消"）
+    QAtomicInt m_repairCancelRequested = 0;
+    QPointer<QNetworkReply> m_repairReply;
 };
 
 struct VerifyItem {
     QString path;
     QString sha1;
     QString name;
+    /// 期望字节数（来自版本 JSON / 资源索引）。sha1 缺失时退化为大小比对。
+    qint64 size = 0;
 };
 
 class VersionBackend::VerifyWorker : public QObject {
