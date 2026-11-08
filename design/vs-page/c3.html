@@ -1,126 +1,158 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
-<title>C · 启动配方控制台</title><link rel="stylesheet" href="vs.css">
+<title>C · 分区表单 + 右侧「生效结果」</title><link rel="stylesheet" href="vs.css">
 <style>
-.split{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 420px;min-height:0}
-.form{overflow:auto;padding:8px 32px 48px}
-.preview{border-left:1px solid var(--line);background:#07080b;padding:20px 22px;overflow:auto}
-.grp{border:1px solid var(--line);border-radius:var(--r-md);margin:14px 0;background:var(--card)}
-.grp>button{width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;text-align:left}
-.grp .gt{font-size:12.5px;font-weight:600}
-.grp .gs{font-size:10.5px;color:var(--fg3)}
-.grp .body{padding:2px 14px 12px;border-top:1px solid #101419}
-.cmd{background:#05070a;border:1px solid var(--line2);border-radius:var(--r-sm);padding:12px;font-family:ui-monospace,Consolas,monospace;font-size:11px;line-height:1.75;color:#9fb3c8;white-space:pre-wrap;word-break:break-all}
+.split{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 400px;min-height:0}
+.form{overflow:auto;padding:8px 30px 48px}
+.preview{border-left:1px solid var(--line);background:#07080b;padding:18px 20px;overflow:auto}
+.sec-h{display:flex;align-items:center;gap:14px;padding:18px 0 12px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.sec-h h2{margin:0;font-size:14px;font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:999px;padding:2px}
+.seg span{padding:3px 12px;border-radius:999px;font-size:11.5px;color:var(--fg3);cursor:pointer}
+.seg span.on{background:var(--accentSoft);color:#a9c8ff}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{height:27px;display:inline-flex;align-items:center;padding:0 11px;border:1px solid var(--line2);border-radius:999px;color:var(--fg2);font-size:11.5px;cursor:pointer}
+.pill.on{border-color:#2c4a7a;background:var(--accentSoft);color:#a9c8ff}
+.chk{display:inline-flex;align-items:center;gap:8px;color:var(--fg2);font-size:12px}
+.soft{color:var(--fg3);font-size:11px}
+.cmd{background:#05070a;border:1px solid var(--line2);border-radius:8px;padding:12px;font-family:ui-monospace,Consolas,monospace;font-size:10.5px;line-height:1.8;color:#9fb3c8;white-space:pre-wrap;word-break:break-all}
 .cmd b{color:#7fb0ff;font-weight:500}
 .cmd i{color:#4a5563;font-style:normal}
-.diff{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:#0d1118;margin-bottom:6px;font-size:11.5px}
-.diff .x{margin-left:auto;color:var(--fg3)}
+.kv{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #0f1217;font-size:11.5px}
+.kv:last-child{border-bottom:0}
+.kv .k{color:var(--fg3);width:104px;flex:0 0 104px}
+.kv .v{color:var(--fg);flex:1}
+.kv .src{font-size:10px;color:var(--fg3)}
 .meter{height:4px;border-radius:4px;background:#151a22;overflow:hidden;margin:6px 0 2px}
 .meter>i{display:block;height:100%;background:var(--accent)}
+.lrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #0f1217}
+.lrow:last-child{border-bottom:0}
+.lname b{font-size:12px;font-weight:500}
+.lname span{display:block;color:var(--fg3);font-size:10px;margin-top:2px}
+.mini{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.mini span{color:var(--fg3);font-size:10.5px}
+.mini b{display:block;font-size:15px;font-weight:500;margin-top:3px}
+.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.act{text-align:left;background:var(--card);border:1px solid var(--line2);border-radius:8px;padding:11px 13px}
+.act b{display:block;font-size:12.5px;font-weight:500}
+.act span{display:block;color:var(--fg3);font-size:10.5px;margin-top:3px}
+.panel{display:none}
+body[data-state="launch"] .p-launch,
+body[data-state="mods"] .p-mods,
+body[data-state="memory"] .p-memory,
+body[data-state="tools"] .p-tools{display:block}
+.pv{display:none}
+body[data-state="launch"] .pv-launch,
+body[data-state="mods"] .pv-mods,
+body[data-state="memory"] .pv-memory,
+body[data-state="tools"] .pv-tools{display:block}
 </style></head>
-<body data-state="default">
-
+<body data-state="launch">
 <div class="switcher">
-  <b>C 版 · 启动配方控制台（右侧实时合成）</b>
-  <button data-s="default" aria-pressed="true">默认（跟随全局）</button>
-  <button data-s="custom" aria-pressed="false">已覆盖几项</button>
-  <button data-s="cmd" aria-pressed="false">命令编辑</button>
-  <button data-s="danger" aria-pressed="false">删除确认</button>
-  <span class="hint">数字键 1–4 切换状态 · 概念稿，非最终实现</span>
+  <b>C 版 · 分区表单 + 右侧生效结果</b>
+  <button data-s="launch" aria-pressed="true">1 启动配置</button>
+  <button data-s="mods" aria-pressed="false">2 Mod 管理</button>
+  <button data-s="memory" aria-pressed="false">3 内存</button>
+  <button data-s="tools" aria-pressed="false">4 工具与维护</button>
+  <span class="hint">数字键 1–4 切换分区 · 概念稿</span>
 </div>
 <div class="page">
   <div class="topbar">
     <button class="back">←</button>
-    <div>
-      <div class="vname">1.20.1-Forge_47.2.0</div>
-      <div class="vmeta">Forge 47.2.0 · 87 个模组 · 与全局不同 3 项</div>
-    </div>
+    <div><div class="vname">1.20.1-Forge_47.2.0</div><div class="vmeta">Forge 47.2.0 · 87 个 Mod</div></div>
     <div class="grow"></div>
-    <span class="stat">改动自动保存</span><button class="btn">打开文件夹</button>
-    <button class="btn primary">启动</button>
+    <span class="soft">改动自动保存</span>
+    <button class="btn">打开文件夹</button><button class="btn primary">启动</button>
   </div>
-
   <div class="split">
     <main class="form">
 
-      <section class="grp">
-        <button><span class="gt">运行时</span><span class="gs">Java 17 · 4 GB · G1GC</span><div style="flex:1"></div><span class="badge acc">1</span></button>
-        <div class="body">
-          <div class="row"><div class="label">Java</div><div class="ctl">
-            <select class="field" style="width:260px"><option>跟随全局 · Temurin 17.0.9</option><option>Java 21 · Temurin 21.0.2</option></select>
-            <div class="spacer"></div><div class="ih" data-on="0"><i></i><span>跟随全局</span></div>
-          </div></div>
-          <div class="row"><div class="label">内存</div><div class="ctl">
-            <div class="slider" style="width:260px"><div class="track"><div class="fill" style="width:52%"></div><div class="knob" style="left:52%"></div></div><div class="num">4096 MB</div></div>
-            <div class="spacer"></div><div class="ih" data-on="1"><i></i><span>覆盖</span></div>
-          </div></div>
-          <div class="row"><div class="label">GC</div><div class="ctl">
-            <select class="field" style="width:200px"><option>跟随全局 · G1GC</option><option>ZGC</option></select>
-            <div class="spacer"></div><div class="ih" data-on="0"><i></i><span>跟随全局</span></div>
-          </div></div>
+      <div class="panel p-launch">
+        <div class="sec-h"><h2>启动配置</h2>
+          <div class="seg"><span class="on">跟随全局</span><span>独立配置</span></div>
+          <div class="grow"></div><span class="soft">右侧是跟随全局后的实际值</span></div>
+        <div class="row"><div class="label">Java</div><div class="ctl"><div class="pills">
+          <span class="pill on">自动（Java 17）</span><span class="pill">指定</span><span class="pill">版本目录内</span></div></div></div>
+        <div class="row"><div class="label">JVM / GC</div><div class="ctl"><div class="pills">
+          <span class="pill on">G1GC 平衡</span><span class="pill">Parallel</span><span class="pill">ZGC</span><span class="pill">仅 G1GC</span></div></div></div>
+        <div class="row"><div class="label">启动选项</div><div class="ctl" style="flex-wrap:wrap;gap:18px">
+          <label class="chk"><i class="sw" data-on="0"></i>全屏</label>
+          <label class="chk"><i class="sw" data-on="1"></i>强制独显</label>
+          <label class="chk"><i class="sw" data-on="0"></i>自动进服</label>
+          <input class="field" style="width:180px" placeholder="localhost:25565" disabled>
+        </div></div>
+        <div class="row"><div class="label">命令</div><div class="ctl" style="flex-direction:column;align-items:stretch;gap:8px">
+          <input class="field" placeholder="启动前：留空不执行">
+          <input class="field" placeholder="退出后：留空不执行">
+        </div></div>
+      </div>
+
+      <div class="panel p-mods">
+        <div class="sec-h"><h2>Mod 管理</h2><span class="badge">87 个 · 启用 84</span><div class="grow"></div>
+          <input class="field" style="width:170px" placeholder="搜索…"></div>
+        <div style="display:flex;gap:8px;padding:10px 0">
+          <button class="btn" style="height:28px">全部启用</button>
+          <button class="btn" style="height:28px">全部禁用</button>
+          <button class="btn" style="height:28px">导入…</button>
         </div>
-      </section>
+        
+        <div class="lrow"><div class="sw" data-on="1"></div>
+          <div class="lname"><b>Sodium</b><span>0.5.8 · 1.6 MB</span></div><div style="flex:1"></div>
+          <button class="btn ghost" style="height:24px;padding:0 8px;font-size:11px">删除</button></div>
+        <div class="lrow"><div class="sw" data-on="1"></div>
+          <div class="lname"><b>Iris Shaders</b><span>1.7.0 · 3.2 MB</span></div><div style="flex:1"></div>
+          <button class="btn ghost" style="height:24px;padding:0 8px;font-size:11px">删除</button></div>
+        <div class="lrow"><div class="sw" data-on="0"></div>
+          <div class="lname"><b>Create</b><span>0.5.1 · 8.4 MB</span></div><div style="flex:1"></div>
+          <button class="btn ghost" style="height:24px;padding:0 8px;font-size:11px">删除</button></div>
+        <div class="lrow"><div class="sw" data-on="1"></div>
+          <div class="lname"><b>JEI</b><span>15.2.0 · 1.1 MB</span></div><div style="flex:1"></div>
+          <button class="btn ghost" style="height:24px;padding:0 8px;font-size:11px">删除</button></div>
+        <div class="lrow"><div class="sw" data-on="1"></div>
+          <div class="lname"><b>FerriteCore</b><span>6.0.1 · 210 KB</span></div><div style="flex:1"></div>
+          <button class="btn ghost" style="height:24px;padding:0 8px;font-size:11px">删除</button></div>
+      </div>
 
-      <section class="grp">
-        <button><span class="gt">窗口与参数</span><span class="gs">1280×720 · G1 调优</span><div style="flex:1"></div><span class="badge acc">2</span></button>
-        <div class="body">
-          <div class="row"><div class="label">分辨率</div><div class="ctl">
-            <input class="field" style="width:70px" value="1280"><span style="color:var(--fg3)">×</span><input class="field" style="width:70px" value="720">
-            <div class="spacer"></div><span class="badge">全局设置</span>
-          </div></div>
-          <div class="row"><div class="label">JVM 参数</div><div class="ctl">
-            <textarea class="field" style="width:100%">-XX:+UseG1GC -XX:MaxGCPauseMillis=60</textarea>
-            <div class="ih" data-on="1"><i></i><span>覆盖</span></div>
-          </div></div>
-          <div class="row"><div class="label">游戏参数</div><div class="ctl">
-            <input class="field" placeholder="留空跟随全局">
-            <div class="spacer"></div><div class="ih" data-on="0"><i></i><span>跟随全局</span></div>
-          </div></div>
+      <div class="panel p-memory">
+        <div class="sec-h"><h2>内存设置</h2>
+          <div class="seg"><span>自动</span><span class="on">自定义</span></div>
+          <div class="grow"></div><span class="badge acc">4096 MB</span></div>
+        <div class="row"><div class="label">分配内存</div><div class="ctl">
+          <div class="slider" style="max-width:320px"><div class="track"><div class="fill" style="width:52%"></div><div class="knob" style="left:52%"></div></div><div class="num">4096 MB</div></div>
+        </div></div>
+        <div class="row"><div class="label">自动配置<small>按剩余内存动态分配</small></div><div class="ctl"><div class="sw" data-on="0"></div></div></div>
+      </div>
+
+      <div class="panel p-tools">
+        <div class="sec-h"><h2>工具与维护</h2><div class="grow"></div><span class="badge ok">3 天前校验通过</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 0">
+          <span class="soft">扫描 5871 个文件</span><div style="flex:1"></div>
+          <button class="btn" style="height:28px">开始校验</button>
         </div>
-      </section>
-
-      <section class="grp">
-        <button><span class="gt">自动化</span><span class="gs">无命令 · 不自动进服</span><div style="flex:1"></div><span class="badge">跟随全局</span></button>
-        <div class="body">
-          <div class="row"><div class="label">启动前</div><div class="ctl"><input class="field" placeholder="不执行"><div class="spacer"></div><div class="ih" data-on="0"><i></i><span>跟随全局</span></div></div></div>
-          <div class="row"><div class="label">退出后</div><div class="ctl"><input class="field" placeholder="不执行"><div class="spacer"></div><div class="ih" data-on="0"><i></i><span>跟随全局</span></div></div></div>
-          <div class="row"><div class="label">自动进服</div><div class="ctl"><input class="field" style="width:240px" placeholder="localhost:25565"><div class="spacer"></div><div class="ih" data-on="0"><i></i><span>跟随全局</span></div></div></div>
+        <div class="meter" style="margin-bottom:16px"><i style="width:0%"></i></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="act"><b>重命名</b><span>改版本 ID</span></button>
+          <button class="act"><b>克隆</b><span>生成副本</span></button>
+          <button class="act"><b>复制路径</b><span>剪贴板</span></button>
+          <button class="act"><b>迁移目录</b><span>隔离目录</span></button>
         </div>
-      </section>
-
-      <section class="grp">
-        <button><span class="gt">文件与维护</span><span class="gs">隔离目录 · 可校验/克隆</span><div style="flex:1"></div></button>
-        <div class="body">
-          <div class="row"><div class="label">游戏目录</div><div class="ctl">
-            <input class="field" value="%APPDATA%\.shadow\versions\1.20.1-Forge_47.2.0" disabled>
-            <button class="btn" style="flex:0 0 auto">打开</button>
-          </div></div>
-          <div class="row"><div class="label">维护</div><div class="ctl">
-            <button class="btn">重命名</button><button class="btn">克隆</button><button class="btn">校验</button>
-            <div class="spacer"></div><button class="btn danger">删除</button>
-          </div></div>
-        </div>
-      </section>
-
-    </main>
-
-    <!-- 右：实时合成预览 -->
-    <aside class="preview">
-      <div style="font-size:10.5px;color:var(--fg3);letter-spacing:.08em;margin-bottom:10px">这版实际会怎么启动</div>
-
-      <div style="display:flex;gap:14px;margin-bottom:14px">
-        <div style="flex:1">
-          <div style="color:var(--fg3);font-size:10.5px">内存</div>
-          <div style="font-size:16px;margin-top:2px">4096 <span style="font-size:11px;color:var(--fg3)">MB</span></div>
-          <div class="meter"><i style="width:52%"></i></div>
-        </div>
-        <div style="flex:1">
-          <div style="color:var(--fg3);font-size:10.5px">Java</div>
-          <div style="font-size:16px;margin-top:2px">17 <span style="font-size:11px;color:var(--fg3)">Temurin</span></div>
-          <div class="meter"><i style="width:38%"></i></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px;border:1px solid #3a1f1f;background:#0f0b0c;border-radius:8px">
+          <div><b style="color:#fca5a5;font-size:12.5px">删除此版本</b>
+            <div class="soft" style="margin-top:3px">含游戏目录、87 个 Mod 与存档</div></div>
+          <button class="btn danger" style="margin-left:auto">删除</button>
         </div>
       </div>
 
-      <div class="cmd"><i># 合成自：全局设置 + 本版覆盖</i>
+    </main>
+
+    <aside class="preview">
+      <div class="pv pv-launch">
+        <div class="soft" style="letter-spacing:.08em;margin-bottom:10px">跟随全局后的实际启动值</div>
+        <div class="cards3" style="margin-bottom:14px">
+          <div class="mini"><span>内存</span><b>4096</b></div>
+          <div class="mini"><span>Java</span><b>17</b></div>
+          <div class="mini"><span>GC</span><b>G1</b></div>
+        </div>
+        <div class="cmd"><i># resolvedXxx 系列（后端已算好）</i>
 java -Xmx<b>4096M</b> -Xms512M
   -XX:+UseG1GC -XX:MaxGCPauseMillis=60
   -Djava.library.path=…\natives
@@ -132,36 +164,62 @@ java -Xmx<b>4096M</b> -Xms512M
   --width <b>1280</b> --height <b>720</b>
   --username Steve --uuid …
   <i># 未开启：全屏 / 自动进服 / 前后命令</i></div>
-
-      <div style="display:flex;align-items:center;gap:10px;margin:20px 0 10px">
-        <span style="font-size:12px;color:var(--fg2)">与全局不同的 3 项</span>
-        <div style="flex:1"></div>
-        <button class="btn ghost" style="height:26px;padding:0 8px;font-size:11px">全部恢复</button>
+        <div style="margin-top:16px">
+          <div class="kv"><span class="k">全屏</span><span class="v">关</span><span class="src">全局</span></div>
+          <div class="kv"><span class="k">强制独显</span><span class="v">开</span><span class="src">本版覆盖</span></div>
+          <div class="kv"><span class="k">自动进服</span><span class="v">未设置</span><span class="src">全局</span></div>
+          <div class="kv"><span class="k">窗口标题</span><span class="v">1.20.1-Forge_47.2.0</span><span class="src">默认</span></div>
+        </div>
       </div>
-      <div class="diff"><span class="badge acc">内存</span>4096 MB<span class="x">全局 2048</span></div>
-      <div class="diff"><span class="badge acc">JVM</span>G1 调优 2 项<span class="x">全局 默认</span></div>
-      <div class="diff"><span class="badge acc">独显</span>强制<span class="x">全局 关</span></div>
 
-      <div style="margin-top:18px;padding:12px;border:1px solid var(--line2);border-radius:var(--r-sm);background:#0b0e14">
-        <div style="color:var(--fg3);font-size:11px;line-height:1.7">
-          右侧永远只读：它回答「我改完会发生什么」，而不是再给你一堆控件。
+      <div class="pv pv-mods">
+        <div class="soft" style="letter-spacing:.08em;margin-bottom:10px">Mod 目录</div>
+        <div class="cmd">…\versions\1.20.1-Forge_47.2.0\mods
+<i># 87 个 jar · 已启用 84 · 已禁用 3</i></div>
+        <div style="margin-top:16px">
+          <div class="kv"><span class="k">占用</span><span class="v">642 MB</span></div>
+          <div class="kv"><span class="k">最近改动</span><span class="v">3 天前</span></div>
+          <div class="kv"><span class="k">加载器</span><span class="v">Forge 47.2.0</span></div>
+          <div class="kv"><span class="k">禁用方式</span><span class="v">.jar → .jar.disabled</span></div>
+        </div>
+      </div>
+
+      <div class="pv pv-memory">
+        <div class="soft" style="letter-spacing:.08em;margin-bottom:10px">内存分配</div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <b style="font-size:26px;font-weight:600">4096</b><span class="soft">MB 分配</span>
+        </div>
+        <div class="meter"><i style="width:25%"></i></div>
+        <div class="soft">占物理内存 16384 MB 的 25%</div>
+        <div style="margin-top:16px">
+          <div class="kv"><span class="k">模式</span><span class="v">自定义</span></div>
+          <div class="kv"><span class="k">自动建议</span><span class="v">4096 MB</span></div>
+          <div class="kv"><span class="k">当前占用</span><span class="v">91%</span><span class="src">系统</span></div>
+        </div>
+      </div>
+
+      <div class="pv pv-tools">
+        <div class="soft" style="letter-spacing:.08em;margin-bottom:10px">版本目录</div>
+        <div class="cmd">…\versions\1.20.1-Forge_47.2.0
+<i># 5871 个文件 · 642 MB Mod</i></div>
+        <div style="margin-top:16px">
+          <div class="kv"><span class="k">隔离</span><span class="v">已开启</span></div>
+          <div class="kv"><span class="k">上次校验</span><span class="v">3 天前 · 通过</span></div>
+          <div class="kv"><span class="k">存档</span><span class="v">6 个</span></div>
+          <div class="kv"><span class="k">日志</span><span class="v">logs / crash-reports</span></div>
         </div>
       </div>
     </aside>
   </div>
 </div>
-
-<div class="scrim"><div class="dialog">
-  <h3>删除 1.20.1-Forge_47.2.0？</h3>
-  <p>会同时删除该版本的游戏目录、87 个模组与全部配置文件。此操作不可撤销。</p>
-  <div class="acts"><button class="btn">取消</button><button class="btn danger">确认删除</button></div>
-</div></div>
-
 <script>
-const map={1:'default',2:'custom',3:'cmd',4:'danger'};
-function setState(s){document.body.dataset.state=s;document.querySelectorAll('.switcher button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===s)));}
-document.querySelectorAll('.switcher button').forEach(b=>b.onclick=()=>setState(b.dataset.s));
-addEventListener('keydown',e=>{if(map[e.key])setState(map[e.key]);});
-setState('default');
+const map={1:'launch',2:'mods',3:'memory',4:'tools'};
+function setSection(s){
+  document.body.dataset.state=s;
+  document.querySelectorAll('.switcher button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===s)));
+}
+document.querySelectorAll('.switcher button').forEach(b=>b.onclick=()=>setSection(b.dataset.s));
+addEventListener('keydown',e=>{if(map[e.key])setSection(map[e.key]);});
+setSection('launch');
 </script>
 </body></html>
