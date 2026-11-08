@@ -133,6 +133,10 @@ Item {
     function isMe(p) {
         return String(p.machine_id || "").slice(0, 4).toUpperCase() === page.devCode
     }
+    function vendorText(p) {
+        var v = String((p && p.vendor) ? p.vendor : "").trim()
+        return v.length > 0 ? v : "未知来源"
+    }
     function latencyText(p) {
         var v = Number(p.latency)
         return (isNaN(v) || v < 0) ? "—" : (v + "ms")
@@ -623,7 +627,7 @@ Item {
                         model: page.members
                         delegate: Rectangle {
                             width: parent.width
-                            height: 44
+                            height: 50
                             radius: 9
                             color: page.isMe(modelData) ? page.accentSoft : "#0e1117"
                             border.width: 1
@@ -650,7 +654,8 @@ Item {
                                 id: memberName
                                 anchors.left: av.right
                                 anchors.leftMargin: 10
-                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.top: parent.top
+                                anchors.topMargin: 8
                                 text: String(modelData.name || "?")
                                 color: Theme.fg
                                 font.family: Theme.fontFamily
@@ -660,17 +665,28 @@ Item {
                                 id: memberTag
                                 anchors.left: memberName.right
                                 anchors.leftMargin: 8
-                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.verticalCenter: memberName.verticalCenter
                                 text: {
                                     var k = String(modelData.kind || "")
                                     var base = (k === "HOST") ? "房主" : "访客"
                                     if (page.isMe(modelData)) base += " · 这台设备"
-                                    var h = String(modelData.hostname || "")
                                     return base
                                 }
                                 color: Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
+                            }
+                            // 来源小字：协议里的 vendor 字段（Terracotta 会写 "Terracotta 0.4.2, EasyTier v…"）
+                            Text {
+                                anchors.left: memberName.left
+                                anchors.top: memberName.bottom
+                                anchors.topMargin: 2
+                                width: Math.max(0, parent.width - 90)
+                                text: page.vendorText(modelData)
+                                color: "#4d5563"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                elide: Text.ElideRight
                             }
                             Text {
                                 anchors.right: parent.right

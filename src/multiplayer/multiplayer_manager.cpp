@@ -22,10 +22,19 @@
 #include <QUdpSocket>
 #include <QDateTime>
 #include <QSettings>
+#include "../version.h"   // SHADOW_DISPLAY_VERSION：联机 profile 的 vendor 里带上启动器版本
 #include <QDebug>
 #include "../utils/logger.h"
 
 namespace ShadowLauncher {
+
+// 联机 profile 里的 vendor 字段：别的启动器（含 HMCL）会把它当"来源"小字显示。
+// Terracotta 写的是 "Terracotta 0.4.2, EasyTier v2.5.0-…"；我们原来只写了个裸的 "shadow"，
+// 别人列表里就看不出这是什么启动器、什么版本。
+static QString shadowVendor()
+{
+    return QStringLiteral("Shadow Launcher ") + QStringLiteral(SHADOW_DISPLAY_VERSION);
+}
 
 MultiplayerManager::MultiplayerManager(QObject* parent)
     : QObject(parent)
@@ -589,6 +598,7 @@ void MultiplayerManager::startHostServer()
     hostPlayer["machine_id"] = m_machineId;
     hostPlayer["hostname"] = QSysInfo::machineHostName();
     hostPlayer["kind"] = QStringLiteral("HOST");
+    hostPlayer["vendor"] = shadowVendor();   // 成员列表第二行显示的来源小字
     hostPlayer["latency"] = 0;
     m_players << hostPlayer;
     emit playersChanged();
@@ -1350,7 +1360,7 @@ void MultiplayerManager::handlePlayerProfilesList(const QByteArray& /*body*/, QT
     for (const auto& p : m_players) {
         QJsonObject obj = QJsonObject::fromVariantMap(p.toMap());
         if (!obj.contains(QLatin1String("vendor")))
-            obj[QStringLiteral("vendor")] = QStringLiteral("shadow");
+            obj[QStringLiteral("vendor")] = shadowVendor();
         arr.append(obj);
     }
 
@@ -1374,7 +1384,7 @@ void MultiplayerManager::sendHeartbeat()
     heartbeat[QStringLiteral("name")] = m_deviceName;
     heartbeat[QStringLiteral("machine_id")] = m_machineId;
     heartbeat[QStringLiteral("hostname")] = QSysInfo::machineHostName();
-    heartbeat[QStringLiteral("vendor")] = QStringLiteral("shadow");
+    heartbeat[QStringLiteral("vendor")] = shadowVendor();
 
     if (m_centerProtocols.contains(Scaffolding::kPlayerEasyTierId)) {
         heartbeat[QStringLiteral("easytier_id")] = QString();
@@ -1935,6 +1945,7 @@ void MultiplayerManager::completeGuestJoin(quint16 verifyPort, bool verified)
     localSelf[QStringLiteral("machine_id")] = m_machineId;
     localSelf[QStringLiteral("hostname")] = QSysInfo::machineHostName();
     localSelf[QStringLiteral("kind")] = QStringLiteral("LOCAL");
+    localSelf[QStringLiteral("vendor")] = shadowVendor();
     localSelf[QStringLiteral("latency")] = 0;
     m_players << localSelf;
     emit playersChanged();
