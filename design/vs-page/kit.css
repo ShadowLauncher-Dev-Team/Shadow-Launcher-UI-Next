@@ -1,0 +1,95 @@
+/* 版本设置页 · 概念稿共用（严格对齐 ui/Theme.qml + SButton.qml + SField.qml 的真实尺寸）
+   画布 = 真实窗口 1100×720。shadcn 语法：细描边、焦点 ring、克制 hover、统一字阶。 */
+:root{
+  --bg:#08090d; --sidebar:#0a0b0f; --card:#0c0e13; --card2:#0e1117; --field:#0d1016;
+  --line:#14171d; --line2:#262b35; --fg:#e8ebf2; --fg2:#98a1ae; --fg3:#5d6673;
+  --accent:#3b82f6; --accent-top:#4b8cf7; --accent-bot:#2563eb; --accent-soft:#14213a;
+  --ok:#4ade80; --warn:#f59e0b; --danger:#ef4444;
+  --r-sm:8px; --r-md:10px; --r-win:12px;
+  --dur:120ms; --ease:cubic-bezier(.2,.7,.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  width:1100px;height:720px;overflow:hidden;background:var(--bg);color:var(--fg);
+  font-family:"Microsoft YaHei UI","Segoe UI",system-ui,sans-serif;font-size:12px;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit;outline:none}
+i{font-style:normal}
+
+/* ── 空态图标位：用纯文字/几何，不用 emoji ── */
+.ic{width:14px;height:14px;display:inline-block;border:1.5px solid currentColor;border-radius:3px;opacity:.85}
+
+/* ── SButton：primary 48 / ghost 34 ── */
+.sbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;
+  transition:background var(--dur) var(--ease),border-color var(--dur) var(--ease),color var(--dur) var(--ease),transform 90ms var(--ease)}
+.sbtn:active{transform:scale(.985)}
+.sbtn-primary{height:48px;padding:0 34px;border-radius:var(--r-md);color:#fff;font-size:14px;font-weight:500;
+  background:linear-gradient(180deg,var(--accent-top),var(--accent-bot))}
+.sbtn-ghost{height:34px;padding:0 14px;border-radius:var(--r-sm);border:1px solid var(--line2);color:var(--fg2);background:transparent;font-size:12.5px}
+.sbtn-ghost:hover{background:#11151c;border-color:#333a48;color:var(--fg)}
+.sbtn-ghost.danger{color:#fca5a5;border-color:#5a2a2a}
+.sbtn-ghost.danger:hover{background:#1a0f0f;border-color:#7a3434}
+.sbtn-sm{height:28px;padding:0 10px;font-size:11.5px}
+.sbtn-icon{width:34px;height:34px;padding:0;border-radius:var(--r-sm);border:1px solid transparent;color:var(--fg2)}
+.sbtn-icon:hover{background:#11151c;border-color:var(--line2);color:var(--fg)}
+
+/* ── SField：36 / focus ring ── */
+.sfield{height:36px;width:100%;background:var(--field);border:1px solid var(--line2);border-radius:var(--r-sm);
+  padding:0 11px;font-size:12px;color:var(--fg);transition:border-color var(--dur) var(--ease)}
+.sfield::placeholder{color:#49515f}
+.sfield:focus,.sfield.focus{outline:2px solid rgba(59,130,246,.45);outline-offset:1px;border-color:var(--accent)}
+.sfield[disabled]{color:var(--fg3);background:#090b10;border-color:#1b1f27}
+textarea.sfield{height:auto;min-height:64px;padding:8px 11px;line-height:1.65;font-family:ui-monospace,Consolas,monospace;font-size:11px;resize:none}
+select.sfield{appearance:none;padding-right:30px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--fg3) 50%),linear-gradient(135deg,var(--fg3) 50%,transparent 50%);
+  background-position:calc(100% - 16px) 15px,calc(100% - 11px) 15px;background-size:5px 5px;background-repeat:no-repeat}
+
+/* ── Switch 34×19 ── */
+.ssw{width:34px;height:19px;border-radius:999px;background:#1a1f28;border:1px solid var(--line2);position:relative;flex:0 0 auto;
+  transition:background var(--dur) var(--ease),border-color var(--dur) var(--ease);cursor:pointer}
+.ssw::after{content:"";position:absolute;left:2px;top:2px;width:13px;height:13px;border-radius:50%;background:#6b7280;
+  transition:transform var(--dur) var(--ease),background var(--dur) var(--ease)}
+.ssw[data-on="1"]{background:#16325c;border-color:#2c4a7a}
+.ssw[data-on="1"]::after{transform:translateX(15px);background:#7fb0ff}
+
+/* ── Segmented（= shadcn Tabs 的 pill 变体） ── */
+.sseg{display:inline-flex;padding:2px;border:1px solid var(--line2);border-radius:999px;background:#0b0e14}
+.sseg span{height:24px;display:inline-flex;align-items:center;padding:0 12px;border-radius:999px;color:var(--fg3);font-size:11.5px;cursor:pointer;
+  transition:background var(--dur) var(--ease),color var(--dur) var(--ease)}
+.sseg span.on{background:var(--accent-soft);color:#a9c8ff}
+
+/* ── 胶囊预设（JVM/Java） ── */
+.spill{height:26px;display:inline-flex;align-items:center;padding:0 11px;border:1px solid var(--line2);border-radius:999px;
+  color:var(--fg2);font-size:11.5px;background:#0b0e14;cursor:pointer;transition:border-color var(--dur) var(--ease),background var(--dur) var(--ease)}
+.spill:hover{border-color:#333a48;color:var(--fg)}
+.spill.on{border-color:#2c4a7a;background:var(--accent-soft);color:#a9c8ff}
+
+/* ── 卡片（shadcn Card） ── */
+.scard{background:var(--card);border:1px solid var(--line2);border-radius:var(--r-win);overflow:hidden}
+.scard>*+*{border-top:1px solid #101419}
+.scard-head{display:flex;align-items:center;gap:10px;padding:13px 16px}
+.scard-head h2{font-size:12.5px;font-weight:600;letter-spacing:.01em}
+.scard-head .desc{font-size:10.5px;color:var(--fg3)}
+.scard-body{padding:14px 16px 16px}
+.grow{flex:1}
+
+/* ── 设置行（Label 左 / 控件右） ── */
+.srow{display:flex;align-items:center;gap:14px;padding:9px 0}
+.srow+.srow{border-top:1px solid #0f1217}
+.srow>label.k{width:118px;flex:0 0 118px;color:var(--fg2);font-size:12px}
+.srow>label.k small{display:block;color:var(--fg3);font-size:10px;margin-top:2px}
+
+/* ── Badge / 分割 / 提示 ── */
+.sbadge{height:20px;padding:0 8px;border-radius:999px;display:inline-flex;align-items:center;font-size:10px;
+  border:1px solid var(--line2);color:var(--fg3)}
+.sbadge.acc{color:#a9c8ff;border-color:#2c4a7a;background:var(--accent-soft)}
+.sbadge.ok{color:var(--ok);border-color:#1e3b2a;background:#0d1a13}
+.sbadge.warn{color:var(--warn);border-color:#43331a;background:#1a1409}
+.sbadge.danger{color:#fca5a5;border-color:#4a2626;background:#150d0d}
+.shint{color:var(--fg3);font-size:10.5px}
+.ssep{height:1px;background:var(--line);margin:12px 0}
+.salert{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #43331a;background:#14100a;
+  border-radius:var(--r-sm);color:#f2c98a;font-size:11.5px}
+.sdanger{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #4a2626;background:#0f0b0c;border-radius:var(--r-sm)}

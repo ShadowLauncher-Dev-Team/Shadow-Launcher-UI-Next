@@ -1,225 +1,178 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
-<title>C · 分区表单 + 右侧「生效结果」</title><link rel="stylesheet" href="vs.css">
+<title>C · 分区选择 + 右侧生效值</title><link rel="stylesheet" href="kit.css">
 <style>
-.split{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 400px;min-height:0}
-.form{overflow:auto;padding:8px 30px 48px}
-.preview{border-left:1px solid var(--line);background:#07080b;padding:18px 20px;overflow:auto}
-.sec-h{display:flex;align-items:center;gap:14px;padding:18px 0 12px;border-bottom:1px solid var(--line);margin-bottom:4px}
-.sec-h h2{margin:0;font-size:14px;font-weight:600}
-.seg{display:inline-flex;border:1px solid var(--line2);border-radius:999px;padding:2px}
-.seg span{padding:3px 12px;border-radius:999px;font-size:11.5px;color:var(--fg3);cursor:pointer}
-.seg span.on{background:var(--accentSoft);color:#a9c8ff}
-.pills{display:flex;flex-wrap:wrap;gap:8px}
-.pill{height:27px;display:inline-flex;align-items:center;padding:0 11px;border:1px solid var(--line2);border-radius:999px;color:var(--fg2);font-size:11.5px;cursor:pointer}
-.pill.on{border-color:#2c4a7a;background:var(--accentSoft);color:#a9c8ff}
-.chk{display:inline-flex;align-items:center;gap:8px;color:var(--fg2);font-size:12px}
-.soft{color:var(--fg3);font-size:11px}
-.cmd{background:#05070a;border:1px solid var(--line2);border-radius:8px;padding:12px;font-family:ui-monospace,Consolas,monospace;font-size:10.5px;line-height:1.8;color:#9fb3c8;white-space:pre-wrap;word-break:break-all}
-.cmd b{color:#7fb0ff;font-weight:500}
-.cmd i{color:#4a5563;font-style:normal}
-.kv{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #0f1217;font-size:11.5px}
-.kv:last-child{border-bottom:0}
-.kv .k{color:var(--fg3);width:104px;flex:0 0 104px}
-.kv .v{color:var(--fg);flex:1}
-.kv .src{font-size:10px;color:var(--fg3)}
-.meter{height:4px;border-radius:4px;background:#151a22;overflow:hidden;margin:6px 0 2px}
-.meter>i{display:block;height:100%;background:var(--accent)}
-.lrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #0f1217}
-.lrow:last-child{border-bottom:0}
-.lname b{font-size:12px;font-weight:500}
-.lname span{display:block;color:var(--fg3);font-size:10px;margin-top:2px}
-.mini{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
-.mini span{color:var(--fg3);font-size:10.5px}
-.mini b{display:block;font-size:15px;font-weight:500;margin-top:3px}
-.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.act{text-align:left;background:var(--card);border:1px solid var(--line2);border-radius:8px;padding:11px 13px}
-.act b{display:block;font-size:12.5px;font-weight:500}
-.act span{display:block;color:var(--fg3);font-size:10.5px;margin-top:3px}
+.mk-sw{position:fixed;right:6px;top:60px;width:34px;flex-direction:column;align-items:stretch;gap:4px;z-index:99;display:flex;align-items:center;gap:6px;
+  height:auto;padding:8px;background:rgba(11,14,20,.92);border:1px solid var(--line2);border-radius:10px;font-size:11px;color:var(--fg3);backdrop-filter:blur(3px)}
+.mk-sw b{color:var(--fg3);font-weight:400;font-size:9px;text-align:center;padding:0 0 4px;letter-spacing:.02em}
+.mk-sw button{height:26px;padding:0;border-radius:6px;color:var(--fg3);font-size:11px;text-align:center}
+.mk-sw button.on{background:var(--accent-soft);color:#a9c8ff}
+.top{height:52px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--line)}
+.back{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--fg2);font-size:14px}
+.back:hover{background:#11151c;color:var(--fg)}
+.vt{font-size:14px;font-weight:600}.vs{font-size:10.5px;color:var(--fg3);margin-top:1px}
+.split{display:grid;grid-template-columns:minmax(0,1fr) 340px;height:calc(100% - 52px)}
+.form{overflow:auto;padding:14px 18px 60px}
+.form>*+*{margin-top:12px}
+.pv{border-left:1px solid var(--line);background:#07080b;padding:14px 46px 20px 16px;overflow:auto}
+.cmd{background:#05070a;border:1px solid var(--line2);border-radius:8px;padding:10px;font-family:ui-monospace,Consolas,monospace;
+  font-size:10px;line-height:1.75;color:#8b97a6;white-space:pre;overflow-x:auto}
+.cmd b{color:#7fb0ff;font-weight:500}.cmd i{color:#48535f}
+.kv{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #0f1217;font-size:11px;white-space:nowrap}
+.kv:last-child{border-bottom:0}.kv .k{color:var(--fg3);width:62px;flex:0 0 62px}.kv .v{flex:1}.kv .s{font-size:9.5px;color:var(--fg3)}
+.srow{padding:8px 0}.srow>label.k{width:104px;flex:0 0 104px}
+.srow .grow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .panel{display:none}
-body[data-state="launch"] .p-launch,
-body[data-state="mods"] .p-mods,
-body[data-state="memory"] .p-memory,
-body[data-state="tools"] .p-tools{display:block}
-.pv{display:none}
-body[data-state="launch"] .pv-launch,
-body[data-state="mods"] .pv-mods,
-body[data-state="memory"] .pv-memory,
-body[data-state="tools"] .pv-tools{display:block}
+body[data-state="launch"] .p-launch,body[data-state="memory"] .p-memory,body[data-state="mods"] .p-mods,
+body[data-state="tools"] .p-tools,body[data-state="overview"] .p-overview{display:block}
+body[data-state="launch"] .pv-launch,body[data-state="memory"] .pv-memory,body[data-state="mods"] .pv-mods,
+body[data-state="tools"] .pv-tools,body[data-state="overview"] .pv-overview{display:block}
+.pvx{display:none}
+.lrow{display:flex;align-items:center;gap:10px;padding:8px 0}.lrow+.lrow{border-top:1px solid #0f1217}
+.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 </style></head>
 <body data-state="launch">
-<div class="switcher">
-  <b>C 版 · 分区表单 + 右侧生效结果</b>
-  <button data-s="launch" aria-pressed="true">1 启动配置</button>
-  <button data-s="mods" aria-pressed="false">2 Mod 管理</button>
-  <button data-s="memory" aria-pressed="false">3 内存</button>
-  <button data-s="tools" aria-pressed="false">4 工具与维护</button>
-  <span class="hint">数字键 1–4 切换分区 · 概念稿</span>
+<div class="top">
+  <button class="back">←</button>
+  <div><div class="vt">1.20.1-Forge_47.2.0</div><div class="vs">Forge 47.2.0 · 87 个 Mod</div></div>
+  <div class="grow"></div>
+  <select class="sfield" id="sect" style="width:132px;height:30px">
+    <option value="launch">启动配置</option><option value="memory">内存设置</option>
+    <option value="mods">Mod 管理</option><option value="tools">工具与维护</option>
+    <option value="overview">概览</option>
+  </select>
+  <button class="sbtn sbtn-icon">⋯</button>
 </div>
-<div class="page">
-  <div class="topbar">
-    <button class="back">←</button>
-    <div><div class="vname">1.20.1-Forge_47.2.0</div><div class="vmeta">Forge 47.2.0 · 87 个 Mod</div></div>
-    <div class="grow"></div>
-    <span class="soft">改动自动保存</span>
-    <button class="btn">打开文件夹</button><button class="btn primary">启动</button>
-  </div>
-  <div class="split">
-    <main class="form">
+<div class="split">
+  <main class="form">
 
-      <div class="panel p-launch">
-        <div class="sec-h"><h2>启动配置</h2>
-          <div class="seg"><span class="on">跟随全局</span><span>独立配置</span></div>
-          <div class="grow"></div><span class="soft">右侧是跟随全局后的实际值</span></div>
-        <div class="row"><div class="label">Java</div><div class="ctl"><div class="pills">
-          <span class="pill on">自动（Java 17）</span><span class="pill">指定</span><span class="pill">版本目录内</span></div></div></div>
-        <div class="row"><div class="label">JVM / GC</div><div class="ctl"><div class="pills">
-          <span class="pill on">G1GC 平衡</span><span class="pill">Parallel</span><span class="pill">ZGC</span><span class="pill">仅 G1GC</span></div></div></div>
-        <div class="row"><div class="label">启动选项</div><div class="ctl" style="flex-wrap:wrap;gap:18px">
-          <label class="chk"><i class="sw" data-on="0"></i>全屏</label>
-          <label class="chk"><i class="sw" data-on="1"></i>强制独显</label>
-          <label class="chk"><i class="sw" data-on="0"></i>自动进服</label>
-          <input class="field" style="width:180px" placeholder="localhost:25565" disabled>
-        </div></div>
-        <div class="row"><div class="label">命令</div><div class="ctl" style="flex-direction:column;align-items:stretch;gap:8px">
-          <input class="field" placeholder="启动前：留空不执行">
-          <input class="field" placeholder="退出后：留空不执行">
-        </div></div>
-      </div>
+    <div class="panel p-overview">
+      <section class="scard"><div class="scard-head"><h2>快捷入口</h2></div>
+        <div class="scard-body qgrid">
+          <button class="sbtn sbtn-ghost" style="height:36px;justify-content:flex-start;padding:0 12px">版本文件夹</button><button class="sbtn sbtn-ghost" style="height:36px;justify-content:flex-start;padding:0 12px">Mod 文件夹</button><button class="sbtn sbtn-ghost" style="height:36px;justify-content:flex-start;padding:0 12px">存档文件夹</button><button class="sbtn sbtn-ghost" style="height:36px;justify-content:flex-start;padding:0 12px">截图文件夹</button><button class="sbtn sbtn-ghost" style="height:36px;justify-content:flex-start;padding:0 12px">logs 日志</button><button class="sbtn sbtn-ghost" style="height:36px;justify-content:flex-start;padding:0 12px">崩溃日志</button><button class="sbtn sbtn-ghost" style="height:36px;justify-content:flex-start;padding:0 12px">启动器日志</button><button class="sbtn sbtn-ghost" style="height:36px;justify-content:flex-start;padding:0 12px">复制版本路径</button>
+        </div></section>
+    </div>
 
-      <div class="panel p-mods">
-        <div class="sec-h"><h2>Mod 管理</h2><span class="badge">87 个 · 启用 84</span><div class="grow"></div>
-          <input class="field" style="width:170px" placeholder="搜索…"></div>
-        <div style="display:flex;gap:8px;padding:10px 0">
-          <button class="btn" style="height:28px">全部启用</button>
-          <button class="btn" style="height:28px">全部禁用</button>
-          <button class="btn" style="height:28px">导入…</button>
-        </div>
-        
-        <div class="lrow"><div class="sw" data-on="1"></div>
-          <div class="lname"><b>Sodium</b><span>0.5.8 · 1.6 MB</span></div><div style="flex:1"></div>
-          <button class="btn ghost" style="height:24px;padding:0 8px;font-size:11px">删除</button></div>
-        <div class="lrow"><div class="sw" data-on="1"></div>
-          <div class="lname"><b>Iris Shaders</b><span>1.7.0 · 3.2 MB</span></div><div style="flex:1"></div>
-          <button class="btn ghost" style="height:24px;padding:0 8px;font-size:11px">删除</button></div>
-        <div class="lrow"><div class="sw" data-on="0"></div>
-          <div class="lname"><b>Create</b><span>0.5.1 · 8.4 MB</span></div><div style="flex:1"></div>
-          <button class="btn ghost" style="height:24px;padding:0 8px;font-size:11px">删除</button></div>
-        <div class="lrow"><div class="sw" data-on="1"></div>
-          <div class="lname"><b>JEI</b><span>15.2.0 · 1.1 MB</span></div><div style="flex:1"></div>
-          <button class="btn ghost" style="height:24px;padding:0 8px;font-size:11px">删除</button></div>
-        <div class="lrow"><div class="sw" data-on="1"></div>
-          <div class="lname"><b>FerriteCore</b><span>6.0.1 · 210 KB</span></div><div style="flex:1"></div>
-          <button class="btn ghost" style="height:24px;padding:0 8px;font-size:11px">删除</button></div>
-      </div>
+    <div class="panel p-launch">
+      <section class="scard"><div class="scard-head"><h2>启动配置</h2><div class="grow"></div>
+        <div class="sseg"><span class="on">跟随全局</span><span>独立配置</span></div></div>
+        <div class="scard-body">
+          <div class="srow"><label class="k">Java</label><div class="grow"><span class="spill on">自动</span><span class="spill">指定</span><span class="spill">版本目录内</span></div></div>
+          <div class="srow"><label class="k">JVM 预设</label><div class="grow"><span class="spill on">G1GC</span><span class="spill">ZGC</span><span class="spill">仅 G1GC</span></div></div>
+          <div class="srow"><label class="k">JVM 参数</label><div class="grow"><textarea class="sfield" style="width:100%">-XX:+UseG1GC -XX:MaxGCPauseMillis=60</textarea></div></div>
+          <div class="srow"><label class="k">启动选项</label><div class="grow">
+            <div class="ssw" data-on="0"></div><span class="shint">全屏</span>
+            <div class="ssw" data-on="1"></div><span class="shint">独显</span>
+            <input class="sfield" style="width:150px" placeholder="localhost:25565"></div></div>
+          <div class="srow"><label class="k">命令</label><div class="grow"><input class="sfield" placeholder="启动前"><input class="sfield" placeholder="退出后"></div></div>
+        </div></section>
+    </div>
 
-      <div class="panel p-memory">
-        <div class="sec-h"><h2>内存设置</h2>
-          <div class="seg"><span>自动</span><span class="on">自定义</span></div>
-          <div class="grow"></div><span class="badge acc">4096 MB</span></div>
-        <div class="row"><div class="label">分配内存</div><div class="ctl">
-          <div class="slider" style="max-width:320px"><div class="track"><div class="fill" style="width:52%"></div><div class="knob" style="left:52%"></div></div><div class="num">4096 MB</div></div>
-        </div></div>
-        <div class="row"><div class="label">自动配置<small>按剩余内存动态分配</small></div><div class="ctl"><div class="sw" data-on="0"></div></div></div>
-      </div>
+    <div class="panel p-memory">
+      <section class="scard"><div class="scard-head"><h2>内存</h2><div class="grow"></div>
+        <div class="sseg"><span>自动</span><span class="on">自定义</span></div></div>
+        <div class="scard-body">
+          <div class="srow"><label class="k">分配</label><div class="grow"><input class="sfield" style="width:92px" value="4096"><span class="shint">MB</span></div></div>
+          <div class="srow"><label class="k">自动配置</label><div class="grow"><div class="ssw" data-on="0"></div></div></div>
+        </div></section>
+    </div>
 
-      <div class="panel p-tools">
-        <div class="sec-h"><h2>工具与维护</h2><div class="grow"></div><span class="badge ok">3 天前校验通过</span></div>
-        <div style="display:flex;align-items:center;gap:12px;padding:14px 0">
-          <span class="soft">扫描 5871 个文件</span><div style="flex:1"></div>
-          <button class="btn" style="height:28px">开始校验</button>
-        </div>
-        <div class="meter" style="margin-bottom:16px"><i style="width:0%"></i></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <button class="act"><b>重命名</b><span>改版本 ID</span></button>
-          <button class="act"><b>克隆</b><span>生成副本</span></button>
-          <button class="act"><b>复制路径</b><span>剪贴板</span></button>
-          <button class="act"><b>迁移目录</b><span>隔离目录</span></button>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px;border:1px solid #3a1f1f;background:#0f0b0c;border-radius:8px">
-          <div><b style="color:#fca5a5;font-size:12.5px">删除此版本</b>
-            <div class="soft" style="margin-top:3px">含游戏目录、87 个 Mod 与存档</div></div>
-          <button class="btn danger" style="margin-left:auto">删除</button>
-        </div>
-      </div>
+    <div class="panel p-mods">
+      <section class="scard"><div class="scard-head"><h2>Mod 管理</h2><span class="desc">87 · 启用 84</span><div class="grow"></div>
+        <input class="sfield" style="width:150px" placeholder="搜索…"></div>
+        <div class="scard-body">
+          <div class="lrow"><div class="ssw" data-on="1"></div>
+              <div><b style="font-size:12px;font-weight:500">Sodium</b><div style="color:var(--fg3);font-size:10.5px">0.5.8</div></div>
+              <div class="grow"></div><button class="sbtn sbtn-ghost sbtn-sm">删除</button></div><div class="lrow"><div class="ssw" data-on="1"></div>
+              <div><b style="font-size:12px;font-weight:500">Iris Shaders</b><div style="color:var(--fg3);font-size:10.5px">1.7.0</div></div>
+              <div class="grow"></div><button class="sbtn sbtn-ghost sbtn-sm">删除</button></div><div class="lrow"><div class="ssw" data-on="0"></div>
+              <div><b style="font-size:12px;font-weight:500">Create</b><div style="color:var(--fg3);font-size:10.5px">0.5.1</div></div>
+              <div class="grow"></div><button class="sbtn sbtn-ghost sbtn-sm">删除</button></div><div class="lrow"><div class="ssw" data-on="1"></div>
+              <div><b style="font-size:12px;font-weight:500">JEI</b><div style="color:var(--fg3);font-size:10.5px">15.2.0</div></div>
+              <div class="grow"></div><button class="sbtn sbtn-ghost sbtn-sm">删除</button></div><div class="lrow"><div class="ssw" data-on="1"></div>
+              <div><b style="font-size:12px;font-weight:500">FerriteCore</b><div style="color:var(--fg3);font-size:10.5px">6.0.1</div></div>
+              <div class="grow"></div><button class="sbtn sbtn-ghost sbtn-sm">删除</button></div>
+        </div></section>
+    </div>
 
-    </main>
+    <div class="panel p-tools">
+      <section class="scard"><div class="scard-head"><h2>工具与维护</h2><div class="grow"></div>
+        <button class="sbtn sbtn-ghost sbtn-sm">开始校验</button></div>
+        <div class="scard-body"><span class="shint">上次校验 3 天前通过 · 5871 个文件</span></div></section>
+      <section class="scard"><div class="scard-head"><h2>版本动作</h2><div class="grow"></div>
+        <button class="sbtn sbtn-ghost sbtn-sm danger">删除</button></div>
+        <div class="scard-body qgrid">
+          <button class="sbtn sbtn-ghost" style="height:34px">重命名</button><button class="sbtn sbtn-ghost" style="height:34px">克隆</button><button class="sbtn sbtn-ghost" style="height:34px">复制路径</button><button class="sbtn sbtn-ghost" style="height:34px">迁移目录</button>
+        </div></section>
+    </div>
 
-    <aside class="preview">
-      <div class="pv pv-launch">
-        <div class="soft" style="letter-spacing:.08em;margin-bottom:10px">跟随全局后的实际启动值</div>
-        <div class="cards3" style="margin-bottom:14px">
-          <div class="mini"><span>内存</span><b>4096</b></div>
-          <div class="mini"><span>Java</span><b>17</b></div>
-          <div class="mini"><span>GC</span><b>G1</b></div>
-        </div>
-        <div class="cmd"><i># resolvedXxx 系列（后端已算好）</i>
+  </main>
+
+  <aside class="pv">
+    <div class="pvx pv-overview">
+      <div class="shint" style="letter-spacing:.06em;margin-bottom:8px">版本概要</div>
+      <div class="kv"><span class="k">加载器</span><span class="v">Forge 47.2.0</span></div>
+      <div class="kv"><span class="k">Mod</span><span class="v">87 个</span></div>
+      <div class="kv"><span class="k">存档</span><span class="v">6 个</span></div>
+      <div class="kv"><span class="k">隔离</span><span class="v">已开启</span></div>
+    </div>
+
+    <div class="pvx pv-launch">
+      <div class="shint" style="letter-spacing:.06em;margin-bottom:8px">跟随全局后的生效值</div>
+      <div class="cmd"><i># resolved* 系列（后端已算好）</i>
 java -Xmx<b>4096M</b> -Xms512M
   -XX:+UseG1GC -XX:MaxGCPauseMillis=60
-  -Djava.library.path=…\natives
   -cp …\libraries\*;…\client.jar
   net.minecraft.client.main.Main
   --version 1.20.1-Forge_47.2.0
   --gameDir …\versions\1.20.1-Forge_47.2.0
-  --assetsDir …\assets --assetIndex 5
   --width <b>1280</b> --height <b>720</b>
-  --username Steve --uuid …
   <i># 未开启：全屏 / 自动进服 / 前后命令</i></div>
-        <div style="margin-top:16px">
-          <div class="kv"><span class="k">全屏</span><span class="v">关</span><span class="src">全局</span></div>
-          <div class="kv"><span class="k">强制独显</span><span class="v">开</span><span class="src">本版覆盖</span></div>
-          <div class="kv"><span class="k">自动进服</span><span class="v">未设置</span><span class="src">全局</span></div>
-          <div class="kv"><span class="k">窗口标题</span><span class="v">1.20.1-Forge_47.2.0</span><span class="src">默认</span></div>
-        </div>
+      <div style="margin-top:10px">
+        <div class="kv"><span class="k">全屏</span><span class="v">关</span><span class="s">全局</span></div>
+        <div class="kv"><span class="k">独显</span><span class="v">开</span><span class="s">本版</span></div>
+        <div class="kv"><span class="k">窗口标题</span><span class="v">默认</span><span class="s">全局</span></div>
       </div>
+    </div>
 
-      <div class="pv pv-mods">
-        <div class="soft" style="letter-spacing:.08em;margin-bottom:10px">Mod 目录</div>
-        <div class="cmd">…\versions\1.20.1-Forge_47.2.0\mods
-<i># 87 个 jar · 已启用 84 · 已禁用 3</i></div>
-        <div style="margin-top:16px">
-          <div class="kv"><span class="k">占用</span><span class="v">642 MB</span></div>
-          <div class="kv"><span class="k">最近改动</span><span class="v">3 天前</span></div>
-          <div class="kv"><span class="k">加载器</span><span class="v">Forge 47.2.0</span></div>
-          <div class="kv"><span class="k">禁用方式</span><span class="v">.jar → .jar.disabled</span></div>
-        </div>
-      </div>
+    <div class="pvx pv-memory">
+      <div class="shint" style="letter-spacing:.06em;margin-bottom:8px">内存</div>
+      <div style="font-size:24px;font-weight:600">4096<span class="shint" style="font-size:11px;margin-left:4px">MB</span></div>
+      <div style="height:4px;background:#151a22;border-radius:4px;margin:8px 0"><i style="display:block;width:25%;height:100%;background:var(--accent);border-radius:4px"></i></div>
+      <div class="kv"><span class="k">物理</span><span class="v">16384 MB</span></div>
+      <div class="kv"><span class="k">占用</span><span class="v">91%</span></div>
+      <div class="kv"><span class="k">建议</span><span class="v">4096 MB</span></div>
+    </div>
 
-      <div class="pv pv-memory">
-        <div class="soft" style="letter-spacing:.08em;margin-bottom:10px">内存分配</div>
-        <div style="display:flex;align-items:baseline;gap:8px">
-          <b style="font-size:26px;font-weight:600">4096</b><span class="soft">MB 分配</span>
-        </div>
-        <div class="meter"><i style="width:25%"></i></div>
-        <div class="soft">占物理内存 16384 MB 的 25%</div>
-        <div style="margin-top:16px">
-          <div class="kv"><span class="k">模式</span><span class="v">自定义</span></div>
-          <div class="kv"><span class="k">自动建议</span><span class="v">4096 MB</span></div>
-          <div class="kv"><span class="k">当前占用</span><span class="v">91%</span><span class="src">系统</span></div>
-        </div>
+    <div class="pvx pv-mods">
+      <div class="shint" style="letter-spacing:.06em;margin-bottom:8px">Mod 目录</div>
+      <div class="cmd">…\versions\1.20.1-Forge_47.2.0\mods
+<i># 87 个 jar · 启用 84 · 禁用 3</i></div>
+      <div style="margin-top:10px">
+        <div class="kv"><span class="k">占用</span><span class="v">642 MB</span></div>
+        <div class="kv"><span class="k">加载器</span><span class="v">Forge</span></div>
       </div>
+    </div>
 
-      <div class="pv pv-tools">
-        <div class="soft" style="letter-spacing:.08em;margin-bottom:10px">版本目录</div>
-        <div class="cmd">…\versions\1.20.1-Forge_47.2.0
-<i># 5871 个文件 · 642 MB Mod</i></div>
-        <div style="margin-top:16px">
-          <div class="kv"><span class="k">隔离</span><span class="v">已开启</span></div>
-          <div class="kv"><span class="k">上次校验</span><span class="v">3 天前 · 通过</span></div>
-          <div class="kv"><span class="k">存档</span><span class="v">6 个</span></div>
-          <div class="kv"><span class="k">日志</span><span class="v">logs / crash-reports</span></div>
-        </div>
+    <div class="pvx pv-tools">
+      <div class="shint" style="letter-spacing:.06em;margin-bottom:8px">版本目录</div>
+      <div class="cmd">…\versions\1.20.1-Forge_47.2.0
+<i># 5871 文件 · 642 MB</i></div>
+      <div style="margin-top:10px">
+        <div class="kv"><span class="k">校验</span><span class="v">3 天前通过</span></div>
+        <div class="kv"><span class="k">隔离</span><span class="v">已开启</span></div>
       </div>
-    </aside>
-  </div>
+    </div>
+  </aside>
 </div>
+<div class="mk-sw"><b>C 版 · 分区选择 + 右侧生效值</b>
+  <span style="writing-mode:horizontal-tb"></span><button data-s="launch" title="启动配置">1</button><button data-s="memory" title="内存">2</button><button data-s="mods" title="Mod 管理">3</button><button data-s="tools" title="工具维护">4</button><button data-s="overview" title="概览">5</button></div>
 <script>
-const map={1:'launch',2:'mods',3:'memory',4:'tools'};
-function setSection(s){
-  document.body.dataset.state=s;
-  document.querySelectorAll('.switcher button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===s)));
-}
-document.querySelectorAll('.switcher button').forEach(b=>b.onclick=()=>setSection(b.dataset.s));
-addEventListener('keydown',e=>{if(map[e.key])setSection(map[e.key]);});
-setSection('launch');
+const map={1:'launch',2:'memory',3:'mods',4:'tools',5:'overview'};
+function go(s){document.body.dataset.state=s;document.getElementById('sect').value=s;
+  document.querySelectorAll('.mk-sw button').forEach(b=>b.classList.toggle('on',b.dataset.s===s));}
+document.querySelectorAll('.mk-sw button').forEach(b=>b.onclick=()=>go(b.dataset.s));
+document.getElementById('sect').onchange=e=>go(e.target.value);
+addEventListener('keydown',e=>{if(map[e.key])go(map[e.key]);});
+go('launch');
 </script>
 </body></html>
