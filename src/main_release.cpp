@@ -646,6 +646,62 @@ int main(int argc, char *argv[])
         ssServer->start(ssPort);
     }
 
+    // ── Verify / repair test mode（校验后端实测）──
+    // 用法: --verify-test <versionId> / --repair-test <versionId>
+    // 结果写 <exe目录>/verify_test_result.txt，随后自动退出。
+    {
+        const QStringList vargs = app.arguments();
+        const int verifyTestIdx = vargs.indexOf(QStringLiteral("--verify-test"));
+        const int repairTestIdx = vargs.indexOf(QStringLiteral("--repair-test"));
+        if (verifyTestIdx >= 0 || repairTestIdx >= 0) {
+            const bool doRepair = (repairTestIdx >= 0);
+            const int argIdx = doRepair ? repairTestIdx : verifyTestIdx;
+            if (argIdx + 1 < vargs.size()) {
+                const QString vid = vargs.at(argIdx + 1);
+                const QString outPath = QCoreApplication::applicationDirPath()
+                                        + QStringLiteral("/verify_test_result.txt");
+                QFile::remove(outPath);
+                auto writeLine = [outPath](const QString& line) {
+                    QFile f(outPath);
+                    if (f.open(QIODevice::Append)) {
+                        f.write((line + QStringLiteral("\n")).toUtf8());
+                        f.close();
+                    }
+                };
+
+                QObject::connect(backend, &ShadowBackend::logMessage, backend,
+                                 [writeLine](const QString& m) { writeLine(QStringLiteral("[LOG] ") + m); });
+                QObject::connect(backend, &ShadowBackend::verifyFailedFiles, backend,
+                                 [writeLine](const QStringList& files) {
+                    for (const QString& f : files) writeLine(QStringLiteral("[FAILED] ") + f);
+                });
+                auto stage = std::make_shared<int>(0);   // 0=已校验, 1=已修复
+                QObject::connect(backend, &ShadowBackend::verifyFinished, backend,
+                                 [writeLine, backend, vid, doRepair, stage](bool ok) {
+                    if (doRepair && *stage == 0) {
+                        *stage = 1;
+                        writeLine(QStringLiteral("[STAGE] verify ok=")
+                                  + (ok ? QStringLiteral("1") : QStringLiteral("0"))
+                                  + QStringLiteral(" → 开始修复"));
+                        QTimer::singleShot(300, backend, [writeLine, backend, vid]() {
+                            writeLine(QStringLiteral("[STAGE] repair start"));
+                            backend->repairVersion(vid);
+                        });
+                        return;
+                    }
+                    writeLine(QStringLiteral("[RESULT] verifyFinished ok=")
+                              + (ok ? QStringLiteral("1") : QStringLiteral("0")));
+                    QTimer::singleShot(400, qApp, &QCoreApplication::quit);
+                });
+
+                QTimer::singleShot(2500, backend, [backend, vid, writeLine]() {
+                    writeLine(QStringLiteral("[START] verify ") + vid);
+                    backend->verifyVersion(vid);
+                });
+            }
+        }
+    }
+
     // ── Auto-launch test mode ──
     QStringList args = app.arguments();
     int autoIdx = args.indexOf(QStringLiteral("--auto-launch"));

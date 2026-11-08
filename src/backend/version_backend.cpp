@@ -42,6 +42,8 @@
 
 #include <QDir>
 #include <QDirIterator>
+#include <QNetworkProxy>
+#include <QNetworkProxyFactory>
 #include <QFileInfo>
 
 #include <QDateTime>
@@ -4874,7 +4876,14 @@ void VersionBackend::repairVersion(const QString& versionId)
             if (m_failedPathsCache.contains(idxFilePath)) {
                 QString idxSha1 = assetIdxMeta.value(QStringLiteral("sha1")).toString();
                 QString idxOfficial = assetIdxMeta.value(QStringLiteral("url")).toString();
-                QString idxMirror = QStringLiteral("https://bmclapi2.bangbang93.com/assets/indexes/%1.json").arg(idxIdMeta);
+                // piston-meta 的 TLS 在部分网络下握手失败，官方等价主机 launchermeta 更稳
+                idxOfficial.replace(QStringLiteral("piston-meta.mojang.com"),
+                                    QStringLiteral("launchermeta.mojang.com"));
+                // BMCLAPI 的索引路径是 /v1/packages/<sha1>/<id>.json（不是 /assets/indexes/，实测 404）
+                QString idxMirror = idxSha1.isEmpty()
+                        ? QString()
+                        : QStringLiteral("https://bmclapi2.bangbang93.com/v1/packages/%1/%2.json")
+                              .arg(idxSha1, idxIdMeta);
                 QString iPri, iFb;
                 if (fileSource == DownloadSourcePolicy::PreferOfficial) {
                     iPri = idxOfficial;
@@ -5036,6 +5045,10 @@ void VersionBackend::repairVersion(const QString& versionId)
         state->bytesTotal += qMax<qint64>(0, t.size);
     }
     state->nam = new QNetworkAccessManager(this);
+    // 注：未强制使用系统代理。
+    // 实测本机系统代理（127.0.0.1:7897）对 mojang/BMCLAPI 不通（curl --proxy 超时），
+    // 而直连可通；强行套系统代理只会让修复更糟。下载失败时下面会输出逐源错误码，
+    // 便于判断是网络阻断还是源地址问题。
 
     // 收尾（只执行一次）
     state->finishAll = [state]() {
@@ -5142,6 +5155,9 @@ void VersionBackend::repairVersion(const QString& versionId)
 
             QNetworkRequest req{QUrl(urlToTry)};
             req.setTransferTimeout(20000);   // 20s 无响应即失败，避免永久挂住
+            // Qt6 默认不跟随重定向，BMCLAPI 的索引是 302 跳转 → 显式开启
+            req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                             QNetworkRequest::NoLessSafeRedirectPolicy);
 
             auto* reply = state->nam->get(req);
             state->reply = reply;
@@ -5165,6 +5181,9 @@ void VersionBackend::repairVersion(const QString& versionId)
                 const QString fileName = QFileInfo(target.filePath).fileName();
 
                 if (reply->error() != QNetworkReply::NoError) {
+                    emit self->logMessage(tr("[调试] %1 失败: %2 (code=%3)")
+                                          .arg(urlToTry, reply->errorString())
+                                          .arg(int(reply->error())));
                     // 主源失败 → 下次自动走备源（attempt 已自增）
                     state->downloadNext();
                     return;

@@ -544,6 +544,49 @@ int main(int argc, char *argv[])
         });
     }
 
+    // ── Verify / repair test mode（校验后端实测）──
+    // 用法: --verify-test <versionId> [--repair-test <versionId>]
+    // 结果写 <exe目录>/verify_test_result.txt，随后自动退出。
+    {
+        int verifyTestIdx = args.indexOf(QStringLiteral("--verify-test"));
+        int repairTestIdx = args.indexOf(QStringLiteral("--repair-test"));
+        if (verifyTestIdx >= 0 || repairTestIdx >= 0) {
+            const bool doRepair = (repairTestIdx >= 0);
+            const int argIdx = doRepair ? repairTestIdx : verifyTestIdx;
+            if (argIdx + 1 < args.size()) {
+                const QString vid = args[argIdx + 1];
+                const QString outPath = QCoreApplication::applicationDirPath()
+                                        + QStringLiteral("/verify_test_result.txt");
+                QFile::remove(outPath);
+                auto writeLine = [outPath](const QString& line) {
+                    QFile f(outPath);
+                    if (f.open(QIODevice::Append)) {
+                        f.write((line + QStringLiteral("\n")).toUtf8());
+                        f.close();
+                    }
+                };
+
+                QObject::connect(backend, &ShadowBackend::logMessage, backend,
+                                 [writeLine](const QString& m) { writeLine(QStringLiteral("[LOG] ") + m); });
+                QObject::connect(backend, &ShadowBackend::verifyFailedFiles, backend,
+                                 [writeLine](const QStringList& files) {
+                    for (const QString& f : files) writeLine(QStringLiteral("[FAILED] ") + f);
+                });
+                QObject::connect(backend, &ShadowBackend::verifyFinished, backend,
+                                 [writeLine](bool ok) {
+                    writeLine(QStringLiteral("[RESULT] verifyFinished ok=") + (ok ? QStringLiteral("1") : QStringLiteral("0")));
+                    QTimer::singleShot(400, qApp, &QCoreApplication::quit);
+                });
+
+                QTimer::singleShot(2500, backend, [backend, vid, doRepair, writeLine]() {
+                    writeLine(QStringLiteral("[START] ") + (doRepair ? QStringLiteral("repair ") : QStringLiteral("verify ")) + vid);
+                    if (doRepair) backend->repairVersion(vid);
+                    else backend->verifyVersion(vid);
+                });
+            }
+        }
+    }
+
     // ── Navigate + Screenshot test mode ──
     // Smart timing: wait for content-ready signal, not fixed delay
     // Usage: --screenshot <name> [--navigate <page>:<tab>]
