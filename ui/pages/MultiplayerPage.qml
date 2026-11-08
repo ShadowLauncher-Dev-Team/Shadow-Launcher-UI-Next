@@ -24,6 +24,7 @@ Item {
     // 房主的游戏是否已经「对局域网开放」：0 = 还没开服。
     // Terracotta 访客拿到 status 32（服务器未启动）会直接放弃并断开，所以没开服时不能把房间码当成可用的发出去。
     readonly property int mcPort: (mp && mp.mcServerPort) ? mp.mcServerPort : 0
+    readonly property int pendingCount: (mp && mp.pendingGuestCount) ? mp.pendingGuestCount : 0
 
     property string errorText: ""
     property bool errorHostGone: false
@@ -701,6 +702,24 @@ Item {
                         }
                     }
 
+                    // 已连上、还没发身份的人：先占个位，免得房主以为没人进来
+                    Rectangle {
+                        width: parent.width
+                        height: 44
+                        radius: 9
+                        color: "transparent"
+                        border.width: 1
+                        border.color: Qt.rgba(0.23, 0.51, 0.96, 0.28)
+                        visible: page.inRoom && !page.isError && page.pendingCount > 0
+                        Text {
+                            anchors.centerIn: parent
+                            text: page.pendingCount + " 位玩家正在加入…"
+                            color: "#7f8b9c"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+                    }
+
                     Rectangle {
                         width: parent.width
                         height: 38
@@ -711,7 +730,7 @@ Item {
                         visible: page.members.length < (page.mp ? page.mp.maxPlayers : 5)
                         Text {
                             anchors.centerIn: parent
-                            text: "还有 " + ((page.mp ? page.mp.maxPlayers : 5) - page.members.length) + " 个空位"
+                            text: "还有 " + Math.max(0, (page.mp ? page.mp.maxPlayers : 5) - page.members.length - page.pendingCount) + " 个空位"
                             color: Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11

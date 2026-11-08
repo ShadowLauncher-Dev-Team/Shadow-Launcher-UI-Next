@@ -658,6 +658,7 @@ void MultiplayerManager::onNewConnection()
         connect(sock, &QTcpSocket::disconnected, this, &MultiplayerManager::onGuestDisconnected);
 
         qCInfo(logNet) << QStringLiteral("[联机] 新宾客连接 ip=%1").arg(sock->peerAddress().toString());
+        emit playersChanged();   // 立刻显示「正在加入…」占位行，别让人以为没人进来
     }
 }
 
@@ -1212,6 +1213,10 @@ void MultiplayerManager::handleGuestPingResponse(const QByteArray& body)
         // ── Step 2: protocol negotiation ──
         m_heartbeatTimer->start();
         sendHeartbeat();
+        // 握手一通过就先把「自己」放进列表、并立刻拉一次成员表：
+        // 原来这些要等 MC 连接校验（最多 8 次尝试）跑完，中间几秒里宾客只看到空列表/只有自己。
+        ensureLocalSelfInList();
+        syncGuestProfiles();
 
         m_pendingResponses.enqueue(Scaffolding::kProtocols);
         auto packet = Scaffolding::buildPacket(
@@ -1980,15 +1985,7 @@ void MultiplayerManager::completeGuestJoin(quint16 verifyPort, bool verified)
         .arg(verified).arg(verifyPort);
 
     // Add LOCAL profile for self (align with Terracotta ProfileKind::LOCAL)
-    QVariantMap localSelf;
-    localSelf[QStringLiteral("name")] = m_deviceName;
-    localSelf[QStringLiteral("machine_id")] = m_machineId;
-    localSelf[QStringLiteral("hostname")] = QSysInfo::machineHostName();
-    localSelf[QStringLiteral("kind")] = QStringLiteral("LOCAL");
-    localSelf[QStringLiteral("vendor")] = shadowVendor();
-    localSelf[QStringLiteral("latency")] = 0;
-    m_players << localSelf;
-    emit playersChanged();
+    ensureLocalSelfInList();   // 幂等：握手阶段可能已经加过了
 
     // FakeServer announces the LOCAL forwarded port so the MC client
     // auto-discovers the proxied server on 127.0.0.1 (Terracotta-aligned).
@@ -2007,6 +2004,23 @@ void MultiplayerManager::completeGuestJoin(quint16 verifyPort, bool verified)
 // ─────────────────────────────────────────
 // Guest profile sync: actively pull from host (align with Terracotta)
 // ─────────────────────────────────────────
+
+void MultiplayerManager::ensureLocalSelfInList()
+{
+    for (const auto& p : m_players) {
+        if (p.toMap().value(QStringLiteral("machine_id")).toString() == m_machineId)
+            return;
+    }
+    QVariantMap localSelf;
+    localSelf[QStringLiteral("name")] = m_deviceName;
+    localSelf[QStringLiteral("machine_id")] = m_machineId;
+    localSelf[QStringLiteral("hostname")] = QSysInfo::machineHostName();
+    localSelf[QStringLiteral("kind")] = QStringLiteral("LOCAL");
+    localSelf[QStringLiteral("vendor")] = shadowVendor();
+    localSelf[QStringLiteral("latency")] = 0;
+    m_players << localSelf;
+    emit playersChanged();
+}
 
 void MultiplayerManager::syncGuestProfiles()
 {

@@ -30,6 +30,9 @@ class MultiplayerManager : public QObject {
     Q_PROPERTY(Role role READ role NOTIFY roleChanged)
     Q_PROPERTY(QString mcServerName READ mcServerName NOTIFY mcServerInfoChanged)
     Q_PROPERTY(int mcServerPort READ mcServerPort NOTIFY mcServerInfoChanged)
+    // 已建立 TCP、但还没发第一份身份信息（第一次心跳）的宾客数。
+    // 宾客的心跳要等到握手走完才发，中间有几秒「房间里看不到他」的空窗，行里拿这个先占位。
+    Q_PROPERTY(int pendingGuestCount READ pendingGuestCount NOTIFY playersChanged)
 
 public:
     enum State {
@@ -67,6 +70,13 @@ public:
     State state() const { return static_cast<State>(m_state.load()); }
     QString stateText() const { return m_stateText; }
     int maxPlayers() const { return kMaxPlayers; }
+    int pendingGuestCount() const {
+        int n = 0;
+        for (QTcpSocket* s : m_guests)
+            if (!m_guestIds.contains(s))
+                ++n;
+        return n;
+    }
     QVariantList players() const { return m_players; }
     Role role() const { return m_role; }
     QString playerName() const { return m_deviceName; }
@@ -243,6 +253,8 @@ private:
     QTimer* m_mcPresenceTimeoutTimer = nullptr; // Host MC presence timeout (2 min)
     QTimer* m_profileSyncTimer = nullptr; // Guest profile sync
     QTimer* m_hostWatchdog = nullptr; // guest: detects departed host (heartbeat timeout)
+    void ensureLocalSelfInList();
+
     int m_selfLatencyMs = -1; // guest: 本机到房主的 RTT（由心跳 pong 回显的 ts 算出）
     qint64 m_lastHostActivityMs = 0;  // guest: last inbound host data timestamp
     QProcess* m_peerQuery = nullptr;      // easyTier peer list query
