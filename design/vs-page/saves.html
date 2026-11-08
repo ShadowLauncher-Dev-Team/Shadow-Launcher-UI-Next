@@ -200,8 +200,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 .sb{flex:1;min-width:0}
 .sb b{font-size:13.5px;font-weight:600;color:#eef2f8;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sb .sz{font-size:11px;color:#5d6673;margin-top:5px}
-.sdel{opacity:0;transition:.15s var(--ease)}
-.sv:hover .sdel{opacity:1}
+.sdel{flex:0 0 auto}
 /* 两列 */
 .sgrid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .sgrid2 .sv{margin-bottom:0}
@@ -212,8 +211,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 .srow .sico{width:38px;height:38px;flex:0 0 38px;font-size:14px;border-radius:6px}
 .srow .sn{flex:1;min-width:0;font-size:12.5px;color:#dfe5ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .srow .ss{font-size:10.5px;color:#4b5462;flex:0 0 auto;font-variant-numeric:tabular-nums}
-.srow .sdel{opacity:0}
-.srow:hover .sdel{opacity:1}
+.srow .sdel{flex:0 0 auto}
 .slist{border:1px solid #262b35;border-radius:10px;background:#0b0d12;padding:0 14px}
 </style></head>
 <body data-v="a">
@@ -264,37 +262,37 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
     <div class="sv">
       <div class="sico">明</div>
       <div class="sb"><b>明月镇</b><div class="sz">1.2 GB</div></div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
 
     <div class="sv">
       <div class="sico">创</div>
       <div class="sb"><b>创造试验场</b><div class="sz">386 MB</div></div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
 
     <div class="sv">
       <div class="sico">S</div>
       <div class="sb"><b>Speedrun #12</b><div class="sz">214 MB</div></div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
 
     <div class="sv">
       <div class="sico">海</div>
       <div class="sb"><b>海底宫殿</b><div class="sz">620 MB</div></div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
 
     <div class="sv">
       <div class="sico">建</div>
       <div class="sb"><b>1.20.1 建筑存档</b><div class="sz">88 MB</div></div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
 
     <div class="sv">
       <div class="sico">空</div>
       <div class="sb"><b>空岛生存</b><div class="sz">96 MB</div></div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
 
 
@@ -364,56 +362,56 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
       <div class="sico">明</div>
       <div class="sn">明月镇</div>
       <div class="ss">1.2 GB</div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
 
     <div class="srow">
       <div class="sico">创</div>
       <div class="sn">创造试验场</div>
       <div class="ss">386 MB</div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
 
     <div class="srow">
       <div class="sico">S</div>
       <div class="sn">Speedrun #12</div>
       <div class="ss">214 MB</div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
 
     <div class="srow">
       <div class="sico">海</div>
       <div class="sn">海底宫殿</div>
       <div class="ss">620 MB</div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
 
     <div class="srow">
       <div class="sico">建</div>
       <div class="sn">1.20.1 建筑存档</div>
       <div class="ss">88 MB</div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
 
     <div class="srow">
       <div class="sico">空</div>
       <div class="sn">空岛生存</div>
       <div class="ss">96 MB</div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
 
     <div class="srow">
       <div class="sico">N</div>
       <div class="sn">Nether Test</div>
       <div class="ss">42 MB</div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
 
     <div class="srow">
       <div class="sico">末</div>
       <div class="sn">末地观察站</div>
       <div class="ss">76 MB</div>
-      <button class="btn ic sdel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="btn danger sdel">删除</button>
     </div>
   </div>
   </div>
