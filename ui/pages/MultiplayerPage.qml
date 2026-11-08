@@ -27,21 +27,45 @@ Item {
     property bool renameOpen: false
     property string renameDraft: ""
     property real enter: 0
+    property real contentFade: 1
+
+    // 状态 / 角色 / 错误一变，内容淡入一次
+    onStChanged: contentAnim.restart()
+    onRoleChanged: contentAnim.restart()
+    onErrorTextChanged: contentAnim.restart()
+
+    NumberAnimation {
+        id: contentAnim
+        target: page
+        property: "contentFade"
+        from: 0.86
+        to: 1.0
+        duration: Theme.durFast
+        easing.type: Theme.easeStandard
+    }
 
     readonly property bool inRoom: role !== 0
     // 错误态：只留错误卡（房间码/成员/徽章都不该出现，否则像"房间还在"）
     readonly property bool isError: errorText !== ""
     readonly property bool busy: st >= 1 && st <= 4
 
-    // 阶段点：0 建房/入网 · 1 找中心 · 2 等开服 · 3 已连通
+    // 阶段光条 0..4（4 = 全部走完）：
+    //   1 创建/加入网络（CreatingRoom / JoiningNetwork）
+    //   2 找联机中心（Discovering / Connecting）
+    //   3 等游戏开服（WaitingForMcServer / VerifyingConnection）
+    //   4 已连通（Connected / WaitingForGuests）
+    // 旧版把"等开服"和"找中心"归到同一格、把"已连通"也算成最后一格在跑，
+    // 结果是房主从第 1 格直接跳到第 3 格，中间那格永远没亮过 —— 这就是"遗漏"。
     readonly property int stage: {
-        // 空闲态也要点亮第一格，否则四个点全暗、看着像"没有阶段"
-        if (st === 0) return 0
-        if (st === 1) return 0
-        if (st === 2) return 1
-        if (st === 3 || st === 4 || st === 7) return 2
-        if (st === 5 || st === 6 || st === 8) return 3
-        return -1
+        if (isError) return -1
+        switch (st) {
+        case 0: return 0
+        case 1: case 2: return 1
+        case 3: case 4: return 2
+        case 7: case 8: return 3
+        case 5: case 6: return 4
+        default: return 0
+        }
     }
 
     readonly property string hostName: {
@@ -223,6 +247,7 @@ Item {
         color: "transparent"
         border.width: 1
         border.color: chipHover.containsMouse ? Theme.accent : Theme.line2
+        Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
         opacity: page.enter
 
         Row {
@@ -281,6 +306,8 @@ Item {
             color: Theme.sidebar
             border.width: 1
             border.color: page.errorText !== "" ? "#5b2a2a" : Theme.line2
+            // 高度是动画的，内容按固定 y 排：不裁的话收缩期间文字会漏到卡片外
+            clip: true
 
             Behavior on height { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
             Behavior on border.color { ColorAnimation { duration: Theme.durBase } }
@@ -291,22 +318,48 @@ Item {
                 y: 22
                 width: parent.width - 44
                 spacing: 13
+                // 状态切换时整块内容轻微淡入：只压到 0.86，不从 0 起（会闪）
+                opacity: page.contentFade
 
-                // 四点阶段条
-                Row {
+                // 阶段光条：一根轨道 + 会走的填充 + 三道刻痕（分成四段但整体连续推进）
+                // 之前是四个独立色块各自变色：没有位移、且两格同时变色会看成"眨一下"，
+                // 现在填充宽度跟 stage 走，阶段推进 = 光条真的往前长。
+                Item {
+                    id: stageBar
                     width: parent.width
-                    spacing: 6
+                    height: 3
                     visible: !page.isError
+                    opacity: page.stage < 0 ? 0 : 1
+                    Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
+
+                    Rectangle {
+                        id: stageTrack
+                        anchors.fill: parent
+                        radius: 2
+                        color: "#181d26"
+                    }
+
+                    Rectangle {
+                        id: stageFill
+                        height: parent.height
+                        radius: 2
+                        color: Theme.accent
+                        // 空闲时也保留第一格的长度：让人知道"你现在在第 1 步"
+                        width: stageTrack.width * Math.max(1, Math.min(4, page.stage)) / 4
+                        Behavior on width {
+                            NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeStandard }
+                        }
+                    }
+
+                    // 刻痕：把连续填充切成四段（颜色取卡片底色，随背景走）
                     Repeater {
-                        model: 4
+                        model: 3
                         Rectangle {
-                            height: 3
-                            radius: 2
-                            width: (body.width - 18) / 4
-                            color: page.stage < 0 ? "#181d26"
-                                 : (index < page.stage ? Qt.rgba(0.23, 0.51, 0.96, 0.45)
-                                    : (index === page.stage ? Theme.accent : "#181d26"))
-                            Behavior on color { ColorAnimation { duration: Theme.durBase } }
+                            width: 3
+                            height: parent.height
+                            radius: 1
+                            color: Theme.sidebar
+                            x: Math.round(stageBar.width * (index + 1) / 4) - 1
                         }
                     }
                 }
@@ -363,7 +416,7 @@ Item {
                     text: page.code
                     color: page.errorText !== "" ? "#4a5361" : "#a9c8ff"
                     font.family: Theme.fontFamily
-                    font.pixelSize: page.st === 0 ? 19 : 26
+                    font.pixelSize: 26
                     font.bold: true
                     font.letterSpacing: 2
                     visible: page.code.length > 0 && !page.isError
@@ -467,6 +520,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "修改"
                             color: editHover.containsMouse ? Theme.accent : "#7fb0ff"
+                            Behavior on color { ColorAnimation { duration: Theme.durFast } }
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                             MouseArea {
@@ -616,6 +670,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: page.latencyText(modelData)
                                 color: page.latencyColor(modelData)
+                                Behavior on color { ColorAnimation { duration: Theme.durBase } }
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                             }
