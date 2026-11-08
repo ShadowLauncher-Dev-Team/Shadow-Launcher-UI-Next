@@ -110,9 +110,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
   flex:0 0 auto;background:transparent}
 .btn .i{width:14px;height:14px}
 .btn:hover{border-color:#333a47;background:rgba(255,255,255,.086)}
-.btn.primary{height:48px;padding:0 34px;border:0;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:.4px;
-  color:#fff;background:linear-gradient(180deg,#4b8cf7,#2563eb)}
-.btn.primary .i{width:18px;height:18px}
+.btn.primary{border:0;font-weight:600;color:#fff;
+  background:linear-gradient(180deg,#4b8cf7,#2563eb)}
 .btn.primary:hover{background:linear-gradient(180deg,#5a96f8,#2f6cf0)}
 .btn.mini{height:34px;padding:0 14px;font-size:13px}
 .btn.danger{border-color:#6d2a2a;color:#ff9a94;background:transparent}
@@ -259,8 +258,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
           <span class="val">可修 <b style="color:#7fa9f5">3</b></span>
           <span class="val" style="color:#4b5462">·</span>
           <span class="val">不可修 <b style="color:#e0a83c">1</b></span>
+          <button class="btn primary" style="margin-left:auto">修复 3 项</button>
         </div>
-        <div style="padding:2px 0 10px"><button class="btn primary">修复 3 项</button></div>
       </div>
 
     </div>
@@ -268,8 +267,11 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
     <div>
       <div class="card">
         <div class="ch">版本操作</div>
-        <div class="row"><span class="k">用户数据</span><span class="val">Mod、配置、存档</span><button class="link">导出</button></div>
-        <div class="row"><span class="k">副本</span><button class="link" style="margin-left:auto">克隆</button><button class="link" style="margin-left:4px">重命名</button></div>
+        <div class="chips" style="padding:4px 0 12px">
+          <button class="chip">导出用户数据</button>
+          <button class="chip">克隆版本</button>
+          <button class="chip">重命名</button>
+        </div>
         <div style="padding:12px 0 4px;border-top:1px solid #11141a"><button class="btn danger">删除该版本</button></div>
       </div>
     </div>
@@ -286,13 +288,13 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 
 <div class="pn pc"><div class="scroll">
 
-  <div class="stats">
+  <div class="stats" style="margin-bottom:0">
     <div class="stat"><div class="n">5138</div><div class="l">已扫描文件</div></div>
     <div class="stat"><div class="n" style="color:#7fa9f5">3</div><div class="l">可修复</div></div>
     <div class="stat alert"><div class="n" style="color:#e0a83c">1</div><div class="l">不可修复</div></div>
   </div>
 
-  <div style="display:flex;align-items:center;gap:10px;margin:0 0 16px">
+  <div style="display:flex;align-items:center;gap:10px;margin:14px 0 18px">
     <button class="btn">重新校验</button>
     <button class="btn primary">修复 3 项</button>
   </div>
