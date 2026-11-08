@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 #include "mc_scanner.h"
 #include "../utils/logger.h"
@@ -36,11 +36,11 @@ void McScanner::start(std::function<bool(const QString&)> motdFilter)
             continue;
         if (addr == QHostAddress::LocalHost || addr == QHostAddress::LocalHostIPv6)
             continue;
-        // Skip Terracotta's EasyTier subnet (10.144.144.0/24)
-        // Compare top 24 bits (network byte order)
-        quint32 addrNBO = addr.toIPv4Address();
-        if ((addrNBO & 0xFFFFFF00) == (subnetCheckNBO & 0xFFFFFF00))
-            continue;
+        // 2026-11-08：不再跳过 EasyTier 子网（10.144.144.0/24）。
+        // 跳过是为了避免扫到自家 scaffold 广播，但代价是：EasyTier 网卡若被系统选为
+        // 组播出口，MC 的 LAN 广播就彻底收不到（实测踩到）。自身/陶瓦 MOTD 已由
+        // motdFilter 过滤，因此保留该接口更安全。
+        Q_UNUSED(subnetCheckNBO);
 
         auto* sock = new QUdpSocket(this);
         if (!sock->bind(addr, kMulticastPort, QUdpSocket::ShareAddress)) {
@@ -57,10 +57,17 @@ void McScanner::start(std::function<bool(const QString&)> motdFilter)
             continue;
         }
 
-        connect(sock, &QUdpSocket::readyRead, this, &McScanner::onDatagramReceived);
+        // 2026-11-08 修复：原来只保留第一个成功的 socket，其余既没 connect 也没释放，
+        // 等于只在一个接口上监听。多网卡机器（WLAN + 169.254 虚拟网卡 + EasyTier）
+        // 上 MC 广播如果从别的接口出去就永远收不到 → 联机页一直“等待中”。
+        // 现改为：每个接口各留一个 socket，全部 connect。
+        m_sockets.append(sock);
+        connect(sock, &QUdpSocket::readyRead, this, [this, sock]() { drainSocket(sock); });
         if (!m_socketV4) {
             m_socketV4 = sock;
             qCInfo(logNet) << QStringLiteral("[MCScanner] 多播监听已启动 addr=%1").arg(addr.toString());
+        } else {
+            qCInfo(logNet) << QStringLiteral("[MCScanner] 追加多播监听 addr=%1").arg(addr.toString());
         }
     }
 
@@ -73,7 +80,8 @@ void McScanner::start(std::function<bool(const QString&)> motdFilter)
             m_socketV4 = nullptr;
         } else {
             m_socketV4->joinMulticastGroup(QHostAddress(kMcMulticastAddrV4));
-            connect(m_socketV4, &QUdpSocket::readyRead, this, &McScanner::onDatagramReceived);
+            m_sockets.append(m_socketV4);
+            connect(m_socketV4, &QUdpSocket::readyRead, this, [this]() { drainSocket(m_socketV4); });
             qCInfo(logNet) << QStringLiteral("[MCScanner] 多播监听已启动(Any)");
         }
     }
@@ -96,24 +104,32 @@ void McScanner::stop()
         m_cleanupTimer->deleteLater();
         m_cleanupTimer = nullptr;
     }
-    if (m_socketV4) {
-        m_socketV4->leaveMulticastGroup(QHostAddress(kMcMulticastAddrV4));
-        m_socketV4->deleteLater();
-        m_socketV4 = nullptr;
+    for (QUdpSocket* sock : m_sockets) {
+        if (!sock) continue;
+        sock->leaveMulticastGroup(QHostAddress(kMcMulticastAddrV4));
+        sock->disconnect(this);
+        sock->deleteLater();
     }
+    m_sockets.clear();
+    m_socketV4 = nullptr;
     m_servers.clear();
 }
 
 void McScanner::onDatagramReceived()
 {
-    if (!m_socketV4) return;
+    drainSocket(m_socketV4);
+}
 
-    while (m_socketV4->hasPendingDatagrams()) {
+void McScanner::drainSocket(QUdpSocket* sock)
+{
+    if (!sock) return;
+
+    while (sock->hasPendingDatagrams()) {
         QByteArray buf;
-        buf.resize(static_cast<int>(m_socketV4->pendingDatagramSize()));
+        buf.resize(static_cast<int>(sock->pendingDatagramSize()));
         QHostAddress sender;
         quint16 senderPort = 0;
-        m_socketV4->readDatagram(buf.data(), buf.size(), &sender, &senderPort);
+        sock->readDatagram(buf.data(), buf.size(), &sender, &senderPort);
 
         processDatagram(buf, sender.toString());
     }

@@ -693,6 +693,35 @@ void Launcher::onReadyReadStdout()
     // ── 启动器日志：JVM 标准输出（逐行，避免超长行撑爆单条日志）──
     {
         const QStringList lines = QString::fromUtf8(data).split(QLatin1Char('\n'));
+        // 局域网开放/关闭检测（2026-11-08）：原版 IntegratedServer 会打印
+        //   [net.minecraft.client.server.IntegratedServer/]: Started serving on 52968
+        // 退出世界时打印 “Stopping the server”。这行不依赖网络与语言，比 UDP 组播可靠。
+        static const QRegularExpression lanOpenRx(
+            QStringLiteral("Started serving on ([0-9]+)"));
+        static const QRegularExpression lanStopRx(
+            QStringLiteral("Stopping the server|Stopping server"));
+
+        // 跨块拼接完整行（最后一段可能是不完整的半行，留到下次）
+        m_lanLineBuf += QString::fromUtf8(data);
+        const QStringList lanLines = m_lanLineBuf.split(QLatin1Char('\n'));
+        m_lanLineBuf = lanLines.last();
+        if (m_lanLineBuf.size() > 8192)   // 异常超长行保护，避免缓冲无限增长
+            m_lanLineBuf.clear();
+        for (int li = 0; li + 1 < lanLines.size(); ++li) {
+            const QString t = lanLines.at(li).trimmed();
+            if (t.isEmpty()) continue;
+            const auto openMatch = lanOpenRx.match(t);
+            if (openMatch.hasMatch()) {
+                bool ok = false;
+                const int port = openMatch.captured(1).toInt(&ok);
+                if (ok && port > 0 && port < 65536) {
+                    qCInfo(logLaunch) << QStringLiteral("[启动] 检测到游戏已对局域网开放 端口=%1").arg(port);
+                    emit minecraftLanOpened(port);
+                }
+            } else if (lanStopRx.match(t).hasMatch()) {
+                emit minecraftLanClosed();
+            }
+        }
         for (const QString& l : lines) {
             const QString t = l.trimmed();
             if (t.isEmpty()) continue;

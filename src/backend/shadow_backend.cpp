@@ -286,6 +286,18 @@ ShadowBackend::ShadowBackend(QObject* parent)
     if (m_resource)
         m_resource->setFetchEngine(m_fetchEngine);
     m_multiplayer = new MultiplayerManager(this);
+    // ── 联机页的 MC LAN 端口来源 ──
+    // 主通道：启动器解析游戏 JVM 输出里的 "Started serving on <port>"（可靠、与网络无关）；
+    // 兜底：MultiplayerManager 内的 UDP 组播扫描器（多网卡/屏蔽环境下会漏）。
+    if (m_launch && m_multiplayer) {
+        connect(m_launch, &LaunchBackend::mcLanOpened,
+                m_multiplayer, &MultiplayerManager::notifyMcLanPort);
+        connect(m_multiplayer, &MultiplayerManager::hostWaitingForMcServer,
+                this, [this]() {
+            if (m_launch && m_multiplayer)
+                m_multiplayer->notifyMcLanPort(m_launch->lastMcLanPort());
+        });
+    }
     m_localMods = new LocalModManager(this);
     m_modpackImporter = new ModpackImporter(this);
     m_modpackExporter = new ModpackExporter(this);

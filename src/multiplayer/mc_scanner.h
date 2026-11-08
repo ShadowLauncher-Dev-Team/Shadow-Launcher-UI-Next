@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 // Minecraft LAN Scanner — listens on 224.0.2.60:4445 for [MOTD]...[/MOTD][AD]port[/AD]
 // Aligns with Terracotta scanning.rs: multicast discovery with MOTD filter + 5s expiry
@@ -43,13 +43,16 @@ signals:
 
 private slots:
     void onDatagramReceived();
+    /// 排空指定 socket 的待读报文（多接口各一个 socket，2026-11-08）
+    void drainSocket(QUdpSocket* sock);
     void onCleanupTick();
 
 private:
     void processDatagram(const QByteArray& data, const QString& sourceIp);
     void cleanupExpired();
 
-    QUdpSocket* m_socketV4 = nullptr;         // IPv4 multicast listener
+    QUdpSocket* m_socketV4 = nullptr;         // IPv4 multicast listener（主，兼容旧逻辑）
+    QList<QUdpSocket*> m_sockets;             // 所有接口的监听取 socket（多网卡全收）
     std::function<bool(const QString&)> m_motdFilter;
 
     // Discovered servers keyed by port

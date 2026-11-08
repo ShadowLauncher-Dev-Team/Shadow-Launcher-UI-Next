@@ -112,6 +112,11 @@ public:
     // Force recalculation of connection difficulty (host: queries EasyTier for local NAT)
     Q_INVOKABLE void requestDifficultyUpdate();
 
+    /// 由启动器 JVM 输出解析得到的「对局域网开放」端口（2026-11-08）
+    /// 比 UDP 组播可靠：组播在多网卡 / 网络屏蔽 / 整合包环境下会漏包。
+    /// 非房主或非等待态时忽略；已就绪时更新端口。
+    void notifyMcLanPort(int port);
+
 signals:
     void roomCodeChanged();
     void stateChanged();
@@ -129,6 +134,9 @@ signals:
     void deviceCodeChanged();
     void connectionDifficultyChanged();
     void mcServerInfoChanged();
+    /// 房主刚进入「等待 MC 服务器」状态：外部应立刻喂一次缓存的 LAN 端口
+    /// （玩家常先开 LAN 再开房，那时信号已经发过了）
+    void hostWaitingForMcServer();
 
     // Emitted when FakeServer should announce a given MC port on the LAN multicast
     // Used by the guest to make the MC client auto-discover the proxied server

@@ -567,6 +567,9 @@ void MultiplayerManager::startHostServer()
     // Removed all fixed-port TCP probes — scanner is the single source of truth.
     // 2026-08-15：文案改指引式——"等待MC服务器启动"小白看不懂，改为明确操作步骤
     setState(WaitingForMcServer, QStringLiteral("请打开游戏，进入单人世界后按 「Esc → 对局域网开放」"));
+    // 玩家常常是“先开 LAN、再来开房”，那时 Launcher 的检测信号已经发过了 →
+    // 由外部（ShadowBackend）在收到本信号后立刻回喂一次缓存端口。
+    emit hostWaitingForMcServer();
 
     // Start MC LAN multicast scanner to detect real MC server ports
     // Aligned with Terracotta set_scanning: scanner detects [MOTD][AD]{port}[/AD] on 224.0.2.60:4445
@@ -1794,6 +1797,62 @@ void MultiplayerManager::handleHealthCheckFailure()
 // ── Scanner-based MC server detection handler ──
 // Aligned with Terracotta set_scanning: real MC server port detected via LAN multicast.
 // Overrides the generated m_mcPort with the real scanner-detected port.
+// ── 「对局域网开放」端口通知（来自启动器 JVM 输出解析）──
+// 为什么需要它：UDP 组播 224.0.2.60:4445 在以下场景会收不到，而 MC 日志一定有这行：
+//   1. 多网卡机器（WLAN + 多个 169.254 虚拟网卡 + EasyTier），组播只在其中一个接口；
+//   2. 网络/安全软件屏蔽组播；
+//   3. 整合包客户端（实测 425 个 Mod）偶发不发广播。
+// HMCL 也是靠同一份 JVM 输出/端口握手，因此它能扫到而我们扫不到。
+void MultiplayerManager::notifyMcLanPort(int port)
+{
+    if (m_role != Host)
+        return;
+    if (port <= 0 || port >= 65536)
+        return;
+
+    // 已经就绪：端口变了（玩家关掉又重开 LAN）→ 更新并重建白名单
+    if (m_state == WaitingForGuests) {
+        if (port == static_cast<int>(m_mcPort))
+            return;
+        qCInfo(logNet) << QStringLiteral("[联机] LAN 端口变化 旧=%1 新=%2").arg(m_mcPort).arg(port);
+        m_mcPort = static_cast<quint16>(port);
+        if (m_easyTier)
+            m_easyTier->setTcpWhitelist({m_centerPort, m_mcPort});
+        emit mcServerInfoChanged();
+        emit minecraftPortReady(port);
+        return;
+    }
+
+    if (m_state != WaitingForMcServer)
+        return;
+
+    qCInfo(logNet) << QStringLiteral("[联机] 从游戏日志检测到 LAN 端口 port=%1（组播未收到，走日志通道）").arg(port);
+    m_mcPort = static_cast<quint16>(port);
+
+    // Terracotta 对齐：房主 easytier 白名单必须包含真实 MC 端口，否则访客端口转发被拒
+    if (m_easyTier)
+        m_easyTier->setTcpWhitelist({m_centerPort, m_mcPort});
+
+    // 停掉组播扫描器（已由日志通道拿到端口）
+    if (m_hostMcScanner) {
+        McScanner* scannerToClean = m_hostMcScanner;
+        m_hostMcScanner = nullptr;
+        scannerToClean->disconnect(this);
+        QTimer::singleShot(0, scannerToClean, [scannerToClean]() {
+            scannerToClean->stop();
+            scannerToClean->deleteLater();
+        });
+    }
+    if (m_mcPresenceTimeoutTimer)
+        m_mcPresenceTimeoutTimer->stop();
+
+    emit mcServerInfoChanged();
+    m_mcHealthFailures = 0;
+    m_mcHealthTimer->start();
+    emit minecraftPortReady(port);
+    setState(WaitingForGuests, QStringLiteral("等待玩家加入..."));
+}
+
 // ── Scanner-based MC server detection handler ──
 // Executed when MCScanner detects real MC server broadcast on LAN multicast.
 // CRITICAL: Scanner cleanup deferred via QTimer::singleShot to avoid

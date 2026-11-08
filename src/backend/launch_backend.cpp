@@ -1599,6 +1599,15 @@ void LaunchBackend::runNextCheck()
         emit launchProgressChanged(75, tr("正在启动 Minecraft..."));
         qCDebug(logLaunch) << "[PROGRESS] 75% - 正在启动 Minecraft...";
         Launcher* launcher = new Launcher(this);
+        // 游戏「对局域网开放」→ 记录端口并转发（联机页用它，不必依赖 UDP 组播）
+        connect(launcher, &Launcher::minecraftLanOpened, this, [this](int port) {
+            m_lastMcLanPort = port;
+            emit mcLanOpened(port);
+        });
+        connect(launcher, &Launcher::minecraftLanClosed, this, [this]() {
+            m_lastMcLanPort = 0;
+            emit mcLanClosed();
+        });
         launcher->setGameDir(m_gameDir);
         launcher->setAuthInfo(m_authName, m_authUuid, m_authToken, m_authIsOnline);
         launcher->setAutoLangMode(m_autoLangMode);

@@ -120,6 +120,11 @@ public:
 
     // ---- Called by ShadowBackend to sync game directory ----
     void setGameDir(const QString& dir);
+
+    /// 最近一次「对局域网开放」的端口（0 = 未开放/已关闭）。
+    /// 联机页在进入“等待 MC 服务器”状态时用它补拿缓存值——
+    /// 玩家常先开 LAN 再点联机开房，信号那时已经发过了。
+    int lastMcLanPort() const { return m_lastMcLanPort; }
     void setAccount(AccountBackend* account) { m_account = account; }
 
     /// 注入 Java 自动安装器（ShadowBackend 提供，指向 JavaRuntimeInstaller::installJavaAsync）。
@@ -165,6 +170,9 @@ signals:
     void launchRepairsChanged();
     void minecraftStarted();
     void minecraftStopped();
+    /// 游戏已对局域网开放 / 已关闭（来自 JVM 输出解析，供联机页取用）
+    void mcLanOpened(int port);
+    void mcLanClosed();
     void crashDetected(const QVariantMap& report);
     /// Emitted when a failed launch triggers async crash analysis (QML shows "analyzing" state)
     void crashAnalysisStarted();
@@ -213,6 +221,7 @@ private:
     AccountBackend* m_account = nullptr;
     Launcher* m_activeLauncher = nullptr;  // only accept progress from this launcher
     QList<Launcher*> m_runningLaunchers;
+    int m_lastMcLanPort = 0;   // 最近一次 LAN 开放端口（JVM 输出解析，0=未开放）
     QString m_gameDir;
     bool m_launching = false;
     int m_launchProgress = 0;

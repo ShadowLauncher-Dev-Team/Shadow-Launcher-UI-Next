@@ -94,6 +94,11 @@ signals:
     void launchProgress(const QString& message);
     void launchFinished(bool success, const QString& errorMsg);
     void launchStarted();
+    /// 游戏内「对局域网开放」（Esc → 对局域网开放）时，从 JVM 输出解析出的 LAN 端口。
+    /// 原版 IntegratedServer 必打 `Started serving on <port>`，与界面语言无关，
+    /// 因此不依赖 UDP 组播（多网卡/组播被网络屏蔽时组播会漏，见 2026-11-08 联机诊断）。
+    void minecraftLanOpened(int port);
+    void minecraftLanClosed();
 
 private slots:
     void onProcessStarted();
@@ -143,6 +148,8 @@ private:
     bool m_detached = false;  // 已分离（detach）：析构不再 forceKill
     int m_autoLangMode = 1;  // 0=off, 1=system locale, 2=IP region
     QStringList m_outputRing;  // ring buffer of raw stdout/stderr lines (for crash analysis)
+    /// LAN 检测专用行缓冲：QProcess 按块读取，一行可能被切断，必须跨块拼接
+    QString m_lanLineBuf;
     QString m_jvmFullLogPath;  // full JVM output log path ("" if not opened)
     QFile m_jvmFullLog;        // full JVM output log file handle
     QString m_detectedRegion;
