@@ -113,6 +113,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 .btn.danger{border-color:#4a2226;color:#f07474;background:#130a0b}
 .btn.danger:hover{background:#1d0f11;border-color:#5c2a30}
 .card{margin-bottom:16px}
+/* 乙案两列：卡片随列等高，边框底边对齐 */
+.pb .cols > div{display:flex;flex-direction:column}
+.pb .cols > div > .card{flex:1;margin-bottom:16px}
 .prog{margin:2px 0 10px}
 .pbar{height:4px;border-radius:2px;background:#151a22;overflow:hidden}
 .pbar i{display:block;height:100%;border-radius:2px;background:var(--accent);transition:width .2s}
@@ -206,14 +209,14 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
     </div>
     <div class="pb-cap">
       <span class="val">可修复 <b style="color:#7fa9f5">3</b></span>
-      <span class="val" style="color:#2b323d">/</span>
+      <span class="val" style="color:#4b5462">·</span>
       <span class="val">不可修复 <b style="color:#e0a83c">1</b></span>
     </div>
     <div class="prog">
       <div class="pbar amber"><i style="width:37%"></i></div>
       <div class="prog-meta">
-        <span>正在修复 1.20.1-Forge_47.2.0.jar</span>
-        <span class="mono">9.4 MB / 25.1 MB · 37%</span>
+        <span>9.4 MB / 25.1 MB</span>
+        <span class="mono">37%</span>
         <button class="btn mini">取消</button>
       </div>
     </div>
@@ -230,22 +233,19 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
   </div>
 
   <div class="card">
-    <div class="ch">维护</div>
-    <div class="pb-cap" style="flex-wrap:wrap;gap:8px;padding:6px 0 10px">
-      <button class="chip">打开版本目录</button>
-      <button class="chip">打开日志</button>
-      <button class="chip">导出启动脚本</button>
+    <div class="ch">版本操作</div>
+    <div class="pb-cap" style="flex-wrap:wrap;gap:8px;padding:6px 0 12px">
       <button class="chip">导出用户数据</button>
       <button class="chip">克隆版本</button>
       <button class="chip">重命名</button>
     </div>
-    <div class="row danger-row" style="border-top:1px solid #11141a"><span class="k">删除版本</span><span class="val">连同全部文件移除，不可恢复</span><button class="btn danger" style="margin-left:auto">删除</button></div>
+    <div class="row danger-row" style="border-top:1px solid #11141a"><span class="k" style="width:auto;flex:1">删除版本</span><button class="btn danger">删除</button></div>
   </div>
 
 </div></div>
 
 <div class="pn pb"><div class="scroll">
-  <div class="cols">
+  <div class="cols" style="align-items:stretch">
     <div>
       <div class="card">
         <div class="shd">
@@ -273,30 +273,24 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
         </div>
       </div>
 
-      <div class="card">
-        <div class="ch">异常文件</div>
-        <div class="frow"><span class="fpath">1.20.1-Forge_47.2.0.jar</span><span class="fsize">24.7 MB</span><span class="badge">可修</span></div>
-        <div class="frow"><span class="fpath">assets/indexes/5.json</span><span class="fsize">396 KB</span><span class="badge">可修</span></div>
-        <div class="frow"><span class="fpath">assets/objects/1a/1a0e4c6d…</span><span class="fsize">42 KB</span><span class="badge">可修</span></div>
-        <div class="frow"><span class="fpath">forge-1.20.1-47.2.0-client.jar</span><span class="fsize">3.4 MB</span><span class="badge no">不可修</span></div>
-        <div class="fine" style="padding-bottom:8px">不可修：官方源已下架，需重新安装该版本。</div>
-      </div>
     </div>
 
     <div>
       <div class="card">
         <div class="ch">版本操作</div>
-        <div class="row"><span class="k">目录</span><span class="val mono">versions\1.20.1-Forge…</span><button class="link">打开</button></div>
-        <div class="row"><span class="k">日志</span><span class="val">最近 3 次</span><button class="link">打开</button></div>
-        <div class="row"><span class="k">启动脚本</span><span class="val">.bat</span><button class="link">导出</button></div>
         <div class="row"><span class="k">用户数据</span><span class="val">Mod、配置、存档</span><button class="link">导出</button></div>
-        <div class="row"><span class="k">副本</span><span class="val">克隆 / 重命名</span><button class="link">克隆</button></div>
-      </div>
-      <div class="card">
-        <div class="ch">危险操作</div>
-        <div class="row danger-row"><span class="k">删除版本</span><span class="val">不可恢复</span><button class="btn danger" style="margin-left:auto">删除</button></div>
+        <div class="row"><span class="k">副本</span><button class="link" style="margin-left:auto">克隆</button><button class="link" style="margin-left:4px">重命名</button></div>
+        <div class="row danger-row"><span class="k" style="width:auto;flex:1">删除版本</span><button class="btn danger">删除</button></div>
       </div>
     </div>
+  </div>
+
+  <div class="card" style="max-width:none">
+    <div class="ch">异常文件</div>
+    <div class="frow"><span class="fpath">1.20.1-Forge_47.2.0.jar</span><span class="fsize">24.7 MB</span><span class="badge">可修</span></div>
+    <div class="frow"><span class="fpath">assets/indexes/5.json</span><span class="fsize">396 KB</span><span class="badge">可修</span></div>
+    <div class="frow"><span class="fpath">assets/objects/1a/1a0e4c6d…</span><span class="fsize">42 KB</span><span class="badge">可修</span></div>
+    <div class="frow"><span class="fpath">forge-1.20.1-47.2.0-client.jar</span><span class="fsize">3.4 MB</span><span class="badge no">不可修</span></div>
   </div>
 </div></div>
 
@@ -313,7 +307,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
     <div class="prog" style="margin:6px 0 2px">
       <div class="pbar amber"><i style="width:37%"></i></div>
       <div class="prog-meta">
-        <span>1.20.1-Forge_47.2.0.jar · 9.4 MB / 25.1 MB</span>
+        <span>9.4 MB / 25.1 MB</span>
         <span class="mono">37%</span>
         <button class="btn mini">取消</button>
       </div>
@@ -323,25 +317,22 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
   <div class="card">
     <div class="ch">异常文件</div>
     <table class="tbl">
-      <tr><th style="width:48%">文件</th><th style="width:18%">大小</th><th style="width:16%">来源</th><th style="width:18%">状态</th></tr>
-      <tr><td class="p">versions/…/1.20.1-Forge_47.2.0.jar</td><td class="n">24.7 MB</td><td>官方</td><td><span class="badge">可修</span></td></tr>
-      <tr><td class="p">assets/indexes/5.json</td><td class="n">396 KB</td><td>官方</td><td><span class="badge">可修</span></td></tr>
-      <tr><td class="p">assets/objects/1a/1a0e4c6d…</td><td class="n">42 KB</td><td>官方</td><td><span class="badge">可修</span></td></tr>
-      <tr><td class="p">libraries/net/minecraftforge/…/forge-client.jar</td><td class="n">3.4 MB</td><td>Maven</td><td><span class="badge no">不可修</span></td></tr>
+      <tr><th style="width:56%">文件</th><th style="width:18%">大小</th><th style="width:26%">状态</th></tr>
+      <tr><td class="p">versions/…/1.20.1-Forge_47.2.0.jar</td><td class="n">24.7 MB</td><td><span class="badge">可修</span></td></tr>
+      <tr><td class="p">assets/indexes/5.json</td><td class="n">396 KB</td><td><span class="badge">可修</span></td></tr>
+      <tr><td class="p">assets/objects/1a/1a0e4c6d…</td><td class="n">42 KB</td><td><span class="badge">可修</span></td></tr>
+      <tr><td class="p">libraries/net/minecraftforge/…/forge-client.jar</td><td class="n">3.4 MB</td><td><span class="badge no">不可修</span></td></tr>
     </table>
   </div>
 
   <div class="card">
-    <div class="ch">维护</div>
-    <div class="pb-cap" style="flex-wrap:wrap;gap:8px;padding:4px 0 10px">
-      <button class="chip">打开版本目录</button>
-      <button class="chip">打开日志</button>
-      <button class="chip">导出启动脚本</button>
+    <div class="ch">版本操作</div>
+    <div class="pb-cap" style="flex-wrap:wrap;gap:8px;padding:6px 0 12px">
       <button class="chip">导出用户数据</button>
       <button class="chip">克隆版本</button>
       <button class="chip">重命名</button>
     </div>
-    <div class="row danger-row" style="border-top:1px solid #11141a"><span class="k">删除版本</span><span class="val">连同全部文件移除，不可恢复</span><button class="btn danger" style="margin-left:auto">删除</button></div>
+    <div class="row danger-row" style="border-top:1px solid #11141a"><span class="k" style="width:auto;flex:1">删除版本</span><button class="btn danger">删除</button></div>
   </div>
 
 </div></div>
