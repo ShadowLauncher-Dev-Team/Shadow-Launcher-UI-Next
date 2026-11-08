@@ -1,0 +1,252 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>A · 左栏分类 + 表单</title><link rel="stylesheet" href="vs.css"></head>
+<body data-state="default">
+
+<div class="switcher">
+  <b>A 版 · 左栏分类 + 单列表单</b>
+  <button data-s="default" aria-pressed="true">默认（跟随全局）</button>
+  <button data-s="custom" aria-pressed="false">已覆盖几项</button>
+  <button data-s="cmd" aria-pressed="false">命令编辑</button>
+  <button data-s="danger" aria-pressed="false">删除确认</button>
+  <span class="hint">数字键 1–4 切换状态 · 概念稿，非最终实现</span>
+</div>
+<div class="page">
+  <div class="topbar">
+    <button class="back" title="返回版本列表">←</button>
+    <div>
+      <div class="vname">1.20.1-Forge_47.2.0</div>
+      <div class="vmeta">Forge 47.2.0 · 87 个模组 · 上次启动 3 天前</div>
+    </div>
+    <span class="badge ok">可启动</span>
+    <div class="grow"></div>
+    <span class="stat">改动自动保存</span><button class="btn">打开文件夹</button>
+    <button class="btn primary">启动</button>
+  </div>
+
+  <div style="flex:1;display:flex;min-height:0">
+    <!-- 左：分类 -->
+    <aside style="width:232px;flex:0 0 232px;border-right:1px solid var(--line);padding:16px 12px;overflow:auto">
+      <div style="font-size:10.5px;color:var(--fg3);letter-spacing:.08em;padding:0 10px 8px">设置分组</div>
+      
+      <div style="display:flex;align-items:center;gap:10px;height:44px;padding:0 10px;border-radius:8px;background:var(--accentSoft);color:#cfe0ff">
+        <span style="font-size:12.5px">运行时</span>
+        <div style="flex:1"></div>
+        <span class="badge acc">2</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;height:44px;padding:0 10px;border-radius:8px;color:var(--fg2)">
+        <span style="font-size:12.5px">窗口</span>
+        <div style="flex:1"></div>
+        <span class="badge acc">1</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;height:44px;padding:0 10px;border-radius:8px;color:var(--fg2)">
+        <span style="font-size:12.5px">参数</span>
+        <div style="flex:1"></div>
+        <span class="badge acc">1</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;height:44px;padding:0 10px;border-radius:8px;color:var(--fg2)">
+        <span style="font-size:12.5px">自动化</span>
+        <div style="flex:1"></div>
+        
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;height:44px;padding:0 10px;border-radius:8px;color:var(--fg2)">
+        <span style="font-size:12.5px">文件与维护</span>
+        <div style="flex:1"></div>
+        
+      </div>
+    </aside>
+
+    <!-- 右：表单 -->
+    <main style="flex:1;overflow:auto;padding:8px 40px 40px">
+      <div style="max-width:760px">
+
+        <div style="display:flex;align-items:baseline;gap:10px;padding:22px 0 6px">
+          <h2 style="margin:0;font-size:13px;color:var(--fg2);font-weight:600;letter-spacing:.02em">运行时</h2>
+          <span style="color:var(--fg3);font-size:11px">决定这版能不能跑起来</span>
+        </div>
+        
+      <div class="row">
+        <div class="label">Java<small>该版本所需 17+</small></div>
+        <div class="ctl">
+          <select class="field" style="width:280px">
+            <option>跟随全局 · Eclipse Temurin 17.0.9</option>
+            <option>Java 8 · Oracle 1.8.0_391</option>
+            <option>Java 21 · Temurin 21.0.2</option>
+          </select>
+          <div class="spacer"></div>
+          <div class="ih" data-on="0"><i></i><span>跟随全局</span></div>
+        </div>
+      </div>
+        
+      <div class="row">
+        <div class="label">内存<small>自动建议 4096 MB</small></div>
+        <div class="ctl">
+          <div class="slider" style="width:300px">
+            <div class="track"><div class="fill" style="width:52%"></div><div class="knob" style="left:52%"></div></div>
+            <div class="num">4096 MB</div>
+          </div>
+          <div class="spacer"></div>
+          <div class="ih" data-on="1"><i></i><span>覆盖</span></div>
+        </div>
+      </div>
+        
+      <div class="row">
+        <div class="label">GC</div>
+        <div class="ctl">
+          <select class="field" style="width:200px">
+            <option>跟随全局 · G1GC</option><option>ZGC</option><option>Shenandoah</option><option>SerialGC</option>
+          </select>
+          <div class="spacer"></div>
+          <div class="ih" data-on="0"><i></i><span>跟随全局</span></div>
+        </div>
+      </div>
+
+        <div style="display:flex;align-items:baseline;gap:10px;padding:26px 0 6px">
+          <h2 style="margin:0;font-size:13px;color:var(--fg2);font-weight:600">窗口</h2>
+        </div>
+        
+      <div class="row">
+        <div class="label">分辨率<small>窗口模式生效</small></div>
+        <div class="ctl">
+          <input class="field" style="width:78px" value="1280">
+          <span style="color:var(--fg3)">×</span>
+          <input class="field" style="width:78px" value="720">
+          <select class="field" style="width:150px"><option>1280 × 720</option><option>1920 × 1080</option><option>自定义</option></select>
+          <div class="spacer"></div>
+          <span class="badge">全局设置</span>
+        </div>
+      </div>
+        
+      <div class="row">
+        <div class="label">全屏</div>
+        <div class="ctl">
+          <div class="sw" data-on="0"></div>
+          <span style="color:var(--fg3);font-size:11px">关闭</span>
+          <div class="spacer"></div>
+          <div class="ih" data-on="0"><i></i><span>跟随全局</span></div>
+        </div>
+      </div>
+        
+      <div class="row">
+        <div class="label">窗口标题<small>留空则用版本名</small></div>
+        <div class="ctl">
+          <input class="field" style="width:300px" placeholder="例如：落幕曲 · 生存">
+          <div class="spacer"></div>
+          <div class="ih" data-on="0"><i></i><span>跟随全局</span></div>
+        </div>
+      </div>
+
+        <div style="display:flex;align-items:baseline;gap:10px;padding:26px 0 6px">
+          <h2 style="margin:0;font-size:13px;color:var(--fg2);font-weight:600">参数</h2>
+          <span style="color:var(--fg3);font-size:11px">只在开启覆盖时生效</span>
+        </div>
+        
+      <div class="row">
+        <div class="label">JVM 参数<small>每行一个或空格分隔</small></div>
+        <div class="ctl">
+          <textarea class="field" style="width:100%">-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=60</textarea>
+          <div class="spacer"></div>
+          <div class="ih" data-on="1"><i></i><span>覆盖</span></div>
+        </div>
+      </div>
+        
+      <div class="row">
+        <div class="label">游戏参数</div>
+        <div class="ctl">
+          <input class="field" style="width:100%" placeholder="--width 1280 --height 720">
+          <div class="spacer"></div>
+          <div class="ih" data-on="0"><i></i><span>跟随全局</span></div>
+        </div>
+      </div>
+        
+      <div class="row">
+        <div class="label">强制独显</div>
+        <div class="ctl">
+          <div class="sw" data-on="1"></div>
+          <span style="color:#a9c8ff;font-size:11px">已开启</span>
+          <div class="spacer"></div>
+          <div class="ih" data-on="1"><i></i><span>覆盖</span></div>
+        </div>
+      </div>
+
+        <div style="display:flex;align-items:baseline;gap:10px;padding:26px 0 6px">
+          <h2 style="margin:0;font-size:13px;color:var(--fg2);font-weight:600">自动化</h2>
+        </div>
+        
+      <div class="row">
+        <div class="label">启动前<small>可执行任意命令</small></div>
+        <div class="ctl">
+          <input class="field" style="width:100%" placeholder="留空表示不执行">
+          <div class="spacer"></div>
+          <div class="ih" data-on="0"><i></i><span>跟随全局</span></div>
+        </div>
+      </div>
+        
+      <div class="row">
+        <div class="label">退出后</div>
+        <div class="ctl">
+          <input class="field" style="width:100%" placeholder="留空表示不执行">
+          <div class="spacer"></div>
+          <div class="ih" data-on="0"><i></i><span>跟随全局</span></div>
+        </div>
+      </div>
+        
+      <div class="row">
+        <div class="label">自动进服<small>进入主菜单后直接连接</small></div>
+        <div class="ctl">
+          <input class="field" style="width:260px" placeholder="localhost:25565">
+          <div class="spacer"></div>
+          <div class="ih" data-on="0"><i></i><span>跟随全局</span></div>
+        </div>
+      </div>
+
+        <div style="display:flex;align-items:baseline;gap:10px;padding:26px 0 6px">
+          <h2 style="margin:0;font-size:13px;color:var(--fg2);font-weight:600">文件与维护</h2>
+        </div>
+        
+      <div class="row">
+        <div class="label">游戏目录<small>版本隔离已开启</small></div>
+        <div class="ctl">
+          <input class="field" style="width:100%" value="%APPDATA%\.shadow\versions\1.20.1-Forge_47.2.0" disabled>
+          <button class="btn" style="flex:0 0 auto">打开</button>
+          <div class="spacer"></div>
+          <div class="ih" data-on="0"><i></i><span>跟随全局</span></div>
+        </div>
+      </div>
+        <div class="row">
+          <div class="label">维护<small>不可撤销的操作会有二次确认</small></div>
+          <div class="ctl">
+            <button class="btn">重命名</button>
+            <button class="btn">克隆</button>
+            <button class="btn">校验完整性</button>
+            <div class="spacer"></div>
+            <button class="btn danger">删除版本</button>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="scrim">
+  <div class="dialog">
+    <h3>删除 1.20.1-Forge_47.2.0？</h3>
+    <p>会同时删除该版本的游戏目录、87 个模组与全部配置文件。此操作不可撤销。</p>
+    <div class="acts">
+      <button class="btn">取消</button>
+      <button class="btn danger">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const map={1:'default',2:'custom',3:'cmd',4:'danger'};
+function setState(s){
+  document.body.dataset.state=s;
+  document.querySelectorAll('.switcher button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.s===s)));
+}
+document.querySelectorAll('.switcher button').forEach(b=>b.onclick=()=>setState(b.dataset.s));
+addEventListener('keydown',e=>{ if(map[e.key]) setState(map[e.key]); });
+setState('default');
+</script>
+</body></html>
