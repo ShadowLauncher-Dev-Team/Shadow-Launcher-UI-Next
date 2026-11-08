@@ -35,9 +35,14 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
   box-shadow:0 0 10px 1px rgba(59,130,246,.5);opacity:1;pointer-events:none;
   transform:translateY(61px);transition:transform .18s var(--ease)}
 
-.main{flex:1;min-width:0;padding:20px 24px;overflow:hidden;display:flex;flex-direction:column;justify-content:center}
+.main{flex:1;min-width:0;padding:20px 24px;overflow:hidden}
 .pn{display:none}
 .pn.on{display:block;width:100%}
+.pa.on{display:flex;flex-direction:column;height:100%}
+.pb.on,.pc.on{display:flex;flex-direction:column;height:100%}
+.pa .row{flex:1;min-height:0}
+.pa .idbar{flex:0 0 auto}
+.pa .grp{flex:0 0 auto}
 
 /* 通用行 */
 .row{display:flex;align-items:baseline;gap:12px;padding:12px 2px;border-bottom:1px solid #13161d;font-size:12.5px}
@@ -48,8 +53,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 .row .a{margin-left:auto;font-size:10.5px;color:#3f4753;transition:color .12s var(--ease)}
 .row:hover .a{color:#7fa9f5}
 .row:hover{background:#0b0e13}
-.grp{font-size:10px;color:#4b5460;letter-spacing:.1em;padding:16px 2px 6px}
+.grp{font-size:12.5px;font-weight:600;color:#cfd6e1;letter-spacing:.01em;padding:18px 2px 4px}
 .grp:first-child{padding-top:0}
+.row .k{color:var(--fg3);width:88px;flex:0 0 88px;font-size:11.5px;font-weight:400}
 
 /* 甲：一行身份 + 三组 */
 .idbar{display:flex;align-items:center;gap:26px;padding:0 2px 16px;border-bottom:1px solid #13161d}
@@ -60,14 +66,17 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 .idbar .when{color:var(--fg3);font-size:11px}
 
 /* 乙：两列 */
-.two{display:flex;gap:32px}
-.two>div{flex:1;min-width:0}
+.two{display:flex;gap:32px;flex:1;min-height:0}
+.two>div{flex:1;min-width:0;display:flex;flex-direction:column}
+.two .row{flex:1;min-height:0}
+.two .grp{flex:0 0 auto}
 .two .grp:first-child{padding-top:0}
 
 /* 丙：三卡 */
-.cards{display:flex;gap:14px;align-items:flex-start}
-.cards>div{flex:1;min-width:0;border:1px solid var(--line2);border-radius:10px;background:var(--card);padding:14px 14px 6px}
-.cards .ch{font-size:10px;color:#4b5460;letter-spacing:.1em;margin-bottom:8px}
+.cards{display:flex;gap:14px;flex:1;min-height:0}
+.cards>div{flex:1;min-width:0;border:1px solid var(--line2);border-radius:10px;background:var(--card);padding:14px 14px 6px;display:flex;flex-direction:column}
+.cards .row{flex:1;min-height:0}
+.cards .ch{font-size:12.5px;font-weight:600;color:#cfd6e1;margin-bottom:6px;flex:0 0 auto}
 .cards .row{padding:9px 0}
 
 /* 占用两态 */
@@ -169,6 +178,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
             <div class="grp">存储</div>
             <div class="row"><span class="k">占用</span><span class="v"><span id="occB" class="occ-busy">计算中</span></span></div>
             <div class="row"><span class="k">版本目录</span><span class="v mono">versions\1.20.1-Forge_47.2.0</span><span class="a">打开</span></div>
+            <div class="row"><span class="k">游戏目录</span><span class="v mono">.minecraft</span><span class="a">打开</span></div>
           </div>
           <div>
             <div class="grp">内容</div>
