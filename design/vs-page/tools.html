@@ -71,8 +71,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 .txt.ph{color:#39414f;font-family:"Microsoft YaHei UI",sans-serif;font-size:11.5px}
 .row .txt{flex:1;width:auto}
 .chips{display:flex;gap:8px;margin:4px 0 10px}
-.chip{height:28px;padding:0 13px;border:1px solid var(--line2);border-radius:7px;font-size:11.5px;color:var(--fg2);transition:.12s var(--ease)}
-.chip:hover{border-color:#3a4557;color:var(--fg)}
+.chip{height:34px;padding:0 14px;border:1px solid var(--line2);border-radius:8px;font-size:13px;color:var(--fg);transition:.12s var(--ease)}
+.chip:hover{border-color:#333a47;background:rgba(255,255,255,.06)}
 .chip.on{background:#132340;border-color:#2c4a7a;color:#a9c8ff}
 .warn{display:flex;gap:8px;align-items:flex-start;font-size:11px;color:#b8912f;padding:4px 0 10px;line-height:1.5}
 .warn .i{width:13px;height:13px;margin-top:2px;flex:0 0 13px}
@@ -103,15 +103,20 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 .shd-t{flex:1;min-width:0}
 .shd-1{font-size:13.5px;font-weight:600;color:#eef2f8}
 .shd-2{font-size:10.5px;color:#4b5462;margin-top:4px}
-.btn{height:30px;padding:0 13px;border-radius:7px;border:1px solid var(--line2);font-size:12px;color:var(--fg2);
-  display:inline-flex;align-items:center;gap:6px;transition:.12s var(--ease);flex:0 0 auto}
-.btn .i{width:13px;height:13px}
-.btn:hover{border-color:#39414f;color:var(--fg);background:#11151c}
-.btn.primary{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
-.btn.primary:hover{background:#2563eb}
-.btn.mini{height:26px;padding:0 11px;font-size:11.5px}
-.btn.danger{border-color:#4a2226;color:#f07474;background:#130a0b}
-.btn.danger:hover{background:#1d0f11;border-color:#5c2a30}
+/* 按钮规格与 ui/controls/SButton.qml 一致：
+   primary 48/r10/15px DemiBold/渐变；ghost 34/r8/13px；danger 用 ghost 红色变体 */
+.btn{height:34px;padding:0 14px;border-radius:8px;border:1px solid var(--line2);font-size:13px;color:var(--fg);
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:.12s var(--ease);
+  flex:0 0 auto;background:transparent}
+.btn .i{width:14px;height:14px}
+.btn:hover{border-color:#333a47;background:rgba(255,255,255,.086)}
+.btn.primary{height:48px;padding:0 34px;border:0;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:.4px;
+  color:#fff;background:linear-gradient(180deg,#4b8cf7,#2563eb)}
+.btn.primary .i{width:18px;height:18px}
+.btn.primary:hover{background:linear-gradient(180deg,#5a96f8,#2f6cf0)}
+.btn.mini{height:34px;padding:0 14px;font-size:13px}
+.btn.danger{border-color:#6d2a2a;color:#ff9a94;background:transparent}
+.btn.danger:hover{background:rgba(239,68,68,.102);border-color:#8a3333}
 .card{margin-bottom:16px}
 
 .prog{margin:2px 0 10px}
@@ -254,8 +259,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
           <span class="val">可修 <b style="color:#7fa9f5">3</b></span>
           <span class="val" style="color:#4b5462">·</span>
           <span class="val">不可修 <b style="color:#e0a83c">1</b></span>
-          <button class="btn primary" style="margin-left:auto">修复 3 项</button>
         </div>
+        <div style="padding:2px 0 10px"><button class="btn primary">修复 3 项</button></div>
       </div>
 
     </div>
@@ -287,12 +292,13 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
     <div class="stat alert"><div class="n" style="color:#e0a83c">1</div><div class="l">不可修复</div></div>
   </div>
 
+  <div style="display:flex;align-items:center;gap:10px;margin:0 0 16px">
+    <button class="btn">重新校验</button>
+    <button class="btn primary">修复 3 项</button>
+  </div>
+
   <div class="card">
-    <div class="ch" style="display:flex;align-items:center;padding-right:0">异常文件
-      <span style="flex:1"></span>
-      <button class="btn mini">重新校验</button>
-      <button class="btn mini primary" style="margin-left:8px">修复 3 项</button>
-    </div>
+    <div class="ch">异常文件</div>
     <table class="tbl">
       <tr><th style="width:56%">文件</th><th style="width:18%">大小</th><th style="width:26%">状态</th></tr>
       <tr><td class="p">versions/…/1.20.1-Forge_47.2.0.jar</td><td class="n">24.7 MB</td><td><span class="badge">可修</span></td></tr>
