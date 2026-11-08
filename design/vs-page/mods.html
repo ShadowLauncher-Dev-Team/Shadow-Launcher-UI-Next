@@ -155,42 +155,41 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 .tbl td.n{text-align:right;font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:#4b5462}
 .tbl td.p{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#a9b2c0}
 
-/* ── Mod 管理 / 资源包：复用 qml/DownloadCard.qml 视觉 ── */
-.tbar{display:flex;align-items:center;gap:8px;margin-bottom:14px}
-.tbar .sp{flex:1}
-.find{width:290px;height:36px;border:1px solid #1a1f2a;border-radius:8px;background:#0d1016;
-  display:flex;align-items:center;gap:8px;padding:0 11px;font-size:12px;color:#39414f;flex:0 0 auto}
-.find .i{width:14px;height:14px;color:#4d5666;flex:0 0 14px}
-.cnt{font-size:11px;color:#4b5462;flex:0 0 auto;font-variant-numeric:tabular-nums}
-.dcard{display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid #1a1f2a;border-radius:8px;
-  background:#0c0f16;margin-bottom:8px;transition:.15s var(--ease)}
-.dcard:hover{background:#1a2848;border-color:#5068c8}
-.dcard.off{background:#0a0c11}
-.dcard.bad{border-color:#2a2118}
-.dico{width:44px;height:44px;border-radius:8px;flex:0 0 44px;background:#1a1f2e;display:flex;
-  align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#6080e8}
-.dcard.off .dico{background:#141824;color:#505468}
-.dcard.bad .dico{background:#1a1410;color:#8a6d33}
-.dbody{flex:1;min-width:0;padding-top:2px}
-.dt1{display:flex;align-items:center;gap:7px;min-width:0}
-.dt1 b{font-size:14px;font-weight:600;color:#d0d4e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dt1 .ver{font-size:11px;color:#8088a0;flex:0 0 auto}
-.dcard.off .dt1 b{color:#8a90a0}
-.dt1 .tag{height:16px;padding:0 7px;border-radius:8px;font-size:11px;display:inline-flex;align-items:center;
-  flex:0 0 auto;background:#1e2230;color:#6080e8}
-.dt1 .tag.no{background:#2a1f14;color:#c99a52}
-.dd{font-size:11px;color:#505468;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.df{display:flex;align-items:center;gap:10px;margin-top:5px;font-size:11px;color:#505468}
-.df .mono{font-family:ui-monospace,Consolas,monospace;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.dside{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding-top:11px}
-.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.dgrid .dcard{margin-bottom:0}
-.grp2{font-size:10.5px;letter-spacing:.08em;color:#3f4753;padding:2px 0 9px}
-.grp2:not(:first-child){padding-top:12px}
-.btn.ic{width:34px;padding:0}
-.dgrid .dbody{padding-top:1px}
-.dgrid .dd{margin-top:3px}
-.dgrid .df{margin-top:4px}
+/* ── Mod 管理：结构借下载页卡片，配色一律用 Theme.qml 令牌 ── */
+.mwrap{max-width:720px}
+.ctl{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.ctl .find{flex:1;min-width:0;height:36px;border:1px solid #262b35;border-radius:8px;background:#0d1016;
+  display:flex;align-items:center;gap:8px;padding:0 11px;font-size:12px;color:#3f4753}
+.ctl .find .i{width:14px;height:14px;color:#4b5462;flex:0 0 14px}
+.seg2{display:flex;gap:2px;padding:2px;border:1px solid #262b35;border-radius:8px;background:#0a0c11;flex:0 0 auto}
+.seg2 button{height:30px;padding:0 12px;border-radius:6px;font-size:11.5px;color:#5d6673;transition:.12s var(--ease)}
+.seg2 button.on{background:#132340;color:#a9c8ff}
+/* 条目卡：下载页卡片的骨架 + 版本设置 v2 配色 */
+.mc{display:flex;align-items:center;gap:11px;padding:11px 14px;border:1px solid #262b35;border-radius:10px;
+  background:#0b0d12;margin-bottom:8px;transition:.15s var(--ease)}
+.mc:hover{background:#101419;border-color:#333a47}
+.mc.off{background:#0a0b0f}
+.mc.bad{border-color:#2a2118}
+.ico{width:44px;height:44px;border-radius:8px;flex:0 0 44px;background:#141a22;display:flex;
+  align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#7fa9f5}
+.mc.off .ico{background:#10141a;color:#4b5462}
+.mc.bad .ico{background:#1a1410;color:#8a6d33}
+.mb{flex:1;min-width:0}
+.mb b{font-size:13.5px;font-weight:600;color:#eef2f8}
+.mb b .v{font-size:11px;color:#5d6673;margin-left:7px;font-weight:400}
+.mc.off .mb b{color:#8a94a3}
+.mb p{font-size:11px;color:#7b8494;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mb .f{font-size:10.5px;color:#3f4753;margin-top:4px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;font-family:ui-monospace,Consolas,monospace}
+.tag2{height:16px;padding:0 7px;border-radius:8px;font-size:10.5px;display:inline-flex;align-items:center;
+  background:#2a1f14;color:#c99a52;margin-left:7px}
+.cnt2{font-size:10.5px;color:#3f4753;margin:0 0 10px}
+.grp3{font-size:10.5px;letter-spacing:.08em;color:#3f4753;padding:4px 0 9px}
+.grp3:not(:first-child){padding-top:12px}
+.mgrid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mgrid2 .mc{margin-bottom:0;align-items:flex-start}
+.mgrid2 .ico{width:38px;height:38px;flex:0 0 38px;font-size:16px}
+.mgrid2 .mb p{white-space:normal;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
 </style></head>
 <body data-v="a">
 
@@ -232,256 +231,228 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
   <path d="M12 22V12" /></svg><span>存档</span></button><div class="m-label">维护</div><button class="m-item" data-k="工具与维护"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z" /></svg><span>工具与维护</span></button><button class="m-item" data-k="导出整合包"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /></svg><span>导出整合包</span></button></aside>
         <div class="main">
 <div class="pn pa on"><div class="scroll">
-  <div class="tbar">
-    <div class="find"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>搜索 Mod 名称、ID 或文件名</span></div>
-    <span class="sp"></span>
-    <span class="cnt">共 24 个 · 已启用 21</span>
+  <div class="mwrap">
+  <div class="ctl">
+    <div class="find"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>搜索 Mod 名称或文件名</span></div>
     <button class="btn">全部启用</button>
     <button class="btn">全部禁用</button>
-    <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg></button>
     <button class="btn primary"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>导入</button>
   </div>
-      <div class="dcard">
-        <div class="dico">J</div>
-        <div class="dbody">
-          <div class="dt1"><b>JEI</b><span class="ver">15.2.0.27</span></div>
-          <div class="dd">物品与配方查询</div>
-          <div class="df"><span class="mono">jei-1.20.1-15.2.0.27.jar</span><span>1.4 MB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
+  <div class="cnt2">24 个 Mod · 21 个已启用</div>
+    <div class="mc">
+      <div class="ico">J</div>
+      <div class="mb">
+        <b>JEI<span class="v">15.2.0.27</span></b>
+        <p>物品与配方查询</p>
+        <div class="f">jei-1.20.1-15.2.0.27.jar · 1.4 MB</div>
       </div>
-      <div class="dcard">
-        <div class="dico">J</div>
-        <div class="dbody">
-          <div class="dt1"><b>JourneyMap</b><span class="ver">5.9.7</span></div>
-          <div class="dd">实时小地图与路径点</div>
-          <div class="df"><span class="mono">journeymap-1.20.1-5.9.7.jar</span><span>3.2 MB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">J</div>
+      <div class="mb">
+        <b>JourneyMap<span class="v">5.9.7</span></b>
+        <p>实时小地图与路径点</p>
+        <div class="f">journeymap-1.20.1-5.9.7.jar · 3.2 MB</div>
       </div>
-      <div class="dcard">
-        <div class="dico">A</div>
-        <div class="dbody">
-          <div class="dt1"><b>AppleSkin</b><span class="ver">2.5.1</span></div>
-          <div class="dd">显示饱和度与食物数值</div>
-          <div class="df"><span class="mono">appleskin-forge-mc1.20.1-2.5.1.jar</span><span>68 KB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">A</div>
+      <div class="mb">
+        <b>AppleSkin<span class="v">2.5.1</span></b>
+        <p>显示饱和度与食物数值</p>
+        <div class="f">appleskin-forge-mc1.20.1-2.5.1.jar · 68 KB</div>
       </div>
-      <div class="dcard">
-        <div class="dico">J</div>
-        <div class="dbody">
-          <div class="dt1"><b>Jade</b><span class="ver">11.6.1</span></div>
-          <div class="dd">看向方块显示信息</div>
-          <div class="df"><span class="mono">Jade-1.20.1-Forge-11.6.1.jar</span><span>412 KB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">J</div>
+      <div class="mb">
+        <b>Jade<span class="v">11.6.1</span></b>
+        <p>看向方块显示信息</p>
+        <div class="f">Jade-1.20.1-Forge-11.6.1.jar · 412 KB</div>
       </div>
-      <div class="dcard">
-        <div class="dico">C</div>
-        <div class="dbody">
-          <div class="dt1"><b>Cloth Config</b><span class="ver">11.1.118</span></div>
-          <div class="dd">配置界面库</div>
-          <div class="df"><span class="mono">cloth-config-11.1.118-forge.jar</span><span>1.1 MB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">C</div>
+      <div class="mb">
+        <b>Cloth Config<span class="v">11.1.118</span></b>
+        <p>配置界面库</p>
+        <div class="f">cloth-config-11.1.118-forge.jar · 1.1 MB</div>
       </div>
-      <div class="dcard off">
-        <div class="dico">C</div>
-        <div class="dbody">
-          <div class="dt1"><b>Curios</b><span class="ver">5.4.7</span></div>
-          <div class="dd">饰品栏 API</div>
-          <div class="df"><span class="mono">curios-forge-5.4.7+1.20.1.jar</span><span>396 KB</span></div>
-        </div>
-        <div class="dside"><div class="sw"><i></i></div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc off">
+      <div class="ico">C</div>
+      <div class="mb">
+        <b>Curios<span class="v">5.4.7</span></b>
+        <p>饰品栏 API</p>
+        <div class="f">curios-forge-5.4.7+1.20.1.jar · 396 KB</div>
       </div>
-      <div class="dcard bad">
-        <div class="dico">!</div>
-        <div class="dbody">
-          <div class="dt1"><b>bad-mod.jar</b><span class="tag no">无法识别</span></div>
-          <div class="dd">无法解析 mod 元数据</div>
-          <div class="df"><span class="mono">bad-mod.jar</span><span>48 KB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
+      <div class="sw"><i></i></div>
+    </div>
+  </div>
 
 </div></div>
 <div class="pn pb"><div class="scroll">
-  <div class="tbar">
-    <div class="find"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>搜索 Mod 名称、ID 或文件名</span></div>
-    <span class="sp"></span>
-    <span class="cnt">共 24 个 · 已启用 21</span>
-    <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg></button>
+  <div class="mwrap">
+  <div class="ctl">
+    <div class="find"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>搜索 Mod 名称或文件名</span></div>
+    <div class="seg2"><button class="on">全部</button><button>已启用</button><button>已禁用</button></div>
+    <button class="btn">全部禁用</button>
     <button class="btn primary"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>导入</button>
   </div>
-  <div class="dgrid">
-      <div class="dcard">
-        <div class="dico">J</div>
-        <div class="dbody">
-          <div class="dt1"><b>JEI</b><span class="ver">15.2.0.27</span></div>
-          <div class="dd">物品与配方查询</div>
-          <div class="df"><span class="mono">jei-1.20.1-15.2.0.27.jar</span><span>1.4 MB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
+  <div class="mgrid2">
+    <div class="mc">
+      <div class="ico">X</div>
+      <div class="mb"><b>Xaero's Minimap<span class="v">23.9.7</span></b><p>另一套小地图</p><div class="f">xaerominimap-forge-1.20.1-23.9.7.jar · 2.1 MB</div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">X</div>
+      <div class="mb"><b>Xaero's World Map<span class="v">1.39.2</span></b><p>全屏地图</p><div class="f">xaeroworldmap-forge-1.20.1-1.39.2.jar · 1.8 MB</div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">M</div>
+      <div class="mb"><b>Mouse Tweaks<span class="v">2.25</span></b><p>鼠标拖动整理背包</p><div class="f">MouseTweaks-forge-mc1.20.1-2.25.jar · 64 KB</div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">A</div>
+      <div class="mb"><b>Architectury<span class="v">9.2.14</span></b><p>跨加载器 API</p><div class="f">architectury-9.2.14-forge.jar · 1.0 MB</div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">S</div>
+      <div class="mb"><b>Searchables<span class="v">1.0.2</span></b><p>界面搜索框架</p><div class="f">Searchables-forge-1.20.1-1.0.2.jar · 32 KB</div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">J</div>
+      <div class="mb">
+        <b>JEI<span class="v">15.2.0.27</span></b>
+        <p>物品与配方查询</p>
+        <div class="f">jei-1.20.1-15.2.0.27.jar · 1.4 MB</div>
       </div>
-      <div class="dcard">
-        <div class="dico">J</div>
-        <div class="dbody">
-          <div class="dt1"><b>JourneyMap</b><span class="ver">5.9.7</span></div>
-          <div class="dd">实时小地图与路径点</div>
-          <div class="df"><span class="mono">journeymap-1.20.1-5.9.7.jar</span><span>3.2 MB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">J</div>
+      <div class="mb">
+        <b>JourneyMap<span class="v">5.9.7</span></b>
+        <p>实时小地图与路径点</p>
+        <div class="f">journeymap-1.20.1-5.9.7.jar · 3.2 MB</div>
       </div>
-      <div class="dcard">
-        <div class="dico">A</div>
-        <div class="dbody">
-          <div class="dt1"><b>AppleSkin</b><span class="ver">2.5.1</span></div>
-          <div class="dd">显示饱和度与食物数值</div>
-          <div class="df"><span class="mono">appleskin-forge-mc1.20.1-2.5.1.jar</span><span>68 KB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">A</div>
+      <div class="mb">
+        <b>AppleSkin<span class="v">2.5.1</span></b>
+        <p>显示饱和度与食物数值</p>
+        <div class="f">appleskin-forge-mc1.20.1-2.5.1.jar · 68 KB</div>
       </div>
-      <div class="dcard">
-        <div class="dico">J</div>
-        <div class="dbody">
-          <div class="dt1"><b>Jade</b><span class="ver">11.6.1</span></div>
-          <div class="dd">看向方块显示信息</div>
-          <div class="df"><span class="mono">Jade-1.20.1-Forge-11.6.1.jar</span><span>412 KB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">J</div>
+      <div class="mb">
+        <b>Jade<span class="v">11.6.1</span></b>
+        <p>看向方块显示信息</p>
+        <div class="f">Jade-1.20.1-Forge-11.6.1.jar · 412 KB</div>
       </div>
-      <div class="dcard">
-        <div class="dico">C</div>
-        <div class="dbody">
-          <div class="dt1"><b>Cloth Config</b><span class="ver">11.1.118</span></div>
-          <div class="dd">配置界面库</div>
-          <div class="df"><span class="mono">cloth-config-11.1.118-forge.jar</span><span>1.1 MB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">C</div>
+      <div class="mb">
+        <b>Cloth Config<span class="v">11.1.118</span></b>
+        <p>配置界面库</p>
+        <div class="f">cloth-config-11.1.118-forge.jar · 1.1 MB</div>
       </div>
-      <div class="dcard off">
-        <div class="dico">C</div>
-        <div class="dbody">
-          <div class="dt1"><b>Curios</b><span class="ver">5.4.7</span></div>
-          <div class="dd">饰品栏 API</div>
-          <div class="df"><span class="mono">curios-forge-5.4.7+1.20.1.jar</span><span>396 KB</span></div>
-        </div>
-        <div class="dside"><div class="sw"><i></i></div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc off">
+      <div class="ico">C</div>
+      <div class="mb">
+        <b>Curios<span class="v">5.4.7</span></b>
+        <p>饰品栏 API</p>
+        <div class="f">curios-forge-5.4.7+1.20.1.jar · 396 KB</div>
       </div>
-      <div class="dcard bad">
-        <div class="dico">!</div>
-        <div class="dbody">
-          <div class="dt1"><b>bad-mod.jar</b><span class="tag no">无法识别</span></div>
-          <div class="dd">无法解析 mod 元数据</div>
-          <div class="df"><span class="mono">bad-mod.jar</span><span>48 KB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
+      <div class="sw"><i></i></div>
+    </div>
+    <div class="mc bad">
+      <div class="ico">!</div>
+      <div class="mb">
+        <b>bad-mod.jar<span class="tag2">无法识别</span></b>
+        <p>无法解析 mod 元数据</p>
+        <div class="f">bad-mod.jar · 48 KB</div>
       </div>
-      <div class="dcard">
-        <div class="dico">X</div>
-        <div class="dbody">
-          <div class="dt1"><b>Xaero's Minimap</b><span class="ver">23.9.7</span></div>
-          <div class="dd">另一套小地图</div>
-          <div class="df"><span class="mono">xaerominimap-forge-1.20.1-23.9.7.jar</span><span>2.1 MB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">X</div>
-        <div class="dbody">
-          <div class="dt1"><b>Xaero's World Map</b><span class="ver">1.39.2</span></div>
-          <div class="dd">全屏地图</div>
-          <div class="df"><span class="mono">xaeroworldmap-forge-1.20.1-1.39.2.jar</span><span>1.8 MB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">M</div>
-        <div class="dbody">
-          <div class="dt1"><b>Mouse Tweaks</b><span class="ver">2.25</span></div>
-          <div class="dd">鼠标拖动整理背包</div>
-          <div class="df"><span class="mono">MouseTweaks-forge-mc1.20.1-2.25.jar</span><span>64 KB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">A</div>
-        <div class="dbody">
-          <div class="dt1"><b>Architectury</b><span class="ver">9.2.14</span></div>
-          <div class="dd">跨加载器 API</div>
-          <div class="df"><span class="mono">architectury-9.2.14-forge.jar</span><span>1.0 MB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">S</div>
-        <div class="dbody">
-          <div class="dt1"><b>Searchables</b><span class="ver">1.0.2</span></div>
-          <div class="dd">界面搜索框架</div>
-          <div class="df"><span class="mono">Searchables-forge-1.20.1-1.0.2.jar</span><span>32 KB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
-      </div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+  </div>
   </div>
 
 </div></div>
 <div class="pn pc"><div class="scroll">
-  <div class="tbar">
-    <div class="find"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>搜索 Mod 名称、ID 或文件名</span></div>
-    <span class="sp"></span>
-    <button class="btn">全部启用</button>
-    <button class="btn">全部禁用</button>
+  <div class="mwrap">
+  <div class="ctl">
+    <div class="find"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>搜索 Mod 名称或文件名</span></div>
+    <div class="seg2"><button class="on">全部</button><button>已启用</button><button>已禁用</button></div>
     <button class="btn primary"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>导入</button>
   </div>
-  <div class="grp2">已启用 · 21</div>
-      <div class="dcard">
-        <div class="dico">J</div>
-        <div class="dbody">
-          <div class="dt1"><b>JEI</b><span class="ver">15.2.0.27</span></div>
-          <div class="dd">物品与配方查询</div>
-          <div class="df"><span class="mono">jei-1.20.1-15.2.0.27.jar</span><span>1.4 MB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
+  <div class="grp3">已启用 · 21</div>
+    <div class="mc">
+      <div class="ico">J</div>
+      <div class="mb">
+        <b>JEI<span class="v">15.2.0.27</span></b>
+        <p>物品与配方查询</p>
+        <div class="f">jei-1.20.1-15.2.0.27.jar · 1.4 MB</div>
       </div>
-      <div class="dcard">
-        <div class="dico">J</div>
-        <div class="dbody">
-          <div class="dt1"><b>JourneyMap</b><span class="ver">5.9.7</span></div>
-          <div class="dd">实时小地图与路径点</div>
-          <div class="df"><span class="mono">journeymap-1.20.1-5.9.7.jar</span><span>3.2 MB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">J</div>
+      <div class="mb">
+        <b>JourneyMap<span class="v">5.9.7</span></b>
+        <p>实时小地图与路径点</p>
+        <div class="f">journeymap-1.20.1-5.9.7.jar · 3.2 MB</div>
       </div>
-      <div class="dcard">
-        <div class="dico">A</div>
-        <div class="dbody">
-          <div class="dt1"><b>AppleSkin</b><span class="ver">2.5.1</span></div>
-          <div class="dd">显示饱和度与食物数值</div>
-          <div class="df"><span class="mono">appleskin-forge-mc1.20.1-2.5.1.jar</span><span>68 KB</span></div>
-        </div>
-        <div class="dside"><div class="sw on"><i></i></div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+    <div class="mc">
+      <div class="ico">A</div>
+      <div class="mb">
+        <b>AppleSkin<span class="v">2.5.1</span></b>
+        <p>显示饱和度与食物数值</p>
+        <div class="f">appleskin-forge-mc1.20.1-2.5.1.jar · 68 KB</div>
       </div>
-  <div class="grp2">已禁用 · 3</div>
-      <div class="dcard off">
-        <div class="dico">C</div>
-        <div class="dbody">
-          <div class="dt1"><b>Curios</b><span class="ver">5.4.7</span></div>
-          <div class="dd">饰品栏 API</div>
-          <div class="df"><span class="mono">curios-forge-5.4.7+1.20.1.jar</span><span>396 KB</span></div>
-        </div>
-        <div class="dside"><div class="sw"><i></i></div></div>
+      <div class="sw on"><i></i></div>
+    </div>
+      <div class="grp3">已禁用 · 3</div>
+    <div class="mc off">
+      <div class="ico">C</div>
+      <div class="mb">
+        <b>Curios<span class="v">5.4.7</span></b>
+        <p>饰品栏 API</p>
+        <div class="f">curios-forge-5.4.7+1.20.1.jar · 396 KB</div>
       </div>
-  <div class="grp2">无法识别 · 1</div>
-      <div class="dcard bad">
-        <div class="dico">!</div>
-        <div class="dbody">
-          <div class="dt1"><b>bad-mod.jar</b><span class="tag no">无法识别</span></div>
-          <div class="dd">无法解析 mod 元数据</div>
-          <div class="df"><span class="mono">bad-mod.jar</span><span>48 KB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
+      <div class="sw"><i></i></div>
+    </div>
+  <div class="grp3">无法识别 · 1</div>
+    <div class="mc bad">
+      <div class="ico">!</div>
+      <div class="mb">
+        <b>bad-mod.jar<span class="tag2">无法识别</span></b>
+        <p>无法解析 mod 元数据</p>
+        <div class="f">bad-mod.jar · 48 KB</div>
       </div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+  </div>
 
 </div></div>
     </div>
@@ -490,11 +461,11 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 
 <div class="tools">
   <b>方案</b>
-  <button class="on" data-v="a">甲 单列卡片</button>
-  <button data-v="b">乙 两列网格</button>
-  <button data-v="c">丙 分组卡片</button>
+  <button class="on" data-v="a">甲 单列 · 无控制条</button>
+  <button data-v="b">乙 两列 · 分段筛选</button>
+  <button data-v="c">丙 按状态分组</button>
   <span class="sp"></span>
-  <span>下载页同款卡片 · 搜索 / 开关 / 批量</span>
+  <span>下载页卡片 + 720 宽内容区</span>
 </div>
 <script>
 const panels={a:'.pa',b:'.pb',c:'.pc'};

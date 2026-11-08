@@ -155,56 +155,54 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 .tbl td.n{text-align:right;font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:#4b5462}
 .tbl td.p{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#a9b2c0}
 
-/* ── Mod 管理 / 资源包：复用 qml/DownloadCard.qml 视觉 ── */
-.tbar{display:flex;align-items:center;gap:8px;margin-bottom:14px}
-.tbar .sp{flex:1}
-.find{width:290px;height:36px;border:1px solid #1a1f2a;border-radius:8px;background:#0d1016;
-  display:flex;align-items:center;gap:8px;padding:0 11px;font-size:12px;color:#39414f;flex:0 0 auto}
-.find .i{width:14px;height:14px;color:#4d5666;flex:0 0 14px}
-.cnt{font-size:11px;color:#4b5462;flex:0 0 auto;font-variant-numeric:tabular-nums}
-.dcard{display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid #1a1f2a;border-radius:8px;
-  background:#0c0f16;margin-bottom:8px;transition:.15s var(--ease)}
-.dcard:hover{background:#1a2848;border-color:#5068c8}
-.dcard.off{background:#0a0c11}
-.dcard.bad{border-color:#2a2118}
-.dico{width:44px;height:44px;border-radius:8px;flex:0 0 44px;background:#1a1f2e;display:flex;
-  align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#6080e8}
-.dcard.off .dico{background:#141824;color:#505468}
-.dcard.bad .dico{background:#1a1410;color:#8a6d33}
-.dbody{flex:1;min-width:0;padding-top:2px}
-.dt1{display:flex;align-items:center;gap:7px;min-width:0}
-.dt1 b{font-size:14px;font-weight:600;color:#d0d4e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dt1 .ver{font-size:11px;color:#8088a0;flex:0 0 auto}
-.dcard.off .dt1 b{color:#8a90a0}
-.dt1 .tag{height:16px;padding:0 7px;border-radius:8px;font-size:11px;display:inline-flex;align-items:center;
-  flex:0 0 auto;background:#1e2230;color:#6080e8}
-.dt1 .tag.no{background:#2a1f14;color:#c99a52}
-.dd{font-size:11px;color:#505468;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.df{display:flex;align-items:center;gap:10px;margin-top:5px;font-size:11px;color:#505468}
-.df .mono{font-family:ui-monospace,Consolas,monospace;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.dside{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding-top:11px}
-.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.dgrid .dcard{margin-bottom:0}
-.grp2{font-size:10.5px;letter-spacing:.08em;color:#3f4753;padding:2px 0 9px}
-.grp2:not(:first-child){padding-top:12px}
-.btn.ic{width:34px;padding:0}
-.dgrid .dbody{padding-top:1px}
-.dgrid .dd{margin-top:3px}
-.dgrid .df{margin-top:4px}
+/* ── Mod 管理：结构借下载页卡片，配色一律用 Theme.qml 令牌 ── */
+.mwrap{max-width:720px}
+.ctl{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.ctl .find{flex:1;min-width:0;height:36px;border:1px solid #262b35;border-radius:8px;background:#0d1016;
+  display:flex;align-items:center;gap:8px;padding:0 11px;font-size:12px;color:#3f4753}
+.ctl .find .i{width:14px;height:14px;color:#4b5462;flex:0 0 14px}
+.seg2{display:flex;gap:2px;padding:2px;border:1px solid #262b35;border-radius:8px;background:#0a0c11;flex:0 0 auto}
+.seg2 button{height:30px;padding:0 12px;border-radius:6px;font-size:11.5px;color:#5d6673;transition:.12s var(--ease)}
+.seg2 button.on{background:#132340;color:#a9c8ff}
+/* 条目卡：下载页卡片的骨架 + 版本设置 v2 配色 */
+.mc{display:flex;align-items:center;gap:11px;padding:11px 14px;border:1px solid #262b35;border-radius:10px;
+  background:#0b0d12;margin-bottom:8px;transition:.15s var(--ease)}
+.mc:hover{background:#101419;border-color:#333a47}
+.mc.off{background:#0a0b0f}
+.mc.bad{border-color:#2a2118}
+.ico{width:44px;height:44px;border-radius:8px;flex:0 0 44px;background:#141a22;display:flex;
+  align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#7fa9f5}
+.mc.off .ico{background:#10141a;color:#4b5462}
+.mc.bad .ico{background:#1a1410;color:#8a6d33}
+.mb{flex:1;min-width:0}
+.mb b{font-size:13.5px;font-weight:600;color:#eef2f8}
+.mb b .v{font-size:11px;color:#5d6673;margin-left:7px;font-weight:400}
+.mc.off .mb b{color:#8a94a3}
+.mb p{font-size:11px;color:#7b8494;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mb .f{font-size:10.5px;color:#3f4753;margin-top:4px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;font-family:ui-monospace,Consolas,monospace}
+.tag2{height:16px;padding:0 7px;border-radius:8px;font-size:10.5px;display:inline-flex;align-items:center;
+  background:#2a1f14;color:#c99a52;margin-left:7px}
+.cnt2{font-size:10.5px;color:#3f4753;margin:0 0 10px}
+.grp3{font-size:10.5px;letter-spacing:.08em;color:#3f4753;padding:4px 0 9px}
+.grp3:not(:first-child){padding-top:12px}
+.mgrid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mgrid2 .mc{margin-bottom:0;align-items:flex-start}
+.mgrid2 .ico{width:38px;height:38px;flex:0 0 38px;font-size:16px}
+.mgrid2 .mb p{white-space:normal;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
 
-/* ── 资源包页 ── */
-.pgrid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.pcard{border:1px solid #1a1f2a;border-radius:8px;background:#0c0f16;padding:16px 14px;transition:.15s var(--ease);
+.pgrid3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.pcov{border:1px solid #262b35;border-radius:10px;background:#0b0d12;padding:14px 12px;transition:.15s var(--ease);
   display:flex;flex-direction:column;align-items:center;text-align:center;position:relative}
-.pcard:hover{background:#1a2848;border-color:#5068c8}
-.pcard.bad{border-color:#2a2118}
-.pico{width:72px;height:72px;border-radius:10px;background:#1a1f2e;display:flex;align-items:center;justify-content:center;
-  font-size:28px;font-weight:700;color:#6080e8;margin-bottom:12px}
-.pcard.bad .pico{background:#1a1410;color:#8a6d33}
-.pn2{font-size:13px;font-weight:600;color:#d0d4e0;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.pmeta{font-size:10.5px;color:#505468;margin-top:4px}
-.pdel{position:absolute;top:8px;right:8px;opacity:0;transition:.15s var(--ease)}
-.pcard:hover .pdel{opacity:1}
+.pcov:hover{background:#101419;border-color:#333a47}
+.pcov.bad{border-color:#2a2118}
+.pic{width:64px;height:64px;border-radius:8px;background:#141a22;display:flex;align-items:center;justify-content:center;
+  font-size:24px;font-weight:700;color:#7fa9f5;margin-bottom:11px}
+.pcov.bad .pic{background:#1a1410;color:#8a6d33}
+.pn3{font-size:12.5px;font-weight:600;color:#eef2f8;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pm3{font-size:10.5px;color:#5d6673;margin-top:5px}
+.pdel{position:absolute;top:7px;right:7px;opacity:0;transition:.15s var(--ease)}
+.pcov:hover .pdel{opacity:1}
 </style></head>
 <body data-v="a">
 
@@ -246,240 +244,189 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
   <path d="M12 22V12" /></svg><span>存档</span></button><div class="m-label">维护</div><button class="m-item" data-k="工具与维护"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z" /></svg><span>工具与维护</span></button><button class="m-item" data-k="导出整合包"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /></svg><span>导出整合包</span></button></aside>
             <div class="main">
 <div class="pn pa on"><div class="scroll">
-  <div class="tbar">
+  <div class="mwrap">
+  <div class="ctl">
     <div class="find"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>搜索资源包名称或文件名</span></div>
-    <span class="sp"></span>
-    <span class="cnt">共 12 个</span>
-    <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg></button>
     <button class="btn primary"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>导入</button>
   </div>
-      <div class="dcard">
-        <div class="dico">F</div>
-        <div class="dbody">
-          <div class="dt1"><b>Faithful 32x</b><span class="tag">格式 34</span></div>
-          <div class="dd">32× 材质，保留原版观感</div>
-          <div class="df"><span class="mono">Faithful_32x_1.20.zip</span><span>2.2 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">S</div>
-        <div class="dbody">
-          <div class="dt1"><b>Stay True</b><span class="tag">格式 34</span></div>
-          <div class="dd">轻量写实材质</div>
-          <div class="df"><span class="mono">Stay_True_1.20.zip</span><span>1.4 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">B</div>
-        <div class="dbody">
-          <div class="dt1"><b>Better Leaves</b><span class="tag">格式 34</span></div>
-          <div class="dd">更柔和的树叶效果</div>
-          <div class="df"><span class="mono">betterleaves-forge.zip</span><span>8.6 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">V</div>
-        <div class="dbody">
-          <div class="dt1"><b>Vanilla Tweaks</b><span class="tag">格式 34</span></div>
-          <div class="dd">原版细节微调</div>
-          <div class="df"><span class="mono">vanilla-tweaks-1.20.zip</span><span>1.1 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">F</div>
-        <div class="dbody">
-          <div class="dt1"><b>Fresh Animations</b><span class="tag">格式 34</span></div>
-          <div class="dd">生物动作动画</div>
-          <div class="df"><span class="mono">FreshAnimations_v1.9.zip</span><span>4.2 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">N</div>
-        <div class="dbody">
-          <div class="dt1"><b>New Glowing</b><span class="tag">格式 15</span></div>
-          <div class="dd">发光矿石描边，需 1.20 前版本</div>
-          <div class="df"><span class="mono">new-glowing-old.zip</span><span>320 KB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
+  <div class="cnt2">12 个资源包</div>
+    <div class="mc">
+      <div class="ico">F</div>
+      <div class="mb"><b>Faithful 32x</b><p>32× 材质，保留原版观感</p><div class="f">Faithful_32x_1.20.zip · 2.2 MB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+    <div class="mc">
+      <div class="ico">S</div>
+      <div class="mb"><b>Stay True</b><p>轻量写实材质</p><div class="f">Stay_True_1.20.zip · 1.4 MB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+    <div class="mc">
+      <div class="ico">B</div>
+      <div class="mb"><b>Better Leaves</b><p>更柔和的树叶效果</p><div class="f">betterleaves-forge.zip · 8.6 MB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+    <div class="mc">
+      <div class="ico">V</div>
+      <div class="mb"><b>Vanilla Tweaks</b><p>原版细节微调</p><div class="f">vanilla-tweaks-1.20.zip · 1.1 MB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+    <div class="mc">
+      <div class="ico">F</div>
+      <div class="mb"><b>Fresh Animations</b><p>生物动作动画</p><div class="f">FreshAnimations_v1.9.zip · 4.2 MB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+    <div class="mc">
+      <div class="ico">N</div>
+      <div class="mb"><b>New Glowing</b><p>发光矿石描边</p><div class="f">new-glowing-old.zip · 320 KB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+  </div>
 
 </div></div>
 <div class="pn pb"><div class="scroll">
-  <div class="tbar">
+  <div class="mwrap">
+  <div class="ctl">
     <div class="find"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>搜索资源包名称或文件名</span></div>
-    <span class="sp"></span>
-    <span class="cnt">共 12 个</span>
-    <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg></button>
     <button class="btn primary"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>导入</button>
   </div>
-  <div class="dgrid">
-      <div class="dcard">
-        <div class="dico">P</div>
-        <div class="dbody">
-          <div class="dt1"><b>PureBDcraft</b><span class="tag">格式 34</span></div>
-          <div class="dd">手绘卡通风格</div>
-          <div class="df"><span class="mono">PureBDcraft_128x.zip</span><span>1.9 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">D</div>
-        <div class="dbody">
-          <div class="dt1"><b>Dokucraft</b><span class="tag">格式 34</span></div>
-          <div class="dd">中世纪手绘</div>
-          <div class="df"><span class="mono">Dokucraft_Dark.zip</span><span>3.8 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">J</div>
-        <div class="dbody">
-          <div class="dt1"><b>John Smith Legacy</b><span class="tag">格式 34</span></div>
-          <div class="dd">写实中世纪</div>
-          <div class="df"><span class="mono">JohnSmithLegacy.zip</span><span>2.6 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">S</div>
-        <div class="dbody">
-          <div class="dt1"><b>Soartex Fanver</b><span class="tag">格式 34</span></div>
-          <div class="dd">柔和写实</div>
-          <div class="df"><span class="mono">Soartex_Fanver.zip</span><span>4.4 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">B</div>
-        <div class="dbody">
-          <div class="dt1"><b>Bare Bones</b><span class="tag">格式 34</span></div>
-          <div class="dd">极简原版风</div>
-          <div class="df"><span class="mono">BareBones.zip</span><span>512 KB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">F</div>
-        <div class="dbody">
-          <div class="dt1"><b>Faithful 32x</b><span class="tag">格式 34</span></div>
-          <div class="dd">32× 材质，保留原版观感</div>
-          <div class="df"><span class="mono">Faithful_32x_1.20.zip</span><span>2.2 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">S</div>
-        <div class="dbody">
-          <div class="dt1"><b>Stay True</b><span class="tag">格式 34</span></div>
-          <div class="dd">轻量写实材质</div>
-          <div class="df"><span class="mono">Stay_True_1.20.zip</span><span>1.4 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">B</div>
-        <div class="dbody">
-          <div class="dt1"><b>Better Leaves</b><span class="tag">格式 34</span></div>
-          <div class="dd">更柔和的树叶效果</div>
-          <div class="df"><span class="mono">betterleaves-forge.zip</span><span>8.6 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">V</div>
-        <div class="dbody">
-          <div class="dt1"><b>Vanilla Tweaks</b><span class="tag">格式 34</span></div>
-          <div class="dd">原版细节微调</div>
-          <div class="df"><span class="mono">vanilla-tweaks-1.20.zip</span><span>1.1 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">F</div>
-        <div class="dbody">
-          <div class="dt1"><b>Fresh Animations</b><span class="tag">格式 34</span></div>
-          <div class="dd">生物动作动画</div>
-          <div class="df"><span class="mono">FreshAnimations_v1.9.zip</span><span>4.2 MB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard">
-        <div class="dico">N</div>
-        <div class="dbody">
-          <div class="dt1"><b>New Glowing</b><span class="tag">格式 15</span></div>
-          <div class="dd">发光矿石描边，需 1.20 前版本</div>
-          <div class="df"><span class="mono">new-glowing-old.zip</span><span>320 KB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
-      <div class="dcard bad">
-        <div class="dico">!</div>
-        <div class="dbody">
-          <div class="dt1"><b>bad-resourcepack.zip</b><span class="tag">格式 —</span><span class="tag no">无法识别</span></div>
-          <div class="dd">缺少 pack.mcmeta</div>
-          <div class="df"><span class="mono">bad-resourcepack.zip</span><span>12 KB</span></div>
-        </div>
-        <div class="dside"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-      </div>
+  <div class="cnt2">12 个资源包</div>
+  <div class="mgrid2">
+    <div class="mc">
+      <div class="ico">F</div>
+      <div class="mb"><b>Faithful 32x</b><p>32× 材质，保留原版观感</p><div class="f">Faithful_32x_1.20.zip · 2.2 MB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+    <div class="mc">
+      <div class="ico">S</div>
+      <div class="mb"><b>Stay True</b><p>轻量写实材质</p><div class="f">Stay_True_1.20.zip · 1.4 MB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+    <div class="mc">
+      <div class="ico">B</div>
+      <div class="mb"><b>Better Leaves</b><p>更柔和的树叶效果</p><div class="f">betterleaves-forge.zip · 8.6 MB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+    <div class="mc">
+      <div class="ico">V</div>
+      <div class="mb"><b>Vanilla Tweaks</b><p>原版细节微调</p><div class="f">vanilla-tweaks-1.20.zip · 1.1 MB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+    <div class="mc">
+      <div class="ico">F</div>
+      <div class="mb"><b>Fresh Animations</b><p>生物动作动画</p><div class="f">FreshAnimations_v1.9.zip · 4.2 MB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+    <div class="mc">
+      <div class="ico">N</div>
+      <div class="mb"><b>New Glowing</b><p>发光矿石描边</p><div class="f">new-glowing-old.zip · 320 KB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+    <div class="mc">
+      <div class="ico">P</div>
+      <div class="mb"><b>PureBDcraft</b><p>手绘卡通风格</p><div class="f">PureBDcraft_128x.zip · 1.9 MB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+    <div class="mc">
+      <div class="ico">D</div>
+      <div class="mb"><b>Dokucraft</b><p>中世纪手绘</p><div class="f">Dokucraft_Dark.zip · 3.8 MB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+    <div class="mc bad">
+      <div class="ico">!</div>
+      <div class="mb"><b>bad-resourcepack.zip</b><p>缺少 pack.mcmeta</p><div class="f">bad-resourcepack.zip · 12 KB</div></div>
+      <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+
+  </div>
   </div>
 
 </div></div>
 <div class="pn pc"><div class="scroll">
-  <div class="tbar">
+  <div class="mwrap">
+  <div class="ctl">
     <div class="find"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>搜索资源包名称或文件名</span></div>
-    <span class="sp"></span>
-    <span class="cnt">共 12 个</span>
-    <button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg></button>
     <button class="btn primary"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>导入</button>
   </div>
+  <div class="cnt2">12 个资源包</div>
   <div class="pgrid3">
-      <div class="pcard">
-        <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-        <div class="pico">F</div>
-        <div class="pn2">Faithful 32x</div>
-        <div class="pmeta">格式 34 · 2.2 MB</div>
-      </div>
-      <div class="pcard">
-        <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-        <div class="pico">S</div>
-        <div class="pn2">Stay True</div>
-        <div class="pmeta">格式 34 · 1.4 MB</div>
-      </div>
-      <div class="pcard">
-        <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-        <div class="pico">B</div>
-        <div class="pn2">Better Leaves</div>
-        <div class="pmeta">格式 34 · 8.6 MB</div>
-      </div>
-      <div class="pcard">
-        <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-        <div class="pico">V</div>
-        <div class="pn2">Vanilla Tweaks</div>
-        <div class="pmeta">格式 34 · 1.1 MB</div>
-      </div>
-      <div class="pcard">
-        <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-        <div class="pico">F</div>
-        <div class="pn2">Fresh Animations</div>
-        <div class="pmeta">格式 34 · 4.2 MB</div>
-      </div>
-      <div class="pcard">
-        <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-        <div class="pico">N</div>
-        <div class="pn2">New Glowing</div>
-        <div class="pmeta">格式 15 · 320 KB</div>
-      </div>
-      <div class="pcard bad">
-        <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
-        <div class="pico">!</div>
-        <div class="pn2">bad-resourcepack.zip</div>
-        <div class="pmeta">格式 — · 无法识别 · 12 KB</div>
-      </div>
+    <div class="pcov">
+      <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
+      <div class="pic">F</div>
+      <div class="pn3">Faithful 32x</div>
+      <div class="pm3">格式 34 · 2.2 MB</div>
+    </div>
+
+    <div class="pcov">
+      <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
+      <div class="pic">S</div>
+      <div class="pn3">Stay True</div>
+      <div class="pm3">格式 34 · 1.4 MB</div>
+    </div>
+
+    <div class="pcov">
+      <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
+      <div class="pic">B</div>
+      <div class="pn3">Better Leaves</div>
+      <div class="pm3">格式 34 · 8.6 MB</div>
+    </div>
+
+    <div class="pcov">
+      <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
+      <div class="pic">V</div>
+      <div class="pn3">Vanilla Tweaks</div>
+      <div class="pm3">格式 34 · 1.1 MB</div>
+    </div>
+
+    <div class="pcov">
+      <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
+      <div class="pic">F</div>
+      <div class="pn3">Fresh Animations</div>
+      <div class="pm3">格式 34 · 4.2 MB</div>
+    </div>
+
+    <div class="pcov">
+      <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
+      <div class="pic">N</div>
+      <div class="pn3">New Glowing</div>
+      <div class="pm3">格式 15 · 320 KB</div>
+    </div>
+
+    <div class="pcov">
+      <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
+      <div class="pic">P</div>
+      <div class="pn3">PureBDcraft</div>
+      <div class="pm3">格式 34 · 1.9 MB</div>
+    </div>
+
+    <div class="pcov">
+      <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
+      <div class="pic">D</div>
+      <div class="pn3">Dokucraft</div>
+      <div class="pm3">格式 34 · 3.8 MB</div>
+    </div>
+
+    <div class="pcov bad">
+      <div class="pdel"><button class="btn ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
+      <div class="pic">!</div>
+      <div class="pn3">bad-resourcepack.zip</div>
+      <div class="pm3">格式 — · 12 KB · 无法识别</div>
+    </div>
+
+  </div>
   </div>
 
 </div></div>
@@ -489,11 +436,11 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 
 <div class="tools">
   <b>方案</b>
-  <button class="on" data-v="a">甲 单列卡片</button>
-  <button data-v="b">乙 两列网格</button>
+  <button class="on" data-v="a">甲 单列</button>
+  <button data-v="b">乙 两列</button>
   <button data-v="c">丙 三列封面</button>
   <span class="sp"></span>
-  <span>资源包无启用开关 · 删除在 hover 出现</span>
+  <span>720 宽内容区 · 配色同 Theme.qml</span>
 </div>
 <script>
 const panels={a:'.pa',b:'.pb',c:'.pc'};
