@@ -109,6 +109,9 @@ signals:
     void playersChanged();
     void roleChanged();
     void minecraftPortReady(int port);
+    // 访客来要 MC 端口但我们还没开服（回了 status 32）。Terracotta 访客收到 32 会直接放弃并断开，
+    // 所以房主必须被提示"有人加了但你没开服"，而不是只写一行日志。
+    void guestRejected(const QString& reason);
     void errorOccurred(const QString& msg);
     void playerNameChanged();
     void canRenameChanged();

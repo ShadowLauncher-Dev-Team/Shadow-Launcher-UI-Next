@@ -243,6 +243,12 @@ void MultiplayerManager::leaveRoom()
     m_localMcPort = 0;
     m_connectRetries = 0;
     m_lastHostActivityMs = 0;
+    // MC 端口/世界名必须一起清：否则重开房间时 handleServerPort 可能把上一局的端口发给新访客
+    const bool hadMcInfo = (m_mcPort != 0 || !m_mcServerName.isEmpty());
+    m_mcPort = 0;
+    m_mcServerName.clear();
+    if (m_mcHealthTimer) m_mcHealthTimer->stop();
+    if (hadMcInfo) emit mcServerInfoChanged();
 
     setState(Idle, QString());
     setRole(None);
@@ -1136,10 +1142,13 @@ void MultiplayerManager::handleProtocols(const QByteArray& body, QTcpSocket* soc
 void MultiplayerManager::handleServerPort(const QByteArray& /*body*/, QTcpSocket* socket)
 {
     // Terracotta: fail(32) when MC server not started yet; otherwise 2-byte BE port.
-    if (m_mcPort == 0 || m_state != WaitingForGuests) {
+    // 只判"端口是否已知"：原来还要求 state == WaitingForGuests，容易因为状态机的中间态
+    // 把已就绪的房间也判成未就绪（房主这边多一次状态跳转就会误伤）。
+    if (m_mcPort == 0) {
         auto packet = Scaffolding::buildResponse(Scaffolding::kStatusServerNotStarted, QByteArray());
         socket->write(packet);
-        qCWarning(logNet) << QStringLiteral("[联机] 拒绝发送服务器端口 MC未就绪");
+        qCWarning(logNet) << QStringLiteral("[联机] 拒绝发送服务器端口 MC未就绪（访客会因 status 32 断开）");
+        emit guestRejected(QStringLiteral("有人想加入，但你还没在游戏里开服"));
         return;
     }
 

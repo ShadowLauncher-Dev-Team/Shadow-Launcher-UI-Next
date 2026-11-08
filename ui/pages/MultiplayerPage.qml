@@ -21,6 +21,9 @@ Item {
     // leaveRoom() 里先 setIdle 再 setRole(None)，读值会在 role 复位前被缓存成 false 且永不刷新。
     readonly property bool canRename: page.role === 0 && page.st === 0
     readonly property var members: (mp && mp.players) ? mp.players : []
+    // 房主的游戏是否已经「对局域网开放」：0 = 还没开服。
+    // Terracotta 访客拿到 status 32（服务器未启动）会直接放弃并断开，所以没开服时不能把房间码当成可用的发出去。
+    readonly property int mcPort: (mp && mp.mcServerPort) ? mp.mcServerPort : 0
 
     property string errorText: ""
     property bool errorHostGone: false
@@ -106,6 +109,7 @@ Item {
         case 3: return "房主刚创建房间时可能需要多等几秒。"
         case 4: return "正在连到房主的联机中心…"
         case 7: return "请打开游戏，进入单人世界后按 Esc 选「对局域网开放」。开好后会自动识别，不用填端口。"
+                        + (page.mcPort === 0 ? " 现在把码发出去，朋友加进来会直接失败。" : "")
         case 8: return "最多 8 次尝试；不过也会放行，先进游戏再看。"
         case 5: return role === 1 ? "朋友现在可以在游戏里进去了。" : "打开 Minecraft 的「多人游戏」，进「局域网世界」即可。"
         case 6: return "朋友在「多人游戏」的「局域网世界」里能直接看到，无需输入 IP。"
@@ -206,7 +210,11 @@ Item {
             if (page.toast) page.toast.show(msg)
         }
         function onMinecraftPortReady(port) {
-            if (page.toast) page.toast.show("游戏端口已就绪：" + port)
+            if (page.toast) page.toast.show("游戏端口已就绪：" + port, undefined, "success", true)
+        }
+        function onGuestRejected(reason) {
+            // 有人加了但房主没开服：必须让房主看见，否则他以为房间码有问题
+            if (page.toast) page.toast.show(reason, undefined, "warning", true)
         }
         function onStateChanged() {
             if (page.st === 0 && page.role === 0)
@@ -717,10 +725,20 @@ Item {
                         onClicked: if (page.mp) page.mp.leaveRoom()
                     }
 
+                    // 还没开服：房间码不能当"可用"发出去，否则 Terracotta 访客一加就死
                     SButton {
                         width: parent.width
                         height: 40
-                        visible: (page.st === 7 || page.st === 6 || page.st === 5) && page.role === 1
+                        kind: 1
+                        dimmed: true
+                        visible: page.st === 7 && page.role === 1 && page.mcPort === 0
+                        text: "开好服后再复制房间码"
+                    }
+
+                    SButton {
+                        width: parent.width
+                        height: 40
+                        visible: (page.st === 6 || page.st === 5 || (page.st === 7 && page.mcPort > 0)) && page.role === 1
                         text: "复制房间码"
                         onClicked: {
                             if (page.mp) page.mp.copyRoomCode()
