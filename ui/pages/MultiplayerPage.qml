@@ -692,7 +692,7 @@ Item {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: page.latencyText(modelData)
+                                text: page.isMe(modelData) ? "本机" : page.latencyText(modelData)
                                 color: page.latencyColor(modelData)
                                 Behavior on color { ColorAnimation { duration: Theme.durBase } }
                                 font.family: Theme.fontFamily

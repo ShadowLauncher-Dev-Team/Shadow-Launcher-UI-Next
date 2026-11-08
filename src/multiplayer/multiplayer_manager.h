@@ -243,6 +243,9 @@ private:
     QTimer* m_mcPresenceTimeoutTimer = nullptr; // Host MC presence timeout (2 min)
     QTimer* m_profileSyncTimer = nullptr; // Guest profile sync
     QTimer* m_hostWatchdog = nullptr; // guest: detects departed host (heartbeat timeout)
+    QTimer* m_latencyProbeTimer = nullptr; // host: 定期 c:player_ping 每个宾客，量 RTT
+
+    void sendLatencyProbes();
     qint64 m_lastHostActivityMs = 0;  // guest: last inbound host data timestamp
     QProcess* m_peerQuery = nullptr;      // easyTier peer list query
 
