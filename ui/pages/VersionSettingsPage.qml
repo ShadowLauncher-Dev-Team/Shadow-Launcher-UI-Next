@@ -10,6 +10,8 @@ Item {
     id: page
     property string versionId: ""
     property var toast: null
+    // 分区页在扫盘/批量改名时把顶部光条点亮（StageShell 读这个）
+    property bool busy: false
     signal close()
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
@@ -236,8 +238,20 @@ Item {
         anchors.bottom: parent.bottom
 
         Loader {
+            id: paneLoader
             anchors.fill: parent
             sourceComponent: page.paneFor(page.currentKey)
+            // 分区页自报 busy（扫盘/批量改名），转给壳的顶部光条
+            onLoaded: {
+                var it = paneLoader.item
+                if (it && it.busyChanged !== undefined) {
+                    it.busyChanged.connect(function(b) { page.busy = b })
+                    page.busy = (it.loading === true)
+                } else {
+                    page.busy = false
+                }
+            }
+            onSourceComponentChanged: page.busy = false
 
             NumberAnimation on opacity {
                 // 分区切换只做极轻的淡入，避免和壳的整页动效打架

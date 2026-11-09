@@ -7,9 +7,12 @@ Item {
     id: root
     property string title: ""
     property int cardPaddingBottom: 10
+    // 无标题卡片（如状态卡）顶部没有 header 撑，需要自己补上边距，否则内容贴顶
+    property int cardPaddingTop: 14
     default property alias content: body.data
 
-    implicitHeight: body.implicitHeight + header.height + cardPaddingBottom
+    readonly property int _topGap: (root.title.length > 0) ? 0 : root.cardPaddingTop
+    implicitHeight: body.implicitHeight + header.height + _topGap + cardPaddingBottom
 
     Rectangle {
         anchors.fill: parent
@@ -36,6 +39,7 @@ Item {
     Column {
         id: body
         anchors.top: header.bottom
+        anchors.topMargin: root._topGap
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.leftMargin: 20

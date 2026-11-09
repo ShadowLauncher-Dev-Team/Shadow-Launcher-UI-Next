@@ -45,9 +45,15 @@ Item {
             color: "#4d5666"
         }
         MouseArea {
+            id: triggerArea
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: pop.opened ? pop.close() : pop.open()
+            property bool wasOpen: false
+            onPressed: wasOpen = pop.visible
+            onClicked: {
+                if (wasOpen) pop.close()
+                else pop.open()
+            }
         }
     }
 
@@ -56,7 +62,16 @@ Item {
         y: root.height + 4
         width: root.width
         padding: 4
+        // 保留 outside-press（点空白处收起）；触发器用 onPressed 记下点击前的状态来 toggle，
+        // 否则 press 阶段已关、click 又 open，表现就是"点第二次还是展开"
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        enter: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.durFast; easing.type: Theme.easeEnter }
+            NumberAnimation { property: "y"; from: root.height + 1; to: root.height + 4; duration: Theme.durFast; easing.type: Theme.easeEnter }
+        }
+        exit: Transition {
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.durFast; easing.type: Theme.easeExit }
+        }
         background: Rectangle {
             radius: Theme.rSm
             color: "#0b0d12"

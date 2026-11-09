@@ -77,14 +77,10 @@ Item {
             SCard {
                 width: col.width
                 title: ""
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: "transparent"
-                }
+                cardPaddingTop: 18
                 Item {
                     width: parent.width
-                    height: 58
+                    height: 52
                     Rectangle {
                         id: dot
                         width: 8
@@ -101,7 +97,7 @@ Item {
                         anchors.left: dot.right
                         anchors.leftMargin: 12
                         anchors.top: parent.top
-                        anchors.topMargin: 10
+                        anchors.topMargin: 4
                         text: pane.statusTitle()
                         color: "#eef2f8"
                         font.family: Theme.fontFamily
@@ -121,7 +117,7 @@ Item {
                     SButton {
                         anchors.right: parent.right
                         anchors.top: parent.top
-                        anchors.topMargin: 8
+                        anchors.topMargin: 2
                         kind: 1
                         height: 30
                         radius: 2
@@ -136,10 +132,10 @@ Item {
                         }
                     }
                 }
-                SRow {
+                Item {
                     width: parent.width
-                    label: ""
-                    divider: false
+                    height: pane.failedFiles.length > 0 ? 46 : 0
+                    visible: pane.failedFiles.length > 0
                     Row {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter

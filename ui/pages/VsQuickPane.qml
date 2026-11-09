@@ -3,19 +3,22 @@
 //
 // 只放"点了就发生"的动作；版本的加载器/占用等信息属于「概览」，不在这里重复。
 import QtQuick
+import QtQuick.Dialogs
 import ShadowLauncher.Next
 
 Item {
     id: pane
     property string versionId: ""
     property var toast: null
+    property var pendingExport: null
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
 
-    function openDir(fn, okText) {
+    // force=true：这是用户主动点的，连点第二次也必须给反馈（ToastHost 默认 5 秒同文去重）
+    function openDir(fn, okText, failText) {
         if (!pane.b) return
         var ok = pane.b[fn](pane.versionId)
-        if (pane.toast && okText) pane.toast.show(ok ? okText : "打开失败：版本目录不存在")
+        if (pane.toast) pane.toast.show(ok ? okText : (failText || "打开失败"), -1, ok ? "info" : "error", true)
     }
     function copyText(t, okText) {
         if (!pane.b) return
@@ -93,7 +96,7 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: pane.openDir(modelData.fn, "已打开" + modelData.label)
+                        onClicked: pane.openDir(modelData.fn, "已打开" + modelData.label, modelData.fail)
                     }
                 }
             }
@@ -113,7 +116,7 @@ Item {
                 model: [
                     { label: "logs 日志",   icon: "folder",     fn: "openLogsFolder",  tip: "打开" },
                     { label: "最新启动日志", icon: "file-text",  fn: "openLatestLog",   tip: "打开" },
-                    { label: "崩溃日志",     icon: "alert-octagon", fn: "openCrashLog", tip: "打开" }
+                    { label: "崩溃日志",     icon: "alert-octagon", fn: "openCrashLog", tip: "打开", fail: "这个版本还没有崩溃日志" }
                 ]
                 delegate: Item {
                     width: col.width
@@ -155,7 +158,7 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: pane.openDir(modelData.fn, "已打开" + modelData.label)
+                        onClicked: pane.openDir(modelData.fn, "已打开" + modelData.label, modelData.fail)
                     }
                 }
             }
@@ -223,18 +226,39 @@ Item {
                             } else {
                                 if (!pane.b) return
                                 var s = pane.b.settings()
-                                var out = pane.b.exportLaunchScript(
+                                var scriptText = pane.b.exportLaunchScript(
                                             pane.versionId, s.javaPath, s.maxMemoryMB,
                                             s.versionJvmArgs(pane.versionId),
                                             s.versionGameArgs(pane.versionId),
                                             s.versionHighPerfGpu(pane.versionId))
-                                if (pane.toast)
-                                    pane.toast.show(out && out.length > 0 ? "已导出启动脚本" : "导出失败：请检查 Java 是否就绪")
+                                if (!scriptText || scriptText.length === 0) {
+                                    if (pane.toast)
+                                        pane.toast.show("导出失败：请检查 Java 是否就绪", -1, "error", true)
+                                    return
+                                }
+                                pane.pendingExport = scriptText
                             }
                         }
                     }
                 }
             }
         }
+    }
+    FileDialog {
+        id: exportDialog
+        title: "导出启动脚本"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["批处理脚本 (*.bat)"]
+        defaultSuffix: "bat"
+        onAccepted: {
+            var text = pane.pendingExport
+            if (!pane.b || !text) return
+            var target = String(selectedFile).replace(/^file:\/\//, "")
+            var ok = pane.b.saveTextFile(target, text)
+            pane.pendingExport = null
+            if (pane.toast)
+                pane.toast.show(ok ? "已导出到 " + target : "保存失败，请换一个位置再试", -1, ok ? "info" : "error", true)
+        }
+        onRejected: pane.pendingExport = null
     }
 }

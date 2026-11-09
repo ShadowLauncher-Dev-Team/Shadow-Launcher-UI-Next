@@ -495,7 +495,10 @@ Item {
                     width: vlist.width
                     height: page.listRowH
                     readonly property bool cur: !!modelData && modelData.id === page.pendingId
-                    readonly property bool hov: rowHover.containsMouse
+                    // hover 用 HoverHandler：子项（齿轮）盖在上面时 containsMouse 会变 false，
+                    // 导致"鼠标一移到齿轮上齿轮就消失、根本点不到"
+                    readonly property bool hov: rowHH.hovered || gearArea.containsMouse
+                    HoverHandler { id: rowHH }
 
                     // 逐条入场：每行按 index 延迟淡入，滚动时新出现的行也会播一次
                     // 延迟封顶 120ms，避免长列表把整段拖过 300ms
@@ -576,21 +579,37 @@ Item {
                         }
                     }
 
-                    // 行尾「设置」：hover 或选中时出现，点开该版本的版本设置
-                    SButton {
+                    // 行尾「设置」：hover 或选中时出现。自绘而不用 SButton ——
+                    // 30x26 这么小的尺寸里 RowLayout 的居中会偏，齿轮看着不在框中央
+                    Rectangle {
+                        id: gearArea
                         anchors.right: parent.right
                         anchors.rightMargin: 6
                         anchors.verticalCenter: parent.verticalCenter
-                        implicitWidth: 30
-                        height: 26
-                        kind: 1
-                        radius: 2
-                        iconName: "settings"
+                        width: 28
+                        height: 28
+                        radius: 4
+                        color: gearHover.hovered ? "#1b212b" : "transparent"
+                        border.width: 1
+                        border.color: gearHover.hovered ? "#333a47" : "#22262e"
                         opacity: (row.hov || row.cur) ? 1 : 0
+                        visible: opacity > 0
                         Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
-                        onClicked: {
-                            if (modelData && modelData.id)
-                                page.openSettings(modelData.id)
+                        Behavior on color { ColorAnimation { duration: Theme.durFast } }
+                        SIcon {
+                            anchors.centerIn: parent
+                            name: "settings"
+                            size: 15
+                            color: gearHover.hovered ? "#e8ebf2" : "#8a94a3"
+                        }
+                        HoverHandler { id: gearHover }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (modelData && modelData.id)
+                                    page.openSettings(modelData.id)
+                            }
                         }
                     }
                 }

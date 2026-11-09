@@ -130,6 +130,8 @@ Item {
         || (downloadPage ? downloadPage.resourceBusy : false)
         // 只在详情页还开着的时候算它：关掉后残留的请求不该让顶部继续转
         || (root.resDetailOpen && resDetail ? resDetail.loadingVersions : false)
+        // 版本设置里的扫盘 / 批量改名也点亮光条（几百个 jar 几秒没反馈会以为死了）
+        || (root.settingsOpen && settingsPage.busy)
 
     Component.onCompleted: {
         if (Qt.application.arguments.indexOf("--ui-versions") >= 0) root.versionsOpen = true
@@ -197,19 +199,7 @@ Item {
                 root.downloadOpen = false
                 root.progressOpen = false
                 root.multiplayerOpen = true
-            } else if (label === "设置") {
-                // 侧栏「设置」= 当前选中版本的版本设置；没选版本就先让他去选
-                root.downloadOpen = false
-                root.progressOpen = false
-                root.multiplayerOpen = false
-                var sv = (b && b.selectedVersion) ? b.selectedVersion : ""
-                if (sv.length > 0) {
-                    root.settingsVersionId = sv
-                    root.settingsOpen = true
-                } else {
-                    root.versionsOpen = true
-                }
-            } else if (label === "启动" || label === "统计") {
+            } else if (label === "启动" || label === "统计" || label === "设置") {
                 root.downloadOpen = false
                 root.progressOpen = false
                 root.multiplayerOpen = false
@@ -339,6 +329,7 @@ Item {
             scale: root.settingsOpen ? 1 : 0.988
             Behavior on scale { NumberAnimation { duration: root.settingsOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
             VersionSettingsPage {
+                id: settingsPage
                 anchors.fill: parent
                 versionId: root.settingsVersionId
                 toast: toastHost
