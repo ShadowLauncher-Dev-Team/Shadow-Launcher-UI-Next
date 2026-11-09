@@ -22,6 +22,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QCryptographicHash>
+#include <QStandardPaths>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -170,6 +171,18 @@ QVariantList ModpackExporter::listSaves(const QString& versionId) const
         }
     }
     return out;
+}
+
+QString ModpackExporter::defaultExportDir() const
+{
+    // 默认导出到系统「下载」夹。绝不能默认写进游戏目录（.minecraft）——
+    // 那是启动器自己管理的目录，产物混进去既难找，也容易被当成游戏文件。
+    QString dir = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+    if (dir.isEmpty() || !QDir(dir).exists())
+        dir = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
+    if (dir.isEmpty() || !QDir(dir).exists())
+        dir = QDir::homePath();
+    return QDir::cleanPath(dir);
 }
 
 QVariantList ModpackExporter::listMods(const QString& versionId) const

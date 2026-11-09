@@ -60,6 +60,8 @@ public:
     Q_INVOKABLE QVariantList listSaves(const QString& versionId) const;
     /// mods/ 下的模组文件（name/size/sizeDisplay），供导出页逐项勾选
     Q_INVOKABLE QVariantList listMods(const QString& versionId) const;
+    /// 导出默认落盘目录（系统下载夹）；QML 用它而不是 gameDir
+    Q_INVOKABLE QString defaultExportDir() const;
 
     /// 导出上下文：按版本实际情况返回可导出内容（供导出界面动态渲染，同主流启动器 ShowRules）
     ///   versionExists/modable/hasOptiFine/hasMods/hasConfig/hasShaderpacks/

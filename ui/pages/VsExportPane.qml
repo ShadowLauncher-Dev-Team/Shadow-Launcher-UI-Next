@@ -150,12 +150,24 @@ Item {
         pane.buildOutPath()
     }
 
+    function safeName() {
+        return pane.packName.replace(/[\\/:*?"<>|]/g, "_")
+    }
+
     function buildOutPath() {
-        if (!pane.b || pane.packName.length === 0) return
-        var base = pane.b.gameDir || ""
-        if (base.length === 0) return
-        var safe = pane.packName.replace(/[\\/:*?"<>|]/g, "_")
-        pane.outPath = base + "/" + safe + pane.suffix
+        if (!pane.ex || pane.packName.length === 0) return
+        const dir = pane.ex.defaultExportDir ? pane.ex.defaultExportDir() : ""
+        if (!dir || dir.length === 0) return
+        pane.outPath = dir + "/" + pane.safeName() + pane.suffix
+    }
+
+    // 产物绝不能落在游戏目录里（会被当成游戏文件，还难找）
+    function pathInsideGameDir(p) {
+        if (!pane.b) return false
+        const gd = String(pane.b.gameDir || "").replace(/\\\\/g, "/").toLowerCase()
+        if (gd.length === 0) return false
+        const f = p.replace(/\\\\/g, "/").toLowerCase()
+        return f === gd || f.indexOf(gd + "/") === 0
     }
 
     Component.onCompleted: pane.refresh()
@@ -173,6 +185,17 @@ Item {
         if (pane.outPath.length === 0) {
             if (pane.toast) pane.toast.show("先选择输出位置", -1, "error", true)
             return
+        }
+        if (pane.pathInsideGameDir(pane.outPath)) {
+            const dir = pane.ex && pane.ex.defaultExportDir ? pane.ex.defaultExportDir() : ""
+            if (dir && dir.length > 0) {
+                pane.outPath = dir + "/" + pane.safeName() + pane.suffix
+                if (pane.toast)
+                    pane.toast.show("输出位置在游戏目录里，已改为 " + dir, -1, "info", true)
+            } else {
+                if (pane.toast) pane.toast.show("不能导出到游戏目录，请换个位置", -1, "error", true)
+                return
+            }
         }
         var opts = pane.checkedIds.slice()
         // mod 只勾了一部分时，展开成 mod:<文件名>（全选则保持空，后端走整目录规则）
