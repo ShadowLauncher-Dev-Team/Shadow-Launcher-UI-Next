@@ -74,91 +74,102 @@ Item {
             spacing: 16
 
             // ── 状态卡 ──
-            SCard {
+            // 不用 SCard：它的高度靠 body.implicitHeight 累加，无标题卡片算出来的
+            // 高度比内容大一圈，文字就悬在中间。这里直接给高度、内容垂直居中。
+            Item {
+                id: statusCard
                 width: col.width
-                title: ""
-                cardPaddingTop: 18
-                Item {
-                    width: parent.width
-                    height: 52
-                    Rectangle {
-                        id: dot
-                        width: 8
-                        height: 8
-                        radius: 4
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        anchors.topMargin: 16
-                        color: pane.verifying ? "#4b5462"
-                             : (pane.failedFiles.length > 0 ? Theme.warn
-                             : (pane.hasResult ? Theme.ok : "#4b5462"))
+                readonly property bool hasIssues: pane.failedFiles.length > 0
+                height: hasIssues ? 128 : 86
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: Theme.rWin
+                    color: "#0b0d12"
+                    border.width: 1
+                    border.color: Theme.line2
+                }
+
+                // 左：状态点 + 标题 / 副标题
+                Column {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 20
+                    anchors.right: recheck.left
+                    anchors.rightMargin: 16
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 6
+
+                    Row {
+                        spacing: 10
+                        Rectangle {
+                            width: 8
+                            height: 8
+                            radius: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: pane.verifying ? "#4b5462"
+                                 : (statusCard.hasIssues ? Theme.warn
+                                 : (pane.hasResult ? Theme.ok : "#4b5462"))
+                        }
+                        Text {
+                            text: pane.statusTitle()
+                            color: "#eef2f8"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 14
+                            font.weight: Font.DemiBold
+                        }
                     }
                     Text {
-                        anchors.left: dot.right
-                        anchors.leftMargin: 12
-                        anchors.top: parent.top
-                        anchors.topMargin: 4
-                        text: pane.statusTitle()
-                        color: "#eef2f8"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 14
-                        font.weight: Font.DemiBold
-                    }
-                    Text {
-                        anchors.left: dot.right
-                        anchors.leftMargin: 12
-                        anchors.top: parent.top
-                        anchors.topMargin: 33
                         text: pane.statusSub()
                         color: "#7b8494"
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
-                    }
-                    SButton {
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        anchors.topMargin: 2
-                        kind: 1
-                        height: 30
-                        radius: 2
-                        iconName: pane.verifying ? "x" : "refresh-cw"
-                        text: pane.verifying ? "取消" : "重新校验"
-                        onClicked: {
-                            if (!pane.b) return
-                            if (pane.verifying) { pane.b.cancelVerify(); return }
-                            pane.failedFiles = []
-                            pane.hasResult = false
-                            pane.b.verifyVersion(pane.versionId)
-                        }
+                        leftPadding: 18
                     }
                 }
-                Item {
-                    width: parent.width
-                    height: pane.failedFiles.length > 0 ? 46 : 0
-                    visible: pane.failedFiles.length > 0
-                    Row {
-                        anchors.left: parent.left
+
+                SButton {
+                    id: recheck
+                    anchors.right: parent.right
+                    anchors.rightMargin: 20
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: 1
+                    height: 32
+                    radius: 2
+                    iconName: pane.verifying ? "x" : "refresh-cw"
+                    text: pane.verifying ? "取消" : "重新校验"
+                    onClicked: {
+                        if (!pane.b) return
+                        if (pane.verifying) { pane.b.cancelVerify(); return }
+                        pane.failedFiles = []
+                        pane.hasResult = false
+                        pane.b.verifyVersion(pane.versionId)
+                    }
+                }
+
+                // 有异常时才出现的第二行
+                Row {
+                    visible: statusCard.hasIssues
+                    anchors.left: parent.left
+                    anchors.leftMargin: 20
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 16
+                    spacing: 12
+                    Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 10
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: pane.failedFiles.length > 0
-                            text: "共 " + pane.failedFiles.length + " 项待修复"
-                            color: "#8a94a3"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
-                        }
-                        SButton {
-                            visible: pane.failedFiles.length > 0
-                            kind: 0
-                            height: 32
-                            radius: 2
-                            text: "修复"
-                            onClicked: {
-                                if (!pane.b) return
-                                pane.b.repairVersion(pane.versionId)
-                                if (pane.toast) pane.toast.show("已开始修复，进度见「下载进度」")
-                            }
+                        text: "共 " + pane.failedFiles.length + " 项待修复"
+                        color: "#8a94a3"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+                    }
+                    SButton {
+                        kind: 0
+                        height: 30
+                        radius: 2
+                        text: "修复"
+                        onClicked: {
+                            if (!pane.b) return
+                            pane.b.repairVersion(pane.versionId)
+                            if (pane.toast) pane.toast.show("已开始修复，进度见「下载进度」")
                         }
                     }
                 }
