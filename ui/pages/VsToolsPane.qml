@@ -22,6 +22,8 @@ Item {
     readonly property bool verifying: verifyingLocal || (b ? b.verifyRunning : false)
     readonly property int checkedCount: b ? b.verifyChecked : 0
     readonly property int totalCount: b ? b.verifyTotal : 0
+    readonly property real verifyRatio: totalCount > 0
+        ? Math.min(1, Math.max(0, checkedCount / totalCount)) : 0
     property bool hasResult: b && b.verifyResultText && b.verifyResultText.length > 0
     property bool resultOk: b ? b.verifyResultOk : false
     property int repairing: 0
@@ -54,10 +56,7 @@ Item {
         return "未发现异常"
     }
     function statusSub() {
-        if (pane.verifying)
-            return pane.totalCount > 0
-                   ? ("已扫描 " + pane.checkedCount + " / " + pane.totalCount + " 个文件")
-                   : "正在统计文件…"
+        if (pane.verifying) return "正在逐个核对版本文件，可随时取消"
         if (!pane.hasResult) return "校验会逐个核对版本文件是否齐全"
         return "本次扫描 " + pane.totalCount + " 个文件"
     }
@@ -83,7 +82,7 @@ Item {
                 id: statusCard
                 width: col.width
                 readonly property bool hasIssues: pane.failedFiles.length > 0
-                height: pane.verifying ? 124 : (hasIssues ? 128 : 86)
+                height: pane.verifying ? 118 : (hasIssues ? 128 : 86)
 
                 Rectangle {
                     anchors.fill: parent
@@ -100,7 +99,7 @@ Item {
                     anchors.right: recheck.left
                     anchors.rightMargin: 16
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 6
+                    spacing: 8
 
                     Row {
                         spacing: 10
@@ -128,6 +127,36 @@ Item {
                         font.pixelSize: 11
                         leftPadding: 18
                     }
+                    // 校验中：细进度条 + 已扫描计数（跟标题同一条垂直流，别再单独锚底）
+                    // 左缩进 18 = 状态点 8 + 间距 10，跟标题文字起始线对齐
+                    Column {
+                        visible: pane.verifying
+                        x: 18
+                        width: parent.width - 18
+                        spacing: 6
+                        Rectangle {
+                            width: parent.width
+                            height: 3
+                            radius: 2
+                            color: "#151a22"
+                            Rectangle {
+                                width: parent.width * (pane.totalCount > 0
+                                       ? Math.min(1, pane.checkedCount / pane.totalCount) : 0)
+                                height: parent.height
+                                radius: 2
+                                color: Theme.accent
+                                Behavior on width { NumberAnimation { duration: Theme.durFast } }
+                            }
+                        }
+                        Text {
+                            text: pane.totalCount > 0
+                                  ? ("已扫描 " + pane.checkedCount + " / " + pane.totalCount + " 个文件")
+                                  : "正在统计文件…"
+                            color: "#7b8494"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+                    }
                 }
 
                 SButton {
@@ -154,40 +183,6 @@ Item {
                         pane.verifyingLocal = true
                         pane.b.verifyVersion(pane.versionId)
                         if (pane.toast) pane.toast.show("开始校验版本文件", -1, "info", true)
-                    }
-                }
-
-                // 校验中：细进度条 + 已扫描计数
-                Column {
-                    visible: pane.verifying
-                    anchors.left: parent.left
-                    anchors.leftMargin: 20
-                    anchors.right: parent.right
-                    anchors.rightMargin: 20
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 16
-                    spacing: 6
-                    Rectangle {
-                        width: parent.width
-                        height: 3
-                        radius: 2
-                        color: "#151a22"
-                        Rectangle {
-                            width: parent.width * (pane.totalCount > 0
-                                   ? Math.min(1, pane.checkedCount / pane.totalCount) : 0)
-                            height: parent.height
-                            radius: 2
-                            color: Theme.accent
-                            Behavior on width { NumberAnimation { duration: Theme.durFast } }
-                        }
-                    }
-                    Text {
-                        text: pane.totalCount > 0
-                              ? ("已扫描 " + pane.checkedCount + " / " + pane.totalCount + " 个文件")
-                              : "正在统计文件…"
-                        color: "#7b8494"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
                     }
                 }
 
