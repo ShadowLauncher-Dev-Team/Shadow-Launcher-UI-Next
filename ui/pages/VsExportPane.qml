@@ -150,6 +150,23 @@ Item {
         pane.buildOutPath()
     }
 
+    // Qt 给的 selectedFile 是 url（file:///C:/中文/名.mrpack），直接切字符串会留下前导斜杠
+    function toLocalPath(u) {
+        var s = String(u)
+        if (s.indexOf("file:///") === 0) s = s.substring(8)
+        else if (s.indexOf("file://") === 0) s = s.substring(7)
+        try { s = decodeURIComponent(s) } catch (e) { }
+        return s
+    }
+    function toFileUrl(p) {
+        var parts = String(p).split("/")
+        var out = []
+        for (var i = 0; i < parts.length; ++i)
+            out.push(encodeURIComponent(parts[i]))
+        // 盘符 "C:" 不能被编码成 "C%3A"
+        return "file:///" + out.join("/").replace(/^([A-Za-z])%3A/, "$1:")
+    }
+
     function safeName() {
         return pane.packName.replace(/[\\/:*?"<>|]/g, "_")
     }
@@ -528,8 +545,8 @@ Item {
                         color: Theme.line2
                     }
 
-                    // 路径行
-                    Row {
+                    // 路径行：点文字直接编辑；右边「更改」调系统文件夹选择
+                    Item {
                         id: pathRow
                         anchors.left: parent.left
                         anchors.right: parent.right
@@ -537,24 +554,40 @@ Item {
                         anchors.topMargin: 12
                         anchors.leftMargin: 20
                         anchors.rightMargin: 20
-                        spacing: 8
+                        height: 20
+
                         Text {
-                            width: parent.width - 52
-                            text: pane.outPath.length > 0 ? pane.outPath : "未选择输出位置"
-                            color: "#7b8494"
+                            id: pathText
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 46
+                            text: pane.outPath.length > 0 ? pane.outPath : "未选择导出位置"
+                            color: pathHov.hovered ? "#c3cbd8" : "#7b8494"
                             elide: Text.ElideMiddle
                             font.family: "Consolas"
                             font.pixelSize: 11
+                            HoverHandler { id: pathHov; cursorShape: Qt.IBeamCursor }
+                            TapHandler {
+                                acceptedButtons: Qt.LeftButton
+                                onTapped: {
+                                    pathInput.text = pane.outPath
+                                    pathPop.open()
+                                }
+                            }
                         }
+
                         Text {
+                            id: pathChange
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
                             text: "更改"
                             color: "#7fa9f5"
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: saveDialog.open()
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                            TapHandler {
+                                acceptedButtons: Qt.LeftButton
+                                onTapped: pane.openDirDialog()
                             }
                         }
                     }
@@ -1255,15 +1288,108 @@ Item {
     }
 
     // 选择输出位置
+    // 只选「放哪个文件夹」——文件名由上面的「名称」+ 格式自动拼，不该让用户自己敲
     FileDialog {
-        id: saveDialog
-        title: "导出到"
-        fileMode: FileDialog.SaveFile
-        nameFilters: pane.format === 1 ? ["CurseForge 整合包 (*.zip)"] : ["Modrinth 整合包 (*.mrpack)"]
+        id: dirDialog
+        title: "选择导出文件夹"
+        fileMode: FileDialog.Directory
         onAccepted: {
-            var p = String(selectedFile).replace(/^file:\/\//, "")
-            if (p.length > 0) pane.outPath = p
+            var dir = pane.toLocalPath(selectedFile)
+            dir = dir.replace(/\/+$/, "")
+            if (dir.length > 0) {
+                pane.outPath = dir + "/" + pane.safeName() + pane.suffix
+                if (pane.toast) pane.toast.show("导出位置： " + pane.outPath, 3000, "info", true)
+            }
         }
+    }
+
+    // 点路径文字直接改（双保险：系统文件夹对话框在某些环境下不好使）
+    Popup {
+        id: pathPop
+        parent: pane
+        anchors.centerIn: parent
+        width: 520
+        modal: true
+        padding: 0
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        background: Rectangle {
+            radius: Theme.rMd
+            color: "#0b0d12"
+            border.width: 1
+            border.color: Theme.line2
+        }
+        contentItem: Column {
+            width: 520
+            padding: 18
+            spacing: 12
+            Text {
+                text: "导出位置"
+                color: "#eef2f8"
+                font.family: Theme.fontFamily
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+            }
+            SInput {
+                id: pathInput
+                width: parent.width - 36
+                height: 34
+                text: pane.outPath
+            }
+            Text {
+                width: parent.width - 36
+                text: "填完整文件路径（含 " + pane.suffix + "）"
+                color: "#4b5462"
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+            }
+            Item {
+                width: parent.width - 36
+                height: 34
+                SButton {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: 1
+                    height: 32
+                    radius: Theme.rSm
+                    text: "选择文件夹…"
+                    onClicked: {
+                        pathPop.close()
+                        pane.openDirDialog()
+                    }
+                }
+                SButton {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: 1
+                    height: 32
+                    radius: Theme.rSm
+                    text: "取消"
+                    onClicked: pathPop.close()
+                }
+                SButton {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 84
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: 0
+                    height: 32
+                    radius: Theme.rSm
+                    text: "确定"
+                    onClicked: {
+                        var v = String(pathInput.text).trim()
+                        if (v.length > 0) pane.outPath = v
+                        pathPop.close()
+                    }
+                }
+            }
+        }
+    }
+
+    function openDirDialog() {
+        const dir = pane.outPath.length > 0
+            ? pane.outPath.substring(0, Math.max(0, pane.outPath.lastIndexOf("/")))
+            : (pane.ex && pane.ex.defaultExportDir ? pane.ex.defaultExportDir() : "")
+        if (dir && dir.length > 0) dirDialog.currentFolder = pane.toFileUrl(dir)
+        dirDialog.open()
     }
 
     // 联网查询失败确认
