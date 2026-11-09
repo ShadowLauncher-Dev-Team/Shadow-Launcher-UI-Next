@@ -39,6 +39,13 @@ Item {
         contentHeight: col.implicitHeight + 56
         boundsBehavior: Flickable.StopAtBounds
 
+        // 点内容空白处清焦点。必须挂在 Flickable 自己身上：
+        // 页面根层收不到（这个 Flickable 铺满内容区、会吃掉 press），挂在子项上又会挡拖拽。
+        // tap 与 drag 不冲突：只有按下抬起位置基本不变的点击才触发。
+        TapHandler {
+            onTapped: pane.forceActiveFocus()
+        }
+
         Column {
             id: col
             x: 28

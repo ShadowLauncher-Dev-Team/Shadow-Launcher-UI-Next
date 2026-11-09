@@ -257,3 +257,23 @@ QML 层做不可靠，原因很具体：
 最终：`src/main_release.cpp` 里 `FocusClearFilter` 装在 `QQuickWindow` 上，拦 `MouseButtonPress`——当前焦点是 TextInput/TextEdit 且按下的点不在它矩形内，就 `contentItem()->forceActiveFocus()`。
 
 优点：**不依赖任何 QML 事件传播链**，全站一次生效，按下即判断没有延迟。日志 `[focus] 点空白释放文本焦点` 可验证。
+
+
+### 8.6 为什么"复刻下载页的做法"在版本设置页不成立
+
+下载页有 `ListView`(747) 和 `Flickable`(892)，但它们**只占页面的一部分**；它的 `MouseArea{z:-1}` 能收到点击，是因为页面上还有**没有被滚动容器覆盖的空白区域**。
+
+版本设置页的每个 pane 是 `Flickable { anchors.fill: parent }` —— **铺满整个内容区**，下层永远收不到点击。所以同样的代码搬过来一定失效。
+
+要复刻，监听必须**放进 Flickable 内部**（挂在 Flickable 自己身上，而不是它下面）：`TapHandler { onTapped: pane.forceActiveFocus() }`（tap 与拖拽不冲突）。
+
+### 8.7 最终实证
+
+```
+[focus] press QPointF(880,192) focusItem= QQuickTextEdit local= QPointF(613,-219) inside= false
+[focus] 已释放文本焦点
+```
+
+点输入框后焦点项是 `QQuickTextEdit`（整块可点，height 修复生效）；点空白判定 `inside=false` → 释放成功。
+
+**注意**：`forceActiveFocus()` 到 contentItem 可能静默失败，必须同时 `fi->setFocus(false)` —— 这是"日志显示已释放、但蓝边还在"的原因。

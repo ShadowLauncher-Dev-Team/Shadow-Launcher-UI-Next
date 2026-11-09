@@ -57,9 +57,16 @@ protected:
             if (fi && isTextInput(fi)) {
                 auto* me = static_cast<QMouseEvent*>(ev);
                 const QPointF local = fi->mapFromScene(me->position());
-                if (!fi->contains(local) && m_win->contentItem()) {
-                    m_win->contentItem()->forceActiveFocus();
-                    qInfo() << "[focus] 点空白释放文本焦点";
+                const bool outside = !fi->contains(local);
+                qInfo() << "[focus] press" << me->position() << "focusItem=" << fi->metaObject()->className()
+                        << "local=" << local << "inside=" << !outside;
+                if (outside) {
+                    // 两件事都做：显式清焦点（对 TextInput 直接有效），再把焦点交给根。
+                    // 只做后者时，若根不可聚焦就会静默失败、输入框仍持有 activeFocus（蓝边不消失）。
+                    fi->setFocus(false);
+                    if (m_win->contentItem())
+                        m_win->contentItem()->forceActiveFocus();
+                    qInfo() << "[focus] 已释放文本焦点";
                 }
             }
         }
