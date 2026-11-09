@@ -1241,6 +1241,12 @@ void ModpackExporter::exportVersion(const QString& versionId, const QString& dis
         for (const auto& o : ovFiles) { totalFiles++; totalBytes += QFileInfo(o.diskPath).size(); }
 
         ZipArchive zip;
+        // 输出目录可能还不存在（用户手输路径 / 快捷位置），先建出来
+        {
+            const QString outDir = QFileInfo(outPath).absolutePath();
+            if (!outDir.isEmpty() && !QDir(outDir).exists())
+                QDir().mkpath(outDir);
+        }
         if (!zip.openForWrite(outPath)) {
             finish(false, zip.error());
             return;

@@ -515,14 +515,6 @@ Item {
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                     }
-                    Text {
-                        width: parent.width
-                        text: "导出时会先计算文件哈希并联网匹配来源，仅匹配到的文件用下载链接，其余直接打进包。"
-                        color: "#4b5462"
-                        wrapMode: Text.Wrap
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
                 }
 
                 // 底部导出条
@@ -1288,13 +1280,12 @@ Item {
     }
 
     // 选择输出位置
-    // 只选「放哪个文件夹」——文件名由上面的「名称」+ 格式自动拼，不该让用户自己敲
-    FileDialog {
+    // FolderDialog 是 Qt 6 专门选文件夹的类型（FileDialog+Directory 在 Windows 原生后端会退化成保存框）
+    FolderDialog {
         id: dirDialog
         title: "选择导出文件夹"
-        fileMode: FileDialog.Directory
         onAccepted: {
-            var dir = pane.toLocalPath(selectedFile)
+            var dir = pane.toLocalPath(selectedFolder)
             dir = dir.replace(/\/+$/, "")
             if (dir.length > 0) {
                 pane.outPath = dir + "/" + pane.safeName() + pane.suffix
@@ -1342,6 +1333,21 @@ Item {
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
             }
+            Row {
+                spacing: 8
+                Repeater {
+                    model: pane.quickDirs()
+                    delegate: SButton {
+                        kind: 1
+                        height: 28
+                        radius: Theme.rSm
+                        text: modelData.title
+                        onClicked: {
+                            pathInput.text = modelData.dir + "/" + pane.safeName() + pane.suffix
+                        }
+                    }
+                }
+            }
             Item {
                 width: parent.width - 36
                 height: 34
@@ -1384,11 +1390,41 @@ Item {
         }
     }
 
+    // 常用位置（桌面/下载/文档），存在才给
+    function quickDirs() {
+        var out = []
+        var home = ""
+        if (pane.outPath.length > 3) {
+            var m = pane.outPath.match(/^([A-Za-z]:\/Users\/[^/]+)/)
+            if (m) home = m[1]
+        }
+        if (home.length === 0) return out
+        var cand = [
+            { title: "桌面", dir: home + "/Desktop" },
+            { title: "下载", dir: home + "/Downloads" },
+            { title: "文档", dir: home + "/Documents" }
+        ]
+        for (var i = 0; i < cand.length; ++i) {
+            // QML 不能直接探目录是否存在，交给后端当前默认目录做兜底判断
+            out.push(cand[i])
+        }
+        return out
+    }
+
+    function currentExportDir() {
+        if (pane.outPath.length > 0) {
+            const i = pane.outPath.lastIndexOf("/")
+            if (i > 0) return pane.outPath.substring(0, i)
+        }
+        return (pane.ex && pane.ex.defaultExportDir) ? pane.ex.defaultExportDir() : ""
+    }
+
     function openDirDialog() {
-        const dir = pane.outPath.length > 0
-            ? pane.outPath.substring(0, Math.max(0, pane.outPath.lastIndexOf("/")))
-            : (pane.ex && pane.ex.defaultExportDir ? pane.ex.defaultExportDir() : "")
-        if (dir && dir.length > 0) dirDialog.currentFolder = pane.toFileUrl(dir)
+        // FolderDialog 的起始目录属性是 folder；先设再开，设失败也不影响弹出
+        const dir = pane.currentExportDir()
+        if (dir && dir.length > 0) {
+            try { dirDialog.folder = pane.toFileUrl(dir) } catch (e) { }
+        }
         dirDialog.open()
     }
 
