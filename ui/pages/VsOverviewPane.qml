@@ -146,6 +146,7 @@ Item {
             KvGroupLabel { text: "运行"; width: col.width }
             KvRow {
                 width: col.width
+                order: 0
                 k: "Java"
                 v: pane.javaText
                 a: "去指定"
@@ -153,6 +154,7 @@ Item {
             }
             KvRow {
                 width: col.width
+                order: 1
                 k: "内存"
                 v: pane.memText
                 a: "去设置"
@@ -163,6 +165,7 @@ Item {
             KvGroupLabel { text: "内容"; width: col.width }
             KvRow {
                 width: col.width
+                order: 2
                 k: "Mod"
                 v: pane.mods.length + " 个 · 启用 " + pane.modOn
                 a: "管理"
@@ -170,6 +173,7 @@ Item {
             }
             KvRow {
                 width: col.width
+                order: 3
                 k: "资源包"
                 v: pane.packs.length + " 个"
                 a: "管理"
@@ -177,6 +181,7 @@ Item {
             }
             KvRow {
                 width: col.width
+                order: 4
                 k: "存档"
                 v: pane.saves.length + " 个"
                 a: "管理"
@@ -188,6 +193,7 @@ Item {
             KvGroupLabel { text: "存储"; width: col.width }
             KvRow {
                 width: col.width
+                order: 5
                 k: "版本目录"
                 v: "versions\\" + pane.versionId
                 mono: true
@@ -196,6 +202,7 @@ Item {
             }
             KvRow {
                 width: col.width
+                order: 6
                 k: "游戏目录"
                 v: ".minecraft"
                 mono: true
@@ -219,11 +226,30 @@ Item {
     component KvRow: Item {
         id: kv
         height: 44
+        // 全页行号，入场按它错峰（行与行之间连续，不按分组重新计时）
+        property int order: 0
         property string k: ""
         property string v: ""
         property string a: ""
         property bool mono: false
         signal act()
+
+        // 入场：整行淡入 + 上浮 6px；行内元素不各自入场，否则文字会散着浮上来。
+        // 位移走 Translate：行由 Column 定位，直接动 y 会被 positioner 覆盖。
+        property bool shown: false
+        opacity: kv.shown ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter }
+        }
+        transform: Translate {
+            y: kv.shown ? 0 : 6
+            Behavior on y { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+        }
+        Timer {
+            interval: Math.min(kv.order, Theme.staggerMax) * Theme.staggerStep
+            running: true
+            onTriggered: kv.shown = true
+        }
 
         Rectangle {
             anchors.left: parent.left

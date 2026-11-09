@@ -42,13 +42,23 @@ Item {
 
     // silent = 切回窗口时的后台重扫：不点亮全局加载光条，也不显示"正在读取"占位
     property bool silent: false
-    function reload(silentReload) {
+
+    // ── 列表入场 ──
+    // 只有"首次载入 / 用户点刷新"发一轮入场预算（enterRows 个），其余重扫（删除、切回窗口）
+    // 都不发：删掉一条存档后整列再重播一遍会很像"页面重载了"。
+    readonly property int enterRows: 8
+    property int enterBudget: 0
+    // 过滤不动画：输入时清零剩余预算（列表为空时预算可能还没被消费掉）
+    onQueryChanged: pane.enterBudget = 0
+
+    function reload(silentReload, withEntrance) {
         if (!pane.b || pane.versionId.length === 0) return
         pane.silent = (silentReload === true)
         if (!pane.silent && !pane.loading) { pane.loading = true; pane.busyChanged(true) }
+        if (withEntrance === true) pane.enterBudget = pane.enterRows
         pane.b.listSavesAsync(pane.versionId)
     }
-    Component.onCompleted: pane.reload()
+    Component.onCompleted: pane.reload(false, true)
     onLoadingChanged: pane.busyChanged(pane.loading)
 
     Connections {
@@ -102,7 +112,7 @@ Item {
                     iconName: "refresh-cw"
                     text: "刷新"
                     onClicked: {
-                        pane.reload()
+                        pane.reload(false, true)
                         if (pane.toast) pane.toast.show("正在重新读取存档", -1, "info", true)
                     }
                 }
@@ -129,19 +139,44 @@ Item {
             cacheBuffer: 400
             boundsBehavior: Flickable.StopAtBounds
 
+            // 这里故意不挂 add / remove 过渡：model 是"整表替换的数组"——后端每来一次数据
+            // 就换一个新数组，ListView 收到的是 reset（只走 populate），add/remove 永远不触发。
+            // 行入场因此交给 delegate 自己播（见 delegate 里的 enterAnim）。
+
             delegate: Item {
+                id: saveRow
                 width: saveList.width
                 height: 76
                 readonly property bool hasIcon: modelData.iconPath !== undefined && modelData.iconPath !== ""
 
+                // 入场：淡入 + 从下 4px 归位，前 enterRows 行按 staggerStep 错开。
+                // 没拿到预算的行（过滤、复用、删除后的重扫）直接到位，不闪。
+                SequentialAnimation {
+                    id: enterAnim
+                    PauseAnimation { duration: Math.min(index, pane.enterRows - 1) * Theme.staggerStep }
+                    ParallelAnimation {
+                        NumberAnimation { target: saveRow; property: "opacity"; from: 0; to: 1; duration: Theme.durSlow; easing.type: Theme.easeEnter }
+                        NumberAnimation { target: enterShift; property: "y"; from: 4; to: 0; duration: Theme.durSlow; easing.type: Theme.easeEnter }
+                    }
+                }
+                Component.onCompleted: {
+                    if (pane.enterBudget > 0) {
+                        pane.enterBudget -= 1
+                        saveRow.opacity = 0
+                        enterShift.y = 4
+                        enterAnim.start()
+                    }
+                }
+                transform: Translate { id: enterShift }
+
                 Rectangle {
                     anchors.fill: parent
                     radius: Theme.rMd
-                    color: hov.hovered ? "#101419" : "#0b0d12"
+                    color: hov.hovered ? "#0f131a" : "#0b0d12"
                     border.width: 1
                     border.color: hov.hovered ? "#333a47" : Theme.line2
-                    Behavior on color { ColorAnimation { duration: Theme.durFast } }
-                    Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
+                    Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                 }
 
                 Rectangle {
@@ -223,6 +258,9 @@ Item {
                     width: parent.width
                     topPadding: 26
                     visible: saveList.count === 0 && !pane.loading
+                    // 文案"出现"给一点重量，硬切 visible 会闪
+                    opacity: visible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
                     text: pane.saves.length === 0 ? "此版本还没有存档" : "没有匹配的存档"
                     color: "#5d6673"
@@ -233,6 +271,8 @@ Item {
                     width: parent.width
                     topPadding: 26
                     visible: pane.loading
+                    opacity: visible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
                     text: "正在读取存档列表…"
                     color: "#6b7686"

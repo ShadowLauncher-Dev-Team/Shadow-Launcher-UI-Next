@@ -95,7 +95,9 @@ Item {
             SCard {
                 width: col.width
                 title: "分配内存"
+                // 非自定义模式整卡压暗：切换分配方式时跟着 OptCard 一起过渡，不要硬跳
                 opacity: pane.mode === 2 ? 1 : 0.45
+                Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
 
                 Item {
                     width: parent.width
@@ -212,6 +214,9 @@ Item {
                         radius: 5
                         width: parent.width * Math.min(1, pane.manualMB / Math.max(1, pane.sysTotal))
                         color: Theme.accent
+                        // 这段只有拖滑条时才会变（低频），才敢用 Behavior on width。
+                        // 左边那条「其他占用」只在 reload 时变，跟着一起动反而像卡了，不做。
+                        Behavior on width { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     }
                 }
                 Item {
@@ -279,8 +284,8 @@ Item {
             color: opt.active ? "#111a2b" : "#0b0d12"
             border.width: 1
             border.color: opt.active ? "#2c4a7a" : Theme.line2
-            Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
-            Behavior on color { ColorAnimation { duration: Theme.durFast } }
+            Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+            Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
         }
         Rectangle {
             id: dot

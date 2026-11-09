@@ -609,6 +609,9 @@ Item {
                         Text {
                             width: parent.width
                             text: pane.statusText
+                            // 只在「开始导出、状态区出现」时淡入；导出中文案会反复刷新，逐条淡入会闪
+                            opacity: pane.exporting ? 1 : 0
+                            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                             color: "#7b8494"
                             elide: Text.ElideRight
                             font.family: Theme.fontFamily
@@ -696,6 +699,13 @@ Item {
                         visible: pane.isChecked(rowItem.optId)
                         color: "#ffffff"
                     }
+                    // 勾选时方框轻弹一下：1 -> 1.08 -> 1，总时长 Theme.durFast
+                    SequentialAnimation on scale {
+                        id: optCbPulse
+                        running: false
+                        NumberAnimation { to: 1.08; duration: Theme.durFast / 2; easing.type: Theme.easeStandard }
+                        NumberAnimation { to: 1.0; duration: Theme.durFast / 2; easing.type: Theme.easePop }
+                    }
                 }
                 Text {
                     text: rowItem.o ? rowItem.o.title : ""
@@ -715,7 +725,10 @@ Item {
             HoverHandler { id: hov; cursorShape: Qt.PointingHandCursor }
             TapHandler {
                 acceptedButtons: Qt.LeftButton
-                onTapped: pane.toggle(rowItem.optId)
+                onTapped: {
+                    pane.toggle(rowItem.optId)
+                    optCbPulse.restart()
+                }
             }
         }
     }
@@ -728,6 +741,9 @@ Item {
             id: modItem
             width: parent ? parent.width : 0
             height: 44 + (pane.modExpanded ? 4 + 34 + 26 + 240 : 0)
+            // 展开/收起走高度动画：列表跟着撑开，内容 clip 在卡片内不外漏
+            clip: true
+            Behavior on height { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
 
             Rectangle {
                 id: modHead
@@ -760,8 +776,18 @@ Item {
                     visible: pane.isChecked("mod")
                     color: "#ffffff"
                 }
+                // 勾选时方框轻弹一下：1 -> 1.08 -> 1，总时长 Theme.durFast
+                SequentialAnimation on scale {
+                    id: modCbPulse
+                    running: false
+                    NumberAnimation { to: 1.08; duration: Theme.durFast / 2; easing.type: Theme.easeStandard }
+                    NumberAnimation { to: 1.0; duration: Theme.durFast / 2; easing.type: Theme.easePop }
+                }
                 TapHandler { acceptedButtons: Qt.LeftButton
-                    onTapped: pane.toggleParent("mod", []) }
+                    onTapped: {
+                        pane.toggleParent("mod", [])
+                        modCbPulse.restart()
+                    } }
                 HoverHandler { cursorShape: Qt.PointingHandCursor }
             }
 
@@ -775,7 +801,10 @@ Item {
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 TapHandler { acceptedButtons: Qt.LeftButton
-                    onTapped: pane.toggleParent("mod", []) }
+                    onTapped: {
+                        pane.toggleParent("mod", [])
+                        modCbPulse.restart()
+                    } }
                 HoverHandler { cursorShape: Qt.PointingHandCursor }
             }
 
@@ -811,6 +840,8 @@ Item {
                 anchors.topMargin: 4
                 height: parent.height - 48
                 visible: pane.modExpanded
+                opacity: pane.modExpanded ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
 
                 Rectangle { x: 21; y: 0; width: 1; height: parent.height - 6; color: "#1b2029" }
 
@@ -989,6 +1020,13 @@ Item {
                     visible: pane.isChecked(grpItem.optId)
                     color: "#ffffff"
                 }
+                // 勾选时方框轻弹一下：1 -> 1.08 -> 1，总时长 Theme.durFast
+                SequentialAnimation on scale {
+                    id: headCbPulse
+                    running: false
+                    NumberAnimation { to: 1.08; duration: Theme.durFast / 2; easing.type: Theme.easeStandard }
+                    NumberAnimation { to: 1.0; duration: Theme.durFast / 2; easing.type: Theme.easePop }
+                }
             }
             Text {
                 x: 39
@@ -1011,7 +1049,10 @@ Item {
             HoverHandler { id: hov2; cursorShape: Qt.PointingHandCursor }
             TapHandler {
                 acceptedButtons: Qt.LeftButton
-                onTapped: pane.toggleParent(grpItem.optId, grpItem.items)
+                onTapped: {
+                    pane.toggleParent(grpItem.optId, grpItem.items)
+                    headCbPulse.restart()
+                }
             }
 
             // 子项列表（缩进 + 竖线）
@@ -1095,6 +1136,13 @@ Item {
                                         visible: pane.subChecked(grpItem.optId, modelData)
                                         color: "#ffffff"
                                     }
+                                    // 勾选时方框轻弹一下：1 -> 1.08 -> 1，总时长 Theme.durFast
+                                    SequentialAnimation on scale {
+                                        id: subCbPulse
+                                        running: false
+                                        NumberAnimation { to: 1.08; duration: Theme.durFast / 2; easing.type: Theme.easeStandard }
+                                        NumberAnimation { to: 1.0; duration: Theme.durFast / 2; easing.type: Theme.easePop }
+                                    }
                                 }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
@@ -1106,7 +1154,10 @@ Item {
                             }
                             TapHandler {
                                 acceptedButtons: Qt.LeftButton
-                                onTapped: pane.toggleSub(grpItem.optId, modelData)
+                                onTapped: {
+                                    pane.toggleSub(grpItem.optId, modelData)
+                                    subCbPulse.restart()
+                                }
                             }
                             HoverHandler { cursorShape: Qt.PointingHandCursor }
                         }
@@ -1154,6 +1205,13 @@ Item {
                     visible: pane.isChecked("saves")
                     color: "#ffffff"
                 }
+                // 勾选时方框轻弹一下：1 -> 1.08 -> 1，总时长 Theme.durFast
+                SequentialAnimation on scale {
+                    id: saveCbPulse
+                    running: false
+                    NumberAnimation { to: 1.08; duration: Theme.durFast / 2; easing.type: Theme.easeStandard }
+                    NumberAnimation { to: 1.0; duration: Theme.durFast / 2; easing.type: Theme.easePop }
+                }
             }
             Text {
                 x: 39
@@ -1176,7 +1234,10 @@ Item {
             HoverHandler { id: hov3; cursorShape: Qt.PointingHandCursor }
             TapHandler {
                 acceptedButtons: Qt.LeftButton
-                onTapped: pane.toggle("saves")
+                onTapped: {
+                    pane.toggle("saves")
+                    saveCbPulse.restart()
+                }
             }
 
             Item {
@@ -1239,6 +1300,13 @@ Item {
                                     border.color: pane.checkedSaves.indexOf(modelData.name) >= 0 ? Theme.accent : "#39414f"
                                     SIcon { anchors.centerIn: parent; width: 9; height: 9; name: "check"
                                         visible: pane.checkedSaves.indexOf(modelData.name) >= 0; color: "#ffffff" }
+                                    // 勾选时方框轻弹一下：1 -> 1.08 -> 1，总时长 Theme.durFast
+                                    SequentialAnimation on scale {
+                                        id: saveSubCbPulse
+                                        running: false
+                                        NumberAnimation { to: 1.08; duration: Theme.durFast / 2; easing.type: Theme.easeStandard }
+                                        NumberAnimation { to: 1.0; duration: Theme.durFast / 2; easing.type: Theme.easePop }
+                                    }
                                 }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
@@ -1257,7 +1325,10 @@ Item {
                             }
                             TapHandler {
                                 acceptedButtons: Qt.LeftButton
-                                onTapped: pane.toggleSave(modelData.name, pane.checkedSaves.indexOf(modelData.name) < 0)
+                                onTapped: {
+                                    pane.toggleSave(modelData.name, pane.checkedSaves.indexOf(modelData.name) < 0)
+                                    saveSubCbPulse.restart()
+                                }
                             }
                             HoverHandler { cursorShape: Qt.PointingHandCursor }
                         }
@@ -1303,6 +1374,13 @@ Item {
         modal: true
         padding: 0
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        // 开合用 Popup 自带 Transition，不再自己写一套（整层淡入淡出，盖住背景+内容）
+        enter: Transition {
+            NumberAnimation { target: pathPop; property: "opacity"; from: 0; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+        }
+        exit: Transition {
+            NumberAnimation { target: pathPop; property: "opacity"; from: 1; to: 0; duration: Theme.durBase; easing.type: Theme.easeExit }
+        }
         background: Rectangle {
             radius: Theme.rMd
             color: "#0b0d12"
@@ -1437,6 +1515,12 @@ Item {
         modal: true
         padding: 0
         closePolicy: Popup.NoAutoClose
+        enter: Transition {
+            NumberAnimation { target: lookupPop; property: "opacity"; from: 0; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+        }
+        exit: Transition {
+            NumberAnimation { target: lookupPop; property: "opacity"; from: 1; to: 0; duration: Theme.durBase; easing.type: Theme.easeExit }
+        }
         background: Rectangle {
             radius: Theme.rMd
             color: "#0b0d12"

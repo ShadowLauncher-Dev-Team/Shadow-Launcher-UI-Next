@@ -2,6 +2,12 @@
 // 版本设置 · 快捷入口（定稿方案 C：轻量列表，无卡片框）
 //
 // 只放"点了就发生"的动作；版本的加载器/占用等信息属于「概览」，不在这里重复。
+//
+// 动效（克制）：
+//   入场：整行淡入 + 上浮 6px，staggerStep 错峰、staggerMax 封顶，durSlow + easeEnter
+//   hover：底色 + 图标/文字颜色，只改颜色不做位移，durFast + easeStandard
+//   按下：整个瓦片 0.98 → 1，durPress + easePop，只做按下这一下
+//   入场必须作用在行容器上 —— 行内矩形已经绑了 hover 的 opacity，同一元素再叠一层就是两次淡入
 import QtQuick
 import QtQuick.Dialogs
 import ShadowLauncher.Next
@@ -56,48 +62,13 @@ Item {
                     { label: "截图文件夹",   icon: "camera",     fn: "openScreenshotsFolder", tip: "打开" },
                     { label: "Mod 文件夹",   icon: "puzzle",     fn: "openModsFolder",       tip: "打开" }
                 ]
-                delegate: Item {
+                delegate: QuickTile {
                     width: col.width
-                    height: 44
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 6
-                        color: "#0f131a"
-                        opacity: hov.hovered ? 1 : 0
-                        Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
-                    }
-                    SIcon {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        name: modelData.icon
-                        size: 15
-                        color: "#5d6673"
-                    }
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 35
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.label
-                        color: Theme.fg
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 13
-                    }
-                    Text {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.tip
-                        color: "#6b7686"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-                    HoverHandler { id: hov }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: pane.openDir(modelData.fn, "已打开" + modelData.label, modelData.fail)
-                    }
+                    order: index
+                    label: modelData.label
+                    iconName: modelData.icon
+                    tipText: modelData.tip
+                    onActivated: pane.openDir(modelData.fn, "已打开" + modelData.label, modelData.fail)
                 }
             }
 
@@ -118,48 +89,14 @@ Item {
                     { label: "最新启动日志", icon: "file-text",  fn: "openLatestLog",   tip: "打开" },
                     { label: "崩溃日志",     icon: "alert-octagon", fn: "openCrashLog", tip: "打开", fail: "这个版本还没有崩溃日志" }
                 ]
-                delegate: Item {
+                delegate: QuickTile {
+                    // 行号接着上一组往下排，整页是一条连续波浪，不按分组重新计时
                     width: col.width
-                    height: 44
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 6
-                        color: "#0f131a"
-                        opacity: hov2.hovered ? 1 : 0
-                        Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
-                    }
-                    SIcon {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        name: modelData.icon
-                        size: 15
-                        color: "#5d6673"
-                    }
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 35
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.label
-                        color: Theme.fg
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 13
-                    }
-                    Text {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.tip
-                        color: "#6b7686"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-                    HoverHandler { id: hov2 }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: pane.openDir(modelData.fn, "已打开" + modelData.label, modelData.fail)
-                    }
+                    order: 4 + index
+                    label: modelData.label
+                    iconName: modelData.icon
+                    tipText: modelData.tip
+                    onActivated: pane.openDir(modelData.fn, "已打开" + modelData.label, modelData.fail)
                 }
             }
 
@@ -179,65 +116,30 @@ Item {
                     { label: "复制版本路径", icon: "copy", tip: "复制" },
                     { label: "导出启动脚本", icon: "terminal", tip: "导出" }
                 ]
-                delegate: Item {
+                delegate: QuickTile {
                     width: col.width
-                    height: 44
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 6
-                        color: "#0f131a"
-                        opacity: hov3.hovered ? 1 : 0
-                        Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
-                    }
-                    SIcon {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        name: modelData.icon
-                        size: 15
-                        color: "#5d6673"
-                    }
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 35
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.label
-                        color: Theme.fg
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 13
-                    }
-                    Text {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.tip
-                        color: "#6b7686"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-                    HoverHandler { id: hov3 }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (index === 0) {
-                                var p = pane.b ? pane.b.copyVersionPath(pane.versionId) : ""
-                                if (pane.toast) pane.toast.show(p ? "已复制版本路径" : "复制失败：版本不存在")
-                            } else {
-                                if (!pane.b) return
-                                var s = pane.b.settings()
-                                var scriptText = pane.b.exportLaunchScript(
-                                            pane.versionId, s.javaPath, s.maxMemoryMB,
-                                            s.versionJvmArgs(pane.versionId),
-                                            s.versionGameArgs(pane.versionId),
-                                            s.versionHighPerfGpu(pane.versionId))
-                                if (!scriptText || scriptText.length === 0) {
-                                    if (pane.toast)
-                                        pane.toast.show("导出失败：请检查 Java 是否就绪", -1, "error", true)
-                                    return
-                                }
-                                pane.pendingExport = scriptText
+                    order: 7 + index
+                    label: modelData.label
+                    iconName: modelData.icon
+                    tipText: modelData.tip
+                    onActivated: {
+                        if (index === 0) {
+                            var p = pane.b ? pane.b.copyVersionPath(pane.versionId) : ""
+                            if (pane.toast) pane.toast.show(p ? "已复制版本路径" : "复制失败：版本不存在")
+                        } else {
+                            if (!pane.b) return
+                            var s = pane.b.settings()
+                            var scriptText = pane.b.exportLaunchScript(
+                                        pane.versionId, s.javaPath, s.maxMemoryMB,
+                                        s.versionJvmArgs(pane.versionId),
+                                        s.versionGameArgs(pane.versionId),
+                                        s.versionHighPerfGpu(pane.versionId))
+                            if (!scriptText || scriptText.length === 0) {
+                                if (pane.toast)
+                                    pane.toast.show("导出失败：请检查 Java 是否就绪", -1, "error", true)
+                                return
                             }
+                            pane.pendingExport = scriptText
                         }
                     }
                 }
@@ -260,5 +162,96 @@ Item {
                 pane.toast.show(ok ? "已导出到 " + target : "保存失败，请换一个位置再试", -1, ok ? "info" : "error", true)
         }
         onRejected: pane.pendingExport = null
+    }
+
+    // ── 快捷入口行 ───────────────────────────────────────────
+    // 三个分组共 9 行是同一套皮：布局与改动前逐像素一致，只把 hover / 按下 / 入场收在一处，
+    // 免得三份 delegate 各写一套动效，以后改一处漏两处。
+    component QuickTile: Item {
+        id: tile
+        property string label: ""
+        property string iconName: "folder"
+        property string tipText: "打开"
+        // 全页连续行号（文件夹 0-3 / 日志 4-6 / 其他 7-8），入场按它错峰
+        property int order: 0
+        signal activated()
+
+        height: 44
+
+        // 按下：只做这一下。0.98 用 easePop 回弹，durPress 按下即到位
+        scale: pressArea.pressed ? 0.98 : 1
+        Behavior on scale {
+            NumberAnimation { duration: Theme.durPress; easing.type: Theme.easePop }
+        }
+
+        // 入场：整行淡入 + 上浮 6px。位移走 Translate 而不是 item.y ——
+        // 行由 Column 定位，直接动 y 会被 positioner 覆盖；Translate 不参与布局。
+        property bool shown: false
+        opacity: tile.shown ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter }
+        }
+        transform: Translate {
+            y: tile.shown ? 0 : 6
+            Behavior on y { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+        }
+        Timer {
+            interval: Math.min(tile.order, Theme.staggerMax) * Theme.staggerStep
+            running: true
+            onTriggered: tile.shown = true
+        }
+
+        // hover 底色：保留原来的 opacity 过渡，补上 easeStandard
+        Rectangle {
+            anchors.fill: parent
+            radius: 6
+            color: "#0f131a"
+            opacity: hover.hovered ? 1 : 0
+            Behavior on opacity {
+                NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+            }
+        }
+        SIcon {
+            anchors.left: parent.left
+            anchors.leftMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            name: tile.iconName
+            size: 15
+            color: hover.hovered ? Theme.fg2 : "#5d6673"
+            Behavior on color {
+                ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+            }
+        }
+        Text {
+            anchors.left: parent.left
+            anchors.leftMargin: 35
+            anchors.verticalCenter: parent.verticalCenter
+            text: tile.label
+            color: hover.hovered ? "#ffffff" : Theme.fg
+            font.family: Theme.fontFamily
+            font.pixelSize: 13
+            Behavior on color {
+                ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+            }
+        }
+        Text {
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            text: tile.tipText
+            color: hover.hovered ? "#8a94a3" : "#6b7686"
+            font.family: Theme.fontFamily
+            font.pixelSize: 11
+            Behavior on color {
+                ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+            }
+        }
+        HoverHandler { id: hover }
+        MouseArea {
+            id: pressArea
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: tile.activated()
+        }
     }
 }

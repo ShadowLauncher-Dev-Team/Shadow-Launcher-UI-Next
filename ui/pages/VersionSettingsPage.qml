@@ -2,7 +2,8 @@
 // 版本设置（全屏页）—— 顶栏 + 左栏九项 + 内容区
 //
 // 承载：StageShell 的全屏页宿主（与版本页/账户页同一套：侧栏收起、页面右滑入、返回回版本列表）
-// 动效：左栏选中条用 Theme.durFast；页面切换由壳负责，这里不做淡化
+// 动效：左栏选中胶囊继承主菜单 SideBar（单个 Item 的 y 用 durSlow+easeEnter 滑到新位置）；
+//       内容区分区切换用 durBase 淡入+上移 6px，与壳的整页切换（durPage）分层，不互相干扰
 import QtQuick
 import ShadowLauncher.Next
 
@@ -49,6 +50,18 @@ Item {
         for (var i = 0; i < rows.length; ++i)
             if (rows[i].t === "i" && rows[i].k === k) return rows[i].label
         return ""
+    }
+
+    // 左栏选中胶囊的目标位置：分组 34 / 分区项 40，位置纯计算（不用 mapToItem，避免 Loader 未完成时算错）
+    readonly property int navGroupH: 34
+    readonly property int navItemH: 40
+    function navY(k) {
+        var y = 0
+        for (var i = 0; i < rows.length; ++i) {
+            if (rows[i].t === "i" && rows[i].k === k) return y
+            y += (rows[i].t === "g" ? navGroupH : navItemH)
+        }
+        return -1
     }
 
     // --ui-pane <key> 直接落在某个分区（截图/验收用）
@@ -131,23 +144,61 @@ Item {
         }
 
         Flickable {
+            id: navFlick
             anchors.fill: parent
             anchors.topMargin: 10
             anchors.bottomMargin: 10
             clip: true
-            contentHeight: navCol.implicitHeight
+            contentHeight: navHost.height
             boundsBehavior: Flickable.StopAtBounds
 
-            Column {
-                id: navCol
-                width: parent.width
+            Item {
+                id: navHost
+                width: navFlick.width
+                height: navCol.implicitHeight
 
-                Repeater {
-                    model: page.rows
-                    delegate: Loader {
-                        width: navCol.width
-                        sourceComponent: modelData.t === "g" ? groupComp : itemComp
-                        property var rowData: modelData
+                // 选中胶囊：继承主菜单 SideBar 的做法 —— 一整块从旧位置滑到新位置，
+                // 而不是"旧的竖条缩回去、新的竖条长出来"两段互不相关的动作。
+                Item {
+                    id: selPill
+                    z: 0
+                    x: 10
+                    width: Math.max(0, navHost.width - 20)
+                    visible: page.navY(page.currentKey) >= 0
+                    y: Math.max(0, page.navY(page.currentKey)) + 2
+                    height: page.navItemH - 4
+
+                    Behavior on y { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Theme.rSm
+                        color: "#151a23"
+                    }
+                    // 左侧强调条跟着胶囊一起走
+                    Rectangle {
+                        width: 2
+                        radius: 1
+                        anchors.left: parent.left
+                        anchors.leftMargin: -8
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: parent.height * 0.55
+                        color: Theme.accent
+                    }
+                }
+
+                Column {
+                    id: navCol
+                    z: 1
+                    width: parent.width
+
+                    Repeater {
+                        model: page.rows
+                        delegate: Loader {
+                            width: navCol.width
+                            sourceComponent: modelData.t === "g" ? groupComp : itemComp
+                            property var rowData: modelData
+                        }
                     }
                 }
             }
@@ -181,26 +232,18 @@ Item {
             height: 40
             readonly property bool active: page.currentKey === rowData.k
 
-            Rectangle {
-                anchors.left: parent.left
-                anchors.leftMargin: 2
-                anchors.verticalCenter: parent.verticalCenter
-                width: 2
-                height: 22
-                radius: 2
-                color: Theme.accent
-                opacity: itemRoot.active ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
-            }
-
+            // 选中高亮由外层 selPill 承担（滑动的那一块）。这里只做 hover，
+            // 否则会出现"胶囊在滑、行背景自己也在亮灭"的两套高亮打架。
             Rectangle {
                 anchors.fill: parent
                 anchors.leftMargin: 10
                 anchors.rightMargin: 10
-                radius: 6
+                radius: Theme.rSm
                 color: "#0f131a"
-                opacity: (hover.hovered || itemRoot.active) ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
+                opacity: (hover.hovered && !itemRoot.active) ? 1 : 0
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                }
             }
 
             Row {
@@ -220,6 +263,9 @@ Item {
                     color: itemRoot.active ? "#ffffff" : Theme.fg2
                     font.family: Theme.fontFamily
                     font.pixelSize: 13
+                    Behavior on color {
+                        ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                    }
                 }
             }
 
@@ -253,12 +299,30 @@ Item {
                     page.busy = false
                 }
             }
-            onSourceComponentChanged: page.busy = false
+            onSourceComponentChanged: {
+                page.busy = false
+                if (paneIn) paneIn.restart()
+            }
 
-            NumberAnimation on opacity {
-                // 分区切换只做极轻的淡入，避免和壳的整页动效打架
-                from: 0; to: 1; duration: Theme.durFast
-                running: false
+            // 分区切换：新页淡入 + 上移 6px。
+            // 只做入场不做交叉淡出——旧页在同一帧被替换掉，底色一致不会闪；
+            // 壳的整页切换用 durPage(320)，这里 durBase(180)，两级动效层次分明不抢戏。
+            transform: Translate { id: paneSlide; y: 0 }
+
+            ParallelAnimation {
+                id: paneIn
+                NumberAnimation {
+                    target: paneLoader; property: "opacity"
+                    from: 0; to: 1
+                    duration: Theme.durBase
+                    easing.type: Theme.easeEnter
+                }
+                NumberAnimation {
+                    target: paneSlide; property: "y"
+                    from: 6; to: 0
+                    duration: Theme.durBase
+                    easing.type: Theme.easeEnter
+                }
             }
         }
     }

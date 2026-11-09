@@ -74,7 +74,14 @@ Item {
         pane.javaMajor = pane.s.javaMajor || 0
     }
 
-    Component.onCompleted: pane.load()
+    // 首次载入时 load() 会把设置恢复进来：这一下不播高度动画，否则进入「启动配置」分区会看到
+    // 「JVM 参数 / 游戏参数」卡从 0 长出来、下面几张卡整体下移。首帧之后才打开动画，
+    // 用户自己切「独立配置 / 跟随全局」时才有 180ms 的展开收起。
+    property bool laidOut: false
+    Component.onCompleted: {
+        pane.load()
+        Qt.callLater(function() { pane.laidOut = true })
+    }
 
     Connections {
         target: pane.b
@@ -183,8 +190,15 @@ Item {
             SCard {
                 width: col.width
                 title: "JVM 参数"
-                // 跟随全局时这块什么都不生效，直接收起来，别摆一个灰框
-                visible: pane.jvmMode === 1
+                // 跟随全局时这块什么都不生效，直接收起来，别摆一个灰框。
+                // 收起/展开走高度动画：卡片高度本来就由内容隐式高度决定，clip 住内容就不会漏出来。
+                height: pane.jvmMode === 1 ? implicitHeight : 0
+                clip: true
+                visible: height > 1
+                Behavior on height {
+                    enabled: pane.laidOut
+                    NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
+                }
 
                 STextArea {
                     width: parent.width
@@ -315,7 +329,13 @@ Item {
             SCard {
                 width: col.width
                 title: "游戏参数"
-                visible: pane.gameMode === 1
+                height: pane.gameMode === 1 ? implicitHeight : 0
+                clip: true
+                visible: height > 1
+                Behavior on height {
+                    enabled: pane.laidOut
+                    NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
+                }
                 STextArea {
                     width: parent.width
                     areaHeight: 48

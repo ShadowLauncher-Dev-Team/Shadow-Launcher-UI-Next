@@ -83,6 +83,11 @@ Item {
                 width: col.width
                 readonly property bool hasIssues: pane.failedFiles.length > 0
                 height: pane.verifying ? 118 : (hasIssues ? 128 : 86)
+                // 高度只在"未校验 86 / 校验中 118 / 有异常 128"之间切换，
+                // 过渡一下，底下几张卡就不会跟着整块跳。内部定位一个字都没动。
+                Behavior on height {
+                    NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
+                }
 
                 Rectangle {
                     anchors.fill: parent
@@ -96,7 +101,7 @@ Item {
                 Column {
                     anchors.left: parent.left
                     anchors.leftMargin: 20
-                    anchors.right: recheck.left
+                    anchors.right: verifyAction.left
                     anchors.rightMargin: 16
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 8
@@ -140,12 +145,13 @@ Item {
                             radius: 2
                             color: "#151a22"
                             Rectangle {
+                                // 宽度直接绑定，绝不加 Behavior on width：
+                                // 后端校验信号频率很高，每条信号都会把动画重置回起点，进度条永远追不上真实进度。
                                 width: parent.width * (pane.totalCount > 0
                                        ? Math.min(1, pane.checkedCount / pane.totalCount) : 0)
                                 height: parent.height
                                 radius: 2
                                 color: Theme.accent
-                                Behavior on width { NumberAnimation { duration: Theme.durFast } }
                             }
                         }
                         Text {
@@ -159,30 +165,61 @@ Item {
                     }
                 }
 
-                SButton {
-                    id: recheck
+                // 校验中 ↔ 重新校验：两块同尺寸按钮叠在同一位置做 opacity 交叉淡入。
+                // 不改 SButton 内部（hover/按下都在控件里），也不做宽度动画 ——
+                // 宽度固定取两者较宽值，切换时左侧文字块不会重排。
+                Item {
+                    id: verifyAction
                     anchors.right: parent.right
                     anchors.rightMargin: 20
                     anchors.verticalCenter: parent.verticalCenter
-                    kind: 1
+                    width: Math.max(recheck.implicitWidth, cancelBtn.implicitWidth)
                     height: 32
-                    radius: 2
-                    iconName: pane.verifying ? "x" : "refresh-cw"
-                    text: pane.verifying ? "取消" : "重新校验"
-                    onClicked: {
-                        if (!pane.b) return
-                        if (pane.verifying) {
+
+                    SButton {
+                        id: recheck
+                        anchors.fill: parent
+                        kind: 1
+                        radius: 2
+                        iconName: "refresh-cw"
+                        text: "重新校验"
+                        enabled: !pane.verifying
+                        // visible 跟着 opacity 走：淡出后彻底不再接收 hover/点击，
+                        // 否则隐藏的按钮会把 hover 状态带到下一次出现
+                        visible: opacity > 0
+                        opacity: pane.verifying ? 0 : 1
+                        Behavior on opacity {
+                            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                        }
+                        onClicked: {
+                            if (!pane.b) return
+                            // 先本地进"校验中"，后端信号来了再校准 ——
+                            // 否则点下去到第一条进度之间是完全无反馈的
+                            pane.failedFiles = []
+                            pane.hasResult = false
+                            pane.verifyingLocal = true
+                            pane.b.verifyVersion(pane.versionId)
+                            if (pane.toast) pane.toast.show("开始校验版本文件", -1, "info", true)
+                        }
+                    }
+                    SButton {
+                        id: cancelBtn
+                        anchors.fill: parent
+                        kind: 1
+                        radius: 2
+                        iconName: "x"
+                        text: "取消"
+                        enabled: pane.verifying
+                        visible: opacity > 0
+                        opacity: pane.verifying ? 1 : 0
+                        Behavior on opacity {
+                            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                        }
+                        onClicked: {
+                            if (!pane.b) return
                             pane.b.cancelVerify()
                             pane.verifyingLocal = false
-                            return
                         }
-                        // 先本地进"校验中"，后端信号来了再校准 ——
-                        // 否则点下去到第一条进度之间是完全无反馈的
-                        pane.failedFiles = []
-                        pane.hasResult = false
-                        pane.verifyingLocal = true
-                        pane.b.verifyVersion(pane.versionId)
-                        if (pane.toast) pane.toast.show("开始校验版本文件", -1, "info", true)
                     }
                 }
 
