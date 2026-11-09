@@ -256,13 +256,13 @@ const QList<ModpackExporter::ExportOptionDef>& ModpackExporter::optionDefs()
         {"mapdata", "已绘制的地图", "地图类 Mod 的世界/服务器地图、路标点（默认不导出）",
          {"journeymap/data/", "xaero/", "XaeroWaypoints/", "XaeroWorldMap/"}, false, true, false, false,
          {"journeymap/data/", "xaero/"}, QStringLiteral("mod")},
-        {"jei", "JEI 个人信息", "物品收藏夹等（默认不导出）",
+        {"jei", "JEI 物品收藏夹", "JEI 里加星的物品、合成历史（默认不导出）",
          {"config/jei/world/"}, false, true, false, false,
          {"config/jei/world/"}, QStringLiteral("mod")},
-        {"emi", "EMI 个人信息", "物品收藏夹、默认配方、合成历史（默认不导出）",
+        {"emi", "EMI 收藏夹与合成历史", "EMI 的收藏夹、默认配方、合成历史（默认不导出）",
          {"emi.json"}, false, true, false, false,
          {"emi.json"}, QStringLiteral("mod")},
-        {"patchouli", "帕秋莉手册个人信息", "教程书已读记录、书签（默认不导出）",
+        {"patchouli", "帕秋莉手册阅读进度", "Patchouli 模组的手册里读过哪些章节、加了哪些书签（默认不导出）",
          {"patchouli_data.json"}, false, true, false, false,
          {"patchouli_data.json"}, QStringLiteral("mod")},
         // —— 资源/光影 ——
@@ -464,7 +464,13 @@ QVariantMap ModpackExporter::exportContext(const QString& versionId) const
         om.insert(QStringLiteral("title"), d.title);
         om.insert(QStringLiteral("description"), d.description);
         om.insert(QStringLiteral("defaultChecked"), d.defaultChecked);
-        om.insert(QStringLiteral("privacy"), !d.defaultChecked);
+        // 真正的个人数据项（导出后对方会继承这些痕迹）。不能拿 defaultChecked 冒充：
+        // 截图/结构/录像/存档默认不勾只是因为体积大，跟隐私无关。
+        static const QSet<QString> kPrivacyIds = {
+            QStringLiteral("personal"), QStringLiteral("jei"), QStringLiteral("emi"),
+            QStringLiteral("patchouli"), QStringLiteral("mapdata"), QStringLiteral("servers"),
+        };
+        om.insert(QStringLiteral("privacy"), kPrivacyIds.contains(d.id));
         om.insert(QStringLiteral("parent"), d.parent);
         optList.append(om);
     }

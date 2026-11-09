@@ -658,7 +658,7 @@ Item {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: rowItem.o && rowItem.o.privacy
-                    text: "含隐私"
+                    text: "含个人数据"
                     color: Theme.warn
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
