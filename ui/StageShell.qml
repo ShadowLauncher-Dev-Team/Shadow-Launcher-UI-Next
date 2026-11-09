@@ -133,6 +133,18 @@ Item {
         // 版本设置里的扫盘 / 批量改名也点亮光条（几百个 jar 几秒没反馈会以为死了）
         || (root.settingsOpen && settingsPage.busy)
 
+    // --ui-reenter 的驱动：进/退 每 1.2s 交替一次，用于连拍验证"第二次及以后进入是否还有过渡"。
+    // 第一次 open 是初始状态（不播 transition），之后每次切换都会走 states/transitions。
+    Timer {
+        id: reenterTimer
+        interval: 1200
+        repeat: true
+        onTriggered: {
+            root.settingsOpen = !root.settingsOpen
+            console.info("[ui] reenter toggle ->", root.settingsOpen)
+        }
+    }
+
     Component.onCompleted: {
         if (Qt.application.arguments.indexOf("--ui-versions") >= 0) root.versionsOpen = true
         // 版本设置预览：--ui-settings [versionId]（截图/验收用；不给 id 就用当前选中版本）
@@ -143,6 +155,12 @@ Item {
                                      ? Qt.application.arguments[si + 1]
                                      : (b ? b.selectedVersion : "")
             root.settingsOpen = true
+        }
+        // --ui-reenter：进 → 退 → 再进，验证"第二次进入是否还有过渡"（截图/验收用）
+        if (Qt.application.arguments.indexOf("--ui-reenter") >= 0) {
+            root.settingsVersionId = b ? b.selectedVersion : ""
+            root.settingsOpen = true
+            reenterTimer.start()
         }
         if (Qt.application.arguments.indexOf("--ui-account") >= 0) root.accountOpen = true
         if (Qt.application.arguments.indexOf("--ui-download") >= 0) {
@@ -307,11 +325,26 @@ Item {
         // 底已经是不透明的，且 clip 住宿主 —— 空隙里露出的是自己的底色，永远透不出下层启动页。
         // 只做位移不做透明度：不会出现"先空一帧再显内容"。
         Item {
+            id: versionsSurface
             anchors.fill: parent
-            x: root.versionsOpen ? 0 : 24
-            Behavior on x { NumberAnimation { duration: root.versionsOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
-            scale: root.versionsOpen ? 1 : 0.988
-            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+            // 收起态就是出厂位置；打开时由下面的 state 把它归位。
+            // 不能用「Behavior + duration: open ? durPage : 0」——时长和位移在同一帧求值，
+            // 第二次打开会拿到上一次关闭时算出的 0，位移直接瞬移（影报的"第二次进入是硬切"）。
+            x: 24
+            scale: 0.988
+            states: State {
+                name: "shown"
+                when: root.versionsOpen
+                PropertyChanges { target: versionsSurface; x: 0; scale: 1 }
+            }
+            // 只写 to: "shown" —— 进入才有过渡；离开没有 transition，保持既有的瞬时关闭
+            transitions: Transition {
+                to: "shown"
+                ParallelAnimation {
+                    NumberAnimation { target: versionsSurface; property: "x"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                    NumberAnimation { target: versionsSurface; property: "scale"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                }
+            }
         VersionPage {
             anchors.fill: parent
             toast: toastHost
@@ -332,11 +365,26 @@ Item {
         clip: true
         Rectangle { anchors.fill: parent; color: Theme.bg }
         Item {
+            id: settingsSurface
             anchors.fill: parent
-            x: root.settingsOpen ? 0 : 24
-            Behavior on x { NumberAnimation { duration: root.settingsOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
-            scale: root.settingsOpen ? 1 : 0.988
-            Behavior on scale { NumberAnimation { duration: root.settingsOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
+            // 收起态就是出厂位置；打开时由下面的 state 把它归位。
+            // 不能用「Behavior + duration: open ? durPage : 0」——时长和位移在同一帧求值，
+            // 第二次打开会拿到上一次关闭时算出的 0，位移直接瞬移（影报的"第二次进入是硬切"）。
+            x: 24
+            scale: 0.988
+            states: State {
+                name: "shown"
+                when: root.settingsOpen
+                PropertyChanges { target: settingsSurface; x: 0; scale: 1 }
+            }
+            // 只写 to: "shown" —— 进入才有过渡；离开没有 transition，保持既有的瞬时关闭
+            transitions: Transition {
+                to: "shown"
+                ParallelAnimation {
+                    NumberAnimation { target: settingsSurface; property: "x"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                    NumberAnimation { target: settingsSurface; property: "scale"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                }
+            }
             VersionSettingsPage {
                 id: settingsPage
                 anchors.fill: parent
@@ -358,11 +406,26 @@ Item {
         // 底已经是不透明的，且 clip 住宿主 —— 空隙里露出的是自己的底色，永远透不出下层启动页。
         // 只做位移不做透明度：不会出现"先空一帧再显内容"。
         Item {
+            id: accountSurface
             anchors.fill: parent
-            y: root.accountOpen ? 0 : 40
-            Behavior on y { NumberAnimation { duration: root.accountOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
-            scale: root.accountOpen ? 1 : 0.988
-            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+            // 收起态就是出厂位置；打开时由下面的 state 把它归位。
+            // 不能用「Behavior + duration: open ? durPage : 0」——时长和位移在同一帧求值，
+            // 第二次打开会拿到上一次关闭时算出的 0，位移直接瞬移（影报的"第二次进入是硬切"）。
+            y: 40
+            scale: 0.988
+            states: State {
+                name: "shown"
+                when: root.accountOpen
+                PropertyChanges { target: accountSurface; y: 0; scale: 1 }
+            }
+            // 只写 to: "shown" —— 进入才有过渡；离开没有 transition，保持既有的瞬时关闭
+            transitions: Transition {
+                to: "shown"
+                ParallelAnimation {
+                    NumberAnimation { target: accountSurface; property: "y"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                    NumberAnimation { target: accountSurface; property: "scale"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                }
+            }
         AccountPage {
             anchors.fill: parent
             toast: toastHost
@@ -385,11 +448,26 @@ Item {
         // 底已经是不透明的，且 clip 住宿主 —— 空隙里露出的是自己的底色，永远透不出下层启动页。
         // 只做位移不做透明度：不会出现"先空一帧再显内容"。
         Item {
+            id: downloadSurface
             anchors.fill: parent
-            x: root.downloadOpen ? 0 : 24
-            Behavior on x { NumberAnimation { duration: root.downloadOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
-            scale: root.downloadOpen ? 1 : 0.988
-            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+            // 收起态就是出厂位置；打开时由下面的 state 把它归位。
+            // 不能用「Behavior + duration: open ? durPage : 0」——时长和位移在同一帧求值，
+            // 第二次打开会拿到上一次关闭时算出的 0，位移直接瞬移（影报的"第二次进入是硬切"）。
+            x: 24
+            scale: 0.988
+            states: State {
+                name: "shown"
+                when: root.downloadOpen
+                PropertyChanges { target: downloadSurface; x: 0; scale: 1 }
+            }
+            // 只写 to: "shown" —— 进入才有过渡；离开没有 transition，保持既有的瞬时关闭
+            transitions: Transition {
+                to: "shown"
+                ParallelAnimation {
+                    NumberAnimation { target: downloadSurface; property: "x"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                    NumberAnimation { target: downloadSurface; property: "scale"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                }
+            }
         DownloadPage {
             id: downloadPage
             anchors.fill: parent
@@ -422,11 +500,26 @@ Item {
         Rectangle { anchors.fill: parent; color: Theme.bg }
         // 入场只做位移 + 轻微缩放，宿主不透明且 clip 住 —— 不会透出下层启动页
         Item {
+            id: multiplayerSurface
             anchors.fill: parent
-            x: root.multiplayerOpen ? 0 : 24
-            Behavior on x { NumberAnimation { duration: root.multiplayerOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
-            scale: root.multiplayerOpen ? 1 : 0.988
-            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+            // 收起态就是出厂位置；打开时由下面的 state 把它归位。
+            // 不能用「Behavior + duration: open ? durPage : 0」——时长和位移在同一帧求值，
+            // 第二次打开会拿到上一次关闭时算出的 0，位移直接瞬移（影报的"第二次进入是硬切"）。
+            x: 24
+            scale: 0.988
+            states: State {
+                name: "shown"
+                when: root.multiplayerOpen
+                PropertyChanges { target: multiplayerSurface; x: 0; scale: 1 }
+            }
+            // 只写 to: "shown" —— 进入才有过渡；离开没有 transition，保持既有的瞬时关闭
+            transitions: Transition {
+                to: "shown"
+                ParallelAnimation {
+                    NumberAnimation { target: multiplayerSurface; property: "x"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                    NumberAnimation { target: multiplayerSurface; property: "scale"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                }
+            }
         MultiplayerPage {
             anchors.fill: parent
             toast: toastHost
@@ -445,11 +538,26 @@ Item {
         // 底已经是不透明的，且 clip 住宿主 —— 空隙里露出的是自己的底色，永远透不出下层启动页。
         // 只做位移不做透明度：不会出现"先空一帧再显内容"。
         Item {
+            id: resDetailSurface
             anchors.fill: parent
-            y: root.resDetailOpen ? 0 : 12
-            Behavior on y { NumberAnimation { duration: root.resDetailOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
-            scale: root.resDetailOpen ? 1 : 0.988
-            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+            // 收起态就是出厂位置；打开时由下面的 state 把它归位。
+            // 不能用「Behavior + duration: open ? durPage : 0」——时长和位移在同一帧求值，
+            // 第二次打开会拿到上一次关闭时算出的 0，位移直接瞬移（影报的"第二次进入是硬切"）。
+            y: 12
+            scale: 0.988
+            states: State {
+                name: "shown"
+                when: root.resDetailOpen
+                PropertyChanges { target: resDetailSurface; y: 0; scale: 1 }
+            }
+            // 只写 to: "shown" —— 进入才有过渡；离开没有 transition，保持既有的瞬时关闭
+            transitions: Transition {
+                to: "shown"
+                ParallelAnimation {
+                    NumberAnimation { target: resDetailSurface; property: "y"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                    NumberAnimation { target: resDetailSurface; property: "scale"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                }
+            }
         ResourceDetailPage {
             id: resDetail
             anchors.fill: parent
@@ -480,11 +588,26 @@ Item {
         // 底已经是不透明的，且 clip 住宿主 —— 空隙里露出的是自己的底色，永远透不出下层启动页。
         // 只做位移不做透明度：不会出现"先空一帧再显内容"。
         Item {
+            id: progressSurface
             anchors.fill: parent
-            y: root.progressOpen ? 0 : 12
-            Behavior on y { NumberAnimation { duration: root.progressOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
-            scale: root.progressOpen ? 1 : 0.988
-            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+            // 收起态就是出厂位置；打开时由下面的 state 把它归位。
+            // 不能用「Behavior + duration: open ? durPage : 0」——时长和位移在同一帧求值，
+            // 第二次打开会拿到上一次关闭时算出的 0，位移直接瞬移（影报的"第二次进入是硬切"）。
+            y: 12
+            scale: 0.988
+            states: State {
+                name: "shown"
+                when: root.progressOpen
+                PropertyChanges { target: progressSurface; y: 0; scale: 1 }
+            }
+            // 只写 to: "shown" —— 进入才有过渡；离开没有 transition，保持既有的瞬时关闭
+            transitions: Transition {
+                to: "shown"
+                ParallelAnimation {
+                    NumberAnimation { target: progressSurface; property: "y"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                    NumberAnimation { target: progressSurface; property: "scale"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                }
+            }
         ProgressPage {
             id: progressPage
             anchors.fill: parent

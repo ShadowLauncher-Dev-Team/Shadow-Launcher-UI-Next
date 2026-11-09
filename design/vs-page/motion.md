@@ -104,3 +104,50 @@
 | 工具页「开始校验↔取消」交叉淡入期间按钮宽度固定为两者较宽值 | 两块 SButton 叠放，宽度不参与动画（否则会看到两条不同宽度的描边） | 有意为之，左侧文字区少约 26px |
 | 列表删除没有收高动画 | 见上（ViewTransition 不触发） | 未做，删除反馈靠确认弹窗 + toast |
 | 手感（是否流畅、有无顿挫） | 静态截图无法判定 | **需人工实测** |
+
+
+---
+
+## 六、修复：第二次进入是全屏页硬切（影报）
+
+### 现象
+第一次进版本设置页有滑入，之后再进就是**硬切**。
+
+### 根因
+`StageShell.qml` 里每个全屏页都是这个写法：
+
+```qml
+x: root.settingsOpen ? 0 : 24
+Behavior on x { NumberAnimation { duration: root.settingsOpen ? Theme.durPage : 0 } }
+```
+
+**时长和位移在同一帧求值，顺序不可靠**：关闭时 `duration` 先算成 0；下次打开时如果 `x` 先于 `duration` 求值，就沿用了 0 → 位移瞬移。首次能对上只是碰巧。
+
+全项目共 **8 处**同款写法（版本管理/版本设置/账户/下载/联机/资源详情/下载进度），也就是**所有全屏页第二次打开都会硬切**，不只版本设置。
+
+### 修法
+改成 `states` + `transitions`，时长是字面量，不参与条件求值；只写 `to: "shown"`，所以只有进入有过渡，离开仍瞬时（保持既有的"返回要快"）：
+
+```qml
+x: 24
+scale: 0.988
+states: State { name: "shown"; when: root.settingsOpen
+                PropertyChanges { target: settingsSurface; x: 0; scale: 1 } }
+transitions: Transition {
+    to: "shown"
+    ParallelAnimation {
+        NumberAnimation { target: settingsSurface; property: "x"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+        NumberAnimation { target: settingsSurface; property: "scale"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+    }
+}
+```
+
+### 验证
+新增 `--ui-reenter`（测试用，与 `--ui-pane`/`--ui-settings` 同类）：进/退每 1.2s 交替。连拍 45 帧后统计帧间变化：
+
+```
+.XXXX...XXXX.XXXX...XXXX.XXXX.X.XXXX.XXXX...
+最长连续变化帧 = 4
+```
+
+硬切只会变化 1 帧；连续 4 帧变化 = 过渡真实播放。
