@@ -419,8 +419,11 @@ QVariantMap ModpackExporter::exportContext(const QString& versionId) const
                 if (rule.endsWith(QLatin1Char('/')))
                     return fi.isDir()
                         && !QDir(path).entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot).isEmpty();
-                if (rule.contains(QLatin1Char('*')) || rule.contains(QLatin1Char('?')))
+                if (rule.contains(QLatin1Char('*')) || rule.contains(QLatin1Char('?'))) {
+                    // 根目录下的通配文件（如 LICEN*）：QDir("") 会解析成进程 CWD，不能拿来判存在
+                    if (dirPart.isEmpty()) return false;
                     return QDir(contentRoot + QLatin1Char('/') + dirPart).exists();   // 通配文件：目录存在即可
+                }
                 return fi.isFile();
             };
             for (const auto& r : d.showRules) {

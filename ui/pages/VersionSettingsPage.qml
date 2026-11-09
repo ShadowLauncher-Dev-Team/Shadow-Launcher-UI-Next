@@ -42,6 +42,7 @@ Item {
         if (k === "mods") return modsComp
         if (k === "packs") return packsComp
         if (k === "saves") return savesComp
+        if (k === "export") return exportComp
         return placeholderComp
     }
     function paneTitle(k) {
@@ -315,6 +316,13 @@ Item {
     Component {
         id: savesComp
         VsSavesPane {
+            versionId: page.versionId
+            toast: page.toast
+        }
+    }
+    Component {
+        id: exportComp
+        VsExportPane {
             versionId: page.versionId
             toast: page.toast
         }
