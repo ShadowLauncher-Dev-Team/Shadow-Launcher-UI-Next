@@ -127,7 +127,10 @@ Item {
     // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
     // 登录这类不确定等待 + 资源库在途请求，统一走顶部 SLoadingBar
     readonly property bool loading: (b ? b.microsoftLoginBusy : false)
-        || (downloadPage ? downloadPage.resourceBusy : false)
+        // 同下面两条：只在下载页还开着的时候算它。
+        // downloadPage 是常驻对象（不是按需卸载），里面的资源视图扫描不会因为退出而立刻结束，
+        // 少了这个条件就会出现「进 Mod 页又马上退出，顶部光条还在一直转」。
+        || (root.downloadOpen && downloadPage ? downloadPage.resourceBusy : false)
         // 只在详情页还开着的时候算它：关掉后残留的请求不该让顶部继续转
         || (root.resDetailOpen && resDetail ? resDetail.loadingVersions : false)
         // 版本设置里的扫盘 / 批量改名也点亮光条（几百个 jar 几秒没反馈会以为死了）
