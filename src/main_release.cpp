@@ -21,6 +21,9 @@
 #include <QProgressDialog>
 #include <QWindow>
 #include <QQuickWindow>
+#include <QQuickItem>
+#include <QMouseEvent>
+#include <QDebug>
 #include <QAbstractNativeEventFilter>
 #include <QTimer>
 #include <QScreen>
@@ -30,6 +33,51 @@
 #include <QTranslator>
 #include <QSettings>
 #include <memory>
+
+namespace {
+
+// 点空白处释放文本焦点。
+//
+// 为什么放在窗口层：QML 里试过两次都不成——版本设置页每个 pane 里是 anchors.fill 的
+// Flickable，它会把 press 吃掉，所以挂在下层的 MouseArea / TapHandler 根本收不到；
+// 而 SField.blur() 那种"逐处调用"只要漏一处就一直保持聚焦（下载页能正常工作正是因为
+// 它把该调的地方都调到了，且它没有全屏 Flickable 挡着）。
+// 在窗口层拦 MouseButtonPress：当前焦点在文本输入上、且按下的点不在它的矩形内，就释放焦点。
+// 对所有页面一视同仁，不依赖各页面自己挂监听，也没有 TapHandler 的手势判定延迟（点快也准）。
+class FocusClearFilter : public QObject
+{
+public:
+    explicit FocusClearFilter(QQuickWindow* w) : QObject(w), m_win(w) {}
+
+protected:
+    bool eventFilter(QObject* obj, QEvent* ev) override
+    {
+        if (ev->type() == QEvent::MouseButtonPress && m_win) {
+            QQuickItem* fi = m_win->activeFocusItem();
+            if (fi && isTextInput(fi)) {
+                auto* me = static_cast<QMouseEvent*>(ev);
+                const QPointF local = fi->mapFromScene(me->position());
+                if (!fi->contains(local) && m_win->contentItem()) {
+                    m_win->contentItem()->forceActiveFocus();
+                    qInfo() << "[focus] 点空白释放文本焦点";
+                }
+            }
+        }
+        return QObject::eventFilter(obj, ev);
+    }
+
+private:
+    static bool isTextInput(QQuickItem* it)
+    {
+        // TextInput / TextEdit 及其控件封装（TextArea、TextField 等最终都派生自这两类）
+        return it->inherits("QQuickTextInput") || it->inherits("QQuickTextEdit")
+            || it->inherits("QQuickTextArea") || it->inherits("QQuickTextField");
+    }
+
+    QQuickWindow* m_win = nullptr;
+};
+
+} // namespace
 
 #ifdef Q_OS_WIN
 #  ifndef NOMINMAX
@@ -536,6 +584,9 @@ int main(int argc, char *argv[])
                 }
             }
 #endif
+
+            // 点空白释放文本焦点（窗口层，见 FocusClearFilter 注释）
+            win->installEventFilter(new FocusClearFilter(win));
 
             taskbarFilter->targetWindow = win;
             screenshotWindow = win;

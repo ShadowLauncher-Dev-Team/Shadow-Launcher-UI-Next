@@ -180,22 +180,9 @@ Item {
         color: Theme.bg
     }
 
-    // 点空白处把焦点收到这里（不可见、不参与布局），输入框自然失焦。
-    //
-    // 两点必须写清楚，否则会踩回去：
-    // 1) 用 TapHandler 而不是 MouseArea —— MouseArea 会抢 press。STextArea 里 Flickable 设了
-    //    interactive:false（为了不吃滚轮），它就不消费 press 了，press 直接穿透到这一层，
-    //    于是"点另一个输入框"变成先被清焦点、再被输入框拿走，得点好几次、还得把鼠标移出去再移进来。
-    // 2) 不给 activeFocusItem.focus = false —— 对 FocusScope 链无效，输入框照样显蓝。
-    //    把焦点交给一个独立接收器，走 Qt 自己的焦点转移，最稳。
-    Item {
-        id: focusSink
-        anchors.fill: parent
-        z: -1
-        TapHandler {
-            onTapped: focusSink.forceActiveFocus()
-        }
-    }
+    // 点空白释放文本焦点的实现已移到 C++ 窗口层（src/main_release.cpp 的 FocusClearFilter）：
+    // 这一层在 QML 里做不可靠 —— 版本设置页每个 pane 都是 anchors.fill 的 Flickable，
+    // 它会把 press 吃掉，挂在这里的 MouseArea / TapHandler 收不到，等于没装。
 
     // 顶部加载条（Material / Google 线性风格）：压在窗口最上沿
     SLoadingBar {

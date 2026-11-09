@@ -51,6 +51,10 @@ Item {
             x: 11
             y: 11
             width: flick.width - 22
+            // 必须给 height：不给的话它只有内容高度（一两行约 14px），
+            // 输入框看着有 areaHeight 那么高，实际只有文字那一行能点中、能拿焦点，
+            // 点框的下半部分完全没反应（影报的"点快了还是不行"就是这个）。
+            height: Math.max(flick.height - 22, implicitHeight)
             text: root.text
             color: "#cfd6e1"
             selectionColor: "#2c4a7a"

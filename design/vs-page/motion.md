@@ -229,3 +229,31 @@ Item {
 - 不给 `activeFocusItem.focus = false`，而是把焦点交给一个独立接收器，走 Qt 自己的焦点转移
 
 **教训**：修交互问题时，两个"都在讲焦点/事件"的改动会互相踩，必须一起想清楚 press 的传播链。
+
+
+### 8.4 焦点第三轮：真凶是 TextEdit 没有 height（我引入的）
+
+前两轮都在改"怎么清焦点"，但**真正的 bug 在输入框本身**：
+
+我把 `STextArea` 从 `ScrollView` 改成 `Flickable` 时，里面的 `TextEdit` 只给了 `x/y/width`，**没给 `height`**。于是它只有内容高度（一两行 ≈ 14px），而外框有 `areaHeight`(92px) 那么高——
+
+**只有文字那一行能点中、能拿焦点，点框的其他位置完全没反应。**
+
+这就是影说的「点快了还是会出现刚才的情况」：点得准（正好落在文字行上）就正常，点偏就什么也没发生。日志里 `focusItem` 一直是 `QQuickRootItem` 而不是 `QQuickTextEdit`，是直接证据。
+
+修：`height: Math.max(flick.height - 22, implicitHeight)`。
+
+### 8.5 最终方案：焦点释放放到 C++ 窗口层
+
+QML 层做不可靠，原因很具体：
+
+| 做法 | 为什么不行 |
+|---|---|
+| 页面根层 `MouseArea(z:-1)`（下载页用的） | **下载页能用**是因为它没有全屏 Flickable；版本设置页每个 pane 都是 `anchors.fill` 的 Flickable，**它把 press 吃掉了**，下层监听收不到 |
+| 逐处调 `SField.blur()`（下载页配合用的） | 漏一处就失效，全站要改几十处 |
+| `TapHandler` + `focusSink` | 同样被 Flickable 吃掉；而且 tap 有手势判定延迟（点快会漏） |
+| `activeFocusItem.focus = false` | 对 FocusScope 链无效 |
+
+最终：`src/main_release.cpp` 里 `FocusClearFilter` 装在 `QQuickWindow` 上，拦 `MouseButtonPress`——当前焦点是 TextInput/TextEdit 且按下的点不在它矩形内，就 `contentItem()->forceActiveFocus()`。
+
+优点：**不依赖任何 QML 事件传播链**，全站一次生效，按下即判断没有延迟。日志 `[focus] 点空白释放文本焦点` 可验证。
