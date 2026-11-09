@@ -135,127 +135,127 @@ Item {
             }
         }
 
-        Flickable {
+        // 用 ListView 而不是 Repeater + Column：425 个 Mod 时 Repeater 会一次性
+        // 创建 425 个 delegate（每个含 Image/Switch/HoverHandler），首帧直接卡住。
+        // ListView 只实例化可见行 + cacheBuffer，reuseItems 让滚动时复用而不是重建。
+        ListView {
+            id: modList
             width: parent.width
             height: parent.height - 48
             clip: true
-            contentWidth: width
-            contentHeight: modCol.implicitHeight
+            model: pane.shown
+            spacing: 8
+            reuseItems: true
+            cacheBuffer: 400
             boundsBehavior: Flickable.StopAtBounds
 
-            Column {
-                id: modCol
-                width: parent.width
-                spacing: 8
+            delegate: Item {
+                width: modList.width
+                height: 68
+                readonly property bool on: modelData.enabled === true
+                readonly property bool bad: modelData.valid === false
 
-                Repeater {
-                    model: pane.shown
-                    delegate: Item {
-                        width: modCol.width
-                        height: 68
-                        readonly property bool on: modelData.enabled === true
-                        readonly property bool bad: modelData.valid === false
-
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: Theme.rMd
-                            color: hov.hovered ? "#101419" : "#0b0d12"
-                            border.width: 1
-                            border.color: bad ? "#2a2118" : (hov.hovered ? "#333a47" : Theme.line2)
-                            Behavior on color { ColorAnimation { duration: Theme.durFast } }
-                            Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
-                        }
-                        Rectangle {
-                            id: ico
-                            width: 46
-                            height: 46
-                            radius: Theme.rSm
-                            anchors.left: parent.left
-                            anchors.leftMargin: 11
-                            anchors.verticalCenter: parent.verticalCenter
-                            color: parent.on ? "#141a22" : "#10141a"
-                            clip: true
-                            Image {
-                                anchors.fill: parent
-                                visible: modelData.iconPath !== undefined && modelData.iconPath !== ""
-                                source: (modelData.iconPath !== undefined && modelData.iconPath !== "") ? modelData.iconPath : ""
-                                sourceSize.width: 92
-                                sourceSize.height: 92
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                            }
-                            Text {
-                                anchors.centerIn: parent
-                                visible: modelData.iconPath === undefined || modelData.iconPath === ""
-                                text: modelData.modName ? modelData.modName.charAt(0).toUpperCase() : "?"
-                                color: parent.parent.on ? "#8fb4ff" : "#6b7686"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 18
-                                font.weight: Font.DemiBold
-                            }
-                        }
-                        Column {
-                            anchors.left: ico.right
-                            anchors.leftMargin: 12
-                            anchors.right: sw.left
-                            anchors.rightMargin: 12
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 5
-                            Row {
-                                spacing: 8
-                                Text {
-                                    text: modelData.modName || modelData.fileName || ""
-                                    color: parent.parent.parent.on ? "#f2f5fa" : "#a8b1be"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 14
-                                    font.weight: Font.DemiBold
-                                }
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: modelData.version || ""
-                                    color: "#7b8494"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 11
-                                }
-                            }
-                            Text {
-                                width: parent.width
-                                visible: text.length > 0
-                                text: modelData.description || ""
-                                color: "#9aa3b0"
-                                elide: Text.ElideRight
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 12
-                            }
-                            Text {
-                                width: parent.width
-                                text: (modelData.fileName || "") + (modelData.fileSizeText ? (" · " + modelData.fileSizeText) : "")
-                                color: "#6b7686"
-                                elide: Text.ElideMiddle
-                                font.family: "Consolas"
-                                font.pixelSize: 11
-                            }
-                        }
-                        SSwitch {
-                            id: sw
-                            anchors.right: parent.right
-                            anchors.rightMargin: 14
-                            anchors.verticalCenter: parent.verticalCenter
-                            checked: parent.on
-                            onToggled: (v) => {
-                                if (!pane.b) return
-                                pane.b.setModEnabled(modelData.fileName, pane.versionId, v)
-                                pane.reload()
-                            }
-                        }
-                        HoverHandler { id: hov }
+                Rectangle {
+                    anchors.fill: parent
+                    radius: Theme.rMd
+                    color: hov.hovered ? "#101419" : "#0b0d12"
+                    border.width: 1
+                    border.color: bad ? "#2a2118" : (hov.hovered ? "#333a47" : Theme.line2)
+                    Behavior on color { ColorAnimation { duration: Theme.durFast } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
+                }
+                Rectangle {
+                    id: ico
+                    width: 46
+                    height: 46
+                    radius: Theme.rSm
+                    anchors.left: parent.left
+                    anchors.leftMargin: 11
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: parent.on ? "#141a22" : "#10141a"
+                    clip: true
+                    Image {
+                        anchors.fill: parent
+                        visible: modelData.iconPath !== undefined && modelData.iconPath !== ""
+                        source: (modelData.iconPath !== undefined && modelData.iconPath !== "") ? modelData.iconPath : ""
+                        sourceSize.width: 92
+                        sourceSize.height: 92
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                    }
+                    Text {
+                        anchors.centerIn: parent
+                        visible: modelData.iconPath === undefined || modelData.iconPath === ""
+                        text: modelData.modName ? modelData.modName.charAt(0).toUpperCase() : "?"
+                        color: parent.parent.on ? "#8fb4ff" : "#6b7686"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 18
+                        font.weight: Font.DemiBold
                     }
                 }
+                Column {
+                    anchors.left: ico.right
+                    anchors.leftMargin: 12
+                    anchors.right: sw.left
+                    anchors.rightMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 5
+                    Row {
+                        spacing: 8
+                        Text {
+                            text: modelData.modName || modelData.fileName || ""
+                            color: parent.parent.on ? "#f2f5fa" : "#a8b1be"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 14
+                            font.weight: Font.DemiBold
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: modelData.version || ""
+                            color: "#7b8494"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        visible: text.length > 0
+                        text: modelData.description || ""
+                        color: "#9aa3b0"
+                        elide: Text.ElideRight
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                    }
+                    Text {
+                        width: parent.width
+                        text: (modelData.fileName || "") + (modelData.fileSizeText ? (" · " + modelData.fileSizeText) : "")
+                        color: "#6b7686"
+                        elide: Text.ElideMiddle
+                        font.family: "Consolas"
+                        font.pixelSize: 11
+                    }
+                }
+                SSwitch {
+                    id: sw
+                    anchors.right: parent.right
+                    anchors.rightMargin: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                    checked: parent.on
+                    onToggled: (v) => {
+                        if (!pane.b) return
+                        pane.b.setModEnabled(modelData.fileName, pane.versionId, v)
+                        pane.reload()
+                    }
+                }
+                HoverHandler { id: hov }
+            }
 
+            footer: Column {
+                width: modList.width
                 Text {
-                    width: modCol.width
+                    width: parent.width
                     topPadding: 24
-                    visible: pane.shown.length === 0 && !pane.loading
+                    visible: modList.count === 0 && !pane.loading
                     horizontalAlignment: Text.AlignHCenter
                     text: pane.allMods.length === 0 ? "此版本还没有 Mod" : "没有匹配的 Mod"
                     color: "#5d6673"
@@ -263,7 +263,7 @@ Item {
                     font.pixelSize: 12
                 }
                 Text {
-                    width: modCol.width
+                    width: parent.width
                     topPadding: 24
                     visible: pane.loading
                     horizontalAlignment: Text.AlignHCenter

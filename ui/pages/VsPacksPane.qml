@@ -113,129 +113,127 @@ Item {
             }
         }
 
-        Flickable {
+        // 同 Mod 页：ListView 虚拟化，避免一次性实例化所有资源包行
+        ListView {
+            id: packList
             width: parent.width
             height: parent.height - 48
             clip: true
-            contentWidth: width
-            contentHeight: packCol.implicitHeight
+            model: pane.shown
+            spacing: 8
+            reuseItems: true
+            cacheBuffer: 400
             boundsBehavior: Flickable.StopAtBounds
 
-            Column {
-                id: packCol
-                width: parent.width
-                spacing: 8
+            delegate: Item {
+                width: packList.width
+                height: 68
+                readonly property bool bad: modelData.valid === false
 
-                Repeater {
-                    model: pane.shown
-                    delegate: Item {
-                        width: packCol.width
-                        height: 68
-                        readonly property bool bad: modelData.valid === false
-
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: Theme.rMd
-                            color: hov.hovered ? "#101419" : "#0b0d12"
-                            border.width: 1
-                            border.color: bad ? "#2a2118" : (hov.hovered ? "#333a47" : Theme.line2)
-                            Behavior on color { ColorAnimation { duration: Theme.durFast } }
-                            Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
-                        }
-                        Rectangle {
-                            id: ico
-                            width: 46
-                            height: 46
-                            radius: Theme.rSm
-                            anchors.left: parent.left
-                            anchors.leftMargin: 11
-                            anchors.verticalCenter: parent.verticalCenter
-                            color: bad ? "#1a1410" : "#141a22"
-                            clip: true
-                            Image {
-                                anchors.fill: parent
-                                visible: modelData.iconPath !== undefined && modelData.iconPath !== ""
-                                source: (modelData.iconPath !== undefined && modelData.iconPath !== "") ? modelData.iconPath : ""
-                                sourceSize.width: 92
-                                sourceSize.height: 92
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                            }
-                            Text {
-                                anchors.centerIn: parent
-                                visible: modelData.iconPath === undefined || modelData.iconPath === ""
-                                text: modelData.displayName ? modelData.displayName.charAt(0).toUpperCase() : "?"
-                                color: bad ? "#c9a25a" : "#8fb4ff"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 18
-                                font.weight: Font.DemiBold
-                            }
-                        }
-                        Column {
-                            anchors.left: ico.right
-                            anchors.leftMargin: 12
-                            anchors.right: del.left
-                            anchors.rightMargin: 12
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 5
-                            Row {
-                                spacing: 8
-                                Text {
-                                    text: modelData.displayName || modelData.fileName || ""
-                                    color: "#f2f5fa"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 14
-                                    font.weight: Font.DemiBold
-                                }
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: modelData.versionLabel || ""
-                                    color: "#7b8494"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 11
-                                }
-                            }
-                            Text {
-                                width: parent.width
-                                visible: text.length > 0
-                                text: modelData.description || ""
-                                color: "#9aa3b0"
-                                elide: Text.ElideRight
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 12
-                            }
-                            Text {
-                                width: parent.width
-                                text: (modelData.fileName || "") + (modelData.fileSizeText ? (" · " + modelData.fileSizeText) : "")
-                                color: "#6b7686"
-                                elide: Text.ElideMiddle
-                                font.family: "Consolas"
-                                font.pixelSize: 11
-                            }
-                        }
-                        SButton {
-                            id: del
-                            anchors.right: parent.right
-                            anchors.rightMargin: 12
-                            anchors.verticalCenter: parent.verticalCenter
-                            kind: 1
-                            danger: true
-                            height: 28
-                            radius: 2
-                            text: "删除"
-                            onClicked: {
-                                pane.pendingDelete = modelData.fileName
-                                confirmPop.open()
-                            }
-                        }
-                        HoverHandler { id: hov }
+                Rectangle {
+                    anchors.fill: parent
+                    radius: Theme.rMd
+                    color: hov.hovered ? "#101419" : "#0b0d12"
+                    border.width: 1
+                    border.color: bad ? "#2a2118" : (hov.hovered ? "#333a47" : Theme.line2)
+                    Behavior on color { ColorAnimation { duration: Theme.durFast } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
+                }
+                Rectangle {
+                    id: ico
+                    width: 46
+                    height: 46
+                    radius: Theme.rSm
+                    anchors.left: parent.left
+                    anchors.leftMargin: 11
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: bad ? "#1a1410" : "#141a22"
+                    clip: true
+                    Image {
+                        anchors.fill: parent
+                        visible: modelData.iconPath !== undefined && modelData.iconPath !== ""
+                        source: (modelData.iconPath !== undefined && modelData.iconPath !== "") ? modelData.iconPath : ""
+                        sourceSize.width: 92
+                        sourceSize.height: 92
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                    }
+                    Text {
+                        anchors.centerIn: parent
+                        visible: modelData.iconPath === undefined || modelData.iconPath === ""
+                        text: modelData.displayName ? modelData.displayName.charAt(0).toUpperCase() : "?"
+                        color: bad ? "#c9a25a" : "#8fb4ff"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 18
+                        font.weight: Font.DemiBold
                     }
                 }
+                Column {
+                    anchors.left: ico.right
+                    anchors.leftMargin: 12
+                    anchors.right: del.left
+                    anchors.rightMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 5
+                    Row {
+                        spacing: 8
+                        Text {
+                            text: modelData.displayName || modelData.fileName || ""
+                            color: "#f2f5fa"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 14
+                            font.weight: Font.DemiBold
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: modelData.versionLabel || ""
+                            color: "#7b8494"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        visible: text.length > 0
+                        text: modelData.description || ""
+                        color: "#9aa3b0"
+                        elide: Text.ElideRight
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                    }
+                    Text {
+                        width: parent.width
+                        text: (modelData.fileName || "") + (modelData.fileSizeText ? (" · " + modelData.fileSizeText) : "")
+                        color: "#6b7686"
+                        elide: Text.ElideMiddle
+                        font.family: "Consolas"
+                        font.pixelSize: 11
+                    }
+                }
+                SButton {
+                    id: del
+                    anchors.right: parent.right
+                    anchors.rightMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    kind: 1
+                    danger: true
+                    height: 28
+                    radius: 2
+                    text: "删除"
+                    onClicked: {
+                        pane.pendingDelete = modelData.fileName
+                        confirmPop.open()
+                    }
+                }
+                HoverHandler { id: hov }
+            }
 
+            footer: Column {
+                width: packList.width
                 Text {
-                    width: packCol.width
+                    width: parent.width
                     topPadding: 24
-                    visible: pane.shown.length === 0 && !pane.loading
+                    visible: packList.count === 0 && !pane.loading
                     horizontalAlignment: Text.AlignHCenter
                     text: pane.allPacks.length === 0 ? "此版本还没有资源包" : "没有匹配的资源包"
                     color: "#5d6673"
@@ -243,7 +241,7 @@ Item {
                     font.pixelSize: 12
                 }
                 Text {
-                    width: packCol.width
+                    width: parent.width
                     topPadding: 24
                     visible: pane.loading
                     horizontalAlignment: Text.AlignHCenter

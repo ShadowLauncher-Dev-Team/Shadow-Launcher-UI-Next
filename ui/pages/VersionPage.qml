@@ -497,7 +497,9 @@ Item {
                     readonly property bool cur: !!modelData && modelData.id === page.pendingId
                     // hover 用 HoverHandler：子项（齿轮）盖在上面时 containsMouse 会变 false，
                     // 导致"鼠标一移到齿轮上齿轮就消失、根本点不到"
-                    readonly property bool hov: rowHH.hovered || gearArea.containsMouse
+                    // HoverHandler 覆盖整行：鼠标落在齿轮（子项）上时它仍然是 true，
+                    // 不用再去引用齿轮自己的 id（那是后声明的，会报 undefined 转 bool）
+                    readonly property bool hov: rowHH.hovered
                     HoverHandler { id: rowHH }
 
                     // 逐条入场：每行按 index 延迟淡入，滚动时新出现的行也会播一次
