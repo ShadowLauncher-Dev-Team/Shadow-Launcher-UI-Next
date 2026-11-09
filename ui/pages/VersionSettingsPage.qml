@@ -34,6 +34,7 @@ Item {
     function paneFor(k) {
         if (k === "quick") return quickComp
         if (k === "overview") return overviewComp
+        if (k === "launch") return launchComp
         return placeholderComp
     }
     function paneTitle(k) {
@@ -255,6 +256,13 @@ Item {
             versionId: page.versionId
             toast: page.toast
             onRequestPane: (k) => page.currentKey = k
+        }
+    }
+    Component {
+        id: launchComp
+        VsLaunchPane {
+            versionId: page.versionId
+            toast: page.toast
         }
     }
     Component {

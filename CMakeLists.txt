@@ -250,6 +250,13 @@ set_source_files_properties(ui/controls/ResourceTile.qml PROPERTIES QT_RESOURCE_
 set_source_files_properties(ui/controls/SField.qml PROPERTIES QT_RESOURCE_ALIAS controls/SField.qml)
 set_source_files_properties(ui/controls/SShimmer.qml PROPERTIES QT_RESOURCE_ALIAS controls/SShimmer.qml)
 set_source_files_properties(ui/controls/SRipple.qml PROPERTIES QT_RESOURCE_ALIAS controls/SRipple.qml)
+set_source_files_properties(ui/controls/SSwitch.qml PROPERTIES QT_RESOURCE_ALIAS controls/SSwitch.qml)
+set_source_files_properties(ui/controls/SSegmented.qml PROPERTIES QT_RESOURCE_ALIAS controls/SSegmented.qml)
+set_source_files_properties(ui/controls/SSelect.qml PROPERTIES QT_RESOURCE_ALIAS controls/SSelect.qml)
+set_source_files_properties(ui/controls/SCard.qml PROPERTIES QT_RESOURCE_ALIAS controls/SCard.qml)
+set_source_files_properties(ui/controls/SRow.qml PROPERTIES QT_RESOURCE_ALIAS controls/SRow.qml)
+set_source_files_properties(ui/controls/STextArea.qml PROPERTIES QT_RESOURCE_ALIAS controls/STextArea.qml)
+set_source_files_properties(ui/controls/SInput.qml PROPERTIES QT_RESOURCE_ALIAS controls/SInput.qml)
 set_source_files_properties(ui/pages/ResourcePage.qml PROPERTIES QT_RESOURCE_ALIAS pages/ResourcePage.qml)
 set_source_files_properties(ui/pages/JavaPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/JavaPage.qml)
 set_source_files_properties(ui/pages/MultiplayerPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/MultiplayerPage.qml)
@@ -257,6 +264,7 @@ set_source_files_properties(ui/pages/VersionSettingsPage.qml PROPERTIES QT_RESOU
 set_source_files_properties(ui/pages/VsQuickPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsQuickPane.qml)
 set_source_files_properties(ui/pages/VsPlaceholderPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsPlaceholderPane.qml)
 set_source_files_properties(ui/pages/VsOverviewPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsOverviewPane.qml)
+set_source_files_properties(ui/pages/VsLaunchPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsLaunchPane.qml)
 set_source_files_properties(ui/pages/ResourceDetailPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/ResourceDetailPage.qml)
 set_source_files_properties(ui/ToastHost.qml PROPERTIES QT_RESOURCE_ALIAS ToastHost.qml)
 
@@ -294,7 +302,15 @@ qt_add_qml_module(ShadowLauncher
         ui/pages/VsQuickPane.qml
         ui/pages/VsPlaceholderPane.qml
         ui/pages/VsOverviewPane.qml
+        ui/pages/VsLaunchPane.qml
         ui/ToastHost.qml
+        ui/controls/SSwitch.qml
+        ui/controls/SSegmented.qml
+        ui/controls/SSelect.qml
+        ui/controls/SCard.qml
+        ui/controls/SRow.qml
+        ui/controls/STextArea.qml
+        ui/controls/SInput.qml
 )
 
 # UI 契约检查（构建期硬失败：版本号装饰 / emoji 图标 / SpringAnimation / pixelSize 小数 ...）

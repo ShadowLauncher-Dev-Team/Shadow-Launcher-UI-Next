@@ -1,0 +1,10 @@
+CMake is re-running because D:/latest-code/shadow-v2/build/CMakeFiles/generate.stamp is out-of-date.
+CMake Error at CMakeLists.txt:253:
+  Parse error.  Function missing ending ")".  End of file reached.
+
+  the file 'D:/latest-code/shadow-v2/CMakeLists.txt'
+  is newer than 'D:/latest-code/shadow-v2/build/CMakeFiles/generate.stamp.depend'
+  result='-1'
+
+-- Configuring incomplete, errors occurred!
+CMake Configure step failed.  Build files cannot be regenerated correctly.
