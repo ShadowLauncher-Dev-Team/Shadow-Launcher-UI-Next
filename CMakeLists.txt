@@ -272,6 +272,7 @@ set_source_files_properties(ui/pages/VsMemoryPane.qml PROPERTIES QT_RESOURCE_ALI
 set_source_files_properties(ui/pages/VsToolsPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsToolsPane.qml)
 set_source_files_properties(ui/pages/VsModsPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsModsPane.qml)
 set_source_files_properties(ui/pages/VsPacksPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsPacksPane.qml)
+set_source_files_properties(ui/pages/VsSavesPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsSavesPane.qml)
 
 qt_add_qml_module(ShadowLauncher
     URI ShadowLauncher.Next
@@ -321,6 +322,7 @@ qt_add_qml_module(ShadowLauncher
         ui/pages/VsToolsPane.qml
         ui/pages/VsModsPane.qml
         ui/pages/VsPacksPane.qml
+  ui/pages/VsSavesPane.qml
 )
 
 # UI 契约检查（构建期硬失败：版本号装饰 / emoji 图标 / SpringAnimation / pixelSize 小数 ...）
