@@ -110,9 +110,9 @@ Item {
                         anchors.top: parent.top
                         anchors.topMargin: 33
                         text: pane.statusSub()
-                        color: "#4b5462"
+                        color: "#7b8494"
                         font.family: Theme.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: 11
                     }
                     SButton {
                         anchors.right: parent.right
@@ -192,9 +192,9 @@ Item {
                     bottomPadding: pane.failedFiles.length > 8 ? 10 : 0
                     visible: pane.failedFiles.length > 8
                     text: "另有 " + (pane.failedFiles.length - 8) + " 项未列出"
-                    color: "#3f4753"
+                    color: "#6b7686"
                     font.family: Theme.fontFamily
-                    font.pixelSize: 10
+                    font.pixelSize: 11
                 }
             }
 

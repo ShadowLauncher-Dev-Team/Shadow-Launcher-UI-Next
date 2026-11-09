@@ -70,6 +70,7 @@ private:
     QString m_msMcToken;
     int m_msTokenExpiresIn = 86400;
     QTcpServer* m_localServer = nullptr;
+    QTcpServer* m_localServer6 = nullptr;   // IPv6/::1 监听（浏览器可能先连 ::1）
     QProcess* m_wv2Process = nullptr;
     bool m_embeddedMode = false;
     bool m_codeCaptured = false;

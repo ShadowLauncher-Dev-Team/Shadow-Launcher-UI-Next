@@ -163,9 +163,9 @@ Item {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 5
                 text: rowData.label
-                color: "#3f4753"
+                color: "#6b7686"
                 font.family: Theme.fontFamily
-                font.pixelSize: 10
+                font.pixelSize: 11
                 font.letterSpacing: 1.1
             }
         }

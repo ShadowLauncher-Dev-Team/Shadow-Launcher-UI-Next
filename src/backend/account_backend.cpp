@@ -73,7 +73,8 @@ AccountBackend::AccountBackend(QObject *parent)
     // ── MicrosoftAuth ──
     m_msAuth = new MicrosoftAuth(this);
     connect(m_msAuth, &MicrosoftAuth::loginProgress, this, [this](const QString& step, const QString& detail) {
-        m_msStatus = step + QStringLiteral(": ") + detail;
+        // detail 为空时不要留一个孤零零的冒号（"Minecraft 认证: "那种）
+        m_msStatus = detail.isEmpty() ? step : (step + QStringLiteral(": ") + detail);
         emit microsoftLoginProgress(step, detail);
     });
     connect(m_msAuth, &MicrosoftAuth::loginSuccess, this, [this](const QString& mcToken, const QString& username, const QString& uuid, const QString& refreshToken, int expiresIn) {

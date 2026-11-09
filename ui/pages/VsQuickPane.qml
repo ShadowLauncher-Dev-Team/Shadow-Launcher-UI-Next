@@ -43,9 +43,9 @@ Item {
             // ── 文件夹 ──
             Text {
                 text: "文件夹"
-                color: "#3f4753"
+                color: "#6b7686"
                 font.family: Theme.fontFamily
-                font.pixelSize: 10
+                font.pixelSize: 11
                 font.letterSpacing: 1.1
                 bottomPadding: 6
             }
@@ -88,7 +88,7 @@ Item {
                         anchors.rightMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
                         text: modelData.tip
-                        color: "#3f4753"
+                        color: "#6b7686"
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                     }
@@ -106,9 +106,9 @@ Item {
             // ── 日志 ──
             Text {
                 text: "日志"
-                color: "#3f4753"
+                color: "#6b7686"
                 font.family: Theme.fontFamily
-                font.pixelSize: 10
+                font.pixelSize: 11
                 font.letterSpacing: 1.1
                 bottomPadding: 6
             }
@@ -150,7 +150,7 @@ Item {
                         anchors.rightMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
                         text: modelData.tip
-                        color: "#3f4753"
+                        color: "#6b7686"
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                     }
@@ -168,9 +168,9 @@ Item {
             // ── 其他 ──
             Text {
                 text: "其他"
-                color: "#3f4753"
+                color: "#6b7686"
                 font.family: Theme.fontFamily
-                font.pixelSize: 10
+                font.pixelSize: 11
                 font.letterSpacing: 1.1
                 bottomPadding: 6
             }
@@ -211,7 +211,7 @@ Item {
                         anchors.rightMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
                         text: modelData.tip
-                        color: "#3f4753"
+                        color: "#6b7686"
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                     }

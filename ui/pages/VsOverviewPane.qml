@@ -209,9 +209,9 @@ Item {
     component KvGroupLabel: Text {
         topPadding: 16
         bottomPadding: 4
-        color: "#3f4753"
+        color: "#6b7686"
         font.family: Theme.fontFamily
-        font.pixelSize: 10
+        font.pixelSize: 11
         font.letterSpacing: 1.1
     }
 

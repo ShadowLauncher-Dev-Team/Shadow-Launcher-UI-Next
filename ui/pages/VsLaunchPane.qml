@@ -172,9 +172,9 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: pane.mcVer.length > 0
                         text: "游戏 " + pane.mcVer
-                        color: "#3f4753"
+                        color: "#6b7686"
                         font.family: Theme.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: 11
                     }
                 }
             }

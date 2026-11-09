@@ -131,8 +131,11 @@ void MicrosoftAuth::startLogin(const QString& clientId) {
     }
     m_localRedirectUri = QStringLiteral("http://localhost:%1").arg(port);
 
-    connect(m_localServer, &QTcpServer::newConnection, this, [this]() {
-        auto* socket = m_localServer->nextPendingConnection();
+    auto onLocalConnection = [this]() {
+        // 浏览器可能连 IPv6 ::1 或 IPv4 127.0.0.1，两个 server 共用这一段
+        auto* srv = qobject_cast<QTcpServer*>(sender());
+        auto* socket = srv ? srv->nextPendingConnection() : nullptr;
+        if (!socket) return;
         socket->waitForReadyRead(1000);
         const QByteArray data = socket->readAll();
         const QString request = QString::fromUtf8(data);
@@ -164,6 +167,7 @@ void MicrosoftAuth::startLogin(const QString& clientId) {
             socket->close();
             socket->deleteLater();
             if (m_localServer) { m_localServer->close(); m_localServer->deleteLater(); m_localServer = nullptr; }
+            if (m_localServer6) { m_localServer6->close(); m_localServer6->deleteLater(); m_localServer6 = nullptr; }
         };
 
         // 微软把错误也重定向回来（AADSTSxxxx / access_denied 等）：把真实原因显示出来，
@@ -188,7 +192,16 @@ void MicrosoftAuth::startLogin(const QString& clientId) {
         respondAndStop("登录成功");
         emitProgress(tr("获取授权码"), code.left(15) + u"..."_s);
         exchangeCode(code, m_localRedirectUri);
-    });
+    };
+    connect(m_localServer, &QTcpServer::newConnection, this, onLocalConnection);
+    // Windows 上 localhost 可能先解析到 ::1；只监听 127.0.0.1 时浏览器会报 ERR_CONNECTION_REFUSED
+    m_localServer6 = new QTcpServer(this);
+    if (m_localServer6->listen(QHostAddress::LocalHostIPv6, port)) {
+        connect(m_localServer6, &QTcpServer::newConnection, this, onLocalConnection);
+    } else {
+        m_localServer6->deleteLater();
+        m_localServer6 = nullptr;
+    }
 
     QString state = createState();
     QUrl url(kAuthUrl);

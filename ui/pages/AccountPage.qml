@@ -656,8 +656,10 @@ Item {
                     spacing: 16
                     SMinecraftHead {
                         size: 56
-                        rawSource: page.acctView ? page.acctView.rawHead : ""
-                        source: page.acctView ? page.acctView.head : ""
+                        // 头像不跟着 acctView 快照走：快照在"切账号那一刻"生成，
+                        // 而正版皮肤是登录成功后异步下载/裁剪的 → 固化就会一直显示旧头像
+                        rawSource: page.rawHeadSource
+                        source: page.headSource
                         fallbackText: page.acctView ? page.acctView.name : ""
                     }
                     Column {

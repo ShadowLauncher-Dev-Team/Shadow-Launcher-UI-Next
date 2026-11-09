@@ -60,9 +60,9 @@ Item {
                 spacing: 8
                 Text {
                     text: "分配方式"
-                    color: "#3f4753"
+                    color: "#6b7686"
                     font.family: Theme.fontFamily
-                    font.pixelSize: 10
+                    font.pixelSize: 11
                     font.letterSpacing: 1.1
                 }
                 OptCard {
@@ -104,9 +104,9 @@ Item {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         text: "范围 " + pane.sliderMin + " – " + pane.sliderMax + " MB"
-                        color: "#3f4753"
+                        color: "#6b7686"
                         font.family: Theme.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: 11
                     }
                     Text {
                         anchors.right: parent.right
@@ -138,17 +138,17 @@ Item {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         text: pane.sliderMin + " MB"
-                        color: "#3f4753"
+                        color: "#6b7686"
                         font.family: Theme.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: 11
                     }
                     Text {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         text: pane.sliderMax + " MB"
-                        color: "#3f4753"
+                        color: "#6b7686"
                         font.family: Theme.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: 11
                     }
                 }
             }
@@ -231,7 +231,7 @@ Item {
                                 text: "本版本 " + pane.manualMB + " MB"
                                 color: "#5d6673"
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 10
+                                font.pixelSize: 11
                             }
                         }
                         Row {
@@ -245,7 +245,7 @@ Item {
                                 text: "其他占用"
                                 color: "#5d6673"
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 10
+                                font.pixelSize: 11
                             }
                         }
                     }
@@ -255,7 +255,7 @@ Item {
                         text: "可用 " + pane.sysAvail + " MB"
                         color: "#5d6673"
                         font.family: Theme.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: 11
                     }
                 }
             }
@@ -318,7 +318,7 @@ Item {
             anchors.top: parent.top
             anchors.topMargin: 33
             text: opt.desc
-            color: "#4b5462"
+            color: "#7b8494"
             font.family: Theme.fontFamily
             font.pixelSize: 11
         }
