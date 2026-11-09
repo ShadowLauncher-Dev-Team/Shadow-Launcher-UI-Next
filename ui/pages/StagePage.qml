@@ -10,6 +10,7 @@ Item {
     signal openVersions()
     /// 打开账户页（点右上胶囊 / 未登录时点主按钮）
     signal openAccount()
+    signal openSettings(string versionId)
     /// 有可用账号：正版在线登录，或设置过离线名
     readonly property bool hasAccount: b ? (b.isOnline || (b.offlineUsername || "").length > 0) : false
 
@@ -233,7 +234,13 @@ Item {
             }
         }
         SButton { kind: 1; text: "版本"; iconName: "list"; onClicked: page.openVersions() }
-        SButton { kind: 1; text: "设置"; iconName: "settings"; onClicked: console.info("[ui] settings") }
+        SButton {
+        kind: 1
+        text: "设置"
+        iconName: "settings"
+        // 之前这里是 console.info 空实现，点了没反应
+        onClicked: page.openSettings(page.b ? page.b.selectedVersion : "")
+    }
     }
 
     // ---------- C3：运行中进程面板 ----------

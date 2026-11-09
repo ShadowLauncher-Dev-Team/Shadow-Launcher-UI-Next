@@ -268,6 +268,15 @@ Item {
                 toast: toastHost
                 onOpenVersions: root.versionsOpen = true
                 onOpenAccount: root.accountOpen = true
+                // 启动页「设置」= 当前选中版本的版本设置；没选版本就先去选
+                onOpenSettings: (vid) => {
+                    if (vid && vid.length > 0) {
+                        root.settingsVersionId = vid
+                        root.settingsOpen = true
+                    } else {
+                        root.versionsOpen = true
+                    }
+                }
             }
         }
     }
