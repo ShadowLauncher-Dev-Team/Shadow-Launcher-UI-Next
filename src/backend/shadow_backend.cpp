@@ -695,22 +695,40 @@ ShadowBackend::ShadowBackend(QObject* parent)
     {
         QSettings s(QCoreApplication::organizationName(),
                     QCoreApplication::applicationName());
+        // 这两项是旧 UI「三选一登录」的残留持久化，只在下面「没有当前账号」时当兜底用；
+        // 真正的权威是 accounts.json 的 current（见下方恢复逻辑）。
         m_lastLoginMode = s.value(QStringLiteral("account/lastLoginMode"), 1).toInt();
         QString lastUser = s.value(QStringLiteral("account/lastUsername")).toString();
-        if (!lastUser.isEmpty()) {
-            // Auto-restore login on startup — differentiate mode
-            QTimer::singleShot(100, this, [this, lastUser]() {
-                if (m_lastLoginMode == 0) {
-                    // Microsoft (online) — session already restored in AccountBackend ctor via loadMicrosoftSession()
-                    qCInfo(logApp) << QStringLiteral("[启动] 恢复正版登录: ") << lastUser;
-                } else if (m_lastLoginMode == 1) {
-                    // Offline mode
-                    qCInfo(logApp) << QStringLiteral("[启动] 恢复离线登录: ") << lastUser;
-                    m_account->offlineLogin(lastUser);
+        // Auto-restore login on startup.
+        //
+        // 权威是 accounts.json 的 current —— 它记录用户最后一次真正选中的账号。
+        // 旧实现只看 QSettings 的 lastLoginMode：用户把当前账号切到正版后重启，
+        // 这里仍按"上次是离线"把离线账号登回来，而 offlineLogin() 内部的
+        // upsertAccount(makeCurrent=true) 会把 current 覆盖成离线那条 ——
+        // 于是"我选了另一个角色，重启又回到新加的那个"（owner 实测，日志实锤）。
+        QTimer::singleShot(100, this, [this, lastUser]() {
+            const int cur = m_account ? m_account->currentAccount() : -1;
+            const QVariantMap curAcc = (m_account && cur >= 0) ? m_account->accountAt(cur) : QVariantMap();
+            if (!curAcc.isEmpty()) {
+                const int curMode = curAcc.value(QStringLiteral("mode")).toInt();
+                const QString curName = curAcc.value(QStringLiteral("name")).toString();
+                if (curMode == 1) {
+                    qCInfo(logApp) << QStringLiteral("[启动] 恢复离线登录(当前账号): ") << curName;
+                    m_account->offlineLogin(curName);
+                } else {
+                    // 正版/外置：会话已由 loadMicrosoftSession() / YggdrasilBackend::loadSession() 恢复，
+                    // 这里绝不能再用离线登录覆盖 current。
+                    qCInfo(logApp) << QStringLiteral("[启动] 当前账号非离线，跳过离线恢复: ")
+                                   << curName << QStringLiteral(" mode=") << curMode;
                 }
-                // m_lastLoginMode == 2 (外置登录): YggdrasilBackend 的 loadSession() 已自动恢复
-            });
-        }
+                return;
+            }
+            // 兜底：没有当前账号（首启/数据缺失）才回退到 QSettings。
+            if (m_lastLoginMode == 1 && !lastUser.isEmpty()) {
+                qCInfo(logApp) << QStringLiteral("[启动] 恢复离线登录(兜底): ") << lastUser;
+                m_account->offlineLogin(lastUser);
+            }
+        });
 
         // 通知 QML 恢复登录模式（包括外置登录）
         QTimer::singleShot(200, this, [this]() {
@@ -1123,12 +1141,13 @@ int ShadowBackend::lastLoginMode() const {
 }
 
 void ShadowBackend::setLastLoginMode(int mode) {
+    // 只作内存态：它是账号页"登录方式 tab"的当前选择（正版/离线/外置三个表单），
+    // 也是启动身份的判据。
+    // 不要再持久化到 QSettings —— 那是旧 UI「三选一登录」的残留：那时需要单独记"上次用哪种方式"，
+    // 现在账号列表 + accounts.json 的 current 才是权威。两套真源并存曾造成
+    // "切到正版后重启又被离线账号登回来"（owner 实测，日志实锤）。
     if (m_lastLoginMode != mode) {
         m_lastLoginMode = mode;
-        // Persist
-        QSettings s(QCoreApplication::organizationName(),
-                    QCoreApplication::applicationName());
-        s.setValue(QStringLiteral("account/lastLoginMode"), mode);
         emit loginModeChanged();
 
         // 切回外置登录时主动校验会话：令牌可能早已在服务端失效，不校验就会一直
@@ -1823,6 +1842,15 @@ void ShadowBackend::switchAccount(int index) {
         // 切回本地账号：先退出外置会话，避免两套身份同时在线
         if (ygg && ygg->loggedIn()) ygg->logout();
         m_account->switchAccount(index);
+    }
+    // 同步"上次登录"到 QSettings：切换后它就是兜底依据，不跟着 current 走会继续两套状态打架
+    const int cur = m_account->currentAccount();
+    const QVariantMap curAcc = cur >= 0 ? m_account->accountAt(cur) : QVariantMap();
+    if (!curAcc.isEmpty()) {
+        QSettings s(QCoreApplication::organizationName(), QCoreApplication::applicationName());
+        s.setValue(QStringLiteral("account/lastUsername"), curAcc.value(QStringLiteral("name")).toString());
+        s.setValue(QStringLiteral("account/lastLoginMode"), curAcc.value(QStringLiteral("mode")).toInt());
+        setLastLoginMode(curAcc.value(QStringLiteral("mode")).toInt());
     }
 }
 
