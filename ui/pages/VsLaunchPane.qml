@@ -183,7 +183,8 @@ Item {
             SCard {
                 width: col.width
                 title: "JVM 参数"
-                opacity: pane.independent ? 1 : 0.45
+                // 跟随全局时这块什么都不生效，直接收起来，别摆一个灰框
+                visible: pane.jvmMode === 1
 
                 STextArea {
                     width: parent.width
@@ -314,10 +315,10 @@ Item {
             SCard {
                 width: col.width
                 title: "游戏参数"
-                opacity: pane.independent ? 1 : 0.45
+                visible: pane.gameMode === 1
                 STextArea {
                     width: parent.width
-                    areaHeight: 56
+                    areaHeight: 48
                     enabled: pane.independent
                     text: pane.gameArgs
                     placeholder: pane.independent ? "留空则使用全局游戏参数" : "跟随全局设置时不生效"
@@ -335,12 +336,13 @@ Item {
                 title: "命令"
                 SRow {
                     width: parent.width
+                    rowHeight: 76
                     label: "启动前"
                     STextArea {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        areaHeight: 56
+                        areaHeight: 48
                         text: pane.preCmd
                         placeholder: "留空则不执行"
                         onEdited: (t) => {
@@ -353,13 +355,14 @@ Item {
                 }
                 SRow {
                     width: parent.width
+                    rowHeight: 76
                     label: "退出后"
                     divider: false
                     STextArea {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        areaHeight: 56
+                        areaHeight: 48
                         text: pane.postCmd
                         placeholder: "留空则不执行"
                         onEdited: (t) => {

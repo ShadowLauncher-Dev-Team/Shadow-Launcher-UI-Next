@@ -80,7 +80,7 @@ Item {
                 id: statusCard
                 width: col.width
                 readonly property bool hasIssues: pane.failedFiles.length > 0
-                height: hasIssues ? 128 : 86
+                height: pane.verifying ? 124 : (hasIssues ? 128 : 86)
 
                 Rectangle {
                     anchors.fill: parent
@@ -139,16 +139,60 @@ Item {
                     text: pane.verifying ? "取消" : "重新校验"
                     onClicked: {
                         if (!pane.b) return
-                        if (pane.verifying) { pane.b.cancelVerify(); return }
+                        if (pane.verifying) {
+                            pane.b.cancelVerify()
+                            pane.verifying = false
+                            return
+                        }
+                        // 先本地进"校验中"，后端信号来了再校准 ——
+                        // 否则点下去到第一条进度之间是完全无反馈的
                         pane.failedFiles = []
                         pane.hasResult = false
+                        pane.verifying = true
+                        pane.checkedCount = 0
+                        pane.totalCount = 0
                         pane.b.verifyVersion(pane.versionId)
+                        if (pane.toast) pane.toast.show("开始校验版本文件", -1, "info", true)
+                    }
+                }
+
+                // 校验中：细进度条 + 已扫描计数
+                Column {
+                    visible: pane.verifying
+                    anchors.left: parent.left
+                    anchors.leftMargin: 20
+                    anchors.right: parent.right
+                    anchors.rightMargin: 20
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 16
+                    spacing: 6
+                    Rectangle {
+                        width: parent.width
+                        height: 3
+                        radius: 2
+                        color: "#151a22"
+                        Rectangle {
+                            width: parent.width * (pane.totalCount > 0
+                                   ? Math.min(1, pane.checkedCount / pane.totalCount) : 0)
+                            height: parent.height
+                            radius: 2
+                            color: Theme.accent
+                            Behavior on width { NumberAnimation { duration: Theme.durFast } }
+                        }
+                    }
+                    Text {
+                        text: pane.totalCount > 0
+                              ? ("已扫描 " + pane.checkedCount + " / " + pane.totalCount + " 个文件")
+                              : "正在统计文件…"
+                        color: "#7b8494"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
                     }
                 }
 
                 // 有异常时才出现的第二行
                 Row {
-                    visible: statusCard.hasIssues
+                    visible: statusCard.hasIssues && !pane.verifying
                     anchors.left: parent.left
                     anchors.leftMargin: 20
                     anchors.bottom: parent.bottom

@@ -10,9 +10,11 @@ Item {
     property int labelWidth: 96
     property bool divider: true
     property bool compact: false
+    // 内容比一行高时（多行输入框）用 rowHeight 撑开，否则输入框会溢出到下一行
+    property int rowHeight: 0
     default property alias content: slot.data
 
-    implicitHeight: compact ? 44 : 52
+    implicitHeight: rowHeight > 0 ? rowHeight : (compact ? 44 : 52)
 
     Text {
         id: lab

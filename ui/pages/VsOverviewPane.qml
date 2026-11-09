@@ -247,10 +247,10 @@ Item {
             anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             text: kv.v
-            color: "#cfd6e1"
+            color: kv.mono ? "#b6c0cd" : "#cfd6e1"
             elide: Text.ElideMiddle
             font.family: kv.mono ? "Consolas" : Theme.fontFamily
-            font.pixelSize: kv.mono ? 11 : 12
+            font.pixelSize: 12
         }
         Text {
             id: actText
