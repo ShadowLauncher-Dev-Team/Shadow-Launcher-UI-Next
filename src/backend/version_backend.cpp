@@ -3978,6 +3978,10 @@ void VersionBackend::verifyVersion(const QString& versionId)
 
 
 
+    // 必须先置 running 再改阶段：installPhaseChanged 是前端 verifyRunningChanged 的唯一来源，
+    // 晚置位会让 QML 收到"开始"通知时 isVerifyRunning() 仍为 false，界面进不到校验中。
+    m_verifyRunning.storeRelease(1);
+
     setInstallPhase(tr("校验中"));
 
     m_repairCancelRequested.storeRelease(0);
@@ -4409,9 +4413,9 @@ void VersionBackend::verifyVersion(const QString& versionId)
 
                 emit logMessage(tr("[警告] 校验已取消"));
 
-                setInstallPhase(tr("空闲"));
-
                 m_verifyRunning.storeRelease(0);
+
+                setInstallPhase(tr("空闲"));
 
                 emit verifyCancelled();
 
@@ -4465,13 +4469,12 @@ void VersionBackend::verifyVersion(const QString& versionId)
 
 
 
+                // 顺序同理：先清 running 再改阶段，前端才会收到 running=false
+                m_verifyRunning.storeRelease(0);
+
                 setInstallPhase(tr("空闲"));
 
                 emit verifyFinished(allPassed);
-
-
-
-                m_verifyRunning.storeRelease(0);
 
 
 

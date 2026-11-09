@@ -31,16 +31,14 @@ Item {
     Connections {
         target: pane.b
         ignoreUnknownSignals: true
+        // 只清乐观标志；checkedCount/totalCount 是只读绑定，不能再赋值（会抛 TypeError）
         function onVerifyRunningChanged() { pane.verifyingLocal = false }
-        function onVerifyCheckedChanged() { pane.checkedCount = pane.b.verifyChecked }
-        function onVerifyTotalChanged() { pane.totalCount = pane.b.verifyTotal }
         function onVerifyFailedFiles(files) {
             pane.failedFiles = files || []
             pane.hasResult = true
             pane.resultOk = pane.failedFiles.length === 0
         }
         function onVerifyFinished(allPassed) {
-            pane.verifying = false
             pane.hasResult = true
             pane.resultOk = allPassed
             if (pane.failedFiles.length === 0 && allPassed) pane.failedFiles = []
@@ -56,7 +54,10 @@ Item {
         return "未发现异常"
     }
     function statusSub() {
-        if (pane.verifying) return "已扫描 " + pane.checkedCount + " / " + pane.totalCount
+        if (pane.verifying)
+            return pane.totalCount > 0
+                   ? ("已扫描 " + pane.checkedCount + " / " + pane.totalCount + " 个文件")
+                   : "正在统计文件…"
         if (!pane.hasResult) return "校验会逐个核对版本文件是否齐全"
         return "本次扫描 " + pane.totalCount + " 个文件"
     }
