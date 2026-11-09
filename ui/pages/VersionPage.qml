@@ -13,6 +13,8 @@ Item {
     id: page
 
     signal close()
+    /// 打开某个版本的版本设置（StageShell 接管为全屏页）
+    signal openSettings(string versionId)
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     readonly property var details: (b && b.versionDetails) ? b.versionDetails : []
@@ -541,7 +543,7 @@ Item {
                         anchors.left: rowIcon.right
                         anchors.leftMargin: 10
                         anchors.right: parent.right
-                        anchors.rightMargin: 10
+                        anchors.rightMargin: 42
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 3
 
@@ -571,6 +573,24 @@ Item {
                         onClicked: {
                             if (modelData && modelData.id)
                                 page.pendingId = modelData.id
+                        }
+                    }
+
+                    // 行尾「设置」：hover 或选中时出现，点开该版本的版本设置
+                    SButton {
+                        anchors.right: parent.right
+                        anchors.rightMargin: 6
+                        anchors.verticalCenter: parent.verticalCenter
+                        implicitWidth: 30
+                        height: 26
+                        kind: 1
+                        radius: 2
+                        iconName: "settings"
+                        opacity: (row.hov || row.cur) ? 1 : 0
+                        Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
+                        onClicked: {
+                            if (modelData && modelData.id)
+                                page.openSettings(modelData.id)
                         }
                     }
                 }

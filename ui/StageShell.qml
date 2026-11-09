@@ -15,6 +15,9 @@ Item {
     readonly property bool narrow: width < 900
     readonly property int sideW: (narrow ? Theme.sideWNarrow : Theme.sideW)
     property bool versionsOpen: false
+    // 版本设置（从版本页的版本卡片进入；叠在版本页之上，返回时回到版本页）
+    property bool settingsOpen: false
+    property string settingsVersionId: ""
     property bool accountOpen: false
     // 下载页与版本页/账户页同一套：侧栏宽度收到 0，页面淡入 + 右移 24
     property bool downloadOpen: false
@@ -31,7 +34,7 @@ Item {
     // 所以详情页的收起延后到页面已经完全不透明之后再执行（那一刻重排在纯不透明页后面，看不见）。
     property bool sideNarrowed: false          // 侧栏是否已真正收起（与页面可见性解耦）
     // fullOpen：页面是否处于"全屏页"状态（拦住底下页面的交互）
-    readonly property bool fullOpen: versionsOpen || accountOpen || resDetailOpen
+    readonly property bool fullOpen: versionsOpen || accountOpen || resDetailOpen || settingsOpen
     // sideCollapsed：侧栏是否应该收起。版本页/账户页立刻收；资源详情延后收（见 onResDetailOpenChanged）
     readonly property bool sideCollapsed: versionsOpen || accountOpen || sideNarrowed
     onResDetailOpenChanged: {
@@ -130,6 +133,15 @@ Item {
 
     Component.onCompleted: {
         if (Qt.application.arguments.indexOf("--ui-versions") >= 0) root.versionsOpen = true
+        // 版本设置预览：--ui-settings [versionId]（截图/验收用；不给 id 就用当前选中版本）
+        var si = Qt.application.arguments.indexOf("--ui-settings")
+        if (si >= 0) {
+            root.settingsVersionId = (si + 1 < Qt.application.arguments.length
+                                      && Qt.application.arguments[si + 1].indexOf("--") !== 0)
+                                     ? Qt.application.arguments[si + 1]
+                                     : (b ? b.selectedVersion : "")
+            root.settingsOpen = true
+        }
         if (Qt.application.arguments.indexOf("--ui-account") >= 0) root.accountOpen = true
         if (Qt.application.arguments.indexOf("--ui-download") >= 0) {
             root.downloadOpen = true
@@ -293,7 +305,33 @@ Item {
             anchors.fill: parent
             toast: toastHost
             onClose: root.versionsOpen = false
+            onOpenSettings: (vid) => {
+                root.settingsVersionId = vid
+                root.settingsOpen = true
+            }
         }
+        }
+    }
+
+    // 版本设置（全窗覆盖；叠在版本页之上，返回回到版本页）
+    Item {
+        id: settingsHost
+        anchors.fill: parent
+        visible: root.settingsOpen
+        clip: true
+        Rectangle { anchors.fill: parent; color: Theme.bg }
+        Item {
+            anchors.fill: parent
+            x: root.settingsOpen ? 0 : 24
+            Behavior on x { NumberAnimation { duration: root.settingsOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
+            scale: root.settingsOpen ? 1 : 0.988
+            Behavior on scale { NumberAnimation { duration: root.settingsOpen ? Theme.durPage : 0; easing.type: Theme.easeEnter } }
+            VersionSettingsPage {
+                anchors.fill: parent
+                versionId: root.settingsVersionId
+                toast: toastHost
+                onClose: root.settingsOpen = false
+            }
         }
     }
 
