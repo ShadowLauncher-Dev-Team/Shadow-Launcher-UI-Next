@@ -269,6 +269,7 @@ set_source_files_properties(ui/pages/ResourceDetailPage.qml PROPERTIES QT_RESOUR
 set_source_files_properties(ui/ToastHost.qml PROPERTIES QT_RESOURCE_ALIAS ToastHost.qml)
 set_source_files_properties(ui/controls/SSlider.qml PROPERTIES QT_RESOURCE_ALIAS controls/SSlider.qml)
 set_source_files_properties(ui/pages/VsMemoryPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsMemoryPane.qml)
+set_source_files_properties(ui/pages/VsToolsPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsToolsPane.qml)
 
 qt_add_qml_module(ShadowLauncher
     URI ShadowLauncher.Next
@@ -315,6 +316,7 @@ qt_add_qml_module(ShadowLauncher
         ui/controls/SInput.qml
         ui/controls/SSlider.qml
         ui/pages/VsMemoryPane.qml
+        ui/pages/VsToolsPane.qml
 )
 
 # UI 契约检查（构建期硬失败：版本号装饰 / emoji 图标 / SpringAnimation / pixelSize 小数 ...）

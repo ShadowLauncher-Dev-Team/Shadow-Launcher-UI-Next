@@ -36,6 +36,7 @@ Item {
         if (k === "overview") return overviewComp
         if (k === "launch") return launchComp
         if (k === "memory") return memoryComp
+        if (k === "tools") return toolsComp
         return placeholderComp
     }
     function paneTitle(k) {
@@ -269,6 +270,13 @@ Item {
     Component {
         id: memoryComp
         VsMemoryPane {
+            versionId: page.versionId
+            toast: page.toast
+        }
+    }
+    Component {
+        id: toolsComp
+        VsToolsPane {
             versionId: page.versionId
             toast: page.toast
         }
