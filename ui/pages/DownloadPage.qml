@@ -26,7 +26,10 @@ Item {
     /// 资源库点了卡片：交给外壳打开详情页
     signal openResourceDetail(string kind, var item)
     /// 资源库是否有在途请求（外壳顶部加载条聚合用）
-    readonly property bool resourceBusy: resourceView ? resourceView.busy : false
+    // 必须带 visible：resourceView 是常驻对象、靠 tabIndex 复用（Mod/光影/资源包/整合包/数据包同一页），
+    // 切到 MC 版本页时它只是隐藏，Mod 的扫描还在跑，busy 仍为 true —— 少了这个判断就会出现
+    // 「进 Mod 又迅速切到版本页，顶部光条还在转」。
+    readonly property bool resourceBusy: (resourceView && resourceView.visible) ? resourceView.busy : false
     // 安装已启动：交给外壳切到独立的「下载进度」页（本页不再持有进度视图）
     signal openProgress()
 
