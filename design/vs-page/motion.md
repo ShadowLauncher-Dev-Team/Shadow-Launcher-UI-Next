@@ -204,3 +204,28 @@ Behavior on color { ColorAnimation { ... } }
 **修法**：`StageShell` 根加一个最底层 MouseArea（`z: -1`），`onPressed` 时把 `hostWindow.activeFocusItem.focus` 置 false。上层控件消费掉的点击到不了这里，只有真正的空白点击才触发。
 
 **教训**：这类"点到别处应该恢复默认"的行为必须放在壳层统一做，靠各页面自觉调用必漏。
+
+
+### 8.3 焦点修复第一次失败（我改错了，第二次才修对）
+
+**第一次做法（错）**：`StageShell` 根放一个全窗 `MouseArea(z:-1)`，`onPressed` 里把 `hostWindow.activeFocusItem.focus` 置 false。
+
+两个问题：
+1. **点空白仍不失焦** —— `focus = false` 对 FocusScope 链不作数，输入框照样显蓝。
+2. **新引入退化** —— 点另一个输入框要点好几次、还得把鼠标移出去再移进来。
+
+原因是我把 `STextArea` 改成了 `Flickable { interactive: false }`（为了不吃滚轮），它**不再消费 press**，press 直接穿透到全窗 MouseArea → 先被清焦点、输入框才拿到 click → 焦点流被打乱。**两个修复互相踩。**
+
+**第二次做法（对）**：
+```qml
+Item {
+    id: focusSink
+    anchors.fill: parent
+    z: -1
+    TapHandler { onTapped: focusSink.forceActiveFocus() }
+}
+```
+- 用 `TapHandler` 而不是 `MouseArea`：TapHandler 不抢 press，输入框该谁聚焦还是谁聚焦
+- 不给 `activeFocusItem.focus = false`，而是把焦点交给一个独立接收器，走 Qt 自己的焦点转移
+
+**教训**：修交互问题时，两个"都在讲焦点/事件"的改动会互相踩，必须一起想清楚 press 的传播链。
