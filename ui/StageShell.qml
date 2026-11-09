@@ -180,6 +180,19 @@ Item {
         color: Theme.bg
     }
 
+    // 点空白处清焦点（全站一条规则）。
+    // 之前是每个页面自己调 SField.blur()，漏一处输入框就一直显着蓝边、光标不释放（影报的"点了别处还是选中"）。
+    // 放最底层（z: -1）：任何被上层控件消费掉的点击都到不了这里，只有点在真正空白处才触发。
+    MouseArea {
+        anchors.fill: parent
+        z: -1
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        onPressed: {
+            var w = root.hostWindow
+            if (w && w.activeFocusItem) w.activeFocusItem.focus = false
+        }
+    }
+
     // 顶部加载条（Material / Google 线性风格）：压在窗口最上沿
     SLoadingBar {
         anchors.left: parent.left

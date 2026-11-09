@@ -33,20 +33,32 @@ Item {
         font.pixelSize: 11
     }
 
-    ScrollView {
+    // 不用 ScrollView：它**无条件消费滚轮**——内容根本没溢出时也会把滚轮吃掉，
+    // 鼠标划过输入框时外层页面就滚不动（影报的"滚到最下面再上滚会卡死在原地"就是这个：
+    // 到底后光标正好停在 JVM/游戏参数框上）。
+    // 现在用 Flickable 并显式只在内容真的溢出时才 interactive，未溢出时滚轮直接穿透给页面。
+    Flickable {
+        id: flick
         anchors.fill: parent
         clip: true
-        TextArea {
+        contentWidth: width
+        contentHeight: edit.implicitHeight + 22
+        interactive: contentHeight > height
+        boundsBehavior: Flickable.StopAtBounds
+
+        TextEdit {
             id: edit
-            padding: 11
+            x: 11
+            y: 11
+            width: flick.width - 22
             text: root.text
             color: "#cfd6e1"
             selectionColor: "#2c4a7a"
             selectedTextColor: "#ffffff"
             wrapMode: TextEdit.WrapAnywhere
+            selectByMouse: true
             font.family: "Consolas"
             font.pixelSize: 11
-            background: null
             onTextChanged: {
                 if (root.text !== text) {
                     root.text = text
