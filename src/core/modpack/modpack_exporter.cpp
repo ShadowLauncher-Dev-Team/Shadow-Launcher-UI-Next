@@ -603,7 +603,12 @@ void ModpackExporter::exportVersion(const QString& versionId, const QString& dis
                        checkedOptions, selectedSaves,
                        modrinthUploadMode, hostedAssetsOnly, includeJava, outPath, extraFiles,
                        rulesOverride]() {
-        auto finish = [this, outPath](bool ok, const QString& err) {
+        // 整段 worker 兜底：任何未捕获异常都不能让 m_busy 卡在 true，
+        // 否则后续每次点导出都会在第一行 `if (m_busy) return;` 静默失败（表现为"点了没反应"）。
+        bool finishCalled = false;
+        auto finish = [this, outPath, &finishCalled](bool ok, const QString& err) {
+            if (finishCalled) return;
+            finishCalled = true;
             qCInfo(logMod) << QStringLiteral("[整合包] 导出结束 %1 %2 %3")
                                   .arg(ok ? QStringLiteral("成功") : QStringLiteral("失败"), outPath, err);
             const QString out = outPath;
@@ -614,6 +619,7 @@ void ModpackExporter::exportVersion(const QString& versionId, const QString& dis
             });
         };
 
+        try {
         // ── 1. 解析版本 JSON：MC 版本 + 加载器依赖 ──
         const QString versionDir = gameDir + QStringLiteral("/versions/") + versionId;
         const QString jsonPath = versionDir + QStringLiteral("/") + versionId + QStringLiteral(".json");
@@ -712,11 +718,15 @@ void ModpackExporter::exportVersion(const QString& versionId, const QString& dis
                     for (const auto& r : d.rules) rules.append(r);
             // 存档子项：勾选 saves 时用精确子项规则替换整目录规则
             if (checked.contains(QStringLiteral("saves"))) {
-                rules.removeAll(QStringLiteral("saves/"));
                 QStringList wantSaves;
                 for (const auto& v : selectedSaves) wantSaves.append(v.toString());
-                for (const auto& s : wantSaves)
-                    rules.append(QStringLiteral("saves/") + s + QStringLiteral("/"));
+                // 只有真的勾了子项才替换整目录规则；否则会把 saves/ 删掉又补不回任何东西，
+                // 结果是「勾了存档」却一个存档都不进包，且没有任何提示。
+                if (!wantSaves.isEmpty()) {
+                    rules.removeAll(QStringLiteral("saves/"));
+                    for (const auto& s : wantSaves)
+                        rules.append(QStringLiteral("saves/") + s + QStringLiteral("/"));
+                }
             }
             // 资源包/光影子项（QML 传 id:name 文件 / id:dir:name 文件夹）：
             // 有勾选子项时用精确规则替换整目录规则（同主流启动器 ReloadSubOptions）
@@ -1076,16 +1086,23 @@ void ModpackExporter::exportVersion(const QString& versionId, const QString& dis
         // ── 6. 构建清单 + 打包 ──
         // hosted（有在线来源）→ files[]/manifest 引用，不打包实体；
         // 非 hosted → overrides/mods/ 实体直装（同主流启动器：ModFile.File.Delete() 语义）
-        const int hostedCount = mods.size() - [&]() {
+        // 是否必须打包实体：非 hosted 一律打包；CF 格式还要求 cfFileId>0 才能被 manifest 引用，
+        // 否则「Modrinth 命中、CF 未命中」的文件会既不引用也不打包 —— 包导出成功但少 mod。
+        auto needsEntity = [cfFormat](const ModFile& m) {
+            if (!m.hosted) return true;
+            if (cfFormat) return m.cfFileId <= 0;
+            return false;
+        };
+        const int hostedCountReal = [&]() {
             int n = 0;
-            for (const auto& m : mods) if (!m.hosted) n++;
+            for (const auto& m : mods) if (!needsEntity(m)) n++;
             return n;
         }();
 
-        // 实体文件总数（打包进度用）：非 hosted mods + overrides
+        // 实体文件总数（打包进度用）：需要实体化的 mods + overrides
         qint64 totalBytes = 0;
         int totalFiles = 1;   // 清单文件
-        for (const auto& m : mods) if (!m.hosted) { totalFiles++; totalBytes += m.size; }
+        for (const auto& m : mods) if (needsEntity(m)) { totalFiles++; totalBytes += m.size; }
         for (const auto& o : ovFiles) { totalFiles++; totalBytes += QFileInfo(o.diskPath).size(); }
 
         ZipArchive zip;
@@ -1196,7 +1213,7 @@ void ModpackExporter::exportVersion(const QString& versionId, const QString& dis
 
         // 6b. 非 hosted mods → overrides/mods/ 实体
         for (const auto& m : mods) {
-            if (m.hosted) continue;
+            if (!needsEntity(m)) continue;
             if (m_cancel.loadRelaxed()) { zip.closeWrite(); QFile::remove(outPath); finish(false, tr("已取消")); return; }
             if (!zip.addFile(m.diskPath, QStringLiteral("overrides/") + m.relPath)) {
                 zip.closeWrite();
@@ -1227,14 +1244,21 @@ void ModpackExporter::exportVersion(const QString& versionId, const QString& dis
             return;
         }
 
-        const int localCount = mods.size() - hostedCount;
+        const int localCount = mods.size() - hostedCountReal;
         const QString note = modrinthUploadMode
             ? tr("（%1 个模组未在 Modrinth 托管，已直接打包）").arg(localCount)
-            : tr("（%1 个模组已联网托管，%2 个直接打包）").arg(hostedCount).arg(localCount);
+            : tr("（%1 个模组已联网托管，%2 个直接打包）").arg(hostedCountReal).arg(localCount);
         setProgress(1.0, tr("导出完成 %1").arg(note));
         qCInfo(logMod) << QStringLiteral("[整合包] 导出完成 %1 → %2 (mods=%3 hosted=%4 local=%5)")
-            .arg(displayName, outPath).arg(mods.size()).arg(hostedCount).arg(localCount);
+            .arg(displayName, outPath).arg(mods.size()).arg(hostedCountReal).arg(localCount);
         finish(true, note);
+        } catch (const std::exception& ex) {
+            qCCritical(logMod) << QStringLiteral("[整合包] 导出异常 %1").arg(QString::fromUtf8(ex.what()));
+            finish(false, tr("导出时发生异常：%1").arg(QString::fromUtf8(ex.what())));
+        } catch (...) {
+            qCCritical(logMod) << QStringLiteral("[整合包] 导出异常（未知）");
+            finish(false, tr("导出时发生未知异常"));
+        }
     });
 }
 

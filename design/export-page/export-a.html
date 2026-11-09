@@ -1,0 +1,268 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>版本设置 · 导出整合包</title>
+<style>
+:root{--bg:#08090d;--sidebar:#0a0b0f;--card:#0b0d12;--card2:#0c0f15;--input:#0d1016;
+  --line:#14171d;--line2:#262b35;--fg:#e8ebf2;--fg2:#98a1ae;--fg3:#5d6673;
+  --accent:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--ease:cubic-bezier(.2,.75,.25,1)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#05060a}
+body{font-family:"Microsoft YaHei UI","Segoe UI",system-ui,sans-serif;color:var(--fg);font-size:12px;
+  display:flex;flex-direction:column;align-items:center;gap:10px;padding-bottom:10px}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left}
+.i{width:1em;height:1em;flex:0 0 auto;display:block}
+.win{width:1100px;height:720px;background:var(--bg);position:relative;overflow:hidden;flex:0 0 auto}
+/* 顶栏 */
+.top{position:absolute;left:0;right:0;top:0;height:56px;display:flex;align-items:center}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:var(--line)}
+.back{height:32px;border:1px solid var(--line2);border-radius:2px;display:inline-flex;align-items:center;gap:7px;
+  padding:0 12px;color:var(--fg2);font-size:12px;margin-left:24px;transition:.12s var(--ease)}
+.back .i{width:14px;height:14px}
+.back:hover{background:#11151c;border-color:#39414f;color:var(--fg)}
+.tt1{font-size:15px;font-weight:600;color:#fff;margin-left:14px}
+.tt2{font-size:11px;color:var(--fg3);margin-left:12px;font-family:ui-monospace,Consolas,monospace}
+.wctl{position:absolute;right:18px;top:0;height:56px;display:flex;align-items:center;gap:18px;color:var(--fg3);font-size:15px}
+/* 主体 */
+.body{position:absolute;left:0;right:0;top:56px;bottom:0;display:flex}
+.nav{width:208px;flex:0 0 208px;background:var(--sidebar);border-right:1px solid var(--line);position:relative;padding:12px 10px;overflow:hidden}
+.m-label{font-size:10px;color:#3f4753;letter-spacing:.11em;padding:14px 10px 5px}
+.m-item{display:flex;align-items:center;gap:9px;width:100%;height:40px;padding:0 10px;border-radius:6px;
+  color:var(--fg2);font-size:12.5px;transition:.12s var(--ease)}
+.m-item .i{width:15px;height:15px;color:#4d5666}
+.m-item:hover{background:#0f131a;color:var(--fg)}
+.m-item.on{color:#fff}.m-item.on .i{color:#7fa9f5}
+.bar{position:absolute;left:2px;width:2px;height:22px;border-radius:2px;background:var(--accent);
+  box-shadow:0 0 10px 1px rgba(59,130,246,.5);pointer-events:none;transform:translateY(378px)}
+.main{flex:1;min-width:0;position:relative;overflow:hidden;display:flex;flex-direction:column}
+
+/* 顶部工具条：格式二选一 */
+.tools{height:56px;flex:0 0 56px;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid var(--line)}
+.seg{display:flex;padding:2px;border:1px solid var(--line2);border-radius:8px;background:#0a0c11;gap:2px}
+.seg button{height:28px;padding:0 14px;border-radius:6px;font-size:12px;color:var(--fg3);transition:.12s var(--ease)}
+.seg button.on{background:#132340;color:#bcd4ff}
+.fmt-note{font-size:11px;color:var(--fg3)}
+.spacer{flex:1}
+.ghost{height:30px;padding:0 12px;border:1px solid var(--line2);border-radius:2px;color:var(--fg2);font-size:12px;
+  display:inline-flex;align-items:center;gap:6px;transition:.12s var(--ease)}
+.ghost:hover{background:#11151c;border-color:#39414f;color:var(--fg)}
+
+/* 双栏 */
+.cols{flex:1;min-height:0;display:flex}
+.left{flex:1;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--line)}
+.right{width:352px;flex:0 0 352px;display:flex;flex-direction:column;min-height:0}
+
+/* 左栏头 */
+.colhead{height:40px;flex:0 0 40px;display:flex;align-items:center;padding:0 24px;gap:8px}
+.colhead b{font-size:12px;color:var(--fg2);font-weight:600;letter-spacing:.02em}
+.colhead .cnt{font-size:11px;color:var(--fg3)}
+.tree{flex:1;min-height:0;overflow:auto;padding:0 24px 18px}
+.tree::-webkit-scrollbar{width:8px}
+.tree::-webkit-scrollbar-thumb{background:#232936;border-radius:4px}
+
+/* —— 层级：父项 44 高 + 左侧竖线；子项 34 高、缩进 32 —— */
+.grp{position:relative;border:1px solid var(--line2);border-radius:10px;background:var(--card);margin-bottom:7px;overflow:hidden}
+.grp.on{border-color:#2f3a4d}
+.ph{height:42px;display:flex;align-items:center;gap:10px;padding:0 14px}
+.ph:hover{background:#101419}
+.cb{width:15px;height:15px;flex:0 0 15px;border:1px solid #39414f;border-radius:4px;display:flex;
+  align-items:center;justify-content:center;background:#0d1016}
+.cb.on{background:var(--accent);border-color:var(--accent)}
+.cb.on::after{content:"";width:8px;height:4px;border-left:2px solid #fff;border-bottom:2px solid #fff;
+  transform:rotate(-45deg) translateY(-1px)}
+.cb.part{background:#1b2b45;border-color:#2f4a72;position:relative}
+.cb.part::after{content:"";position:absolute;left:3px;right:3px;height:2px;background:#7fa9f5;border-radius:1px}
+.gname{font-size:13px;font-weight:600;color:#eef2f8}
+.gmeta{font-size:11px;color:var(--fg3);margin-left:2px}
+.gright{margin-left:auto;display:flex;align-items:center;gap:8px}
+.tag{font-size:10.5px;color:#7fa9f5;background:#12203a;border:1px solid #1f3355;border-radius:4px;padding:1px 6px}
+.tag.warn{color:var(--warn);background:#241a0b;border-color:#3d2c10}
+.chev{width:12px;height:12px;color:#4b5462}
+
+/* 子项 */
+.kids{padding:0 14px 8px 14px;position:relative}
+.kids::before{content:"";position:absolute;left:28px;top:0;bottom:12px;width:1px;background:#1b2029}
+.kid{height:32px;display:flex;align-items:center;gap:9px;padding-left:22px;border-radius:6px}
+.kid:hover{background:#101419}
+.kid .cb{width:14px;height:14px;flex:0 0 14px}
+.kid .nm{font-size:12px;color:#cfd6e1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kid .meta{margin-left:auto;font-size:10.5px;color:var(--fg3);font-variant-numeric:tabular-nums}
+.kid.off .nm{color:#5d6673}
+.empty{height:34px;display:flex;align-items:center;padding-left:22px;font-size:11.5px;color:#4b5462}
+.suball{display:flex;align-items:center;gap:8px;height:26px;padding-left:22px;font-size:11px;color:var(--fg3)}
+.suball b{color:#9aa3b0;font-weight:400}
+
+/* 右栏 */
+.rsec{padding:14px 20px;border-bottom:1px solid var(--line)}
+.rsec h4{font-size:12px;font-weight:600;color:#eef2f8;margin-bottom:12px}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:11px;color:var(--fg3);margin-bottom:5px}
+.inp{height:32px;border:1px solid var(--line2);border-radius:8px;background:var(--input);
+  display:flex;align-items:center;padding:0 10px;font-size:12px;color:#cfd6e1}
+.inp.focus{border-color:var(--accent)}
+.two{display:flex;gap:8px}.two>*{flex:1}
+.opt{display:flex;align-items:flex-start;gap:9px;padding:7px 0}
+.opt .cb{margin-top:1px}
+.opt .txt b{display:block;font-size:12px;font-weight:400;color:#dfe5ee}
+.opt .txt span{display:block;font-size:10.5px;color:var(--fg3);margin-top:2px;line-height:1.45}
+.opt.dis .txt b{color:#4b5462}
+
+/* 摘要 */
+.sum{flex:0 0 auto;padding:14px 20px 10px;display:flex;flex-direction:column;gap:9px}
+.push{flex:1 1 auto;min-height:8px}
+.srow{display:flex;align-items:baseline;gap:8px;font-size:11.5px}
+.srow .k{color:var(--fg3);flex:0 0 62px}
+.srow .v{color:#cfd6e1}
+.srow .v.big{font-size:15px;color:#eef2f8;font-weight:600;font-variant-numeric:tabular-nums}
+.srow .v.warn{color:var(--warn)}
+.hr{height:1px;background:var(--line);margin:3px 0}
+
+/* 底部导出条 */
+.exportbar{flex:0 0 auto;padding:14px 20px 16px;border-top:1px solid var(--line2);background:#0a0b0f}
+.pathline{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.pathline .p{flex:1;min-width:0;font-size:11px;color:#7b8494;font-family:Consolas,monospace;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pathline .chg{font-size:11px;color:#7fa9f5;flex:0 0 auto}
+.primary{width:100%;height:38px;border-radius:8px;background:var(--accent);color:#fff;font-size:13px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;gap:8px;transition:.12s var(--ease)}
+.primary:hover{background:#4a8ef8}
+.hint{font-size:10.5px;color:#4b5462;margin-top:9px;line-height:1.5}
+</style></head><body>
+
+<div class="win">
+  <div class="top">
+    <button class="back"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>返回</button>
+    <span class="tt1">版本设置</span>
+    <span class="tt2">香草纪元：食旅纪行-Release2.7.1</span>
+    <div class="wctl">
+      <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+      <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </div>
+  </div>
+
+  <div class="body">
+    <aside class="nav"><div class="bar"></div>
+      <button class="m-item"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-3 7h5l-3 13"/></svg><span>快捷入口</span></button>
+      <button class="m-item"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span>概览</span></button>
+      <div class="m-label">启动</div>
+      <button class="m-item"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/></svg><span>启动配置</span></button>
+      <button class="m-item"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M2 12h2"/><path d="M20 12h2"/></svg><span>内存设置</span></button>
+      <div class="m-label">内容</div>
+      <button class="m-item"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22V12"/><polyline points="3.29 7 12 12 20.71 7"/><path d="m7.5 4.27 9 5.15"/></svg><span>Mod 管理</span></button>
+      <button class="m-item"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg><span>资源包</span></button>
+      <button class="m-item"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg><span>存档</span></button>
+      <div class="m-label">维护</div>
+      <button class="m-item"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 0 0 5 5l-9.4 9.4a2.1 2.1 0 0 1-3-3z"/></svg><span>工具与维护</span></button>
+      <button class="m-item on"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21 8-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg><span>导出整合包</span></button>
+    </aside>
+
+    <div class="main">
+      <div class="tools">
+        <div class="seg">
+          <button class="on">Modrinth .mrpack</button>
+          <button>CurseForge .zip</button>
+        </div>
+        <span class="fmt-note">425 个模组中 <b style="color:#9aa3b0;font-weight:400">298 个可在线托管</b></span>
+        <div class="spacer"></div>
+        <button class="ghost">恢复默认</button>
+      </div>
+
+      <div class="cols">
+        <!-- 左：导出内容（层级） -->
+        <div class="left">
+          <div class="colhead"><b>导出内容</b><span class="cnt">6 组 · 已选 4 组</span></div>
+          <div class="tree">
+
+            <div class="grp on">
+              <div class="ph"><span class="cb on"></span><span class="gname">基础设置</span><span class="gmeta">3 项</span>
+                <span class="gright"><span class="tag">已选 3</span>
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></div>
+              <div class="kids">
+                <div class="kid"><span class="cb on"></span><span class="nm">游戏本体设置</span><span class="meta">options.txt</span></div>
+                <div class="kid"><span class="cb on"></span><span class="nm">按键与音量</span><span class="meta">options.txt</span></div>
+                <div class="kid"><span class="cb on"></span><span class="nm">启动器配置</span><span class="meta">5 个文件</span></div>
+              </div>
+            </div>
+
+            <div class="grp on">
+              <div class="ph"><span class="cb on"></span><span class="gname">Mod 管理</span><span class="gmeta">425 个</span>
+                <span class="gright"><span class="tag">全部导出</span>
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></div>
+              <div class="kids">
+                <div class="kid"><span class="cb on"></span><span class="nm">全部 425 个 Mod</span><span class="meta">298 可托管 · 127 直装</span></div>
+                <div class="kid off"><span class="cb"></span><span class="nm">已禁用的 Mod（.disabled / .old）</span><span class="meta">0 个</span></div>
+              </div>
+            </div>
+
+            <div class="grp on">
+              <div class="ph"><span class="cb part"></span><span class="gname">资源包</span><span class="gmeta">2 个</span>
+                <span class="gright"><span class="tag">已选 1 / 2</span>
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></div>
+              <div class="kids">
+                <div class="suball">选择：<b>全选</b>·<b>全不选</b></div>
+                <div class="kid"><span class="cb on"></span><span class="nm">香草风味-1.4.zip</span><span class="meta">24.1 MB</span></div>
+                <div class="kid"><span class="cb"></span><span class="nm">原版高清材质.zip</span><span class="meta">8.6 MB</span></div>
+              </div>
+            </div>
+
+            <div class="grp">
+              <div class="ph"><span class="cb"></span><span class="gname">光影</span><span class="gmeta">此版本没有光影</span>
+                <span class="gright"><span class="tag warn">无内容</span></span></div>
+            </div>
+
+            <div class="grp on">
+              <div class="ph"><span class="cb on"></span><span class="gname">存档</span><span class="gmeta">1 个</span>
+                <span class="gright"><span class="tag">已选 1 / 1</span>
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></div>
+              <div class="kids">
+                <div class="kid"><span class="cb on"></span><span class="nm">明月镇</span><span class="meta">1.2 GB · 2026/11/08 21:40</span></div>
+              </div>
+            </div>
+
+            <div class="grp">
+              <div class="ph"><span class="cb"></span><span class="gname">其他</span><span class="gmeta">日志、截图、服务器列表</span>
+                <span class="gright"><span class="tag warn">含隐私</span>
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 右：设置 + 摘要 + 导出 -->
+        <div class="right">
+          <div class="rsec">
+            <h4>打包信息</h4>
+            <div class="field"><label>整合包名称</label><div class="inp focus">香草纪元：食旅纪行</div></div>
+            <div class="field" style="margin-bottom:0"><label>包版本号</label><div class="inp">2.7.1</div></div>
+          </div>
+
+          <div class="rsec">
+            <h4>高级</h4>
+            <div class="opt"><span class="cb"></span><span class="txt"><b>仅打包包内资源</b><span>不联网查询来源，所有文件直接塞进包</span></span></div>
+            <div class="opt"><span class="cb"></span><span class="txt"><b>仅查询 Modrinth</b><span>只用于上传 Modrinth，跳过 CurseForge</span></span></div>
+            <div class="opt dis"><span class="cb"></span><span class="txt"><b>打包 Java 运行时</b><span>此版本未找到匹配的便携 Java</span></span></div>
+          </div>
+
+          <div class="sum">
+            <div class="srow"><span class="k">内容</span><span class="v">4 组 · 429 个文件</span></div>
+            <div class="srow"><span class="k">引用</span><span class="v">298 个在线下载</span></div>
+            <div class="srow"><span class="k">直装</span><span class="v">132 个打进包里</span></div>
+            <div class="hr"></div>
+            <div class="srow"><span class="k">预计大小</span><span class="v big">2.4 GB</span></div>
+            <div class="srow"><span class="k">输出</span><span class="v">.mrpack</span></div>
+          </div>
+
+          <div class="push"></div>
+          <div class="exportbar">
+            <div class="pathline"><span class="p">D:\latest-code\shadow-v2\build\Release\香草纪元 2.7.1.mrpack</span><span class="chg">更改</span></div>
+            <button class="primary">
+              <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><path d="M12 15V3"/></svg>
+              开始导出
+            </button>
+            <div class="hint">导出过程会先计算文件哈希并联网匹配来源，425 个 Mod 约需 1–2 分钟。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body></html>
