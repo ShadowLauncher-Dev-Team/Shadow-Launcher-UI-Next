@@ -14,6 +14,7 @@ Item {
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     property var saves: []
+    property string query: ""
     property string pendingDelete: ""
 
     readonly property int totalBytes: {
@@ -21,8 +22,16 @@ Item {
         for (var i = 0; i < pane.saves.length; ++i) n += (pane.saves[i].sizeBytes || 0)
         return n
     }
-    readonly property string totalText: pane.fmt(pane.totalBytes)
-    readonly property bool isolated: pane.b ? pane.b.isolationEnabled : true
+
+    readonly property var shown: {
+        if (pane.query.length === 0) return pane.saves
+        var q = pane.query.toLowerCase()
+        var out = []
+        for (var i = 0; i < pane.saves.length; ++i) {
+            if (String(pane.saves[i].name || "").toLowerCase().indexOf(q) >= 0) out.push(pane.saves[i])
+        }
+        return out
+    }
 
     function fmt(bytes) {
         if (bytes < 1024) return bytes + " B"
@@ -31,9 +40,12 @@ Item {
         return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB"
     }
 
-    function reload() {
+    // silent = 切回窗口时的后台重扫：不点亮全局加载光条，也不显示"正在读取"占位
+    property bool silent: false
+    function reload(silentReload) {
         if (!pane.b || pane.versionId.length === 0) return
-        if (!pane.loading) { pane.loading = true; pane.busyChanged(true) }
+        pane.silent = (silentReload === true)
+        if (!pane.silent && !pane.loading) { pane.loading = true; pane.busyChanged(true) }
         pane.b.listSavesAsync(pane.versionId)
     }
     Component.onCompleted: pane.reload()
@@ -42,7 +54,7 @@ Item {
     Connections {
         target: Qt.application
         ignoreUnknownSignals: true
-        function onActiveChanged() { if (Qt.application.active) pane.reload() }
+        function onActiveChanged() { if (Qt.application.active) pane.reload(true) }
     }
 
     Connections {
@@ -52,6 +64,7 @@ Item {
             if (vid !== pane.versionId) return
             pane.saves = list || []
             pane.loading = false
+            pane.silent = false
         }
     }
 
@@ -62,67 +75,26 @@ Item {
         anchors.topMargin: 22
         spacing: 14
 
-        // ── 信息条：位置 + 占用，右侧是仅有的两个入口 ──
         Item {
-            id: infoCard
             width: parent.width
-            height: 74
-
-            Rectangle {
-                anchors.fill: parent
-                radius: Theme.rWin
-                color: "#0b0d12"
-                border.width: 1
-                border.color: Theme.line2
-            }
-
-            Column {
-                anchors.left: parent.left
-                anchors.leftMargin: 20
-                anchors.right: infoBtns.left
-                anchors.rightMargin: 16
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 6
-
-                Row {
-                    spacing: 8
-                    Text {
-                        text: "存档位置"
-                        color: "#7b8494"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 12
-                    }
-                    Text {
-                        text: pane.isolated ? "版本隔离 · 仅本版本可见" : "共享目录 · 与其他版本共用"
-                        color: "#cfd6e1"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 12
-                    }
-                }
-                Row {
-                    spacing: 8
-                    Text {
-                        text: "占用"
-                        color: "#7b8494"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 12
-                    }
-                    Text {
-                        text: pane.loading ? "正在统计…"
-                              : (pane.saves.length + " 个存档 · 共 " + pane.totalText)
-                        color: "#cfd6e1"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 12
-                    }
-                }
-            }
-
+            height: 36
             Row {
-                id: infoBtns
-                anchors.right: parent.right
-                anchors.rightMargin: 20
+                anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
+                SField {
+                    width: 250
+                    height: 36
+                    label: "搜索存档"
+                    onEdited: (v) => pane.query = v
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: pane.saves.length + " 个存档"
+                    color: "#6b7686"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                }
                 SButton {
                     kind: 1
                     height: 32
@@ -139,7 +111,7 @@ Item {
                     height: 32
                     radius: 2
                     iconName: "folder-open"
-                    text: "存档文件夹"
+                    text: "文件夹"
                     onClicked: if (pane.b) pane.b.openSavesFolder(pane.versionId)
                 }
             }
@@ -149,9 +121,9 @@ Item {
         ListView {
             id: saveList
             width: parent.width
-            height: parent.height - infoCard.height - 14
+            height: parent.height - 48
             clip: true
-            model: pane.saves
+            model: pane.shown
             spacing: 8
             reuseItems: true
             cacheBuffer: 400
@@ -252,7 +224,7 @@ Item {
                     topPadding: 26
                     visible: saveList.count === 0 && !pane.loading
                     horizontalAlignment: Text.AlignHCenter
-                    text: "此版本还没有存档"
+                    text: pane.saves.length === 0 ? "此版本还没有存档" : "没有匹配的存档"
                     color: "#5d6673"
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
@@ -326,7 +298,7 @@ Item {
                         if (pane.toast) pane.toast.show("已删除存档 " + pane.pendingDelete, -1, "info", true)
                         pane.pendingDelete = ""
                         // deleteSave 没有完成信号，等文件系统落定再重扫
-                        Qt.callLater(pane.reload)
+                        Qt.callLater(function() { pane.reload(true) })
                     }
                 }
             }

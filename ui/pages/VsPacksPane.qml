@@ -30,9 +30,12 @@ Item {
         return out
     }
 
-    function reload() {
+    // silent = 切回窗口时的后台重扫：不点亮全局加载光条，也不显示"正在读取"占位
+    property bool silent: false
+    function reload(silentReload) {
         if (!pane.b || pane.versionId.length === 0) return
-        if (!pane.loading) { pane.loading = true; pane.busyChanged(true) }
+        pane.silent = (silentReload === true)
+        if (!pane.silent && !pane.loading) { pane.loading = true; pane.busyChanged(true) }
         pane.b.listResourcePacksAsync(pane.versionId)
     }
     Component.onCompleted: pane.reload()
@@ -41,7 +44,7 @@ Item {
     Connections {
         target: Qt.application
         ignoreUnknownSignals: true
-        function onActiveChanged() { if (Qt.application.active) pane.reload() }
+        function onActiveChanged() { if (Qt.application.active) pane.reload(true) }
     }
 
     Connections {
