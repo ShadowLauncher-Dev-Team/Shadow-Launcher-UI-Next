@@ -277,3 +277,27 @@ QML 层做不可靠，原因很具体：
 点输入框后焦点项是 `QQuickTextEdit`（整块可点，height 修复生效）；点空白判定 `inside=false` → 释放成功。
 
 **注意**：`forceActiveFocus()` 到 contentItem 可能静默失败，必须同时 `fi->setFocus(false)` —— 这是"日志显示已释放、但蓝边还在"的原因。
+
+
+### 8.8 光标形状暴露的真问题：输入框只有文字那一行是"文本区"
+
+影观察：「有的输入框光标一进去会变成 I，有的不会」。
+
+**根因**：`SInput` 和 `SField` 里的 `TextInput` 只有 `anchors.verticalCenter`、**没有 height** —— 它实际只占**文字那一行**（约 17px），而外框是 34/36px。
+
+所以鼠标停在框的**上下留白处**时根本不在文本区上：
+- 光标不变 I 形（显示箭头）
+- **点击也点不中**（不会聚焦）
+
+这和 `STextArea` 那个 `TextEdit` 没 height 是**同一个病**。
+
+**修法**（两处）：
+```qml
+anchors.top: parent.top
+anchors.bottom: parent.bottom
+verticalAlignment: TextInput.AlignVCenter
+```
+
+撑满框高后，整块都是文本区：光标全框变 I 形、点任意位置都能聚焦。
+
+**教训**：QML 里给 `TextInput`/`TextEdit` 只加 `verticalCenter` 会造成"看起来是输入框、实际只有一行能点"。这个 bug 在光标形状上有直接可见的表现，比点击测试更容易被发现。

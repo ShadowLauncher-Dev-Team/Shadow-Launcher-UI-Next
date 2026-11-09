@@ -37,7 +37,11 @@ Item {
         anchors.leftMargin: 11
         anchors.right: parent.right
         anchors.rightMargin: 10
-        anchors.verticalCenter: parent.verticalCenter
+        // 撑满整个框高（不能只 verticalCenter）：否则 TextInput 只有文字那一行的高度，
+        // 鼠标停在框的上下留白处时根本不在文本区上 —— 光标不变 I 形、点击也点不中。
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        verticalAlignment: TextInput.AlignVCenter
         text: root.text
         color: "#cfd6e1"
         selectionColor: Theme.accent

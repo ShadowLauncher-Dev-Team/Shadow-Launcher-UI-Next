@@ -45,7 +45,10 @@ Item {
         id: input
         anchors.left: icon.right; anchors.leftMargin: 9
         anchors.right: parent.right; anchors.rightMargin: 10
-        anchors.verticalCenter: parent.verticalCenter
+        // 同 SInput：撑满框高，否则只有文字那一行算文本区（光标不变 I 形、边缘点不中）
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        verticalAlignment: TextInput.AlignVCenter
         color: Theme.fg
         selectionColor: Theme.accent
         selectedTextColor: "#ffffff"
