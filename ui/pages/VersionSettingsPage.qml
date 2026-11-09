@@ -37,6 +37,8 @@ Item {
         if (k === "launch") return launchComp
         if (k === "memory") return memoryComp
         if (k === "tools") return toolsComp
+        if (k === "mods") return modsComp
+        if (k === "packs") return packsComp
         return placeholderComp
     }
     function paneTitle(k) {
@@ -277,6 +279,20 @@ Item {
     Component {
         id: toolsComp
         VsToolsPane {
+            versionId: page.versionId
+            toast: page.toast
+        }
+    }
+    Component {
+        id: modsComp
+        VsModsPane {
+            versionId: page.versionId
+            toast: page.toast
+        }
+    }
+    Component {
+        id: packsComp
+        VsPacksPane {
             versionId: page.versionId
             toast: page.toast
         }
