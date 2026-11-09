@@ -197,7 +197,19 @@ Item {
                 root.downloadOpen = false
                 root.progressOpen = false
                 root.multiplayerOpen = true
-            } else if (label === "启动" || label === "统计" || label === "设置") {
+            } else if (label === "设置") {
+                // 侧栏「设置」= 当前选中版本的版本设置；没选版本就先让他去选
+                root.downloadOpen = false
+                root.progressOpen = false
+                root.multiplayerOpen = false
+                var sv = (b && b.selectedVersion) ? b.selectedVersion : ""
+                if (sv.length > 0) {
+                    root.settingsVersionId = sv
+                    root.settingsOpen = true
+                } else {
+                    root.versionsOpen = true
+                }
+            } else if (label === "启动" || label === "统计") {
                 root.downloadOpen = false
                 root.progressOpen = false
                 root.multiplayerOpen = false

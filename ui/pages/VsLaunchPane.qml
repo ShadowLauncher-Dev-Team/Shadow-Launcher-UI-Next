@@ -102,7 +102,7 @@ Item {
             id: col
             x: 28
             y: 22
-            width: Math.min(720, pane.width - 56)
+            width: Math.max(360, pane.width - 56)
             spacing: 16
 
             // ── 配置模式（整页只影响 JVM / 游戏参数两项）──

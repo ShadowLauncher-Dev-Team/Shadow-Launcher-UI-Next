@@ -47,7 +47,7 @@ Item {
         spacing: 12
 
         Item {
-            width: Math.min(720, parent.width)
+            width: parent.width
             height: 36
             Row {
                 anchors.left: parent.left
@@ -79,7 +79,7 @@ Item {
         }
 
         Flickable {
-            width: Math.min(720, parent.width)
+            width: parent.width
             height: parent.height - 48
             clip: true
             contentWidth: width
