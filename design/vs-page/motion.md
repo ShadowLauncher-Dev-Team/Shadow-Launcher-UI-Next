@@ -151,3 +151,31 @@ transitions: Transition {
 ```
 
 硬切只会变化 1 帧；连续 4 帧变化 = 过渡真实播放。
+
+
+---
+
+## 七、分段控件（SSegmented）选中态改成滑动（影报）
+
+### 现象
+「配置模式：跟随全局设置 / 独立配置」这类分段控件，切换时只有`颜色渐变`，选中块**原地灭、原地亮**，看不到左右移动。
+
+### 根因
+`ui/controls/SSegmented.qml` 是**每个分项自己画**选中底色：
+
+```qml
+color: index === root.currentIndex ? "#132340" : "transparent"
+Behavior on color { ColorAnimation { ... } }
+```
+
+两块颜色各自渐变，中间没有任何东西在移动。
+
+### 修法
+在 Row 之下放**一个整块滑块**，位置由 `currentIndex` 算（分项等宽，可以直接算），`Behavior on x`（durSlow + easeEnter）+ `Behavior on width`（items 数量变化时不硬跳）；分项不再自己画底色，只保留文字颜色过渡（durFast）。
+
+### 影响面
+`SSegmented` 是共享控件，所以**下载页、导出整合包页等所有用到分段选择的地方**一起获得滑动效果。
+
+### 验证
+`seg_launch.png`：静止态滑块正确压在「跟随全局设置」上。
+连续帧验证被环境挡住：合成点击在这台机器上抢不到前台（`SetForegroundWindow` 被系统拒绝），置顶后截屏能拿到窗口，但注入的鼠标事件没能点中控件。**该项动效需人工点一下确认。**
