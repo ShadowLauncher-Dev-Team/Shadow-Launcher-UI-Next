@@ -912,9 +912,17 @@ void ModpackExporter::exportVersion(const QString& versionId, const QString& dis
         }
         setProgress(0.06, tr("收集导出内容完成（%1 个覆写文件）").arg(ovFiles.size()));
 
-        // ── 3b. IncludeJava：打包便携 Java 运行时（java_cache 中匹配 major 的 JRE，同主流启动器）──
+        // ── 3b. IncludeJava：把便携 Java 打进包，并保证导入端能真用上 ──
+        // 生效链路：导出 overrides/java/<major>/bin/java.exe（+ .shadow-java.json 标记）
+        //           → 导入端把它搬到 <启动器>/java_cache/<major>
+        //           → settings 的 findAllJava 会扫 java_cache，用户在下拉里能直接选。
+        // 严格性：只打包「主版本精确匹配 且 bin/java(.w).exe 存在」的运行时。
+        //          旧实现「无精确匹配就取第一个」会把 Java 8 塞进要 Java 21 的包，
+        //          导入后跑不起来 —— 那比不打包更糟。
+        QString javaPackedDir;       // 非空 = 已打包的 java_cache 子目录名
+        int javaPackedMajor = -1;
+        QString javaSkipReason;      // 非空 = 没打包的原因（写进结果，别让用户以为打了）
         if (includeJava) {
-            // 从版本 JSON 读需要的 Java major（缺省 8）
             int needMajor = 8;
             {
                 QFile f(jsonPath);
@@ -925,29 +933,49 @@ void ModpackExporter::exportVersion(const QString& versionId, const QString& dis
                 }
             }
             const QDir javaRoot(QCoreApplication::applicationDirPath() + QStringLiteral("/java_cache"));
+            QString javaDir;
             if (javaRoot.exists()) {
-                QString javaDir;
                 const auto majors = javaRoot.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
                 for (const auto& m : majors) {
-                    if (m == QString::number(needMajor)) { javaDir = m; break; }
+                    bool okNum = false;
+                    if (m.toInt(&okNum) == needMajor && okNum) { javaDir = m; break; }
                 }
-                if (javaDir.isEmpty() && !majors.isEmpty())
-                    javaDir = majors.first();   // 无精确匹配取第一个可用
-                if (!javaDir.isEmpty()) {
-                    // 复制 java_cache/{dir} → overrides/java/{dir}（局部递归，避免与扫描互扰）
-                    std::function<void(const QString&, const QString&)> addJavaRec;
-                    addJavaRec = [&](const QString& absDir, const QString& relPrefix) {
-                        QDir d(absDir);
-                        const auto subDirs = d.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
-                        for (const auto& sd : subDirs)
-                            addJavaRec(d.filePath(sd), relPrefix + QStringLiteral("/") + sd);
-                        const auto files = d.entryList(QDir::Files, QDir::Name);
-                        for (const auto& fn : files)
-                            ovFiles.append({d.filePath(fn), relPrefix + QStringLiteral("/") + fn});
-                    };
-                    addJavaRec(javaRoot.filePath(javaDir), QStringLiteral("java/") + javaDir);
-                    qCInfo(logMod) << QStringLiteral("[导出] 打包 Java %1 → overrides/java/%1").arg(javaDir);
-                }
+            }
+            const QString javaAbs = javaDir.isEmpty()
+                ? QString() : javaRoot.filePath(javaDir);
+            const bool jreOk = !javaAbs.isEmpty()
+                && (QFileInfo::exists(javaAbs + QStringLiteral("/bin/javaw.exe"))
+                    || QFileInfo::exists(javaAbs + QStringLiteral("/bin/java.exe")));
+            if (javaDir.isEmpty()) {
+                javaSkipReason = tr("java_cache 里没有 Java %1").arg(needMajor);
+                qCWarning(logMod) << QStringLiteral("[导出] 打包 Java 跳过：%1").arg(javaSkipReason);
+            } else if (!jreOk) {
+                javaSkipReason = tr("java_cache/%1 不完整（缺 bin/java.exe）").arg(javaDir);
+                qCWarning(logMod) << QStringLiteral("[导出] 打包 Java 跳过：%1").arg(javaSkipReason);
+            } else {
+                std::function<void(const QString&, const QString&)> addJavaRec;
+                int javaFiles = 0;
+                qint64 javaBytes = 0;
+                addJavaRec = [&](const QString& absDir, const QString& relPrefix) {
+                    QDir d(absDir);
+                    const auto subDirs = d.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+                    for (const auto& sd : subDirs)
+                        addJavaRec(d.filePath(sd), relPrefix + QLatin1Char('/') + sd);
+                    const auto files = d.entryList(QDir::Files, QDir::Name);
+                    for (const auto& fn : files) {
+                        const QString p = d.filePath(fn);
+                        javaBytes += QFileInfo(p).size();
+                        ++javaFiles;
+                        ovFiles.append({p, relPrefix + QLatin1Char('/') + fn});
+                    }
+                };
+                addJavaRec(javaAbs, QStringLiteral("java/") + javaDir);
+                javaPackedDir = javaDir;
+                javaPackedMajor = needMajor;
+                setProgress(0.12, tr("打包 Java %1（%2 个文件，%3 MB）")
+                              .arg(javaDir).arg(javaFiles).arg(javaBytes / 1048576));
+                qCInfo(logMod) << QStringLiteral("[导出] 打包 Java %1 → overrides/java/%1（%2 文件 / %3 MB）")
+                                      .arg(javaDir).arg(javaFiles).arg(javaBytes / 1048576);
             }
         }
 
@@ -1238,6 +1266,22 @@ void ModpackExporter::exportVersion(const QString& versionId, const QString& dis
             throttledPackProgress(tr("打包覆写文件 %1/%2").arg(done).arg(totalFiles));
         }
 
+        // 6d. Java 标记：让导入端能认出「这个 java/ 是整合包自带的运行时」
+        if (!javaPackedDir.isEmpty()) {
+            QJsonObject jm;
+            jm.insert(QStringLiteral("dir"), javaPackedDir);
+            jm.insert(QStringLiteral("major"), javaPackedMajor);
+            jm.insert(QStringLiteral("launcher"), QStringLiteral("shadow-launcher"));
+            if (!zip.addData(QStringLiteral("overrides/java/.shadow-java.json"),
+                             QJsonDocument(jm).toJson(QJsonDocument::Indented))) {
+                zip.closeWrite();
+                QFile::remove(outPath);
+                finish(false, zip.error());
+                return;
+            }
+            ++done;
+        }
+
         if (!zip.closeWrite()) {
             QFile::remove(outPath);
             finish(false, zip.error());
@@ -1245,9 +1289,13 @@ void ModpackExporter::exportVersion(const QString& versionId, const QString& dis
         }
 
         const int localCount = mods.size() - hostedCountReal;
-        const QString note = modrinthUploadMode
+        QString note = modrinthUploadMode
             ? tr("（%1 个模组未在 Modrinth 托管，已直接打包）").arg(localCount)
             : tr("（%1 个模组已联网托管，%2 个直接打包）").arg(hostedCountReal).arg(localCount);
+        if (!javaPackedDir.isEmpty())
+            note += tr(" · 已打包 Java %1").arg(javaPackedDir);
+        else if (!javaSkipReason.isEmpty())
+            note += tr(" · 未打包 Java：%1").arg(javaSkipReason);
         setProgress(1.0, tr("导出完成 %1").arg(note));
         qCInfo(logMod) << QStringLiteral("[整合包] 导出完成 %1 → %2 (mods=%3 hosted=%4 local=%5)")
             .arg(displayName, outPath).arg(mods.size()).arg(hostedCountReal).arg(localCount);

@@ -29,6 +29,7 @@ int main(int argc, char** argv)
     const QString gameDir = QString::fromUtf8(argv[1]);
     const QString versionId = QString::fromUtf8(argv[2]);
     const int format = argc > 4 ? QString::fromUtf8(argv[4]).toInt() : 0;
+    const bool includeJava = argc > 5 && QString::fromUtf8(argv[5]).toInt() != 0;
     const QString suffix = format == 1 ? QStringLiteral(".zip") : QStringLiteral(".mrpack");
     const QString outPath = argc > 3 ? QString::fromUtf8(argv[3])
                                      : gameDir + QStringLiteral("/_export_test_") + versionId + suffix;
@@ -55,7 +56,8 @@ int main(int argc, char** argv)
                 return;
             }
             const QStringList entries = zip.listEntries();
-            int modsInOverrides = 0, overridesOther = 0, hostedInManifest = 0;
+            int modsInOverrides = 0, overridesOther = 0, hostedInManifest = 0, javaEntries = 0;
+            bool javaMarker = false;
             QString game, deps;
             if (format == 1) {
                 const QByteArray mf = zip.readEntry("manifest.json", 4 * 1024 * 1024);
@@ -73,7 +75,10 @@ int main(int argc, char** argv)
             for (const auto& e : entries) {
                 if (e.startsWith("overrides/mods/")) modsInOverrides++;
                 else if (e.startsWith("overrides/")) overridesOther++;
+                if (e.startsWith("overrides/java/")) javaEntries++;
+                if (e == "overrides/java/.shadow-java.json") javaMarker = true;
             }
+            printf("JAVA: entries=%d marker=%d\n", javaEntries, javaMarker ? 1 : 0);
             printf("RESULT: ok fmt=%d game=%s deps=%s hostedInManifest=%d modsInOverrides=%d overridesOther=%d size=%.2fMB path=%s\n",
                    format, game.toUtf8().constData(), deps.toUtf8().constData(),
                    hostedInManifest, modsInOverrides, overridesOther,
@@ -123,6 +128,6 @@ int main(int argc, char** argv)
     checked.append(QStringLiteral("saves"));
     exporter->exportVersion(versionId, versionId + "-export-test", QStringLiteral("1.0.0"),
                             checked, saves, true /*modrinthOnly: 跳过 CF*/, true /*hostedAssetsOnly: 纯本地规则收集测试*/,
-                            false, format, outPath);
+                            includeJava, format, outPath);
     return app.exec();
 }

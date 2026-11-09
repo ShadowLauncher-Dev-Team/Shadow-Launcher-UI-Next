@@ -305,6 +305,26 @@ void ModpackInstallTask::onParsed(bool ok, const QString& error)
 
 // ── 解压 overrides（工作线程）──
 
+// 跨卷搬运兜底：QDir::rename 失败时递归复制
+static bool copyDirRecursiveImpl(const QString& src, const QString& dst)
+{
+    const QDir d(src);
+    if (!d.exists()) return false;
+    if (!QDir().mkpath(dst)) return false;
+    const auto files = d.entryList(QDir::Files | QDir::Hidden, QDir::Name);
+    for (const auto& fn : files) {
+        const QString to = dst + QLatin1Char('/') + fn;
+        QFile::remove(to);
+        if (!QFile::copy(d.filePath(fn), to)) return false;
+    }
+    const auto subs = d.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    for (const auto& sd : subs) {
+        if (!copyDirRecursiveImpl(d.filePath(sd), dst + QLatin1Char('/') + sd))
+            return false;
+    }
+    return true;
+}
+
 void ModpackInstallTask::runExtract()
 {
     setStep(tr("解压整合包资源"));
@@ -370,11 +390,46 @@ void ModpackInstallTask::runExtract()
             }
         }
 
-        QMetaObject::invokeMethod(this, [this, fatal, fatalError, totalExtracted]() {
+        // ── 整合包自带的 Java 运行时：overrides/java/<dir> → <启动器>/java_cache/<dir> ──
+        // 不搬的话它只会躺在实例目录里，启动器永远扫不到 = 打了也无用。
+        QString javaNote;
+        if (!fatal && !m_cancel) {
+            const QString javaSrc = resourceDir + QStringLiteral("/java");
+            const QDir javaDir(javaSrc);
+            if (javaDir.exists()) {
+                const QString cacheRoot = QCoreApplication::applicationDirPath()
+                    + QStringLiteral("/java_cache");
+                QDir().mkpath(cacheRoot);
+                const auto subs = javaDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+                QStringList installed;
+                for (const auto& sub : subs) {
+                    const QString src = javaDir.filePath(sub);
+                    const bool hasExe = QFileInfo::exists(src + QStringLiteral("/bin/javaw.exe"))
+                        || QFileInfo::exists(src + QStringLiteral("/bin/java.exe"));
+                    if (!hasExe) continue;   // 不是能跑的 JRE，留着占地方没意义
+                    const QString dst = cacheRoot + QLatin1Char('/') + sub;
+                    if (QDir(dst).exists()) { installed << (sub + QStringLiteral("（已存在，跳过）")); continue; }
+                    bool moved = QDir().rename(src, dst);
+                    if (!moved) {
+                        // 跨卷 rename 会失败 → 退化为递归复制后删除
+                        moved = copyDirRecursiveImpl(src, dst);
+                        if (moved) QDir(src).removeRecursively();
+                    }
+                    if (moved) installed << sub;
+                }
+                if (!installed.isEmpty())
+                    javaNote = tr("已安装整合包自带的 Java：%1").arg(installed.join(QStringLiteral("、")));
+                // 只剩标记文件或空壳时一并清掉，别让实例里留个 java/ 目录
+                QDir(javaSrc).removeRecursively();
+            }
+        }
+
+        QMetaObject::invokeMethod(this, [this, fatal, fatalError, totalExtracted, javaNote]() {
             if (fatal) {
                 fail(fatalError);
                 return;
             }
+            if (!javaNote.isEmpty()) emit logLine(javaNote);
             if (m_cancel) {
                 rollback();
                 finishCancelled();
