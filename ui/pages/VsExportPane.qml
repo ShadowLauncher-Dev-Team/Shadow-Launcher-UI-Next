@@ -27,6 +27,10 @@ Item {
     property var ctx: ({})                 // exportContext 结果
     property var checkedIds: []            // 父项 + 子项 id
     property var checkedSaves: []          // 存档名
+    property var modList: []               // mods/ 全部文件（listMods）
+    property var excludedMods: []          // 取消勾选的 mod（默认全导，只记排除项）
+    property string modQuery: ""
+    property bool modExpanded: true
     property string outPath: ""
     property bool hostedOnly: false
     property bool mrOnly: false
@@ -81,7 +85,31 @@ Item {
     function toggleParent(id, subItems) {
         var on = !pane.isChecked(id)
         pane.setChecked(id, on)
+        if (id === "mod" && on) pane.excludedMods = []
         if (subItems && subItems.length > 0) pane.setAllSubs(id, subItems, on)
+    }
+
+    // mod：默认全选；只记「被排除」的，导出那一刻才展开成 mod:<文件名>
+    function modPicked(name) { return pane.isChecked("mod") && pane.excludedMods.indexOf(name) < 0 }
+    function toggleMod(name) {
+        if (!pane.isChecked("mod")) return
+        var out = pane.excludedMods.slice()
+        var i = out.indexOf(name)
+        if (i >= 0) out.splice(i, 1); else out.push(name)
+        pane.excludedMods = out
+    }
+    function modPickedCount() {
+        if (!pane.isChecked("mod")) return 0
+        return Math.max(0, pane.modList.length - pane.excludedMods.length)
+    }
+    readonly property var modShown: {
+        var q = pane.modQuery.trim().toLowerCase()
+        var src = pane.modList || []
+        if (q.length === 0) return src
+        var out = []
+        for (var i = 0; i < src.length; ++i)
+            if (String(src[i].name).toLowerCase().indexOf(q) >= 0) out.push(src[i])
+        return out
     }
 
     function toggleSave(name, on) {
@@ -111,6 +139,9 @@ Item {
         }
         pane.checkedIds = out
         pane.checkedSaves = []
+        pane.excludedMods = []
+        pane.modQuery = ""
+        pane.modList = pane.ex.listMods(pane.versionId)
         pane.ensureDefaults()
     }
 
@@ -144,6 +175,13 @@ Item {
             return
         }
         var opts = pane.checkedIds.slice()
+        // mod 只勾了一部分时，展开成 mod:<文件名>（全选则保持空，后端走整目录规则）
+        if (pane.isChecked("mod") && pane.excludedMods.length > 0) {
+            for (var mi = 0; mi < pane.modList.length; ++mi) {
+                var mn = pane.modList[mi].name
+                if (pane.excludedMods.indexOf(mn) < 0) opts.push("mod:" + mn)
+            }
+        }
         // 存档：勾了 saves 父项才带子项；一个没选时后端会整目录导出（见导出端规则）
         var saves = pane.checkedSaves.slice()
         pane.failedHint = ""
@@ -302,8 +340,12 @@ Item {
 
                         // —— Mod 与配置 ——
                         Text { text: "Mod 与配置"; color: "#3f4753"; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
+                        Loader {
+                            width: treeCol.width
+                            sourceComponent: modGroup
+                        }
                         Repeater {
-                            model: ["mod", "mod-disabled", "packdata", "config", "tacz", "immersive", "mapdata", "jei", "emi", "patchouli"]
+                            model: ["mod-disabled", "packdata", "config", "tacz", "immersive", "mapdata", "jei", "emi", "patchouli"]
                             delegate: parentRow
                         }
 
@@ -558,6 +600,7 @@ Item {
         id: parentRow
         Loader {
             width: treeCol.width
+            height: 36
             sourceComponent: pane.has(modelData) ? simpleRow : null
             onLoaded: { item.optId = modelData }
             visible: pane.has(modelData)
@@ -572,7 +615,7 @@ Item {
             property string optId: ""
             readonly property var o: pane.optById(optId)
             width: parent ? parent.width : 0
-            height: pane.has(optId) ? 36 : 0
+            height: 36
             visible: pane.has(optId)
 
             Rectangle {
@@ -621,11 +664,238 @@ Item {
                     font.pixelSize: 10
                 }
             }
-            HoverHandler { id: hov }
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: pane.toggle(rowItem.optId)
+            HoverHandler { id: hov; cursorShape: Qt.PointingHandCursor }
+            TapHandler {
+                acceptedButtons: Qt.LeftButton
+                onTapped: pane.toggle(rowItem.optId)
+            }
+        }
+    }
+
+    // Mod：父行（勾选=全选/全不选）+ 可展开的真实模组列表（带搜索）
+    // 注意：这里一律绝对定位，不用 Row 的弹性占位——Row 内子项宽度反绑 Row 宽度会触发 polish 死循环，整页布局会崩。
+    Component {
+        id: modGroup
+        Item {
+            id: modItem
+            width: parent ? parent.width : 0
+            height: 44 + (pane.modExpanded ? 4 + 34 + 26 + 240 : 0)
+
+            Rectangle {
+                id: modHead
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: 44
+                radius: Theme.rMd
+                color: modHov.hovered ? "#101419" : "#0b0d12"
+                border.width: 1
+                border.color: Theme.line2
+            }
+            HoverHandler { id: modHov }
+
+            Rectangle {
+                id: modCb
+                x: 14
+                width: 15
+                height: 15
+                radius: 4
+                anchors.verticalCenter: modHead.verticalCenter
+                color: pane.isChecked("mod") ? Theme.accent : "#0d1016"
+                border.width: 1
+                border.color: pane.isChecked("mod") ? Theme.accent : "#39414f"
+                SIcon {
+                    anchors.centerIn: parent
+                    width: 10
+                    height: 10
+                    name: "check"
+                    visible: pane.isChecked("mod")
+                    color: "#ffffff"
+                }
+                TapHandler { acceptedButtons: Qt.LeftButton
+                    onTapped: pane.toggleParent("mod", []) }
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+            }
+
+            Text {
+                id: modTitle
+                x: 39
+                anchors.verticalCenter: modHead.verticalCenter
+                text: "模组 (mods/)"
+                color: "#eef2f8"
+                font.family: Theme.fontFamily
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                TapHandler { acceptedButtons: Qt.LeftButton
+                    onTapped: pane.toggleParent("mod", []) }
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+            }
+
+            Text {
+                id: modPick
+                anchors.right: modHead.right
+                anchors.rightMargin: 14
+                anchors.verticalCenter: modHead.verticalCenter
+                text: pane.modExpanded ? "收起" : "挑选"
+                color: "#7fa9f5"
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+                TapHandler { acceptedButtons: Qt.LeftButton
+                    onTapped: pane.modExpanded = !pane.modExpanded }
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+            }
+
+            Text {
+                anchors.right: modPick.left
+                anchors.rightMargin: 14
+                anchors.verticalCenter: modHead.verticalCenter
+                text: pane.modList.length + " 个 · 已选 " + pane.modPickedCount()
+                color: "#6b7686"
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+            }
+
+            // 展开区：搜索 + 全选/全不选 + 虚拟化列表
+            Item {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: modHead.bottom
+                anchors.topMargin: 4
+                height: parent.height - 48
+                visible: pane.modExpanded
+
+                Rectangle { x: 21; y: 0; width: 1; height: parent.height - 6; color: "#1b2029" }
+
+                SField {
+                    id: modSearch
+                    anchors.left: parent.left
+                    anchors.leftMargin: 32
+                    anchors.right: parent.right
+                    anchors.rightMargin: 8
+                    anchors.top: parent.top
+                    height: 30
+                    label: "搜索模组"
+                    text: pane.modQuery
+                    onEdited: (v) => pane.modQuery = v
+                }
+
+                Text {
+                    id: allOn
+                    anchors.left: parent.left
+                    anchors.leftMargin: 32
+                    anchors.top: modSearch.bottom
+                    anchors.topMargin: 6
+                    text: "全选"
+                    color: "#7fa9f5"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                    TapHandler { acceptedButtons: Qt.LeftButton; onTapped: pane.excludedMods = [] }
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                }
+                Text {
+                    id: allOff
+                    anchors.left: allOn.right
+                    anchors.leftMargin: 14
+                    anchors.top: allOn.top
+                    text: "全不选"
+                    color: "#7fa9f5"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                    TapHandler { acceptedButtons: Qt.LeftButton
+                        onTapped: {
+                            var arr = []
+                            for (var i = 0; i < pane.modList.length; ++i) arr.push(pane.modList[i].name)
+                            pane.excludedMods = arr
+                        } }
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                }
+                Text {
+                    anchors.left: allOff.right
+                    anchors.leftMargin: 14
+                    anchors.top: allOn.top
+                    text: pane.modShown.length + " / " + pane.modList.length
+                    color: "#4b5462"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                }
+
+                ListView {
+                    id: modList
+                    anchors.left: parent.left
+                    anchors.leftMargin: 32
+                    anchors.right: parent.right
+                    anchors.rightMargin: 8
+                    anchors.top: allOn.bottom
+                    anchors.topMargin: 4
+                    anchors.bottom: parent.bottom
+                    clip: true
+                    model: pane.modShown
+                    reuseItems: true
+                    cacheBuffer: 300
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                        width: 6
+                        contentItem: Rectangle { radius: 3; color: "#2b323d"; implicitWidth: 6 }
+                    }
+
+                    delegate: Item {
+                        id: modRow
+                        width: ListView.view ? ListView.view.width : 0
+                        height: 32
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 6
+                            color: rowHov.hovered ? "#11161d" : "transparent"
+                        }
+                        Rectangle {
+                            id: rowCb
+                            x: 8
+                            width: 14
+                            height: 14
+                            radius: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: pane.modPicked(modelData.name) ? Theme.accent : "#0d1016"
+                            border.width: 1
+                            border.color: pane.modPicked(modelData.name) ? Theme.accent : "#39414f"
+                            SIcon {
+                                anchors.centerIn: parent
+                                width: 9
+                                height: 9
+                                name: "check"
+                                visible: pane.modPicked(modelData.name)
+                                color: "#ffffff"
+                            }
+                        }
+                        Text {
+                            id: rowName
+                            x: 30
+                            width: parent.width - 30 - 58
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: modelData.name
+                            color: pane.modPicked(modelData.name) ? "#cfd6e1" : "#7b8494"
+                            elide: Text.ElideMiddle
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                        }
+                        Text {
+                            anchors.right: parent.right
+                            anchors.rightMargin: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: modelData.sizeDisplay || ""
+                            color: "#4b5462"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                        }
+                        HoverHandler { id: rowHov }
+                        TapHandler {
+                            acceptedButtons: Qt.LeftButton
+                            onTapped: pane.toggleMod(modelData.name)
+                        }
+                    }
+                }
             }
         }
     }
@@ -654,53 +924,46 @@ Item {
                 border.width: 1
                 border.color: Theme.line2
             }
-            Row {
-                anchors.left: grpHead.left
-                anchors.leftMargin: 14
-                anchors.right: grpHead.right
-                anchors.rightMargin: 14
-                anchors.top: grpHead.top
-                anchors.bottom: grpHead.bottom
-                spacing: 10
-                Rectangle {
-                    width: 15
-                    height: 15
-                    radius: 4
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: pane.isChecked(grpItem.optId) ? Theme.accent : "#0d1016"
-                    border.width: 1
-                    border.color: pane.isChecked(grpItem.optId) ? Theme.accent : "#39414f"
-                    SIcon {
-                        anchors.centerIn: parent
-                        width: 10
-                        height: 10
-                        name: "check"
-                        visible: pane.isChecked(grpItem.optId)
-                        color: "#ffffff"
-                    }
-                }
-                Text {
-                    text: grpItem.o ? grpItem.o.title : grpItem.optId
-                    color: "#eef2f8"
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 13
-                    font.weight: Font.DemiBold
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-                Item { width: parent.width - 15 - 10 - 200; height: 1 }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: grpItem.items.length + " 个"
-                    color: "#6b7686"
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
+            Rectangle {
+                x: 14
+                width: 15
+                height: 15
+                radius: 4
+                anchors.verticalCenter: grpHead.verticalCenter
+                color: pane.isChecked(grpItem.optId) ? Theme.accent : "#0d1016"
+                border.width: 1
+                border.color: pane.isChecked(grpItem.optId) ? Theme.accent : "#39414f"
+                SIcon {
+                    anchors.centerIn: parent
+                    width: 10
+                    height: 10
+                    name: "check"
+                    visible: pane.isChecked(grpItem.optId)
+                    color: "#ffffff"
                 }
             }
-            HoverHandler { id: hov2 }
-            MouseArea {
-                anchors.fill: grpHead
-                cursorShape: Qt.PointingHandCursor
-                onClicked: pane.toggleParent(grpItem.optId, grpItem.items)
+            Text {
+                x: 39
+                anchors.verticalCenter: grpHead.verticalCenter
+                text: grpItem.o ? grpItem.o.title : grpItem.optId
+                color: "#eef2f8"
+                font.family: Theme.fontFamily
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+            }
+            Text {
+                anchors.right: grpHead.right
+                anchors.rightMargin: 14
+                anchors.verticalCenter: grpHead.verticalCenter
+                text: grpItem.items.length + " 个"
+                color: "#6b7686"
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+            }
+            HoverHandler { id: hov2; cursorShape: Qt.PointingHandCursor }
+            TapHandler {
+                acceptedButtons: Qt.LeftButton
+                onTapped: pane.toggleParent(grpItem.optId, grpItem.items)
             }
 
             // 子项列表（缩进 + 竖线）
@@ -730,29 +993,25 @@ Item {
                         x: 32
                         spacing: 12
                         Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "全选"
-                            color: "#7fa9f5"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: pane.setAllSubs(grpItem.optId, grpItem.items, true)
-                            }
-                        }
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "全选"
+                        color: "#7fa9f5"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        TapHandler { acceptedButtons: Qt.LeftButton
+                            onTapped: pane.setAllSubs(grpItem.optId, grpItem.items, true) }
+                    }
                         Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "全不选"
-                            color: "#7fa9f5"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: pane.setAllSubs(grpItem.optId, grpItem.items, false)
-                            }
-                        }
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "全不选"
+                        color: "#7fa9f5"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        TapHandler { acceptedButtons: Qt.LeftButton
+                            onTapped: pane.setAllSubs(grpItem.optId, grpItem.items, false) }
+                    }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: grpItem.items.length === 0 ? "此版本没有内容" : ""
@@ -797,11 +1056,11 @@ Item {
                                     font.pixelSize: 12
                                 }
                             }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: pane.toggleSub(grpItem.optId, modelData)
+                            TapHandler {
+                                acceptedButtons: Qt.LeftButton
+                                onTapped: pane.toggleSub(grpItem.optId, modelData)
                             }
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
                         }
                     }
                 }
@@ -830,53 +1089,46 @@ Item {
                 border.width: 1
                 border.color: Theme.line2
             }
-            Row {
-                anchors.left: saveHead.left
-                anchors.leftMargin: 14
-                anchors.top: saveHead.top
-                anchors.bottom: saveHead.bottom
-                anchors.right: saveHead.right
-                anchors.rightMargin: 14
-                spacing: 10
-                Rectangle {
-                    width: 15
-                    height: 15
-                    radius: 4
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: pane.isChecked("saves") ? Theme.accent : "#0d1016"
-                    border.width: 1
-                    border.color: pane.isChecked("saves") ? Theme.accent : "#39414f"
-                    SIcon {
-                        anchors.centerIn: parent
-                        width: 10
-                        height: 10
-                        name: "check"
-                        visible: pane.isChecked("saves")
-                        color: "#ffffff"
-                    }
-                }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "单机游戏存档"
-                    color: "#eef2f8"
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 13
-                    font.weight: Font.DemiBold
-                }
-                Item { width: parent.width - 15 - 10 - 200; height: 1 }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: saveItem.items.length + " 个"
-                    color: "#6b7686"
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
+            Rectangle {
+                x: 14
+                width: 15
+                height: 15
+                radius: 4
+                anchors.verticalCenter: saveHead.verticalCenter
+                color: pane.isChecked("saves") ? Theme.accent : "#0d1016"
+                border.width: 1
+                border.color: pane.isChecked("saves") ? Theme.accent : "#39414f"
+                SIcon {
+                    anchors.centerIn: parent
+                    width: 10
+                    height: 10
+                    name: "check"
+                    visible: pane.isChecked("saves")
+                    color: "#ffffff"
                 }
             }
-            HoverHandler { id: hov3 }
-            MouseArea {
-                anchors.fill: saveHead
-                cursorShape: Qt.PointingHandCursor
-                onClicked: pane.toggle("saves")
+            Text {
+                x: 39
+                anchors.verticalCenter: saveHead.verticalCenter
+                text: "单机游戏存档"
+                color: "#eef2f8"
+                font.family: Theme.fontFamily
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+            }
+            Text {
+                anchors.right: saveHead.right
+                anchors.rightMargin: 14
+                anchors.verticalCenter: saveHead.verticalCenter
+                text: saveItem.items.length + " 个"
+                color: "#6b7686"
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+            }
+            HoverHandler { id: hov3; cursorShape: Qt.PointingHandCursor }
+            TapHandler {
+                acceptedButtons: Qt.LeftButton
+                onTapped: pane.toggle("saves")
             }
 
             Item {
@@ -955,11 +1207,11 @@ Item {
                                     font.pixelSize: 10
                                 }
                             }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: pane.toggleSave(modelData.name, pane.checkedSaves.indexOf(modelData.name) < 0)
+                            TapHandler {
+                                acceptedButtons: Qt.LeftButton
+                                onTapped: pane.toggleSave(modelData.name, pane.checkedSaves.indexOf(modelData.name) < 0)
                             }
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
                         }
                     }
                 }

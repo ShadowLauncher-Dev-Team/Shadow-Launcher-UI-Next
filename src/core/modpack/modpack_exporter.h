@@ -58,6 +58,8 @@ public:
     static const QList<ExportOptionDef>& optionDefs();
     /// 列出版本下所有存档名（saves/ 子目录）及修改时间，供导出内容列表勾选
     Q_INVOKABLE QVariantList listSaves(const QString& versionId) const;
+    /// mods/ 下的模组文件（name/size/sizeDisplay），供导出页逐项勾选
+    Q_INVOKABLE QVariantList listMods(const QString& versionId) const;
 
     /// 导出上下文：按版本实际情况返回可导出内容（供导出界面动态渲染，同主流启动器 ShowRules）
     ///   versionExists/modable/hasOptiFine/hasMods/hasConfig/hasShaderpacks/

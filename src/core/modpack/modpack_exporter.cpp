@@ -172,6 +172,34 @@ QVariantList ModpackExporter::listSaves(const QString& versionId) const
     return out;
 }
 
+QVariantList ModpackExporter::listMods(const QString& versionId) const
+{
+    // mods/ 下的 jar/zip/rar（含 .disabled/.old，交给 UI 显示为「已禁用」）
+    const QString modsRoot = versionContentRoot(m_gameDir, versionId) + QStringLiteral("/mods");
+    QVariantList out;
+    const QDir d(modsRoot);
+    if (!d.exists()) return out;
+    const auto files = d.entryInfoList(
+        QStringList() << QStringLiteral("*.jar") << QStringLiteral("*.zip")
+                      << QStringLiteral("*.rar") << QStringLiteral("*.disabled")
+                      << QStringLiteral("*.old"),
+        QDir::Files, QDir::Name);
+    for (const auto& fi : files) {
+        QVariantMap m;
+        m.insert(QStringLiteral("name"), fi.fileName());
+        const qint64 sz = fi.size();
+        m.insert(QStringLiteral("size"), sz);
+        if (sz >= 1024LL * 1024LL * 1024LL)
+            m.insert(QStringLiteral("sizeDisplay"), QString::number(sz / 1024.0 / 1024.0 / 1024.0, 'f', 2) + QStringLiteral(" GB"));
+        else if (sz >= 1024LL * 1024LL)
+            m.insert(QStringLiteral("sizeDisplay"), QString::number(sz / 1024.0 / 1024.0, 'f', 1) + QStringLiteral(" MB"));
+        else
+            m.insert(QStringLiteral("sizeDisplay"), QString::number(qMax<qint64>(1, sz / 1024)) + QStringLiteral(" KB"));
+        out.append(m);
+    }
+    return out;
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // 导出选项表（完全对齐主流启动器实现 PageInstanceExport.xaml 的 ExportOption 集合）
 // 隐私敏感项（个人信息/地图/JEI/EMI/帕秋莉/服务器列表）默认不勾选
@@ -753,6 +781,43 @@ void ModpackExporter::exportVersion(const QString& versionId, const QString& dis
                               {QStringLiteral("resourcepacks/"), QStringLiteral("texturepacks/")});
             applySubItemRules(QStringLiteral("shaderpacks"),
                               {QStringLiteral("shaderpacks/")});
+
+            // Mod 子项（QML 传 mod:<文件名>）：勾了具体 jar 时只导这些。
+            // 425 个 mod 逐个生成精确规则会让规则匹配爆炸，所以按「少数派」自适应：
+            //   勾选数 > 半数 → 黑名单（mods/ + !mods/<未勾选>），规则数 = 排除数
+            //   勾选数 ≤ 半数 → 白名单（只列勾选项），规则数 = 勾选数
+            if (checked.contains(QStringLiteral("mod"))) {
+                QStringList wantMods;
+                for (const auto& v : checkedOptions) {
+                    const QString s = v.toString();
+                    if (s.startsWith(QStringLiteral("mod:"))) wantMods.append(s.mid(4));
+                }
+                if (!wantMods.isEmpty()) {
+                    QStringList allMods;
+                    const QDir md(versionContentRoot(gameDir, versionId) + QStringLiteral("/mods"));
+                    if (md.exists()) {
+                        const auto files = md.entryInfoList(
+                            QStringList() << QStringLiteral("*.jar") << QStringLiteral("*.zip")
+                                          << QStringLiteral("*.rar") << QStringLiteral("*.disabled")
+                                          << QStringLiteral("*.old"),
+                            QDir::Files, QDir::Name);
+                        for (const auto& fi : files) allMods.append(fi.fileName());
+                    }
+                    if (!allMods.isEmpty() && wantMods.size() >= allMods.size()) {
+                        // 全选：保持整目录规则，一条都不加
+                    } else if (!allMods.isEmpty() && wantMods.size() * 2 > allMods.size()) {
+                        rules.removeAll(QStringLiteral("mods/"));
+                        rules.append(QStringLiteral("mods/"));
+                        for (const auto& n : allMods)
+                            if (!wantMods.contains(n))
+                                rules.append(QStringLiteral("!mods/") + n);
+                    } else {
+                        rules.removeAll(QStringLiteral("mods/"));
+                        for (const auto& n : wantMods)
+                            rules.append(QStringLiteral("mods/") + n);
+                    }
+                }
+            }
         }
         // 全局排除（同主流启动器：日志/临时/启动器配置文件不进包）——覆盖模式同样生效
         rules << QStringLiteral("!*.log") << QStringLiteral("!*.dat_old")
@@ -813,8 +878,28 @@ void ModpackExporter::exportVersion(const QString& versionId, const QString& dis
                 mods.append(mf);
             }
         };
-        if (includeMods)
-            collectMods(contentRoot + QStringLiteral("/mods"), QStringLiteral("mods"));
+        if (includeMods) {
+            // 遵守 mod 子项勾选：勾了具体 jar 就只收集这些（否则未勾选的也会被哈希+联网查，白费时间）
+            QStringList wantMods;
+            for (const auto& v : checkedOptions) {
+                const QString s = v.toString();
+                if (s.startsWith(QStringLiteral("mod:"))) wantMods.append(s.mid(4));
+            }
+            if (wantMods.isEmpty()) {
+                collectMods(contentRoot + QStringLiteral("/mods"), QStringLiteral("mods"));
+            } else {
+                const QDir md(contentRoot + QStringLiteral("/mods"));
+                for (const auto& n : wantMods) {
+                    const QFileInfo fi(md.filePath(n));
+                    if (!fi.isFile()) continue;
+                    ModFile mf;
+                    mf.diskPath = fi.absoluteFilePath();
+                    mf.relPath = QStringLiteral("mods/") + n;
+                    mf.size = fi.size();
+                    mods.append(mf);
+                }
+            }
+        }
         // resourcepacks 的 zip 哈希（主流启动器 packs/resource 语义）——遵守子项精确勾选：
         // 有子项勾选时只哈希勾选项，否则未勾选的 zip 会泄漏进 files[]/实体直装
         if (checked.contains(QStringLiteral("resourcepacks"))) {

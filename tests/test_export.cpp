@@ -30,6 +30,8 @@ int main(int argc, char** argv)
     const QString versionId = QString::fromUtf8(argv[2]);
     const int format = argc > 4 ? QString::fromUtf8(argv[4]).toInt() : 0;
     const bool includeJava = argc > 5 && QString::fromUtf8(argv[5]).toInt() != 0;
+    // 第 7 参数：只导出这些 mod（逗号分隔）；空 = 全部
+    const QString onlyMods = argc > 6 ? QString::fromUtf8(argv[6]) : QString();
     const QString suffix = format == 1 ? QStringLiteral(".zip") : QStringLiteral(".mrpack");
     const QString outPath = argc > 3 ? QString::fromUtf8(argv[3])
                                      : gameDir + QStringLiteral("/_export_test_") + versionId + suffix;
@@ -126,6 +128,12 @@ int main(int argc, char** argv)
         if (d.defaultChecked) checked.append(d.id);
     }
     checked.append(QStringLiteral("saves"));
+    if (!onlyMods.isEmpty()) {
+        const QStringList names = onlyMods.split(QLatin1Char(','), Qt::SkipEmptyParts);
+        for (const auto& n : names) checked.append(QStringLiteral("mod:") + n.trimmed());
+        printf("MODS: only=%s (count=%d)\n", onlyMods.toUtf8().constData(), names.size());
+    }
+    printf("OPTIONS: checked=%d\n", checked.size());
     exporter->exportVersion(versionId, versionId + "-export-test", QStringLiteral("1.0.0"),
                             checked, saves, true /*modrinthOnly: 跳过 CF*/, true /*hostedAssetsOnly: 纯本地规则收集测试*/,
                             includeJava, format, outPath);
