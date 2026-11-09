@@ -17,9 +17,11 @@ Item {
     readonly property var s: b ? b.settings() : null
 
     property var failedFiles: []
-    property bool verifying: b ? b.verifyRunning : false
-    property int checkedCount: b ? b.verifyChecked : 0
-    property int totalCount: b ? b.verifyTotal : 0
+    // 乐观标志：点下去到后端第一条信号之间，本页也要立刻显示"校验中"
+    property bool verifyingLocal: false
+    readonly property bool verifying: verifyingLocal || (b ? b.verifyRunning : false)
+    readonly property int checkedCount: b ? b.verifyChecked : 0
+    readonly property int totalCount: b ? b.verifyTotal : 0
     property bool hasResult: b && b.verifyResultText && b.verifyResultText.length > 0
     property bool resultOk: b ? b.verifyResultOk : false
     property int repairing: 0
@@ -29,7 +31,7 @@ Item {
     Connections {
         target: pane.b
         ignoreUnknownSignals: true
-        function onVerifyRunningChanged() { pane.verifying = pane.b.verifyRunning }
+        function onVerifyRunningChanged() { pane.verifyingLocal = false }
         function onVerifyCheckedChanged() { pane.checkedCount = pane.b.verifyChecked }
         function onVerifyTotalChanged() { pane.totalCount = pane.b.verifyTotal }
         function onVerifyFailedFiles(files) {
@@ -141,16 +143,14 @@ Item {
                         if (!pane.b) return
                         if (pane.verifying) {
                             pane.b.cancelVerify()
-                            pane.verifying = false
+                            pane.verifyingLocal = false
                             return
                         }
                         // 先本地进"校验中"，后端信号来了再校准 ——
                         // 否则点下去到第一条进度之间是完全无反馈的
                         pane.failedFiles = []
                         pane.hasResult = false
-                        pane.verifying = true
-                        pane.checkedCount = 0
-                        pane.totalCount = 0
+                        pane.verifyingLocal = true
                         pane.b.verifyVersion(pane.versionId)
                         if (pane.toast) pane.toast.show("开始校验版本文件", -1, "info", true)
                     }
