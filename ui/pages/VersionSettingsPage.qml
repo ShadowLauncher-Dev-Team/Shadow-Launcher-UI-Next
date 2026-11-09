@@ -33,12 +33,21 @@ Item {
 
     function paneFor(k) {
         if (k === "quick") return quickComp
+        if (k === "overview") return overviewComp
         return placeholderComp
     }
     function paneTitle(k) {
         for (var i = 0; i < rows.length; ++i)
             if (rows[i].t === "i" && rows[i].k === k) return rows[i].label
         return ""
+    }
+
+    // --ui-pane <key> 直接落在某个分区（截图/验收用）
+    Component.onCompleted: {
+        var args = Qt.application.arguments
+        var i = args.indexOf("--ui-pane")
+        if (i >= 0 && i + 1 < args.length && args[i + 1].indexOf("--") !== 0)
+            page.currentKey = args[i + 1]
     }
 
     Rectangle { anchors.fill: parent; color: Theme.bg }
@@ -238,6 +247,14 @@ Item {
         VsQuickPane {
             versionId: page.versionId
             toast: page.toast
+        }
+    }
+    Component {
+        id: overviewComp
+        VsOverviewPane {
+            versionId: page.versionId
+            toast: page.toast
+            onRequestPane: (k) => page.currentKey = k
         }
     }
     Component {

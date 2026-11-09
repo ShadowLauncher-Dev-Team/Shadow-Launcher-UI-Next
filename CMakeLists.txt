@@ -256,6 +256,7 @@ set_source_files_properties(ui/pages/MultiplayerPage.qml PROPERTIES QT_RESOURCE_
 set_source_files_properties(ui/pages/VersionSettingsPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/VersionSettingsPage.qml)
 set_source_files_properties(ui/pages/VsQuickPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsQuickPane.qml)
 set_source_files_properties(ui/pages/VsPlaceholderPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsPlaceholderPane.qml)
+set_source_files_properties(ui/pages/VsOverviewPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsOverviewPane.qml)
 set_source_files_properties(ui/pages/ResourceDetailPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/ResourceDetailPage.qml)
 set_source_files_properties(ui/ToastHost.qml PROPERTIES QT_RESOURCE_ALIAS ToastHost.qml)
 
@@ -292,6 +293,7 @@ qt_add_qml_module(ShadowLauncher
         ui/pages/VersionSettingsPage.qml
         ui/pages/VsQuickPane.qml
         ui/pages/VsPlaceholderPane.qml
+        ui/pages/VsOverviewPane.qml
         ui/ToastHost.qml
 )
 

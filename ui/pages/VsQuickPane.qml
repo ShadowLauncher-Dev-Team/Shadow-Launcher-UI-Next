@@ -222,7 +222,7 @@ Item {
                                 if (pane.toast) pane.toast.show(p ? "已复制版本路径" : "复制失败：版本不存在")
                             } else {
                                 if (!pane.b) return
-                                var s = pane.b.settings
+                                var s = pane.b.settings()
                                 var out = pane.b.exportLaunchScript(
                                             pane.versionId, s.javaPath, s.maxMemoryMB,
                                             s.versionJvmArgs(pane.versionId),
