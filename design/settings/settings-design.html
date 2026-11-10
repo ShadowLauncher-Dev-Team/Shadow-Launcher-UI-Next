@@ -227,6 +227,20 @@ textarea::placeholder{color:#3f4753}
   display:flex; align-items:center; justify-content:center; color:var(--fg3); font-size:12px;
 }
 .flex1{flex:1}
+.ack{padding:16px 18px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:5px}
+.ack:last-child{border-bottom:none}
+.ack-head{display:flex; align-items:center; gap:8px}
+.ack-name{font-size:13.5px; font-weight:600; color:var(--fg); cursor:pointer; transition:color var(--fast) ease}
+.ack-name:hover{color:var(--accent); text-decoration:underline}
+.ack-name.plain{cursor:default}
+.ack-name.plain:hover{color:var(--fg); text-decoration:none}
+.ack-badge{height:20px; padding:0 8px; border-radius:6px; background:#12203a; color:#7fb0f5; font-size:11px; display:inline-flex; align-items:center}
+.ack-desc{font-size:12px; color:var(--fg3); line-height:1.65}
+.prose{font-size:12.5px; color:var(--fg2); line-height:1.7; padding:14px 18px}
+.prose + .prose{border-top:1px solid var(--line)}
+.ver-num{font-size:26px; font-weight:700; letter-spacing:.01em}
+.ver-meta{font-size:12px; color:var(--fg3); margin-top:4px}
+.legal{font-size:11.5px; color:var(--fg3); line-height:1.6}
 .mt10{margin-top:10px}
 .mt14{margin-top:14px}
 .gap8{display:flex;gap:8px}
@@ -266,6 +280,10 @@ textarea::placeholder{color:#3f4753}
       <div class="nav-item" data-page="appearance">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 4v16"/></svg>
         <span>外观</span>
+      </div>
+      <div class="nav-item" data-page="about">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>
+        <span>关于</span>
       </div>
     </div>
     <div class="nav-foot">v1.0.4</div>
@@ -323,18 +341,6 @@ textarea::placeholder{color:#3f4753}
         </div>
       </div>
 
-      <div class="group">
-        <div class="group-title">关于</div>
-        <div class="card">
-          <div class="row">
-            <div class="row-main">
-              <div class="row-label">Shadow Launcher v1.0.4</div>
-              <div class="row-desc">构建 2026-11-10 · Qt 6.8.3</div>
-            </div>
-            <div class="row-ctl"><button class="btn">检查更新</button></div>
-          </div>
-        </div>
-      </div>
     </section>
 
     <!-- ────────── 2 Java 与内存 ────────── -->
@@ -614,6 +620,99 @@ textarea::placeholder{color:#3f4753}
               <div class="row-desc mono">D:\latest-code\shadow-v2\build\Release\.minecraft</div>
             </div>
             <div class="row-ctl"><button class="btn">打开目录</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────── 7 关于 ────────── -->
+    <section class="page" id="page-about">
+      <div class="page-head">
+        <h1>关于</h1>
+        <p>版本信息、许可，以及这个启动器背后的每一个名字。</p>
+      </div>
+
+      <div class="group">
+        <div class="group-title">版本</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="ver-num">Shadow Launcher v1.0.4</div>
+              <div class="ver-meta">构建 2026-11-10 · Qt 6.8.3 · Windows x64</div>
+            </div>
+            <div class="row-ctl"><button class="btn">检查更新</button></div>
+          </div>
+          <div class="row col">
+            <div class="legal">(C) 2025-2026 影 / Shadow / xiaole1173</div>
+            <div class="gap8">
+              <button class="btn sm">GNU AGPL v3 许可证</button>
+              <button class="btn sm">访问项目主页</button>
+            </div>
+            <div class="legal">非 Minecraft 官方产品。未经 Mojang 或 Microsoft 批准，也不与 Mojang 或 Microsoft 关联。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">工具</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">启动器日志</div>
+              <div class="row-desc">遇到问题时，日志是排查的第一手资料</div>
+            </div>
+            <div class="row-ctl"><button class="btn">打开文件夹</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">鸣谢</div>
+        <div class="card">
+          <div class="prose">
+            启动器开发过程中参考了主流 MC 启动器的功能实现路径，在此十分感谢这些项目。若非如此，本启动器可能还在 debug 的水深火热中……（本项目为独立实现，与上述项目无隶属或授权关系。）
+          </div>
+          <div class="ack">
+            <div class="ack-head"><span class="ack-name">PCL2</span></div>
+            <div class="ack-desc">启动器的下载引擎与版本隔离设计参考了它的实现路径。点击名字直达项目主页。</div>
+          </div>
+          <div class="ack">
+            <div class="ack-head"><span class="ack-name">HMCL</span></div>
+            <div class="ack-desc">启动参数构建、版本目录识别等实现路径参考了它。点击名字直达项目主页。</div>
+          </div>
+          <div class="ack">
+            <div class="ack-head"><span class="ack-name">bangbang93</span></div>
+            <div class="ack-desc">提供了镜像源和 Forge 安装工具。点击名字直达镜像源赞助页。</div>
+          </div>
+          <div class="ack">
+            <div class="ack-head"><span class="ack-name">z0z0r4</span></div>
+            <div class="ack-desc">提供了 MCIM 镜像源，主要用于 Mod 等资源的下载，虽然不大稳定（也可能是我测试太多给我限速了），但好歹不用死守着有时非常逆天的官方源了。</div>
+          </div>
+          <div class="ack">
+            <div class="ack-head"><span class="ack-name">Lucide</span></div>
+            <div class="ack-desc">提供了启动器目前所有可见的图标。点击名字直达网页。</div>
+          </div>
+          <div class="ack">
+            <div class="ack-head">
+              <span class="ack-name">ChunMoMo</span>
+              <span class="ack-badge">内测人员</span>
+            </div>
+            <div class="ack-desc">直接提供了一台能远程操控的电脑给开发者测试初代联机功能（而且是整整一个下午）。虽然初代联机功能已经废弃，但还是得感谢。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">内测人员的支持</div>
+        <div class="card">
+          <div class="prose">
+            这里非常荣幸地宣布：jh_hello、XChenyYa 二人以神奇的 bug 体制挖掘出了启动器的很多莫名其妙的 bug，包括但不限于下载、UI 显示、联机等多个方面。
+          </div>
+          <div class="prose">
+            非常感谢 jh_hello、XChenyYa、渡、LUVlhr 等人对联机功能后续测试的全方位支持！
+          </div>
+          <div class="prose">
+            以及其他参与内测的小伙伴们也十分感谢！
           </div>
         </div>
       </div>
