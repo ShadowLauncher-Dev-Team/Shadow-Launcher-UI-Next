@@ -299,15 +299,15 @@ public:
     // ── 整合包任务卡片（原生卡片通道：QML 经 InstallCardModel::cardData 轮询）──
     // 卡片生命周期与普通下载任务完全一致：add → 逐步更新 → 完成/失败后由
     // DownloadQueueCard 的自动收拢/手动关闭触发 dismissCard → removeTaskCard。
-    Q_INVOKABLE void addTaskCard(const QString& cardId, const QString& displayName);
-    Q_INVOKABLE void updateTaskCard(const QString& cardId, qreal progress, const QString& phase,
+    void addTaskCard(const QString& cardId, const QString& displayName);
+    void updateTaskCard(const QString& cardId, qreal progress, const QString& phase,
                                     bool failed = false, const QString& error = QString(),
                                     qint64 speed = 0, bool canCancel = true,
                                     const QString& name = QString());
-    Q_INVOKABLE void updateTaskCardSteps(const QString& cardId, const QVariantList& steps);
-    Q_INVOKABLE void updateTaskCardAttachments(const QString& cardId, const QVariantList& mods,
+    void updateTaskCardSteps(const QString& cardId, const QVariantList& steps);
+    void updateTaskCardAttachments(const QString& cardId, const QVariantList& mods,
                                                const QVariantList& logs, const QVariantMap& info);
-    Q_INVOKABLE void removeTaskCard(const QString& cardId);
+    void removeTaskCard(const QString& cardId);
 
     // ── 整合包任务注册（ModpackInstallTask 调用）──
     // 1) 卡片原生取消控件(cancelVersionInstall)转发到任务取消回调；

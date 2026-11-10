@@ -102,7 +102,6 @@ private:
 #include "backend/settings_backend.h"
 #include "backend/launch_backend.h"  // detachAllGames（退出时分离游戏进程）
 #include "ui_next/appearance_controller.h"
-#include "ui_next/ui_next_presenter.h"
 #include "core/http_client.h"
 
 #include "core/screenshot_server.h"
@@ -663,26 +662,20 @@ int main(int argc, char *argv[])
         qInfo().noquote() << QStringLiteral("[SELFTEST] 结束（本次运行已改写设置，跑完请恢复备份）");
     }
 
-    const bool useUiNext = app.arguments().contains(QStringLiteral("--ui-next"));
     auto argumentValue = [&app](const QString& name) {
         const int index = app.arguments().indexOf(name);
         return index >= 0 && index + 1 < app.arguments().size() ? app.arguments().at(index + 1) : QString();
     };
-    const int uiNextPage = argumentValue(QStringLiteral("--ui-next-page")).toInt();
     const QString uiNextMode = argumentValue(QStringLiteral("--ui-next-mode"));
     const QString uiNextDensity = argumentValue(QStringLiteral("--ui-next-density"));
     const QStringList uiNextSize = argumentValue(QStringLiteral("--ui-next-size")).split(QLatin1Char('x'));
     // QML engine
     QQmlApplicationEngine engine;
 
-    AppearanceController* appearance = nullptr;
-    UiNextPresenter* uiNext = nullptr;
-    if (useUiNext) {
-        appearance = engine.singletonInstance<AppearanceController*>("ShadowLauncher.Next", "Appearance");
-        uiNext = engine.singletonInstance<UiNextPresenter*>("ShadowLauncher.Next", "UiNext");
-        uiNext->initialize(backend);
+    // Appearance 单例：外观页（待做）会用，当前只是承接 --ui-next-mode/--ui-next-density。
+    AppearanceController* appearance = engine.singletonInstance<AppearanceController*>("ShadowLauncher.Next", "Appearance");
+    if (appearance)
         appearance->setPersistenceEnabled(!app.arguments().contains(QStringLiteral("--screenshot")));
-    }
 
     // Clear QML disk cache to avoid stale compiled QML from older builds
     engine.clearComponentCache();
@@ -696,8 +689,7 @@ int main(int argc, char *argv[])
     // Expose backend and data directory to QML
     engine.rootContext()->setContextProperty("backend", backend);
     engine.rootContext()->setContextProperty("dataDir", dataDir);
-    if (useUiNext)
-        engine.addImportPath(QStringLiteral("qrc:/qt/qml"));
+    engine.addImportPath(QStringLiteral("qrc:/qt/qml"));
 
     // Pass engine reference for language hot-switch
     backend->setEngine(&engine);
@@ -712,7 +704,7 @@ int main(int argc, char *argv[])
     // Set target window + measure first frame render
     QElapsedTimer* pStartupTimer = &startupTimer;
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
-        &app, [taskbarFilter, pStartupTimer, ssServer, useUiNext](QObject* obj, const QUrl&) {
+        &app, [taskbarFilter, pStartupTimer, ssServer](QObject* obj, const QUrl&) {
             QQuickWindow* win = qobject_cast<QQuickWindow*>(obj);
             if (!win) return;
 
@@ -721,13 +713,11 @@ int main(int argc, char *argv[])
 
 #ifdef Q_OS_WIN
             // ── Windows 11 窗口圆角 ──
-            // 新版 UI 由 DWM 直接裁出圆角（应用不再整窗加离屏遮罩，避免 hover 重绘时
-            // 控件消失）；旧版 UI 维持 DONOTROUND，由 QML 自绘圆角。
+            // 由 DWM 直接裁出圆角（不再整窗加离屏遮罩，避免 hover 重绘时控件消失）。
             {
                 HWND hwndDwm = reinterpret_cast<HWND>(win->winId());
                 if (hwndDwm) {
-                    DWM_WINDOW_CORNER_PREFERENCE pref =
-                        useUiNext ? DWMWCP_ROUND : DWMWCP_DONOTROUND;
+                    DWM_WINDOW_CORNER_PREFERENCE pref = DWMWCP_ROUND;
                     DwmSetWindowAttribute(hwndDwm, DWMWA_WINDOW_CORNER_PREFERENCE,
                                           &pref, sizeof(pref));
                 }
@@ -806,14 +796,12 @@ int main(int argc, char *argv[])
         checkpoint(QStringLiteral("Root objects verified"));
     }
 
-    if (useUiNext && !loadedBetaDialog) {
+    if (!loadedBetaDialog) {
         QObject* rootObject = engine.rootObjects().first();
-        if (uiNextPage > 0)
-            rootObject->setProperty("initialRoute", uiNextPage);
-        if (!uiNextMode.isEmpty())
-            appearance->setMode(uiNextMode);
-        if (!uiNextDensity.isEmpty())
-            appearance->setDensity(uiNextDensity);
+        if (appearance) {
+            if (!uiNextMode.isEmpty()) appearance->setMode(uiNextMode);
+            if (!uiNextDensity.isEmpty()) appearance->setDensity(uiNextDensity);
+        }
         if (uiNextSize.size() == 2) {
             rootObject->setProperty("width", uiNextSize.at(0).toInt());
             rootObject->setProperty("height", uiNextSize.at(1).toInt());

@@ -26,6 +26,8 @@ Item {
         target: page.b
         ignoreUnknownSignals: true
         function onAccountsChanged() { page.accRev++ }
+        // 衣柜失败（尺寸不对 / 上传失败）必须让用户看到，否则点"应用"像没反应
+        function onWardrobeError(msg) { page.flash(msg) }
     }
     readonly property var yg: (b && b.yggdrasil) ? b.yggdrasil : null
 
@@ -46,6 +48,13 @@ Item {
     readonly property int accountCount: (b && b.accounts) ? b.accounts.length : 0
     readonly property bool busy: b ? b.microsoftLoginBusy : false
     readonly property string statusLine: (b && b.msStatus) ? b.msStatus : ""
+
+    // ── 皮肤与披风（衣柜）──
+    // 模型：0=自动 1=经典(Steve) 2=纤细(Alex)，对应 uploadSkin 的 modelType
+    property int skinModel: 0
+    readonly property string skinFile: (b && b.selectedSkinPath) ? b.selectedSkinPath : ""
+    readonly property bool wardrobeBusy: (b && b.wardrobeBusy) ? b.wardrobeBusy : false
+    readonly property var capes: (b && b.availableCapes) ? b.availableCapes : []
 
     // 原始皮肤优先（自己裁脸）；头部图兜底
     readonly property string rawHeadSource: (b && b.isOnline) ? (b.skinTexturePath || "") : ""
@@ -766,6 +775,138 @@ Item {
                             anchors.left: parent.left; anchors.leftMargin: 104; anchors.verticalCenter: parent.verticalCenter
                             text: page.acctView ? page.acctView.skinText : ""
                             color: "#d8dde5"; font.family: Theme.fontFamily; font.pixelSize: 13
+                        }
+                    }
+                }
+
+                // ---- 皮肤与披风（衣柜）----
+                // 真实能力边界：皮肤可上传（正版走 Mojang API，离线存本地）；
+                // 披风后端只能记录选择、改不了账号披风，所以这里只做"查阅"，不摆假开关。
+                Column {
+                    width: parent.width
+                    spacing: 8
+
+                    Text {
+                        text: "皮肤与披风"
+                        color: "#ffffff"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 15
+                        font.weight: Font.Bold
+                    }
+
+                    Item {
+                        width: parent.width; height: 40
+                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#101319" }
+                        Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "模型"; color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
+                        SSegmented {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 104
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 210
+                            itemHeight: 26
+                            items: ["自动", "经典", "纤细"]
+                            currentIndex: page.skinModel
+                            onActivated: (i) => page.skinModel = i
+                        }
+                    }
+
+                    Item {
+                        width: parent.width; height: 40
+                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#101319" }
+                        Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "皮肤文件"; color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
+                        Text {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 104
+                            anchors.right: pickBtn.left
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: page.skinFile.length > 0 ? page.skinFile : "未选择（64x64 或 64x32 PNG）"
+                            color: page.skinFile.length > 0 ? "#d8dde5" : "#5d6673"
+                            elide: Text.ElideMiddle
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                        }
+                        SButton {
+                            id: pickBtn
+                            kind: 1
+                            radius: 2
+                            height: 26
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "选择"
+                            onClicked: { if (page.b) page.b.browseSkin() }
+                        }
+                    }
+
+                    Row {
+                        spacing: 10
+                        SButton {
+                            kind: 0
+                            radius: 2
+                            height: 32
+                            text: page.wardrobeBusy ? "上传中" : "应用皮肤"
+                            busy: page.wardrobeBusy
+                            enabled: page.skinFile.length > 0 && !page.wardrobeBusy
+                            onClicked: {
+                                if (!page.b) return
+                                page.b.saveWardrobeSettings(page.skinFile, "", page.skinModel)
+                                page.flash(page.hasOnline ? "正在上传皮肤" : "皮肤已保存到本地")
+                            }
+                        }
+                        SButton {
+                            kind: 1
+                            radius: 2
+                            height: 32
+                            text: "导出当前皮肤"
+                            onClicked: { if (page.b) page.b.saveSkinToFile() }
+                        }
+                    }
+
+                    Text {
+                        width: parent.width
+                        topPadding: 4
+                        text: "披风仅供查阅：更换披风需到 Minecraft 官网设置，启动器无法代改。"
+                        color: "#5d6673"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Flickable {
+                        width: parent.width
+                        height: 52
+                        contentWidth: capeRow.implicitWidth
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        flickableDirection: Flickable.HorizontalFlick
+
+                        Row {
+                            id: capeRow
+                            spacing: 8
+                            Repeater {
+                                model: page.capes
+                                delegate: Rectangle {
+                                    width: 40
+                                    height: 48
+                                    radius: 6
+                                    color: capeHover.hovered ? "#161a22" : "#0e1116"
+                                    border.width: 1
+                                    border.color: capeHover.hovered ? "#2a3341" : "#14171d"
+
+                                    Image {
+                                        anchors.centerIn: parent
+                                        width: 32
+                                        height: 32
+                                        source: (modelData && modelData.preview) ? modelData.preview : ""
+                                        fillMode: Image.PreserveAspectFit
+                                        asynchronous: true
+                                    }
+                                    HoverHandler { id: capeHover }
+                                    TapHandler {
+                                        onTapped: page.flash((modelData && modelData.name) ? modelData.name : "")
+                                    }
+                                }
+                            }
                         }
                     }
                 }

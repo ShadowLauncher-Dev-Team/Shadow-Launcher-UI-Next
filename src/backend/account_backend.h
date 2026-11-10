@@ -81,7 +81,7 @@ public:
     Q_INVOKABLE void refreshSkin();
     Q_INVOKABLE void updateOfflineSkin(const QString &username);
     Q_INVOKABLE void removeOfflineUsername(const QString &username);
-    Q_INVOKABLE void logout();
+    void logout();
 
     // ── 多账号 ──
     QVariantList accounts() const;

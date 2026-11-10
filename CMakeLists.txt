@@ -116,7 +116,6 @@ set(SOURCES
 
     # Independent next-generation UI presentation layer
     src/ui_next/appearance_controller.cpp
-    src/ui_next/ui_next_presenter.cpp
     # 下载步骤不确定环：QQuickItem + QSGNode（照 Qt Material BusyIndicator 的结构）
     src/ui_next/dl_spinner_item.cpp
 )
@@ -171,7 +170,6 @@ set(HEADERS
     src/backend/shadow_backend.h
 
     src/ui_next/appearance_controller.h
-    src/ui_next/ui_next_presenter.h
     src/ui_next/dl_spinner_item.h
 
     src/multiplayer/room_code.cpp
@@ -518,6 +516,13 @@ qt6_add_resources(ShadowLauncher "tools_resources"
 )
 
 # Cape textures (Wardrobe)
+# 同 agreements：PREFIX + 相对路径会拼成 resources/capes/resources/capes/x.png，
+# 而 C++/QML 读的是 /qt/qml/ShadowLauncher/resources/capes/x.png → 必须给 alias。
+file(GLOB SHADOW_CAPE_TEXTURES "${CMAKE_SOURCE_DIR}/resources/capes/*.png")
+foreach(_cape ${SHADOW_CAPE_TEXTURES})
+    get_filename_component(_cape_name "${_cape}" NAME)
+    set_source_files_properties("resources/capes/${_cape_name}" PROPERTIES QT_RESOURCE_ALIAS "${_cape_name}")
+endforeach()
 qt6_add_resources(ShadowLauncher "cape_resources"
     PREFIX "/qt/qml/ShadowLauncher/resources/capes"
     FILES

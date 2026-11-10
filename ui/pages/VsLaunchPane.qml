@@ -23,6 +23,8 @@ Item {
     property int gcMode: 0
     property bool fullscreen: false
     property bool highPerfGpu: false
+    property int priorityMode: 0     // 0=跟随全局 1=独立
+    property int priorityValue: 1    // 0=高 1=正常 2=低
     property string autoJoin: ""
     property string winTitle: ""
     property string preCmd: ""
@@ -66,6 +68,8 @@ Item {
         pane.gcMode = pane.s.versionGcMode(vid)
         pane.fullscreen = pane.s.versionFullscreen(vid)
         pane.highPerfGpu = pane.s.versionHighPerfGpu(vid)
+        pane.priorityMode = pane.s.versionProcessPriorityMode(vid)
+        pane.priorityValue = pane.s.versionProcessPriority(vid)
         pane.autoJoin = pane.s.versionAutoJoinServer(vid)
         pane.winTitle = pane.s.versionWindowTitle(vid)
         pane.preCmd = pane.s.versionPreLaunchCommand(vid)
@@ -293,6 +297,30 @@ Item {
                             pane.s.setVersionHighPerfGpuMode(pane.versionId, 1)
                             pane.s.setVersionHighPerfGpu(pane.versionId, v)
                             pane.highPerfGpu = v
+                        }
+                    }
+                }
+                SRow {
+                    width: parent.width
+                    label: "进程优先级"
+                    SSelect {
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 220
+                        // 后端语义：mode 0=跟随全局，1=用版本值（见 ShadowBackend::resolvedProcessPriority）
+                        items: ["跟随全局", "高", "正常", "低"]
+                        currentIndex: pane.priorityMode === 0 ? 0 : 1 + pane.priorityValue
+                        onActivated: (i) => {
+                            if (!pane.s) return
+                            if (i === 0) {
+                                pane.s.setVersionProcessPriorityMode(pane.versionId, 0)
+                                pane.priorityMode = 0
+                            } else {
+                                pane.s.setVersionProcessPriorityMode(pane.versionId, 1)
+                                pane.s.setVersionProcessPriority(pane.versionId, i - 1)
+                                pane.priorityMode = 1
+                                pane.priorityValue = i - 1
+                            }
                         }
                     }
                 }

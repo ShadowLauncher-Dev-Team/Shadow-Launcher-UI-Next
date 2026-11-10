@@ -389,17 +389,17 @@ public:
     Q_INVOKABLE QString versionPostExitCommand(const QString& versionId) const;
     Q_INVOKABLE void setVersionPostExitCommand(const QString& versionId, const QString& v);
     /// 解析后的 GC 模式（版本级优先）
-    Q_INVOKABLE int resolvedGcMode(const QString& versionId) const;
+    int resolvedGcMode(const QString& versionId) const;
     /// 解析后的自动进服地址（版本级优先）
-    Q_INVOKABLE QString resolvedAutoJoinServer(const QString& versionId) const;
+    QString resolvedAutoJoinServer(const QString& versionId) const;
     /// 解析后的全屏（版本级优先）
-    Q_INVOKABLE bool resolvedFullscreen(const QString& versionId) const;
+    bool resolvedFullscreen(const QString& versionId) const;
     /// 解析后的窗口标题（版本级优先）
-    Q_INVOKABLE QString resolvedWindowTitle(const QString& versionId) const;
+    QString resolvedWindowTitle(const QString& versionId) const;
     /// 解析后的启动前命令（版本级优先）
-    Q_INVOKABLE QString resolvedPreLaunchCommand(const QString& versionId) const;
+    QString resolvedPreLaunchCommand(const QString& versionId) const;
     /// 解析后的退出后命令（版本级优先）
-    Q_INVOKABLE QString resolvedPostExitCommand(const QString& versionId) const;
+    QString resolvedPostExitCommand(const QString& versionId) const;
     // ── 设置导入导出（转发 SettingsBackend）──
     
     
@@ -407,8 +407,6 @@ public:
 
     // ── Language hot-switch ──
     void setEngine(QQmlEngine* engine) { m_engine = engine; }
-    Q_INVOKABLE void switchLanguage(int index);
-    Q_INVOKABLE int readLanguageFile() const;
     void writeLanguageFile(int index) const;
     bool event(QEvent* event) override;
 
@@ -424,7 +422,6 @@ public:
 
     // ── Mod/file list stubs ──
     Q_INVOKABLE QVariantList listMods(const QString& versionId = {}) const;
-    Q_INVOKABLE QVariantList listResourcePacks(const QString& versionId = {}) const;
     Q_INVOKABLE QVariantList listSaves(const QString& versionId = {}) const;
 
     // ── 异步列表加载（模组上百时 parseJar/目录遍历耗时，worker 线程执行不卡 UI）──
@@ -441,7 +438,7 @@ public:
     Q_INVOKABLE void removeOfflineUsername(const QString& username);
     Q_INVOKABLE void microsoftLogin();
     Q_INVOKABLE void cancelMicrosoftLogin();
-    Q_INVOKABLE void logout();
+    void logout();
     /// 切到多账号列表第 index 个（外置账号会交给 YggdrasilBackend 恢复会话）
     Q_INVOKABLE void switchAccount(int index);
     Q_INVOKABLE bool removeAccount(int index);
@@ -497,15 +494,12 @@ public:
 
     /// 下载基线自检（离线、无网络）：步骤词表一致性 + StepNode 状态机/百分比钳制。
     /// 返回 "PASS ..." 或 "FAIL: ..." 字符串；供 /eval 与人工验收使用。
-    Q_INVOKABLE QString downloadSelfcheck();
 
     /// 源策略现状摘要（供人工验收）：四项下载设置当前值 + 版本清单实际会用的主源/兜底源。
-    Q_INVOKABLE QString downloadSourceSummary();
 
     /// 下载探针（仅本地验证用，不参与业务路径）：
     /// 用真实 FileDownloader 下载一个 URL，返回 bytes/file/ms/平均 MBps。
     /// limitKBps<=0 表示不限速。用于验证限速、取消、失败语义是否真的生效。
-    Q_INVOKABLE QString downloadProbe(const QString& url, int limitKBps, int timeoutMs);
 
     /// 取消验证：跑 cancelAfterMs 后 cancel()，再观察 600ms 字节是否继续增长。
     /// 期望：cancelled 后 bytes 不再变化（契约 §5：取消必须中止在途请求）。
@@ -513,7 +507,6 @@ public:
 
     /// 多文件探针：同一 URL 下 count 个文件（不同落盘路径），用于验收 QNAM 复用
     /// （创建次数应 ≈ 线程数，而不是 ≈ 文件数）。
-    Q_INVOKABLE QString downloadProbeMulti(const QString& url, int count, int timeoutMs);
 
     /// 取消残留诊断：取消后统计"目标文件 / .shadow_temp 分片 / 目录"是否还留东西。
     /// 不自动删除，交给验收者看；用于证明"取消能否完全清干净"。
@@ -521,18 +514,13 @@ public:
     Q_INVOKABLE void killMinecraft();
     Q_INVOKABLE void killGameByPid(qint64 pid);
     Q_INVOKABLE QVariantList runningGames();
-    Q_INVOKABLE QVariantList getPopularMods(const QString& loader);
-    Q_INVOKABLE QVariantList getShaderList();
-    Q_INVOKABLE void searchMods(const QString& query, const QString& loader = {});
     Q_INVOKABLE void searchModsEx(const QString& query, const QString& loader,
         const QString& category, const QString& gameVersion,
         const QString& environment, const QString& license,
         int offset, int limit, const QString& source = {});
-    Q_INVOKABLE QVariantMap getModCategories();
     /// 池子运行时状态（诊断 / 分页 hasMore）：kind = mod | shader | resourcepack | modpack | datapack
     Q_INVOKABLE QVariantMap resourcePoolState(const QString& kind) const;
     // CurseForge 分类静态表（QML 叠加下拉用）
-    Q_INVOKABLE QVariantList cfCategories(int classId) const;
     Q_INVOKABLE void searchShadersEx(const QString& query, const QStringList& gameVersions,
         const QStringList& categories, const QStringList& performance,
         const QStringList& loader, int offset, int limit, const QString& source = {});
@@ -552,8 +540,6 @@ public:
     Q_INVOKABLE void prefetchDatapacks(const QString& query, const QString& category,
         const QStringList& gameVersions, const QString& sort,
         int offset, int limit, const QString& source = {});
-    Q_INVOKABLE void downloadMod(const QString& slug, const QString& gameVersion, const QString& minecraftDir = QString());
-    Q_INVOKABLE void downloadShader(const QString& slug, const QString& gameVersion, const QString& minecraftDir = QString());
     Q_INVOKABLE void searchResourcepacks(const QString& query, const QString& gameVersion = {}, int offset = 0, const QStringList& categories = {}, const QString& source = {});
     // 整合包双源搜索（池子架构）
     Q_INVOKABLE void searchModpacksEx(const QString& query, const QString& loader,
@@ -567,12 +553,8 @@ public:
     Q_INVOKABLE void fetchModpackVersions(const QString& slug, const QString& gameVersion = {}, const QString& loader = {});
     /// 整合包压缩包下载：静默下载到 {gameDir}/downloads/，完成后自动走导入流程
     /// 返回 dlId（卡片通道 mod:N）；versionName=用户指定版本名（注册名），actualName=整合包实际名
-    Q_INVOKABLE int downloadModpack(const QString& url, const QString& filename, qint64 size,
-                                    const QString& sha1, const QString& versionName, const QString& actualName,
-                                    const QString& iconUrl = {});
     /// 整合包任务是否占用中（下载中 或 导入中）→ 同一时间只允许一个整合包任务（下载或导入）
     Q_INVOKABLE bool modpackBusy() const;
-    Q_INVOKABLE void downloadResourcepack(const QString& slug, const QString& gameVersion, const QString& minecraftDir = QString());
     Q_INVOKABLE void fetchResourcepackVersions(const QStringList& slugs);  // batch-fetch game_versions
     Q_INVOKABLE void fetchModVersions(const QStringList& slugs);
     Q_INVOKABLE void fetchShaderVersions(const QStringList& slugs);
@@ -581,12 +563,9 @@ public:
     Q_INVOKABLE void fetchShaderVersionsCf(const QString& modId, const QString& gameVersion = {}, const QString& loader = {});
     Q_INVOKABLE void fetchResourcepackVersionsCf(const QString& modId, const QString& gameVersion = {}, const QString& loader = {});
     /// CF 详情页前置依赖解析（Modrinth 优先映射），结果经 cfDependenciesResolved 回传
-    Q_INVOKABLE void resolveCfDependencies(const QString& modId, const QVariantList& deps);
-    Q_INVOKABLE void fetchCfDependencies(const QString& modId);
     /// 汉化反查：英文名 → 中文名（依赖卡用），转发 resource 层
     Q_INVOKABLE QString resolveModZh(const QString& title) const;
     /// 详情页「转到 XX / 复制链接」统一链接解析（转发 resource 层），返回 { mrUrl, cfUrl, mcmodUrl }
-    Q_INVOKABLE QVariantMap resolveProjectLinks(const QString& title, const QString& slug, const QString& kind) const;
 
     // Mod file download
     Q_INVOKABLE int downloadModFile(const QString& url, const QString& savePath, const QString& displayName,
@@ -610,8 +589,6 @@ public:
     QString selectedSkinPath() const { return m_selectedSkinPath; }
     bool isWardrobeBusy() const { return m_wardrobeBusy; }
     bool isScanningVersions() const { return m_isScanningVersions; }
-    Q_INVOKABLE void cacheIconAsync(const QString& webpUrl);  // async: download webp → ffmpeg → PNG, emits iconCached
-    Q_INVOKABLE QString cachedIconPath(const QString& webpUrl) const;  // sync: check cache, return file:/// or ""
 
     // ── Mod Loader version queries (BMCLAPI) ──
     Q_INVOKABLE void queryForgeVersions(const QString& mcVersion);
@@ -624,7 +601,6 @@ public:
     Q_INVOKABLE void cancelModLoaderQueries();
 
     // Cache Forge installer SHA1 from version list (avoids extra network fetch for verification)
-    Q_INVOKABLE void cacheForgeInstallerSha1(const QString& mcVer, const QString& forgeVer, const QString& sha1);
     QString getForgeInstallerSha1(const QString& mcVer, const QString& forgeVer) const;
 
     // Cache Forge Maven branch suffix (e.g. "1.10.0" for MC 1.10, "mc172" for MC 1.7.2)
@@ -660,7 +636,7 @@ public:
     Q_INVOKABLE void setVersionMemoryMode(const QString& versionId, int mode);
     Q_INVOKABLE int versionMemoryManualMB(const QString& versionId) const;
     Q_INVOKABLE void setVersionMemoryManualMB(const QString& versionId, int mb);
-    Q_INVOKABLE int resolvedMemoryMB(const QString& versionId);
+    int resolvedMemoryMB(const QString& versionId);
 
     // Per-version Java/launch overrides (0=follow global, 1=custom)
     Q_INVOKABLE int versionJavaMode(const QString& versionId) const;
@@ -669,19 +645,19 @@ public:
     Q_INVOKABLE void setVersionJvmArgsMode(const QString& versionId, int mode);
     Q_INVOKABLE QString versionJvmArgs(const QString& versionId) const;
     Q_INVOKABLE void setVersionJvmArgs(const QString& versionId, const QString& args);
-    Q_INVOKABLE QString resolvedJvmArgs(const QString& versionId) const;
+    QString resolvedJvmArgs(const QString& versionId) const;
 
     Q_INVOKABLE int versionGameArgsMode(const QString& versionId) const;
     Q_INVOKABLE void setVersionGameArgsMode(const QString& versionId, int mode);
     Q_INVOKABLE QString versionGameArgs(const QString& versionId) const;
     Q_INVOKABLE void setVersionGameArgs(const QString& versionId, const QString& args);
-    Q_INVOKABLE QString resolvedGameArgs(const QString& versionId) const;
+    QString resolvedGameArgs(const QString& versionId) const;
 
     Q_INVOKABLE int versionHighPerfGpuMode(const QString& versionId) const;
     Q_INVOKABLE void setVersionHighPerfGpuMode(const QString& versionId, int mode);
     Q_INVOKABLE bool versionHighPerfGpu(const QString& versionId) const;
     Q_INVOKABLE void setVersionHighPerfGpu(const QString& versionId, bool v);
-    Q_INVOKABLE bool resolvedHighPerfGpu(const QString& versionId) const;
+    bool resolvedHighPerfGpu(const QString& versionId) const;
 
     // Global setters
     Q_INVOKABLE void setJvmArgs(const QString& args);
@@ -923,14 +899,9 @@ public:
     QObject* yggdrasil() const { return m_yggdrasil; }
     Q_INVOKABLE SettingsBackend* settings() const { return m_settings; }
     // Auto-language mode helpers (bypass backend.settings.* QML chain issues in Loaders)
-    Q_INVOKABLE int diagAutoLangComboIdx() const;
     Q_INVOKABLE void setAutoLangModeFromCombo(int idx);
-    Q_INVOKABLE void logUiMsg(const QString& msg);
     // ── UI 一次性标记（QSettings 持久化；2026-08-24 v1.0.1 一次性启动公告 toast 用）──
-    Q_INVOKABLE bool readUiFlag(const QString& key) const;
-    Q_INVOKABLE void writeUiFlag(const QString& key, bool value);
     // 更新后首次启动判定（蓝色"更新内容"toast 仅更新用户弹出；一次性消费；2026-08-25）
-    Q_INVOKABLE bool consumeJustUpdatedFlag();
     CheckBackend* check() const { return m_check; }
     VersionBackend* version() const { return m_version; }
     LaunchBackend* launchBackend() const { return m_launch; }
@@ -966,11 +937,6 @@ public:
     Q_INVOKABLE QString pickFolder(const QString &initialDir = QString());
 
     Q_INVOKABLE QString resolveIconUrl(const QString &url);
-    Q_INVOKABLE void cacheIconBatchAsync(const QStringList &urls);
-    Q_INVOKABLE QString resolveShaderIconUrl(const QString &url);
-    Q_INVOKABLE void cacheShaderIconBatchAsync(const QStringList &urls);
-    Q_INVOKABLE QString resolveRpIconUrl(const QString &url);
-    Q_INVOKABLE void cacheRpIconBatchAsync(const QStringList &urls);
 
 
 private:

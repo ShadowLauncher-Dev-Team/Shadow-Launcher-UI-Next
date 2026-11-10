@@ -389,6 +389,19 @@ ShadowBackend::ShadowBackend(QObject* parent)
                                              y->accessToken(), y->clientToken());
         });
     }
+    // 皮肤上传结果：复位衣柜忙碌态，并把失败原因交给 UI。
+    // （以前这个信号没有任何接收方 → 上传失败时界面毫无反应。）
+    connect(m_account, &AccountBackend::skinUploadFinished, this,
+            [this](bool ok, const QString& err) {
+        m_wardrobeBusy = false;
+        emit wardrobeBusyChanged();
+        if (ok) {
+            emit logMessage(tr("皮肤已上传，正在同步头像"));
+        } else {
+            emit wardrobeError(err.isEmpty() ? tr("皮肤上传失败") : err);
+        }
+    });
+
     connect(m_account, &AccountBackend::skinReady,
             this, &ShadowBackend::skinReady);
     connect(m_account, &AccountBackend::offlineSkinReady,
@@ -2206,31 +2219,6 @@ QString ShadowBackend::resolveIconUrl(const QString &url)
     return m_fetchEngine ? m_fetchEngine->iconLocalPath(url) : url;
 }
 
-void ShadowBackend::cacheIconBatchAsync(const QStringList &urls)
-{
-    if (m_fetchEngine) m_fetchEngine->prefetchIcons(urls);
-}
-
-QString ShadowBackend::resolveShaderIconUrl(const QString &url)
-{
-    return m_fetchEngine ? m_fetchEngine->iconLocalPath(url) : url;
-}
-
-void ShadowBackend::cacheShaderIconBatchAsync(const QStringList &urls)
-{
-    if (m_fetchEngine) m_fetchEngine->prefetchIcons(urls);
-}
-
-QString ShadowBackend::resolveRpIconUrl(const QString &url)
-{
-    return m_fetchEngine ? m_fetchEngine->iconLocalPath(url) : url;
-}
-
-void ShadowBackend::cacheRpIconBatchAsync(const QStringList &urls)
-{
-    if (m_fetchEngine) m_fetchEngine->prefetchIcons(urls);
-}
-
 // ── Helper: get the game directory for a given version ID ──
 QString ShadowBackend::gameDirForVersion(const QString& versionId) const {
     if (versionId.isEmpty()) return m_app->gameDir();
@@ -2511,12 +2499,6 @@ QVariantList ShadowBackend::listMods(const QString& versionId) const
 {
     if (!m_localMods) return {};
     return m_localMods->scanMods(versionId);
-}
-
-QVariantList ShadowBackend::listResourcePacks(const QString& versionId) const
-{
-    if (!m_localMods) return {};
-    return m_localMods->scanResourcePacks(versionId);
 }
 
 // ── 异步列表加载：parseJar / 目录遍历在 worker 线程，完成后回主线程发信号 ──
@@ -3027,43 +3009,6 @@ void ShadowBackend::demoLaunchRepairs() {
 }
 
 /// 只用于核对 B1 失败面板：造一份崩溃诊断 + 让管线停在失败态。
-QString ShadowBackend::downloadProbe(const QString& url, int limitKBps, int timeoutMs)
-{
-    ShadowDownloader::FileDownloader fd;
-    fd.setMaxThreads(4);
-    if (limitKBps > 0) fd.setSpeedLimitMB(limitKBps / 1024.0);
-
-    const QString path = QDir::tempPath() + QStringLiteral("/shadow_probe.bin");
-    QFile::remove(path);
-    fd.addFile(path, QStringLiteral("probe.bin"), {url}, -1, QByteArray(),
-               /*jarStrip*/ false, /*skipCacheCheck*/ true);
-
-    QElapsedTimer t;
-    t.start();
-    qint64 lastRecv = 0;
-    QEventLoop loop;
-    bool finished = false;
-    QObject::connect(&fd, &ShadowDownloader::FileDownloader::fileProgress,
-                     [&lastRecv](const QString&, const QString&, qint64 r, qint64, const QString&) {
-                         lastRecv = r;
-                     });
-    QObject::connect(&fd, &ShadowDownloader::FileDownloader::allFinished, [&]() { finished = true; loop.quit(); });
-    QTimer::singleShot(timeoutMs > 0 ? timeoutMs : 20000, &loop, &QEventLoop::quit);
-
-    fd.start();
-    loop.exec();
-    fd.cancel();
-
-    const qint64 ms = qMax<qint64>(1, t.elapsed());
-    const qint64 size = QFileInfo::exists(path) ? QFileInfo(path).size() : 0;
-    QFile::remove(path);
-    const double avgMBps = (size / 1048576.0) / (ms / 1000.0);
-    return QStringLiteral("finished=%1 bytes=%2 file=%3 ms=%4 avgMBps=%5 limitKBps=%6")
-        .arg(finished ? QStringLiteral("yes") : QStringLiteral("no"))
-        .arg(lastRecv).arg(size).arg(ms)
-        .arg(avgMBps, 0, 'f', 2).arg(limitKBps);
-}
-
 QString ShadowBackend::downloadProbeCancelLeak(const QString& url, int cancelAfterMs)
 {
     ShadowDownloader::FileDownloader fd;
@@ -3106,45 +3051,6 @@ QString ShadowBackend::downloadProbeCancelLeak(const QString& url, int cancelAft
         .arg(tempBytes)
         .arg(QDir(shadowTemp).exists() ? QStringLiteral("yes") : QStringLiteral("no"))
         .arg(dirExists ? QStringLiteral("yes") : QStringLiteral("no"));
-}
-
-QString ShadowBackend::downloadProbeMulti(const QString& url, int count, int timeoutMs)
-{
-    ShadowDownloader::FileDownloader fd;
-    fd.setMaxThreads(4);
-
-    QStringList paths;
-    const int n = qBound(1, count, 16);
-    for (int i = 0; i < n; ++i) {
-        const QString p = QDir::tempPath() + QStringLiteral("/shadow_probe_multi_%1.bin").arg(i);
-        QFile::remove(p);
-        paths.append(p);
-        fd.addFile(p, QStringLiteral("probe_multi_%1.bin").arg(i), {url}, -1, QByteArray(),
-                   false, true);
-    }
-
-    const int qnamBefore = ShadowDownloader::FileDownloader::qnamCreatedTotal();
-    QElapsedTimer t;
-    t.start();
-    int okCount = 0;
-    QEventLoop loop;
-    QObject::connect(&fd, &ShadowDownloader::FileDownloader::fileFinished,
-                     [&okCount](const QString&, bool ok) { if (ok) ++okCount; });
-    QObject::connect(&fd, &ShadowDownloader::FileDownloader::allFinished, [&]() { loop.quit(); });
-    QTimer::singleShot(timeoutMs > 0 ? timeoutMs : 30000, &loop, &QEventLoop::quit);
-    fd.start();
-    loop.exec();
-    fd.cancel();
-
-    int existing = 0;
-    qint64 totalBytes = 0;
-    for (const QString& p : paths) {
-        if (QFileInfo::exists(p)) { ++existing; totalBytes += QFileInfo(p).size(); }
-        QFile::remove(p);
-    }
-    const int qnamDelta = ShadowDownloader::FileDownloader::qnamCreatedTotal() - qnamBefore;
-    return QStringLiteral("files=%1 ok=%2 onDisk=%3 bytes=%4 ms=%5 qnamCreated=%6")
-        .arg(n).arg(okCount).arg(existing).arg(totalBytes).arg(t.elapsed()).arg(qnamDelta);
 }
 
 QString ShadowBackend::downloadProbeCancel(const QString& url, int cancelAfterMs)
@@ -3191,316 +3097,6 @@ QString ShadowBackend::downloadProbeCancel(const QString& url, int cancelAfterMs
         .arg(bytesAfter - bytesAtCancel)
         .arg(allFinishedCount)
         .arg(size);
-}
-
-QString ShadowBackend::downloadSourceSummary()
-{
-    const auto listPolicy = static_cast<DownloadSourcePolicy>(listDownloadSource());
-    const auto filePolicy = static_cast<DownloadSourcePolicy>(fileDownloadSource());
-    return QStringLiteral("listSource=%1(listPreferOfficial=%2, primary=%3, 资源索引=%4) "
-                          "fileSource=%5(preferOfficial=%6) "
-                          "limitMB=%7 threads=%8")
-        .arg(listDownloadSource())
-        .arg(SourcePolicy::preferOfficial(listPolicy) ? QStringLiteral("yes") : QStringLiteral("no"),
-             SourcePolicy::mcManifestPrimary(listPolicy),
-             SourcePolicy::preferOfficial(listPolicy)
-                 ? QStringLiteral("官方优先(镜像延迟 800ms 兜底)")
-                 : QStringLiteral("镜像优先(双源同时发)"))
-        .arg(fileDownloadSource())
-        .arg(SourcePolicy::preferOfficial(filePolicy) ? QStringLiteral("yes") : QStringLiteral("no"))
-        .arg(downloadSpeedLimitMB())
-        .arg(maxDownloadThreads());
-}
-
-QString ShadowBackend::downloadSelfcheck()
-{
-    QStringList fails;
-
-    // ── 1) 旧中文名 → key 映射（迁移期桥接必须准确，否则按名字路由的旧代码会漂移）
-    const QVector<QPair<QString, QString>> legacyCases = {
-        {QStringLiteral("下载版本JSON"),            StepKeys::baseJson()},
-        {QStringLiteral("下载支持库"),              StepKeys::baseLibraries()},
-        {QStringLiteral("下载资源文件"),            StepKeys::baseAssets()},
-        {QStringLiteral("校验游戏资源完整性"),      StepKeys::baseVerify()},
-        {QStringLiteral("下载原版 JSON 文件"),      StepKeys::baseJson()},
-        {QStringLiteral("下载原版支持库文件"),      StepKeys::baseLibraries()},
-        {QStringLiteral("下载原版资源文件"),        StepKeys::baseAssets()},
-        {QStringLiteral("下载 Fabric 配置"),        StepKeys::fabricConfig()},
-        {QStringLiteral("下载 Fabric 依赖库"),      StepKeys::fabricLibs()},
-        {QStringLiteral("安装 Fabric"),             StepKeys::fabricInstall()},
-        {QStringLiteral("下载 Fabric API"),         StepKeys::fabricApi()},
-        {QStringLiteral("下载 Forge 主文件"),       StepKeys::loaderInstaller()},
-        {QStringLiteral("校验 Forge 完整性"),       StepKeys::loaderVerify()},
-        {QStringLiteral("下载 Forge 安装器库"),     StepKeys::loaderLibs()},
-        {QStringLiteral("安装 Forge"),              StepKeys::loaderInstall()},
-    };
-    for (const auto& c : legacyCases) {
-        const QString got = StepKeys::keyForLegacyName(c.first);
-        if (got != c.second) {
-            fails << QStringLiteral("legacy=%1 expected=%2 got=%3")
-                         .arg(c.first, c.second, got.isEmpty() ? QStringLiteral("<empty>") : got);
-        }
-    }
-
-    // ── 2) key 唯一性（词表里不允许两个常量撞同一个字符串）
-    const QStringList allKeys = {
-        StepKeys::baseJson(), StepKeys::baseLibraries(), StepKeys::baseAssets(),
-        StepKeys::baseVerify(), StepKeys::baseJar(),
-        StepKeys::loaderInstaller(), StepKeys::loaderVerify(), StepKeys::loaderLibs(),
-        StepKeys::loaderInstall(), StepKeys::fabricConfig(), StepKeys::fabricLibs(),
-        StepKeys::fabricInstall(), StepKeys::fabricApi(), StepKeys::optifineJar(),
-        StepKeys::optifineInstall(), StepKeys::metaResolve(), StepKeys::metaOverrides(),
-        StepKeys::modsDownload(), StepKeys::modsVerify(), StepKeys::javaCheck(),
-        StepKeys::javaInstall(), StepKeys::userdataImport()
-    };
-    QSet<QString> seen;
-    for (const auto& k : allKeys) {
-        if (k.isEmpty()) { fails << QStringLiteral("empty key in vocabulary"); continue; }
-        if (seen.contains(k)) fails << QStringLiteral("duplicate key=%1").arg(k);
-        seen.insert(k);
-    }
-
-    // ── 3) StepNode 状态机：completed 后百分比不得被拉回
-    {
-        StepPipeline pipe;
-        auto* n = pipe.addStep(QStringLiteral("t.done"), QStringLiteral("t"), 1.0);
-        if (!n) {
-            fails << QStringLiteral("pipeline.addStep returned null");
-        } else {
-            n->setCompleted();
-            if (n->statusInt() != static_cast<int>(StepStatus::Completed))
-                fails << QStringLiteral("setCompleted did not reach Completed");
-            if (n->percentage() != 100)
-                fails << QStringLiteral("completed step percentage=%1 (want 100)").arg(n->percentage());
-            n->setPercentage(40);
-            if (n->percentage() != 100)
-                fails << QStringLiteral("completed step percentage regressed to %1").arg(n->percentage());
-            // 字节进度回写也不能把已完成步骤拉回
-            n->setByteProgress(500, 1000);
-            if (n->percentage() != 100)
-                fails << QStringLiteral("completed step byte-progress regressed to %1").arg(n->percentage());
-            // 非法跳转：completed → active 不应生效
-            n->setActive();
-            if (n->statusInt() != static_cast<int>(StepStatus::Completed))
-                fails << QStringLiteral("completed step degraded to active");
-        }
-    }
-
-    // ── 3.5) active 期间进度单调（不得回退）
-    {
-        StepPipeline pipe;
-        auto* a = pipe.addStep(QStringLiteral("t.mono"), QStringLiteral("m"), 1.0);
-        if (a) {
-            a->setActive();
-            a->setPercentage(60);
-            a->setPercentage(30);
-            if (a->percentage() != 60)
-                fails << QStringLiteral("active step regressed to %1 (want 60)").arg(a->percentage());
-            a->setByteProgress(10, 100);
-            if (a->percentage() != 60)
-                fails << QStringLiteral("active byte-progress regressed to %1").arg(a->percentage());
-            a->forceStatus(StepStatus::Pending);
-            a->setActive();
-            a->setPercentage(5);   // 复位后允许从低处重新开始
-            if (a->percentage() != 5)
-                fails << QStringLiteral("reset step cannot restart low (%1)").arg(a->percentage());
-        }
-    }
-
-    // ── 4) 百分比钳制 0..100
-    {
-        StepPipeline pipe;
-        auto* a = pipe.addStep(QStringLiteral("t.hi"), QStringLiteral("h"), 1.0);
-        if (a) { a->setPercentage(150); if (a->percentage() != 100) fails << QStringLiteral("clamp high=%1").arg(a->percentage()); }
-        auto* b = pipe.addStep(QStringLiteral("t.lo"), QStringLiteral("l"), 1.0);
-        if (b) { b->setPercentage(-20); if (b->percentage() != 0) fails << QStringLiteral("clamp low=%1").arg(b->percentage()); }
-    }
-
-    // ── 4.5) 兜底重试的数据接受判定（www 无 sha1 的文件也要能被救回）
-    {
-        using ShadowDownloader::acceptFallbackPayload;
-        if (!acceptFallbackPayload(true, true, 100, 100, false))
-            fails << QStringLiteral("accept: sha1 match rejected");
-        if (acceptFallbackPayload(true, false, 100, 50, false))
-            fails << QStringLiteral("accept: sha1 mismatch + short data accepted");
-        if (!acceptFallbackPayload(true, false, 100, 100, false))
-            fails << QStringLiteral("accept: sha1 mismatch + full size rejected");
-        if (!acceptFallbackPayload(false, false, 100, 100, false))
-            fails << QStringLiteral("accept: no-sha1 + full size rejected");
-        if (acceptFallbackPayload(false, false, 100, 50, false))
-            fails << QStringLiteral("accept: no-sha1 + short data accepted");
-        if (!acceptFallbackPayload(false, false, -1, 4096, true))
-            fails << QStringLiteral("accept: no-sha1 + unknown size + non-empty rejected");
-        if (acceptFallbackPayload(false, false, -1, 0, true))
-            fails << QStringLiteral("accept: no-sha1 + unknown size + empty accepted");
-    }
-
-    // ── 4.6) 加权总进度（契约 §3：隐藏步骤不计入分母、权重归一、全完成=1）
-    {
-        StepPipeline pipe;
-        auto* a = pipe.addStep(QStringLiteral("w.a"), QStringLiteral("a"), 1.0);
-        auto* b = pipe.addStep(QStringLiteral("w.b"), QStringLiteral("b"), 1.0);
-        auto* c = pipe.addStep(QStringLiteral("w.c"), QStringLiteral("c"), 5.0);
-        if (a && b && c) {
-            a->setCompleted();     // 50%
-            b->setActive();
-            b->setPercentage(0);
-            c->setHidden(true);    // 隐藏步骤即使完成也不能拉高总进度
-            c->setCompleted();
-            const qreal p1 = pipe.weightedProgress();
-            if (qAbs(p1 - 0.5) > 0.001)
-                fails << QStringLiteral("weightedProgress(1/2 visible done)=%1 want 0.5").arg(p1);
-            b->setPercentage(50);
-            const qreal p2 = pipe.weightedProgress();
-            if (qAbs(p2 - 0.75) > 0.001)
-                fails << QStringLiteral("weightedProgress(50%%+50%%)=%1 want 0.75").arg(p2);
-            b->setCompleted();
-            const qreal p3 = pipe.weightedProgress();
-            if (qAbs(p3 - 1.0) > 0.001)
-                fails << QStringLiteral("weightedProgress(all visible done)=%1 want 1.0").arg(p3);
-            // 权重必须全部为正（0 权重会让分母为 0 → 除零/NaN）
-            for (int i = 0; i < 3; ++i) {
-                if (auto* w = pipe.stepNode(i); w && w->weight() <= 0)
-                    fails << QStringLiteral("step %1 has non-positive weight").arg(i);
-            }
-        }
-    }
-
-    // ── 5) 源策略映射（版本列表源域）
-    {
-        using namespace ShadowLauncher;
-        const int officialCount =
-            (SourcePolicy::preferOfficial(DownloadSourcePolicy::PreferOfficial) ? 1 : 0)
-            + (SourcePolicy::preferOfficial(DownloadSourcePolicy::AutoSwitch) ? 1 : 0)
-            + (SourcePolicy::preferOfficial(DownloadSourcePolicy::PreferMirror) ? 0 : 1);
-        if (officialCount != 3)
-            fails << QStringLiteral("preferOfficial mapping wrong (%1/3)").arg(officialCount);
-        if (!SourcePolicy::mcManifestPrimary(DownloadSourcePolicy::PreferMirror)
-                 .contains(QStringLiteral("bmclapi")))
-            fails << QStringLiteral("mirror policy primary is not bmclapi");
-        if (!SourcePolicy::mcManifestPrimary(DownloadSourcePolicy::PreferOfficial)
-                 .contains(QStringLiteral("launchermeta")))
-            fails << QStringLiteral("official policy primary is not launchermeta");
-        if (SourcePolicy::mcManifestPrimary(DownloadSourcePolicy::PreferMirror)
-            == SourcePolicy::mcManifestFallback(DownloadSourcePolicy::PreferMirror))
-            fails << QStringLiteral("primary == fallback");
-    }
-
-    // ── 7) 步骤显示名唯一来源（同一 key 只有一种文案；四条路径共用）
-    {
-        const QStringList keys = {
-            StepKeys::baseJson(), StepKeys::baseLibraries(), StepKeys::baseAssets(),
-            StepKeys::baseVerify(), StepKeys::baseJar(),
-            StepKeys::loaderInstaller(), StepKeys::loaderVerify(), StepKeys::loaderLibs(),
-            StepKeys::loaderInstall(), StepKeys::fabricConfig(), StepKeys::fabricLibs(),
-            StepKeys::fabricInstall(), StepKeys::fabricApi(), StepKeys::optifineJar(),
-            StepKeys::optifineInstall(), StepKeys::metaResolve(), StepKeys::metaOverrides(),
-            StepKeys::modsDownload(), StepKeys::modsVerify(), StepKeys::javaCheck(),
-            StepKeys::javaInstall(), StepKeys::userdataImport()
-        };
-        for (const QString& k : keys) {
-            const QString n = StepKeys::displayName(k);
-            if (n.isEmpty() || n == k)
-                fails << QStringLiteral("displayName missing for key=%1").arg(k);
-            if (n.contains(QStringLiteral("%1")))
-                fails << QStringLiteral("displayName(%1) left %%1 unreplaced: %2").arg(k, n);
-        }
-        if (StepKeys::displayName(StepKeys::loaderInstaller(), QStringLiteral("Forge"))
-            != QStringLiteral("下载 Forge 安装器"))
-            fails << QStringLiteral("loaderLabel substitution broken");
-        if (StepKeys::displayName(StepKeys::baseVerify())
-            != StepKeys::displayName(StepKeys::baseVerify(), QStringLiteral("Forge")))
-            fails << QStringLiteral("base.verify text should not depend on loader label");
-    }
-
-    // ── 8) 取源策略统一决策点（元数据竞速 / MC 文件跟随设置 / 加载器 Maven 镜像优先）
-    {
-        using ShadowLauncher::SourcePolicy::RequestClass;
-        const auto meta = SourcePolicy::routeFor(RequestClass::Metadata,
-                                                 DownloadSourcePolicy::PreferMirror,
-                                                 DownloadSourcePolicy::PreferOfficial);
-        if (!meta.race || !meta.preferOfficial)
-            fails << QStringLiteral("metadata route should race & prefer official per listSource");
-        const auto mcFile = SourcePolicy::routeFor(RequestClass::McFile,
-                                                   DownloadSourcePolicy::PreferMirror,
-                                                   DownloadSourcePolicy::PreferOfficial);
-        if (mcFile.race || mcFile.preferOfficial)
-            fails << QStringLiteral("mc file route should follow fileSource (mirror)");
-        const auto loader = SourcePolicy::routeFor(RequestClass::LoaderArtifact,
-                                                   DownloadSourcePolicy::PreferOfficial,
-                                                   DownloadSourcePolicy::PreferOfficial);
-        if (loader.race || loader.preferOfficial)
-            fails << QStringLiteral("loader artifact route should be mirror-first (documented)");
-    }
-
-    // ── 9) LoaderPlan 形状（步骤清单只在 plan 里定义一次）
-    {
-        using ShadowLauncher::LoaderPlan::make;
-        const auto van = make(QStringLiteral("vanilla"));
-        if (van.keys.size() != 4 || van.weights.size() != 4 || van.shows.size() != 4)
-            fails << QStringLiteral("vanilla plan shape wrong (%1/%2/%3)")
-                         .arg(van.keys.size()).arg(van.weights.size()).arg(van.shows.size());
-        const auto fab = make(QStringLiteral("fabric"), true);
-        if (fab.keys.size() != 8 || fab.loaderLabel != QStringLiteral("Fabric"))
-            fails << QStringLiteral("fabric plan shape wrong (%1)").arg(fab.keys.size());
-        if (!fab.keys.contains(StepKeys::fabricApi()))
-            fails << QStringLiteral("fabric plan missing fabric.api");
-        const auto frg = make(QStringLiteral("forge"));
-        if (frg.keys.size() != 8 || frg.loaderLabel != QStringLiteral("Forge"))
-            fails << QStringLiteral("forge plan shape wrong");
-        const auto neo = make(QStringLiteral("neoforge"));
-        if (neo.loaderLabel != QStringLiteral("NeoForge"))
-            fails << QStringLiteral("neoforge label wrong");
-        const auto ofn = make(QStringLiteral("optifine"));
-        if (ofn.keys.size() != 5 || ofn.loaderLabel != QStringLiteral("OptiFine"))
-            fails << QStringLiteral("optifine plan shape wrong");
-        // 每条 plan 的权重/显隐长度必须一致（否则 rebuildSteps 会静默用默认值）
-        for (const auto& p : {van, fab, frg, neo, ofn}) {
-            if (p.keys.size() != p.weights.size() || p.keys.size() != p.shows.size())
-                fails << QStringLiteral("plan size mismatch label=%1").arg(p.loaderLabel);
-        }
-    }
-
-    // ── 10) 清理守卫纯逻辑：三布局 saves 判定 + 索引 .part.* 清理
-    {
-        QTemporaryDir tmp;
-        if (!tmp.isValid()) {
-            fails << QStringLiteral("QTemporaryDir invalid");
-        } else {
-            const QString gameDir = tmp.path();
-            const QString verDir = gameDir + QStringLiteral("/versions/T");
-            // 布局 1：版本隔离 versions/<id>/game/saves
-            QDir().mkpath(verDir + QStringLiteral("/game/saves"));
-            if (!ShadowLauncher::CleanupGuard::dirHasUserSaves(verDir, gameDir))
-                fails << QStringLiteral("saves guard: isolated layout not detected");
-            QDir(verDir + QStringLiteral("/game/saves")).removeRecursively();
-            // 布局 2：共享根 <gameDir>/saves
-            QDir().mkpath(gameDir + QStringLiteral("/saves"));
-            if (!ShadowLauncher::CleanupGuard::dirHasUserSaves(verDir, gameDir))
-                fails << QStringLiteral("saves guard: shared-root layout not detected");
-            QDir(gameDir + QStringLiteral("/saves")).removeRecursively();
-            // 无存档 → false
-            if (ShadowLauncher::CleanupGuard::dirHasUserSaves(verDir, gameDir))
-                fails << QStringLiteral("saves guard: false positive without saves");
-            // 索引分片清理
-            QDir().mkpath(verDir);
-            for (int i = 0; i < 3; ++i) {
-                QFile f(verDir + QStringLiteral("/5.json.part.%1").arg(i));
-                if (f.open(QIODevice::WriteOnly)) { f.write("x"); f.close(); }
-            }
-            const int removed = ShadowLauncher::CleanupGuard::removeStaleIndexParts(verDir,
-                                                                                    QStringLiteral("5.json"));
-            if (removed != 3)
-                fails << QStringLiteral("index parts removed=%1 want 3").arg(removed);
-            if (!QDir(verDir).entryList({ QStringLiteral("*.part.*") }, QDir::Files).isEmpty())
-                fails << QStringLiteral("index parts left after cleanup");
-        }
-    }
-
-    if (fails.isEmpty())
-        return QStringLiteral("PASS stepkeys=%1 legacy=%2 checks=10")
-            .arg(allKeys.size()).arg(legacyCases.size());
-    return QStringLiteral("FAIL(%1): ").arg(fails.size()) + fails.join(QStringLiteral(" | "));
 }
 
 void ShadowBackend::demoLaunchFailure() {
@@ -3642,18 +3238,6 @@ bool ShadowBackend::resolvedHighPerfGpu(const QString& versionId) const {
 // Q_INVOKABLE methods — Resource
 // ============================================================
 
-QVariantList ShadowBackend::getPopularMods(const QString& loader) {
-    return m_resource->getPopularMods(loader);
-}
-
-QVariantList ShadowBackend::getShaderList() {
-    return m_resource->getShaderList();
-}
-
-void ShadowBackend::searchMods(const QString& query, const QString& loader) {
-    m_resource->searchMods(query, loader);
-}
-
 void ShadowBackend::searchModsEx(const QString& query, const QString& loader,
     const QString& category, const QString& gameVersion,
     const QString& environment, const QString& license,
@@ -3669,15 +3253,6 @@ QVariantMap ShadowBackend::resourcePoolState(const QString& kind) const
 {
     if (!m_resource) return {};
     return m_resource->resourcePoolState(kind);
-}
-
-QVariantMap ShadowBackend::getModCategories() {
-    return m_resource->getModCategories();
-}
-
-QVariantList ShadowBackend::cfCategories(int classId) const
-{
-    return m_resource ? m_resource->cfCategories(classId) : QVariantList();
 }
 
 void ShadowBackend::searchShadersEx(const QString& query, const QStringList& gameVersions,
@@ -3703,20 +3278,8 @@ void ShadowBackend::prefetchResourcepacks(const QString& query, const QString& g
     m_resource->prefetchResourcepacks(query, gameVersion, categories, offset, 20, source);
 }
 
-void ShadowBackend::downloadMod(const QString& slug, const QString& gameVersion, const QString& minecraftDir) {
-    m_resource->downloadMod(slug, gameVersion, minecraftDir);
-}
-
-void ShadowBackend::downloadShader(const QString& slug, const QString& gameVersion, const QString& minecraftDir) {
-    m_resource->downloadShader(slug, gameVersion, minecraftDir);
-}
-
 void ShadowBackend::searchResourcepacks(const QString& query, const QString& gameVersion, int offset, const QStringList& categories, const QString& source) {
     m_resource->searchResourcepacks(query, gameVersion, offset, categories, source);
-}
-
-void ShadowBackend::downloadResourcepack(const QString& slug, const QString& gameVersion, const QString& minecraftDir) {
-    m_resource->downloadResourcepack(slug, gameVersion, minecraftDir);
 }
 
 void ShadowBackend::fetchResourcepackVersions(const QStringList& slugs) {
@@ -3744,20 +3307,8 @@ void ShadowBackend::fetchResourcepackVersionsCf(const QString& modId, const QStr
     m_resource->fetchResourcepackVersionsCf(modId, gameVersion, loader);
 }
 
-void ShadowBackend::resolveCfDependencies(const QString& modId, const QVariantList& deps) {
-    m_resource->resolveCfDependencies(modId, deps);
-}
-
-void ShadowBackend::fetchCfDependencies(const QString& modId) {
-    m_resource->fetchCfDependencies(modId);
-}
-
 QString ShadowBackend::resolveModZh(const QString& title) const {
     return m_resource->resolveModZh(title);
-}
-
-QVariantMap ShadowBackend::resolveProjectLinks(const QString& title, const QString& slug, const QString& kind) const {
-    return m_resource->resolveProjectLinks(title, slug, kind);
 }
 
 // ── 整合包：双源搜索 / 详情版本 / 下载→自动导入 ──
@@ -3788,43 +3339,6 @@ void ShadowBackend::prefetchDatapacks(const QString& query, const QString& categ
     const QStringList& gameVersions, const QString& sort,
     int offset, int limit, const QString& source) {
     m_resource->prefetchDatapacks(query, category, gameVersions, sort, offset, limit, source);
-}
-
-int ShadowBackend::downloadModpack(const QString& url, const QString& filename, qint64 size,
-                                   const QString& sha1, const QString& versionName, const QString& actualName,
-                                   const QString& iconUrl)
-{
-    if (url.isEmpty() || versionName.isEmpty()) return -1;
-    // 单任务限制：下载中或导入中都不允许再下载第二个整合包（QML 已前置弹窗，此处兜底）
-    if (modpackBusy()) {
-        qCInfo(logApp) << QStringLiteral("[整合包] 已有整合包任务（下载/导入）进行中，拒绝新的下载");
-        return -1;
-    }
-    // 下载目录：{gameDir}/downloads/（不存在则创建）
-    QString dlDir = m_gameDir + QStringLiteral("/downloads");
-    QDir().mkpath(dlDir);
-    QString savePath = dlDir + QLatin1Char('/') + filename;
-    if (QFileInfo::exists(savePath)) {
-        // 已存在同名文件（上次下载/导入残留）：加时间戳避免覆盖冲突
-        savePath = dlDir + QLatin1Char('/')
-                 + QFileInfo(filename).completeBaseName()
-                 + QStringLiteral("-%1.").arg(QDateTime::currentMSecsSinceEpoch())
-                 + QFileInfo(filename).suffix();
-    }
-    // 卡片标题：整合包：【用户输入名】（【实际名】）——「+」仅为需求示意连接符，不展示给用户
-    const QString displayName = tr("整合包：%1（%2）").arg(versionName, actualName.isEmpty() ? filename : actualName);
-    const int dlId = m_resource->downloadModFile(url, savePath, displayName, size, sha1);
-    if (dlId >= 0) {
-        PackDownloadInfo info;
-        info.zipPath = savePath;
-        info.versionName = versionName;
-        info.iconUrl = iconUrl;
-        m_packDownloads.insert(dlId, info);
-        m_packDownloading = true;
-        qCInfo(logApp) << QStringLiteral("[整合包] 下载任务已添加 id=%1 → %2 (版本名=%3)")
-            .arg(dlId).arg(savePath, versionName);
-    }
-    return dlId;
 }
 
 bool ShadowBackend::modpackBusy() const
@@ -3948,60 +3462,17 @@ void ShadowBackend::browseSkin() {
 
 void ShadowBackend::uploadSkin(const QString& skinPath, int modelType) {
     if (skinPath.isEmpty()) return;
-
-    if (m_lastLoginMode != 0 || !m_account || m_account->mcToken().isEmpty()) {
-        // Offline mode: just save locally
-        qCInfo(logApp) << QStringLiteral("衣帽间: 离线模式，皮肤保存到本地");
-        emit logMessage(tr("离线模式：皮肤已保存到本地"));
-        emit wardrobeBusyChanged();
+    if (!m_account) {
+        emit wardrobeError(tr("账户后端未就绪"));
         return;
     }
-
+    // 统一走 AccountBackend：那边用官方 multipart 上传，成功后 downloadSkin() 重新拉取皮肤，
+    // 头像/皮肤贴图才会真的变。旧实现在这里另写了一套 JSON + base64 data URL，
+    // 成功后不刷新任何东西 → 表现就是"选完文件换不了皮肤"。
+    const QString variant = (modelType == 2) ? QStringLiteral("slim") : QStringLiteral("classic");
     m_wardrobeBusy = true;
     emit wardrobeBusyChanged();
-
-    // Read PNG and convert to base64 data URL
-    QFile f(skinPath);
-    if (!f.open(QIODevice::ReadOnly)) {
-        emit wardrobeError(tr("无法读取皮肤文件"));
-        m_wardrobeBusy = false;
-        emit wardrobeBusyChanged();
-        return;
-    }
-    QByteArray pngData = f.readAll();
-    f.close();
-    QString base64 = QString::fromLatin1(pngData.toBase64());
-    QString dataUrl = QStringLiteral("data:image/png;base64,") + base64;
-
-    const char* variant = (modelType == 2) ? "slim" : "classic";  // 0=auto,1=Steve,2=Alex(slim)
-
-    QJsonObject body;
-    body[QStringLiteral("variant")] = QString::fromLatin1(variant);
-    body[QStringLiteral("url")] = dataUrl;
-    QJsonDocument doc(body);
-    QByteArray json = doc.toJson(QJsonDocument::Compact);
-
-    QNetworkRequest req(QUrl(QStringLiteral("https://api.minecraftservices.com/minecraft/profile/skins")));
-    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
-    req.setRawHeader("Authorization", ("Bearer " + m_account->mcToken()).toUtf8());
-
-    auto* net = new QNetworkAccessManager(this);
-    QNetworkReply* reply = net->post(req, json);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        reply->deleteLater();
-        m_wardrobeBusy = false;
-        emit wardrobeBusyChanged();
-
-        int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        if (status == 200 || status == 204) {
-            qCInfo(logApp) << QStringLiteral("衣帽间: 皮肤上传成功");
-            emit logMessage(tr("皮肤已同步到 Mojang 服务器"));
-        } else {
-            QByteArray body = reply->readAll();
-            qCWarning(logApp) << QStringLiteral("衣帽间: 皮肤上传失败 status=%1 body=%2").arg(status).arg(QString::fromUtf8(body));
-            emit wardrobeError(tr("上传失败 (HTTP %1)").arg(status));
-        }
-    });
+    m_account->uploadSkin(skinPath, variant);
 }
 
 void ShadowBackend::saveWardrobeSettings(const QString& skinPath, const QString& capeId, int modelType) {
@@ -4016,18 +3487,10 @@ void ShadowBackend::saveWardrobeSettings(const QString& skinPath, const QString&
             emit logMessage(tr("披风选择: %1 (需在 Minecraft 官网设置)").arg(capeId));
         }
     } else {
-        // Offline: copy skin to launcher data dir
-        if (!skinPath.isEmpty()) {
-            QString skinDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/skins";
-            QDir().mkpath(skinDir);
-            QString dest = skinDir + "/custom_skin.png";
-            if (QFile::copy(skinPath, dest)) {
-                emit logMessage(tr("离线皮肤已保存: %1").arg(dest));
-            } else {
-                emit wardrobeError(tr("皮肤保存失败"));
-            }
-        }
-        emit logMessage(tr("离线模式: 皮肤将在下次启动时生效"));
+        // 离线账号没有皮肤服务：旧代码把 PNG 拷到 <数据目录>/skins/custom_skin.png，
+        // 但全仓库没有任何地方读这个文件，头像渲染走的是 UUID 哈希 → 等于什么也没发生。
+        // 与其假装成功，不如直说。
+        emit wardrobeError(tr("离线账号无法更换皮肤（仅正版账号支持上传）"));
     }
 }
 
@@ -4149,98 +3612,6 @@ void ShadowBackend::saveSkinToFile()
 
 // ── Icon cache: async download webp → ffmpeg convert to PNG → cache locally ──
 // Qt 6.5.3 on this machine lacks qwebp.dll plugin, so we pre-convert webp to PNG
-void ShadowBackend::cacheIconAsync(const QString& webpUrl) {
-    if (webpUrl.isEmpty()) return;
-
-    qCDebug(logApp) << "[ICON] cacheIconAsync called for:" << webpUrl.left(100);
-
-    // Cache dir: <appdir>/icons/
-    static QString s_cacheDir;
-    if (s_cacheDir.isEmpty()) {
-        s_cacheDir = QCoreApplication::applicationDirPath() + QStringLiteral("/icons/");
-        QDir().mkpath(s_cacheDir);
-        qCDebug(logApp) << "[ICON] cache dir:" << s_cacheDir;
-    }
-
-    // Derive cache filename from URL hash
-    QByteArray hash = QCryptographicHash::hash(webpUrl.toUtf8(), QCryptographicHash::Sha1).toHex().left(16);
-    QString pngPath = s_cacheDir + QString::fromLatin1(hash) + QStringLiteral(".png");
-
-    // Return cached version immediately if exists
-    if (QFile::exists(pngPath)) {
-        qCDebug(logApp) << "[ICON] cached exists:" << pngPath;
-        emit iconCached(webpUrl, QUrl::fromLocalFile(pngPath).toString());
-        return;
-    }
-
-    qCDebug(logApp) << "[ICON] downloading:" << webpUrl.left(120);
-
-    // Async download + convert
-    auto* mgr = new QNetworkAccessManager(this);
-    QUrl qurl(webpUrl);
-    QNetworkRequest req(qurl);
-    req.setRawHeader("User-Agent", "ShadowLauncher/1.0");
-    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
-    QNetworkReply* reply = mgr->get(req);
-
-    connect(reply, &QNetworkReply::finished, this, [this, reply, mgr, webpUrl, pngPath]() {
-        if (reply->error() != QNetworkReply::NoError) {
-            qCWarning(logApp) << QStringLiteral("[图标] 下载失败 url=%1 错误=%2").arg(webpUrl.left(100), reply->errorString());
-            reply->deleteLater();
-            mgr->deleteLater();
-            emit iconCached(webpUrl, {});
-            return;
-        }
-
-        // Decode webp → QImage → save PNG (libwebp, zero subprocess overhead)
-        QByteArray webpData = reply->readAll();
-        reply->deleteLater();
-        mgr->deleteLater();
-
-        QImage img;
-        int w = 0, h = 0;
-        uint8_t* rgba = WebPDecodeRGBA(
-            reinterpret_cast<const uint8_t*>(webpData.constData()),
-            webpData.size(), &w, &h);
-
-        if (rgba && w > 0 && h > 0) {
-            // WebP decoded successfully
-            img = QImage(rgba, w, h, QImage::Format_RGBA8888,
-                         [](void* p) { WebPFree(p); }, rgba);
-        } else {
-            // Not webp? Try loading directly (e.g., already PNG)
-            WebPFree(rgba);  // safe to free null
-            img = QImage::fromData(webpData);
-            if (img.isNull()) {
-                qCWarning(logApp) << QStringLiteral("[图标] 解码失败 url=%1").arg(webpUrl.left(100));
-                emit iconCached(webpUrl, {});
-                return;
-            }
-        }
-
-        // Save PNG to disk cache for future instant loads
-        if (img.save(pngPath, "PNG")) {
-            qCDebug(logApp) << "[ICON] cached (libwebp):" << webpUrl.left(100) << "→" << pngPath
-                     << "(" << img.width() << "x" << img.height() << ")";
-            emit iconCached(webpUrl, QUrl::fromLocalFile(pngPath).toString());
-        } else {
-            qCWarning(logApp) << QStringLiteral("[图标] PNG保存失败 路径=%1").arg(pngPath);
-            emit iconCached(webpUrl, {});
-        }
-    });
-}
-
-QString ShadowBackend::cachedIconPath(const QString& webpUrl) const {
-    if (webpUrl.isEmpty()) return {};
-    QByteArray hash = QCryptographicHash::hash(webpUrl.toUtf8(), QCryptographicHash::Sha1).toHex().left(16);
-    QString pngPath = QCoreApplication::applicationDirPath() + QStringLiteral("/icons/") 
-                    + QString::fromLatin1(hash) + QStringLiteral(".png");
-    if (QFile::exists(pngPath)) {
-        return QUrl::fromLocalFile(pngPath).toString();
-    }
-    return {};
-}
-
 // ============================================================
 // fetchResourcepackVersions
 // Q_INVOKABLE methods — App
@@ -5172,11 +4543,6 @@ void ShadowBackend::cancelModLoaderQueries() {
     m_modLoaderReplies.clear();
 }
 
-void ShadowBackend::cacheForgeInstallerSha1(const QString& mcVer, const QString& forgeVer, const QString& sha1) {
-    if (!sha1.isEmpty())
-        m_forgeInstallerSha1Cache.insert(mcVer + QStringLiteral("-") + forgeVer, sha1);
-}
-
 QString ShadowBackend::getForgeInstallerSha1(const QString& mcVer, const QString& forgeVer) const {
     return m_forgeInstallerSha1Cache.value(mcVer + QStringLiteral("-") + forgeVer);
 }
@@ -5231,50 +4597,6 @@ void ShadowBackend::cancelPendingUserDataImport(const QString& installId) {
 }
 
 // ── Language hot-switch implementation ──
-void ShadowBackend::switchLanguage(int index)
-{
-    const QStringList codes = { QStringLiteral("zh_CN"), QStringLiteral("zh_HK"), QStringLiteral("zh_TW") };
-    if (index < 0 || index >= codes.size()) return;
-    QString lang = codes[index];
-    if (lang == m_currentLang) return;
-    m_currentLang = lang;
-
-    // 1. Save preference
-    m_settings->setLanguageIndex(index);
-
-    // 2. Remove old translator
-    if (m_translator) {
-        qApp->removeTranslator(m_translator);
-        delete m_translator;
-        m_translator = nullptr;
-    }
-
-    // 3. Install new translator (skip for zh_CN — source language)
-    if (lang != QStringLiteral("zh_CN")) {
-        m_translator = new QTranslator(this);
-        if (m_translator->load(QStringLiteral(":/i18n/shadow_%1").arg(lang))) {
-            qApp->installTranslator(m_translator);
-            qCInfo(logApp) << QStringLiteral("语言切换 lang=%1").arg(lang);
-        } else {
-            qCWarning(logApp) << QStringLiteral("翻译加载失败 lang=%1").arg(lang);
-            delete m_translator;
-            m_translator = nullptr;
-        }
-    }
-
-    // 4. Re-evaluate QML bindings (Qt 6.2+ retranslate)
-    if (m_engine) {
-        m_engine->retranslate();
-    }
-
-    // 5. Notify C++ widgets (tr() strings will reload via changeEvent)
-    QEvent ev(QEvent::LanguageChange);
-    QCoreApplication::sendEvent(qApp, &ev);
-
-    // 6. Persist to language.txt for QML recovery
-    writeLanguageFile(index);
-}
-
 bool ShadowBackend::event(QEvent* ev)
 {
     if (ev->type() == QEvent::LanguageChange) {
@@ -5282,19 +4604,6 @@ bool ShadowBackend::event(QEvent* ev)
         // (QML bindings are handled by engine->retranslate() above)
     }
     return QObject::event(ev);
-}
-
-int ShadowBackend::readLanguageFile() const
-{
-    QString path = m_app->dataDir() + "/language.txt";
-    QFile f(path);
-    if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        bool ok = false;
-        int idx = f.readAll().trimmed().toInt(&ok);
-        f.close();
-        if (ok && idx >= 0 && idx <= 2) return idx;
-    }
-    return 0;  // default: zh_CN
 }
 
 void ShadowBackend::writeLanguageFile(int index) const
@@ -5511,49 +4820,10 @@ bool ShadowBackend::validateBetaKey(const QString& key, QString* outError)
     return ok;
 }
 
-void ShadowBackend::logUiMsg(const QString& msg)
-{
-    qCInfo(logUI) << msg;
-}
-
 // ── UI 一次性标记（QSettings 持久化；2026-08-24 v1.0.1 一次性启动公告 toast 用）──
-bool ShadowBackend::readUiFlag(const QString& key) const
-{
-    if (key.isEmpty()) return false;
-    QSettings s(QCoreApplication::organizationName(),
-                QCoreApplication::applicationName());
-    return s.value(QStringLiteral("ui/flags/") + key, false).toBool();
-}
-
-void ShadowBackend::writeUiFlag(const QString& key, bool value)
-{
-    if (key.isEmpty()) return;
-    QSettings s(QCoreApplication::organizationName(),
-                QCoreApplication::applicationName());
-    s.setValue(QStringLiteral("ui/flags/") + key, value);
-}
-
 // ── 更新后首次启动判定（2026-08-25）──
 // SLUpdater 完成替换后、新版本首次启动时，main_release.cpp 会在 exe 目录写 .just_updated
 // 标记；本方法消费该标记（存在即删），返回 true 表示本次是"更新后首次启动"。
-bool ShadowBackend::consumeJustUpdatedFlag()
-{
-    const QString marker = QCoreApplication::applicationDirPath()
-                           + QStringLiteral("/.just_updated");
-    const bool existed = QFile::exists(marker);
-    if (existed)
-        QFile::remove(marker);
-    if (existed)
-        qCInfo(logUI) << "本次为更新后首次启动（已消费 .just_updated 标记）";
-    return existed;
-}
-
-int ShadowBackend::diagAutoLangComboIdx() const
-{
-    if (!m_settings) return 0;
-    return m_settings->autoLangModeComboIndex();
-}
-
 void ShadowBackend::setAutoLangModeFromCombo(int idx)
 {
     if (!m_settings) return;
