@@ -1885,10 +1885,6 @@ QString ShadowBackend::autoSelectJava() {
     return m_settings->autoSelectJava();
 }
 
-QString ShadowBackend::detectJava() {
-    return m_settings->autoSelectJava();
-}
-
 QString ShadowBackend::jvmArgs() const {
     return m_app->jvmArgs();
 }
@@ -2702,19 +2698,6 @@ void ShadowBackend::refreshInstalled() {
     m_version->refreshInstalled();
 }
 
-void ShadowBackend::refreshInstalledList() {
-    QTimer::singleShot(0, this, [this]() {
-        if (m_isScanningVersions) return;
-        m_isScanningVersions = true;
-        emit scanningChanged();
-        QTimer::singleShot(0, this, [this]() {
-            m_version->refreshInstalled();
-            m_isScanningVersions = false;
-            emit scanningChanged();
-        });
-    });
-}
-
 void ShadowBackend::installVersion(const QString& versionId) {
     m_version->installVersion(versionId);
 }
@@ -3000,129 +2983,7 @@ void ShadowBackend::killGameProcess() {
     m_launch->killGameProcess();
 }
 
-void ShadowBackend::killMinecraft() {
-    m_launch->killGameProcess();
-}
-
-void ShadowBackend::demoLaunchRepairs() {
-    if (m_launch) m_launch->demoRepairs();
-}
-
 /// 只用于核对 B1 失败面板：造一份崩溃诊断 + 让管线停在失败态。
-QString ShadowBackend::downloadProbeCancelLeak(const QString& url, int cancelAfterMs)
-{
-    ShadowDownloader::FileDownloader fd;
-    fd.setMaxThreads(4);
-
-    const QString dir = QDir::tempPath() + QStringLiteral("/shadow_leak_probe");
-    QDir(dir).removeRecursively();
-    QDir().mkpath(dir);
-    const QString path = dir + QStringLiteral("/target.bin");
-    fd.addFile(path, QStringLiteral("target.bin"), {url}, -1, QByteArray(), false, true);
-
-    fd.start();
-    {
-        QEventLoop wait;
-        QTimer::singleShot(qMax(50, cancelAfterMs), &wait, &QEventLoop::quit);
-        wait.exec();
-    }
-    const qint64 sizeAtCancel = QFileInfo::exists(path) ? QFileInfo(path).size() : -1;
-    fd.cancel();
-    {
-        QEventLoop wait;
-        QTimer::singleShot(800, &wait, &QEventLoop::quit);
-        wait.exec();
-    }
-
-    const qint64 targetSize = QFileInfo::exists(path) ? QFileInfo(path).size() : -1;
-    const QString shadowTemp = dir + QStringLiteral("/.shadow_temp");
-    QStringList temps;
-    qint64 tempBytes = 0;
-    if (QDir(shadowTemp).exists()) {
-        for (const QFileInfo& fi : QDir(shadowTemp).entryInfoList(QDir::Files)) {
-            temps.append(QStringLiteral("%1:%2").arg(fi.fileName()).arg(fi.size()));
-            tempBytes += fi.size();
-        }
-    }
-    const bool dirExists = QDir(dir).exists();
-    return QStringLiteral("sizeAtCancel=%1 targetAfterCancel=%2 shadowTempFiles=%3 tempBytes=%4 shadowTempDir=%5 dirExists=%6")
-        .arg(sizeAtCancel).arg(targetSize)
-        .arg(temps.isEmpty() ? QStringLiteral("none") : temps.join(QStringLiteral(",")))
-        .arg(tempBytes)
-        .arg(QDir(shadowTemp).exists() ? QStringLiteral("yes") : QStringLiteral("no"))
-        .arg(dirExists ? QStringLiteral("yes") : QStringLiteral("no"));
-}
-
-QString ShadowBackend::downloadProbeCancel(const QString& url, int cancelAfterMs)
-{
-    ShadowDownloader::FileDownloader fd;
-    fd.setMaxThreads(4);
-
-    const QString path = QDir::tempPath() + QStringLiteral("/shadow_probe_cancel.bin");
-    QFile::remove(path);
-    fd.addFile(path, QStringLiteral("probe_cancel.bin"), {url}, -1, QByteArray(),
-               /*jarStrip*/ false, /*skipCacheCheck*/ true);
-
-    qint64 lastRecv = 0;
-    int allFinishedCount = 0;
-    QObject::connect(&fd, &ShadowDownloader::FileDownloader::fileProgress,
-                     [&lastRecv](const QString&, const QString&, qint64 r, qint64, const QString&) {
-                         lastRecv = r;
-                     });
-    QObject::connect(&fd, &ShadowDownloader::FileDownloader::allFinished,
-                     [&allFinishedCount]() { ++allFinishedCount; });
-
-    fd.start();
-
-    // 跑到 cancelAfterMs，然后取消
-    {
-        QEventLoop wait;
-        QTimer::singleShot(qMax(50, cancelAfterMs), &wait, &QEventLoop::quit);
-        wait.exec();
-    }
-    const qint64 bytesAtCancel = lastRecv;
-    fd.cancel();
-
-    // 取消后再观察 600ms：字节不得继续增长
-    {
-        QEventLoop wait;
-        QTimer::singleShot(600, &wait, &QEventLoop::quit);
-        wait.exec();
-    }
-    const qint64 bytesAfter = lastRecv;
-    const qint64 size = QFileInfo::exists(path) ? QFileInfo(path).size() : 0;
-    QFile::remove(path);
-    return QStringLiteral("bytesAtCancel=%1 bytesAfter=%2 grew=%3 allFinishedAfterCancel=%4 partialFile=%5")
-        .arg(bytesAtCancel).arg(bytesAfter)
-        .arg(bytesAfter - bytesAtCancel)
-        .arg(allFinishedCount)
-        .arg(size);
-}
-
-void ShadowBackend::demoLaunchFailure() {
-    if (!m_launch) return;
-    QVariantMap report;
-    report.insert(QStringLiteral("type"), QStringLiteral("jvm"));
-    report.insert(QStringLiteral("reason"), QStringLiteral("java.lang.OutOfMemoryError: Java heap space"));
-    report.insert(QStringLiteral("description"), QStringLiteral("JVM 在初始化世界时堆内存耗尽"));
-    report.insert(QStringLiteral("isValid"), true);
-    report.insert(QStringLiteral("timestamp"),
-                  QDateTime::currentDateTime().toString(Qt::ISODate));
-    report.insert(QStringLiteral("suspectedMods"),
-                  QStringList{QStringLiteral("create"), QStringLiteral("immersive_engineering")});
-    report.insert(QStringLiteral("suggestions"),
-                  QStringList{QStringLiteral("把最大内存从 4096 MB 提到 8192 MB"),
-                              QStringLiteral("关闭 OptiFine，改用 Embeddium"),
-                              QStringLiteral("导出日志后可附在反馈里")});
-    report.insert(QStringLiteral("collectedLogs"),
-                  QStringList{QStringLiteral("crash-reports/crash-2026-11-05_00.12.38-client.txt")});
-    m_lastCrash = report;
-    m_crashAnalyzing = false;
-    emit crashReportChanged();
-    emit crashAnalyzingChanged();
-    m_launch->demoFailure();
-}
-
 void ShadowBackend::killGameByPid(qint64 pid) {
     m_launch->killGameByPid(pid);
 }
@@ -3339,13 +3200,6 @@ void ShadowBackend::prefetchDatapacks(const QString& query, const QString& categ
     const QStringList& gameVersions, const QString& sort,
     int offset, int limit, const QString& source) {
     m_resource->prefetchDatapacks(query, category, gameVersions, sort, offset, limit, source);
-}
-
-bool ShadowBackend::modpackBusy() const
-{
-    if (m_packDownloading) return true;
-    auto* imp = qobject_cast<ModpackImporter*>(m_modpackImporter);
-    return imp && imp->isBusy();
 }
 
 // ── Mod file download proxy ──
@@ -4532,17 +4386,6 @@ void ShadowBackend::queryFabricApiVersions(const QString& mcVersion) {
         });
 }
 
-void ShadowBackend::cancelModLoaderQueries() {
-    qCDebug(logApp) << "[ModLoader] cancelling all in-flight queries";
-    m_modLoaderQueriesCancelled = true;
-    // Abort all tracked network replies
-    for (const QPointer<QNetworkReply>& r : m_modLoaderReplies) {
-        if (r && r->isRunning())
-            r->abort();
-    }
-    m_modLoaderReplies.clear();
-}
-
 QString ShadowBackend::getForgeInstallerSha1(const QString& mcVer, const QString& forgeVer) const {
     return m_forgeInstallerSha1Cache.value(mcVer + QStringLiteral("-") + forgeVer);
 }
@@ -4824,14 +4667,6 @@ bool ShadowBackend::validateBetaKey(const QString& key, QString* outError)
 // ── 更新后首次启动判定（2026-08-25）──
 // SLUpdater 完成替换后、新版本首次启动时，main_release.cpp 会在 exe 目录写 .just_updated
 // 标记；本方法消费该标记（存在即删），返回 true 表示本次是"更新后首次启动"。
-void ShadowBackend::setAutoLangModeFromCombo(int idx)
-{
-    if (!m_settings) return;
-    // idx → mode: 0→1(系统区域), 1→2(IP属地), 2→0(关闭)
-    int mode = idx == 0 ? 1 : (idx == 1 ? 2 : 0);
-    m_settings->setAutoLangMode(mode);
-}
-
 // ============================================================
 // Update
 // ============================================================

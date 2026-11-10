@@ -224,6 +224,9 @@ public:
     bool isOnline() const;
     QString accountUuid() const;
     QString offlineUuid() const;
+    // Q_PROPERTY loginType 的 READ 函数（不再额外暴露成方法；新 UI 用自己的 typeText）
+    QString loginType() const;
+
     QString skinPath() const;
     QString skinTexturePath() const;
     QString offlineSkinPath() const;
@@ -444,7 +447,6 @@ public:
     Q_INVOKABLE bool removeAccount(int index);
     Q_INVOKABLE QVariantList scanJavaInstallations();
     Q_INVOKABLE QString autoSelectJava();
-    Q_INVOKABLE QString detectJava();
     Q_INVOKABLE QString browseJava();
     Q_INVOKABLE void selectJavaByIndex(int index);
     Q_INVOKABLE QVariantMap getMemoryStatus();
@@ -472,7 +474,6 @@ public:
     Q_INVOKABLE void deleteVersion(const QString& versionId);
     Q_INVOKABLE void refreshVersionList();
     Q_INVOKABLE void refreshInstalled();
-    Q_INVOKABLE void refreshInstalledList();
     Q_INVOKABLE void refreshVersionDetails();
     Q_INVOKABLE void installVersion(const QString& versionId);
     Q_INVOKABLE void cancelVersionInstall(const QString& versionId);
@@ -489,8 +490,6 @@ public:
                        bool highPerfGpu);
     Q_INVOKABLE void killGameProcess();
     // 仅用于开发核对「准备运行环境」卡片排版（--ui-demo-repair 也走这个）
-    Q_INVOKABLE void demoLaunchRepairs();
-    Q_INVOKABLE void demoLaunchFailure();
 
     /// 下载基线自检（离线、无网络）：步骤词表一致性 + StepNode 状态机/百分比钳制。
     /// 返回 "PASS ..." 或 "FAIL: ..." 字符串；供 /eval 与人工验收使用。
@@ -503,15 +502,12 @@ public:
 
     /// 取消验证：跑 cancelAfterMs 后 cancel()，再观察 600ms 字节是否继续增长。
     /// 期望：cancelled 后 bytes 不再变化（契约 §5：取消必须中止在途请求）。
-    Q_INVOKABLE QString downloadProbeCancel(const QString& url, int cancelAfterMs);
 
     /// 多文件探针：同一 URL 下 count 个文件（不同落盘路径），用于验收 QNAM 复用
     /// （创建次数应 ≈ 线程数，而不是 ≈ 文件数）。
 
     /// 取消残留诊断：取消后统计"目标文件 / .shadow_temp 分片 / 目录"是否还留东西。
     /// 不自动删除，交给验收者看；用于证明"取消能否完全清干净"。
-    Q_INVOKABLE QString downloadProbeCancelLeak(const QString& url, int cancelAfterMs);
-    Q_INVOKABLE void killMinecraft();
     Q_INVOKABLE void killGameByPid(qint64 pid);
     Q_INVOKABLE QVariantList runningGames();
     Q_INVOKABLE void searchModsEx(const QString& query, const QString& loader,
@@ -554,7 +550,6 @@ public:
     /// 整合包压缩包下载：静默下载到 {gameDir}/downloads/，完成后自动走导入流程
     /// 返回 dlId（卡片通道 mod:N）；versionName=用户指定版本名（注册名），actualName=整合包实际名
     /// 整合包任务是否占用中（下载中 或 导入中）→ 同一时间只允许一个整合包任务（下载或导入）
-    Q_INVOKABLE bool modpackBusy() const;
     Q_INVOKABLE void fetchResourcepackVersions(const QStringList& slugs);  // batch-fetch game_versions
     Q_INVOKABLE void fetchModVersions(const QStringList& slugs);
     Q_INVOKABLE void fetchShaderVersions(const QStringList& slugs);
@@ -585,7 +580,6 @@ public:
     Q_INVOKABLE void saveWardrobeSettings(const QString& skinPath, const QString& capeId, int modelType);
     Q_INVOKABLE void saveSkinToFile();
     Q_INVOKABLE QVariantList availableCapes() const;
-    Q_INVOKABLE QString loginType() const;
     QString selectedSkinPath() const { return m_selectedSkinPath; }
     bool isWardrobeBusy() const { return m_wardrobeBusy; }
     bool isScanningVersions() const { return m_isScanningVersions; }
@@ -598,7 +592,6 @@ public:
     Q_INVOKABLE void queryFabricApiVersions(const QString& mcVersion);
 
     // Cancel all in-flight mod-loader version queries (called when install starts)
-    Q_INVOKABLE void cancelModLoaderQueries();
 
     // Cache Forge installer SHA1 from version list (avoids extra network fetch for verification)
     QString getForgeInstallerSha1(const QString& mcVer, const QString& forgeVer) const;
@@ -666,12 +659,9 @@ public:
     Q_INVOKABLE void copyToClipboard(const QString& text);
 
     // ── Q_INVOKABLE versions of Q_PROPERTY-only getters ──
-    Q_INVOKABLE bool isModdedVersion(const QString& versionId) const { Q_UNUSED(versionId); return false; }
 
     // ── Path/document stubs ──
     Q_INVOKABLE void openJavaFileDialog() { browseJava(); }
-    Q_INVOKABLE void pickJava() { browseJava(); }
-    Q_INVOKABLE void checkFileChanges() {}
     Q_INVOKABLE void deleteMod(const QString& filename, const QString& versionId = {});
     Q_INVOKABLE void setModEnabled(const QString& filename, const QString& versionId = {}, bool enabled = true);
     /// 全部启用/禁用（2026-08-11）：返回实际改动数，QML 刷新列表 + toast
@@ -687,7 +677,6 @@ public:
     Q_INVOKABLE bool importMod(const QString& filePath, const QString& versionId = {});
     Q_INVOKABLE void deleteSave(const QString& saveName, const QString& versionId = {});
     Q_INVOKABLE void migrateVersion(const QString& versionId);
-    Q_INVOKABLE void openConfigFolder() { openGameDir({}); }
     Q_INVOKABLE void cancelQueuedDownload(const QString& versionId);
     Q_INVOKABLE void verifyVersion(const QString& versionId);
     Q_INVOKABLE void cleanCorruptVersion(const QString& versionId);
@@ -899,7 +888,6 @@ public:
     QObject* yggdrasil() const { return m_yggdrasil; }
     Q_INVOKABLE SettingsBackend* settings() const { return m_settings; }
     // Auto-language mode helpers (bypass backend.settings.* QML chain issues in Loaders)
-    Q_INVOKABLE void setAutoLangModeFromCombo(int idx);
     // ── UI 一次性标记（QSettings 持久化；2026-08-24 v1.0.1 一次性启动公告 toast 用）──
     // 更新后首次启动判定（蓝色"更新内容"toast 仅更新用户弹出；一次性消费；2026-08-25）
     CheckBackend* check() const { return m_check; }
