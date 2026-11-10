@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Shadow Launcher · 设置页设计稿</title>
+<style>
+/* ── 唯一真源：与 ui/Theme.qml 对齐 ───────────────────── */
+:root{
+  --bg:#08090d; --sidebar:#0a0b0f; --line:#14171d; --line2:#262b35;
+  --fg:#e8ebf2; --fg2:#98a1ae; --fg3:#5d6673;
+  --accent:#3b82f6; --ok:#4ade80; --warn:#f59e0b; --danger:#ef4444;
+  --card:#0d1016; --card2:#10141b; --pill:#161c26;
+  --rSm:8px; --rMd:10px; --rWin:12px;
+  --fast:120ms; --base:180ms; --slow:260ms; --page:320ms;
+  --font:"Microsoft YaHei UI","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:#05060a; font-family:var(--font); color:var(--fg);
+  display:flex; align-items:center; justify-content:center; padding:24px;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── 窗口外壳 ─────────────────────────────────────────── */
+.window{
+  width:1240px; height:820px; background:var(--bg);
+  border:1px solid #1a1f2a; border-radius:var(--rWin);
+  box-shadow:0 24px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.02) inset;
+  display:flex; overflow:hidden; position:relative;
+}
+/* 顶部拖动条：仅示意，实际由各页 topBar 的 MouseArea 承担 */
+.window::before{
+  content:""; position:absolute; left:0; right:0; top:0; height:52px;
+  z-index:1; pointer-events:none;
+}
+
+/* ── 左栏（设置页二级导航）───────────────────────────── */
+.nav{
+  width:208px; flex:0 0 208px; background:var(--sidebar);
+  border-right:1px solid var(--line); padding:22px 12px;
+  display:flex; flex-direction:column; gap:26px; position:relative; z-index:2;
+}
+.nav-title{
+  font-size:20px; font-weight:700; letter-spacing:.02em; padding:6px 10px 0;
+}
+.nav-sub{font-size:11px; color:var(--fg3); padding:4px 10px 0; letter-spacing:.04em}
+.nav-list{position:relative; display:flex; flex-direction:column; gap:2px}
+/* 选中胶囊：一个对象在移动（继承启动器侧栏的动效理念） */
+.nav-pill{
+  position:absolute; left:0; right:0; height:38px; border-radius:var(--rSm);
+  background:var(--pill); border:1px solid #232c3a;
+  transition:transform var(--slow) cubic-bezier(.22,1,.36,1);
+  z-index:0;
+}
+.nav-item{
+  position:relative; z-index:1; height:38px; display:flex; align-items:center; gap:10px;
+  padding:0 12px; border-radius:var(--rSm); font-size:13.5px; color:var(--fg2);
+  cursor:pointer; user-select:none; transition:color var(--fast) ease;
+}
+.nav-item:hover{color:var(--fg)}
+.nav-item.active{color:#fff}
+.nav-item svg{width:16px;height:16px;flex:0 0 16px;opacity:.75}
+.nav-item.active svg{opacity:1}
+.nav-foot{margin-top:auto; font-size:11px; color:var(--fg3); padding:0 10px}
+
+/* ── 内容区 ───────────────────────────────────────────── */
+.content{flex:1; overflow-y:auto; padding:0 40px 40px; position:relative}
+.content::-webkit-scrollbar{width:10px}
+.content::-webkit-scrollbar-thumb{background:#1a1f2a;border-radius:5px}
+.content::-webkit-scrollbar-track{background:transparent}
+
+.page{display:none; animation:pageIn var(--page) cubic-bezier(.22,1,.36,1)}
+.page.active{display:block}
+@keyframes pageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.page-head{
+  position:sticky; top:0; z-index:3; background:linear-gradient(var(--bg) 78%,transparent);
+  padding:26px 0 14px; margin-bottom:6px;
+}
+.page-head h1{font-size:22px; font-weight:700; letter-spacing:.01em}
+.page-head p{font-size:12.5px; color:var(--fg2); margin-top:6px}
+
+/* ── 分组与行 ─────────────────────────────────────────── */
+.group{margin:26px 0 0}
+.group:first-of-type{margin-top:8px}
+.group-title{
+  font-size:11.5px; color:var(--fg3); letter-spacing:.1em; text-transform:uppercase;
+  margin:0 0 10px 2px; font-weight:600;
+}
+.card{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--rMd);
+  overflow:hidden;
+}
+.row{
+  display:flex; align-items:center; gap:20px; padding:14px 18px;
+  border-bottom:1px solid var(--line); min-height:56px;
+}
+.row:last-child{border-bottom:none}
+.row.col{flex-direction:column; align-items:stretch; gap:10px}
+.row-main{flex:1; min-width:0}
+.row-label{font-size:13.5px; color:var(--fg)}
+.row-desc{font-size:11.5px; color:var(--fg3); margin-top:3px; line-height:1.5}
+.row-ctl{flex:0 0 auto; display:flex; align-items:center; gap:8px}
+
+/* ── 控件 ─────────────────────────────────────────────── */
+.switch{
+  width:40px; height:22px; border-radius:11px; background:#1a1f2a; position:relative;
+  cursor:pointer; transition:background var(--base) ease; flex:0 0 40px;
+}
+.switch.on{background:var(--accent)}
+.switch::after{
+  content:""; position:absolute; width:16px; height:16px; border-radius:50%;
+  background:#fff; top:3px; left:3px; transition:transform var(--base) cubic-bezier(.22,1,.36,1);
+  box-shadow:0 1px 3px rgba(0,0,0,.4);
+}
+.switch.on::after{transform:translateX(18px)}
+
+.seg{
+  display:flex; padding:3px; background:var(--card); border:1px solid var(--line2);
+  border-radius:var(--rSm); position:relative;
+}
+.seg-pill{
+  position:absolute; top:3px; bottom:3px; border-radius:6px; background:#20262f;
+  transition:transform var(--slow) cubic-bezier(.22,1,.36,1), width var(--slow) cubic-bezier(.22,1,.36,1);
+  z-index:0;
+}
+.seg button{
+  position:relative; z-index:1; border:0; background:transparent; color:var(--fg2);
+  font-family:var(--font); font-size:12.5px; padding:6px 14px; border-radius:6px;
+  cursor:pointer; white-space:nowrap; transition:color var(--fast) ease;
+}
+.seg button.on{color:#fff}
+.seg button:hover{color:var(--fg)}
+
+input[type=text],input[type=number],select{
+  height:34px; background:var(--card); border:1px solid var(--line2); border-radius:var(--rSm);
+  color:var(--fg); font-family:var(--font); font-size:12.5px; padding:0 11px; outline:none;
+  transition:border-color var(--fast) ease;
+}
+input[type=text]:focus,input[type=number]:focus,select:focus{border-color:var(--accent)}
+input::placeholder{color:#3f4753}
+select{cursor:pointer; min-width:132px}
+.w-160{width:160px}.w-220{width:220px}.w-320{width:320px}
+textarea{
+  width:100%; min-height:70px; resize:vertical; background:var(--card);
+  border:1px solid var(--line2); border-radius:var(--rSm); color:var(--fg);
+  font-family:ui-monospace,"Cascadia Code",Consolas,monospace; font-size:12px;
+  padding:10px 11px; outline:none; line-height:1.6;
+}
+textarea:focus{border-color:var(--accent)}
+textarea::placeholder{color:#3f4753}
+
+.btn{
+  height:34px; padding:0 14px; border-radius:var(--rSm); border:1px solid var(--line2);
+  background:var(--card); color:var(--fg); font-family:var(--font); font-size:12.5px;
+  cursor:pointer; display:inline-flex; align-items:center; gap:7px;
+  transition:background var(--fast) ease,border-color var(--fast) ease;
+}
+.btn:hover{background:#12151c;border-color:#323947}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+.btn.primary:hover{background:#4b8cf7}
+.btn.danger{color:var(--danger); border-color:#4a2226; background:#150c0e}
+.btn.danger:hover{background:#1d0f12;border-color:#6b2b31}
+.btn.sm{height:28px;padding:0 10px;font-size:12px}
+
+/* 滑块 */
+.slider{display:flex; align-items:center; gap:12px; flex:1; min-width:220px}
+.slider input[type=range]{
+  -webkit-appearance:none; appearance:none; flex:1; height:4px; border-radius:2px;
+  background:linear-gradient(to right,var(--accent) var(--fill,40%), #1c2230 var(--fill,40%));
+  outline:none; cursor:pointer;
+}
+.slider input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:#fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.5); cursor:pointer;
+}
+.slider .val{
+  font-size:12.5px; color:var(--fg); min-width:74px; text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+
+/* 徽标 */
+.badge{
+  display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 9px;
+  border-radius:11px; font-size:11.5px; border:1px solid;
+}
+.badge.ok{color:var(--ok); border-color:#1e3a2a; background:#0c1a12}
+.badge.warn{color:var(--warn); border-color:#3d2f12; background:#1a1408}
+.badge.muted{color:var(--fg3); border-color:var(--line2); background:var(--card)}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* 列表（Java 列表等） */
+.list{display:flex; flex-direction:column}
+.list-item{
+  display:flex; align-items:center; gap:12px; padding:11px 18px;
+  border-bottom:1px solid var(--line); font-size:12.5px;
+}
+.list-item:last-child{border-bottom:none}
+.list-item:hover{background:#0c0f15}
+.mono{font-family:ui-monospace,"Cascadia Code",Consolas,monospace;font-size:11.5px;color:var(--fg2)}
+
+/* 提示条 */
+.note{
+  display:flex; gap:10px; padding:12px 14px; border-radius:var(--rSm);
+  font-size:12px; line-height:1.6; border:1px solid;
+}
+.note.info{color:#9db8d8; background:#0b1220; border-color:#1a2b45}
+.note.warn{color:#e6c07a; background:#171106; border-color:#3d2f12}
+.note.danger{color:#f0a3a3; background:#180d10; border-color:#4a2226}
+.note b{color:inherit; font-weight:600}
+
+/* 危险区 */
+.danger-zone{border-color:#3a1f23}
+.danger-zone .group-title{color:#c96b6b}
+
+/* 内存条 */
+.mem-bar{height:8px; border-radius:4px; background:#1c2230; overflow:hidden; margin-top:10px}
+.mem-bar i{display:block; height:100%; background:linear-gradient(90deg,var(--accent),#6ea8ff); border-radius:4px}
+.mem-legend{display:flex; justify-content:space-between; font-size:11px; color:var(--fg3); margin-top:7px}
+
+/* 背景预览 */
+.bg-preview{
+  width:100%; height:104px; border-radius:var(--rSm); border:1px dashed #2c3444;
+  background:linear-gradient(135deg,#0e1620,#152233 60%,#0a0f16);
+  display:flex; align-items:center; justify-content:center; color:var(--fg3); font-size:12px;
+}
+.flex1{flex:1}
+.mt10{margin-top:10px}
+.mt14{margin-top:14px}
+.gap8{display:flex;gap:8px}
+</style>
+</head>
+<body>
+<div class="window">
+
+  <!-- ══════════ 左栏：设置页二级导航 ══════════ -->
+  <aside class="nav">
+    <div>
+      <div class="nav-title">设置</div>
+      <div class="nav-sub">全局默认值</div>
+    </div>
+    <div class="nav-list" id="navList">
+      <div class="nav-pill" id="navPill"></div>
+      <div class="nav-item active" data-page="general">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        <span>常规</span>
+      </div>
+      <div class="nav-item" data-page="java">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 17h16M6 17V9l6-4 6 4v8"/></svg>
+        <span>Java 与内存</span>
+      </div>
+      <div class="nav-item" data-page="launch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 5l11 7-11 7V5z"/></svg>
+        <span>启动</span>
+      </div>
+      <div class="nav-item" data-page="download">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14"/></svg>
+        <span>下载</span>
+      </div>
+      <div class="nav-item" data-page="advanced">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/></svg>
+        <span>高级</span>
+      </div>
+      <div class="nav-item" data-page="appearance">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 4v16"/></svg>
+        <span>外观</span>
+      </div>
+    </div>
+    <div class="nav-foot">v1.0.4</div>
+  </aside>
+
+  <!-- ══════════ 内容区 ══════════ -->
+  <main class="content" id="content">
+
+    <!-- ────────── 1 常规 ────────── -->
+    <section class="page active" id="page-general">
+      <div class="page-head">
+        <h1>常规</h1>
+        <p>界面语言、窗口尺寸与启动器自身的行为。</p>
+      </div>
+
+      <div class="group">
+        <div class="group-title">语言</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">界面语言</div>
+              <div class="row-desc">切换后需要重启启动器生效</div>
+            </div>
+            <div class="row-ctl">
+              <select><option>简体中文</option><option>繁體中文</option><option>English</option></select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">游戏内语言跟随系统</div>
+              <div class="row-desc">启动游戏时按系统区域自动写入语言，覆盖版本默认</div>
+            </div>
+            <div class="row-ctl"><div class="switch on"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">窗口</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">记住窗口尺寸</div>
+              <div class="row-desc">关闭后每次启动都用下列固定尺寸</div>
+            </div>
+            <div class="row-ctl"><div class="switch on"></div></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">窗口尺寸</div>
+              <div class="row-desc">宽 1024–7680，高 600–4320</div>
+            </div>
+            <div class="row-ctl">
+              <input type="number" class="w-160" value="1100">
+              <span style="color:var(--fg3)">×</span>
+              <input type="number" class="w-160" value="720">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">启动器行为</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">游戏退出后关闭启动器</div>
+              <div class="row-desc">适合只用一个版本时，玩完直接收起</div>
+            </div>
+            <div class="row-ctl"><div class="switch"></div></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">关闭窗口时最小化到托盘</div>
+              <div class="row-desc">点右上角关闭不退出进程</div>
+            </div>
+            <div class="row-ctl"><div class="switch on"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">关于</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">Shadow Launcher v1.0.4</div>
+              <div class="row-desc">构建 2026-11-10 · Qt 6.8.3</div>
+            </div>
+            <div class="row-ctl"><button class="btn">检查更新</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────── 2 Java 与内存 ────────── -->
+    <section class="page" id="page-java">
+      <div class="page-head">
+        <h1>Java 与内存</h1>
+        <p>启动游戏用的 Java 运行时，以及每个版本默认分配的堆内存。</p>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Java 运行时</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">当前 Java</div>
+              <div class="row-desc mono">C:\Program Files\Java\jdk-21\bin\javaw.exe</div>
+            </div>
+            <div class="row-ctl">
+              <span class="badge ok"><span class="dot"></span>Java 21</span>
+              <button class="btn">浏览</button>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">自动检测</div>
+              <div class="row-desc">扫描常见安装目录与 PATH，挑出可用的最高版本</div>
+            </div>
+            <div class="row-ctl">
+              <button class="btn">自动检测</button>
+              <button class="btn">重新扫描</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">已检测到的 Java</div>
+        <div class="card">
+          <div class="list">
+            <div class="list-item">
+              <span class="badge ok"><span class="dot"></span>21</span>
+              <span class="mono flex1">C:\Program Files\Java\jdk-21\bin\javaw.exe</span>
+              <span style="color:var(--fg3);font-size:11.5px">正在使用</span>
+            </div>
+            <div class="list-item">
+              <span class="badge muted">17</span>
+              <span class="mono flex1">C:\Program Files\Java\jdk-17\bin\javaw.exe</span>
+              <button class="btn sm">移除</button>
+            </div>
+            <div class="list-item">
+              <span class="badge muted">8</span>
+              <span class="mono flex1">C:\Program Files (x86)\Java\jre1.8.0_401\bin\javaw.exe</span>
+              <button class="btn sm">移除</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">内存分配</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">自动分配</div>
+              <div class="row-desc">按物理内存可用量推荐一个值，不用手动调</div>
+            </div>
+            <div class="row-ctl"><div class="switch on"></div></div>
+          </div>
+          <div class="row">
+            <div class="row-main"><div class="row-label">最小内存</div></div>
+            <div class="slider">
+              <input type="range" min="256" max="8192" value="512" style="--fill:4%">
+              <span class="val">512 MB</span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main"><div class="row-label">最大内存</div></div>
+            <div class="slider">
+              <input type="range" min="512" max="32768" value="2304" style="--fill:6%">
+              <span class="val">2304 MB</span>
+            </div>
+          </div>
+          <div class="row col">
+            <div class="row-desc">物理内存 32543 MB · 当前可用 12980 MB · 推荐 6144 MB</div>
+            <div class="mem-bar"><i style="width:40%"></i></div>
+            <div class="mem-legend"><span>已占用 40%</span><span>游戏将使用 2304 MB</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────── 3 启动 ────────── -->
+    <section class="page" id="page-launch">
+      <div class="page-head">
+        <h1>启动</h1>
+        <p>所有版本的默认启动参数。单个版本可在「版本设置」里覆盖这里任意一项。</p>
+      </div>
+
+      <div class="group">
+        <div class="note info">
+          <span><b>两层结构</b>：这里改的是全局默认值；某个版本选了「独立配置」时，以那个版本自己的值为准。</span>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">Java 虚拟机</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">垃圾回收器</div>
+              <div class="row-desc">自动会按 Java 版本挑最合适的；不确定就留自动</div>
+            </div>
+            <div class="row-ctl">
+              <div class="seg" data-seg>
+                <div class="seg-pill"></div>
+                <button class="on">自动</button><button>分代 ZGC</button><button>仅 G1GC</button><button>不指定</button>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">进程优先级</div>
+              <div class="row-desc">调高会让游戏在抢 CPU 时优先，代价是其它程序变慢</div>
+            </div>
+            <div class="row-ctl">
+              <div class="seg" data-seg>
+                <div class="seg-pill"></div>
+                <button>高</button><button class="on">正常</button><button>低</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">游戏窗口</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main"><div class="row-label">全屏启动</div></div>
+            <div class="row-ctl"><div class="switch"></div></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">窗口标题</div>
+              <div class="row-desc">留空则用游戏自己写的标题</div>
+            </div>
+            <div class="row-ctl"><input type="text" class="w-320" placeholder="留空则用游戏默认标题"></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">自动进服</div>
+              <div class="row-desc">只接受 host 或 host:port，例如 mc.example.com:25565</div>
+            </div>
+            <div class="row-ctl"><input type="text" class="w-320" placeholder="留空则不自动进服"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">启动前后命令</div>
+        <div class="card">
+          <div class="row col">
+            <div>
+              <div class="row-label">启动前命令</div>
+              <div class="row-desc">在游戏进程启动前执行一次</div>
+            </div>
+            <textarea placeholder="例如：taskkill /f /im javaw.exe"></textarea>
+          </div>
+          <div class="row col">
+            <div>
+              <div class="row-label">退出后命令</div>
+              <div class="row-desc">游戏进程结束后执行一次</div>
+            </div>
+            <textarea placeholder="例如：shutdown /s /t 60"></textarea>
+          </div>
+        </div>
+        <div class="note warn mt10">
+          <span><b>这些命令会经 cmd.exe 原样执行</b>，只填你自己写的或完全信任的内容。留空表示不执行。</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────── 4 下载 ────────── -->
+    <section class="page" id="page-download">
+      <div class="page-head">
+        <h1>下载</h1>
+        <p>版本文件与资源列表的来源、并发与限速。</p>
+      </div>
+
+      <div class="group">
+        <div class="group-title">下载源</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">游戏文件下载源</div>
+              <div class="row-desc">影响 MC 本体与资源文件；加载器另有独立策略</div>
+            </div>
+            <div class="row-ctl">
+              <div class="seg" data-seg>
+                <div class="seg-pill"></div>
+                <button>镜像优先</button><button class="on">官方优先</button><button>自动切换</button>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">资源列表源</div>
+              <div class="row-desc">Mod / 光影 / 资源包等的索引与详情</div>
+            </div>
+            <div class="row-ctl">
+              <div class="seg" data-seg>
+                <div class="seg-pill"></div>
+                <button>镜像优先</button><button class="on">官方优先</button><button>自动切换</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">速度与并发</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">最大并发连接</div>
+              <div class="row-desc">太高会被下载站限流，16 是稳妥值</div>
+            </div>
+            <div class="slider">
+              <input type="range" min="1" max="24" value="16" style="--fill:65%">
+              <span class="val">16</span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">限速</div>
+              <div class="row-desc">关掉表示不限速，占满带宽</div>
+            </div>
+            <div class="row-ctl"><div class="switch"></div></div>
+          </div>
+          <div class="row">
+            <div class="row-main"><div class="row-label">速度上限</div></div>
+            <div class="slider">
+              <input type="range" min="1" max="200" value="50" style="--fill:25%">
+              <span class="val">5.0 MB/s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────── 5 高级 ────────── -->
+    <section class="page" id="page-advanced">
+      <div class="page-head">
+        <h1>高级</h1>
+        <p>版本隔离、实验性开关，以及不可撤销的操作。</p>
+      </div>
+
+      <div class="group">
+        <div class="group-title">版本隔离</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">启用版本隔离</div>
+              <div class="row-desc">每个版本独立的 mods / 存档 / 配置目录，互不干扰；已装版本可单独迁移</div>
+            </div>
+            <div class="row-ctl"><div class="switch on"></div></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">游戏目录</div>
+              <div class="row-desc mono">D:\latest-code\shadow-v2\build\Release\.minecraft</div>
+            </div>
+            <div class="row-ctl"><button class="btn">打开目录</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">实验性</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">启动器内嵌登录</div>
+              <div class="row-desc">在启动器窗口内完成微软登录，不弹系统浏览器</div>
+            </div>
+            <div class="row-ctl"><div class="switch"></div></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">版本列表悬停显示依赖</div>
+              <div class="row-desc">鼠标停在版本上时提示前置模组，方便判断缺不缺东西</div>
+            </div>
+            <div class="row-ctl"><div class="switch"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title" style="color:#c96b6b">危险操作</div>
+        <div class="card danger-zone">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label" style="color:#f0a3a3">删除版本</div>
+              <div class="row-desc">连同该版本目录一起删除，不可恢复。删除前会二次确认并显示完整路径。</div>
+            </div>
+            <div class="row-ctl"><button class="btn danger">删除版本…</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────── 6 外观 ────────── -->
+    <section class="page" id="page-appearance">
+      <div class="page-head">
+        <h1>外观</h1>
+        <p>主题、密度、动效偏好与自定义背景。</p>
+      </div>
+
+      <div class="group">
+        <div class="group-title">主题</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">明暗</div>
+              <div class="row-desc">跟随系统时会随 Windows 主题自动切换</div>
+            </div>
+            <div class="row-ctl">
+              <div class="seg" data-seg>
+                <div class="seg-pill"></div>
+                <button>跟随系统</button><button class="on">深色</button><button>浅色</button>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">界面密度</div>
+              <div class="row-desc">紧凑适合小窗口，宽松适合大屏</div>
+            </div>
+            <div class="row-ctl">
+              <div class="seg" data-seg>
+                <div class="seg-pill"></div>
+                <button>紧凑</button><button class="on">标准</button><button>宽松</button>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">减少动效</div>
+              <div class="row-desc">关闭页面过渡与逐条入场，只保留必要的状态反馈</div>
+            </div>
+            <div class="row-ctl"><div class="switch"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">自定义背景</div>
+        <div class="card">
+          <div class="row col">
+            <div class="bg-preview">未选择背景图 · 点击下方「选择图片」</div>
+            <div class="gap8">
+              <button class="btn">选择图片…</button>
+              <button class="btn">清除背景</button>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main"><div class="row-label">侧栏不透明度</div></div>
+            <div class="slider">
+              <input type="range" min="0" max="100" value="90" style="--fill:90%">
+              <span class="val">90%</span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main"><div class="row-label">内容不透明度</div></div>
+            <div class="slider">
+              <input type="range" min="0" max="100" value="60" style="--fill:60%">
+              <span class="val">60%</span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main"><div class="row-label">背景模糊</div></div>
+            <div class="slider">
+              <input type="range" min="0" max="100" value="25" style="--fill:25%">
+              <span class="val">25%</span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-label">裁剪位置</div>
+              <div class="row-desc">背景图比窗口大时，决定显示哪一块</div>
+            </div>
+            <div class="row-ctl" style="gap:14px">
+              <span style="font-size:12px;color:var(--fg3)">X</span>
+              <div class="slider" style="min-width:130px">
+                <input type="range" min="0" max="100" value="21" style="--fill:21%">
+              </div>
+              <span class="val" style="min-width:44px">21%</span>
+              <span style="font-size:12px;color:var(--fg3)">Y</span>
+              <div class="slider" style="min-width:130px">
+                <input type="range" min="0" max="100" value="50" style="--fill:50%">
+              </div>
+              <span class="val" style="min-width:44px">50%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* ── 左栏切换 + 胶囊滑动 ─────────────────────────────── */
+const items = [...document.querySelectorAll('.nav-item')];
+const pill  = document.getElementById('navPill');
+const pages = [...document.querySelectorAll('.page')];
+const ROW_H = 38, GAP = 2;
+
+function movePill(i){
+  pill.style.transform = 'translateY(' + (i * (ROW_H + GAP)) + 'px)';
+}
+function activate(page){
+  items.forEach((it, i) => {
+    const on = it.dataset.page === page;
+    it.classList.toggle('active', on);
+    if (on) movePill(i);
+  });
+  pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
+  document.getElementById('content').scrollTop = 0;
+}
+items.forEach(it => it.addEventListener('click', () => {
+  activate(it.dataset.page);
+  history.replaceState(null, '', '#' + it.dataset.page);
+}));
+
+/* 支持 #java / #launch 等直接打开某一页（截图与分享用） */
+if (location.hash) {
+  const want = location.hash.replace('#','');
+  if (items.some(it => it.dataset.page === want)) activate(want);
+} else {
+  movePill(0);
+}
+window.addEventListener('hashchange', () => {
+  const want = location.hash.replace('#','');
+  if (items.some(it => it.dataset.page === want)) activate(want);
+});
+
+/* ── 分段控件：选中胶囊平移（与启动器 SSegmented 同一套语言）── */
+document.querySelectorAll('.seg').forEach(seg => {
+  const pillS = seg.querySelector('.seg-pill');
+  const btns  = [...seg.querySelectorAll('button')];
+  function sync(){
+    const on = seg.querySelector('button.on') || btns[0];
+    btns.forEach(b => b.classList.toggle('on', b === on));
+    pillS.style.width = on.offsetWidth + 'px';
+    pillS.style.transform = 'translateX(' + on.offsetLeft - 3 + 'px)';
+  }
+  btns.forEach(b => b.addEventListener('click', () => {
+    btns.forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    sync();
+  }));
+  requestAnimationFrame(sync);
+});
+
+/* ── 开关（设计稿可点，仅视觉）── */
+document.querySelectorAll('.switch').forEach(sw => {
+  sw.addEventListener('click', () => sw.classList.toggle('on'));
+});
+
+/* ── 滑块填充比例 ── */
+document.querySelectorAll('input[type=range]').forEach(r => {
+  const paint = () => {
+    const pct = (r.value - r.min) / (r.max - r.min) * 100;
+    r.style.setProperty('--fill', pct + '%');
+  };
+  r.addEventListener('input', paint);
+  paint();
+});
+</script>
+</body>
+</html>
