@@ -267,7 +267,7 @@ ResourceBackend::~ResourceBackend() = default;
 
 void ResourceBackend::loadModTranslations()
 {
-    const QString path = QStringLiteral(":/qt/qml/ShadowLauncher/qml/mod_zh.json");
+    const QString path = QStringLiteral(":/qt/qml/ShadowLauncher/assets/data/mod_zh.json");
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly)) {
         emit logMessage(tr("[汉化] 打开 %1 失败: %2").arg(path, f.errorString()));
@@ -304,7 +304,7 @@ void ResourceBackend::loadModTranslations()
 // ── MC 百科 class-id 索引（tools/gen_mcmod_map.py 生成；仅存 id/en/cf/mr 极简映射，不搬运百科内容）──
 void ResourceBackend::loadMcmodMap()
 {
-    const QString path = QStringLiteral(":/qt/qml/ShadowLauncher/qml/mcmod_map.json");
+    const QString path = QStringLiteral(":/qt/qml/ShadowLauncher/assets/data/mcmod_map.json");
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly)) {
         emit logMessage(tr("[百科] 打开 %1 失败: %2").arg(path, f.errorString()));

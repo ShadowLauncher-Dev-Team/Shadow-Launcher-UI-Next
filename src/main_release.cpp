@@ -572,6 +572,25 @@ int main(int argc, char *argv[])
         report(QStringLiteral("F8 非法地址应被拒绝"), QStringLiteral("mc.example.com:25565"), st->autoJoinServer());
         st->setAutoJoinServer(QString());
 
+        // 资源迁移校验：mod_zh.json 从 qml/ 迁到 assets/data/ 后必须仍能解析出映射。
+        // 条目取自 mod_zh.json 第 3 条（"24Hourclock" -> "24小时制"）。
+        {
+            const QString zh = backend->resolveModZh(QStringLiteral("24Hourclock"));
+            report(QStringLiteral("mod_zh.json 可读（汉化映射）"),
+                   QStringLiteral("24小时制"),
+                   zh.isEmpty() ? QStringLiteral("(空)") : zh);
+        }
+
+        // 资源迁移校验：协议 HTML 从 qml/ 迁到 assets/ 后，qrc 路径必须仍然可读。
+        // 路径拼错时 readQrcFile 返回空串（不报错），只有断言长度才能发现。
+        {
+            const QString html = backend->betaAgreementHtml();
+            report(QStringLiteral("协议 HTML 可读（qrc 路径）"),
+                   QStringLiteral("长度>1000"),
+                   html.length() > 1000 ? QStringLiteral("长度>1000")
+                                        : (QStringLiteral("长度=") + QString::number(html.length())));
+        }
+
         // 最小内存必须真的进 JVM 参数（-Xms）：导出启动脚本复用 buildArgs，
         // 可以在不启动游戏的前提下验证参数组装。
         {
@@ -670,7 +689,6 @@ int main(int argc, char *argv[])
 
     // Add exe dir to import path so module can find qmldir
     engine.addImportPath(QCoreApplication::applicationDirPath());
-    engine.addImportPath(QStringLiteral("qrc:/ShadowLauncher/qml"));
     checkpoint(QStringLiteral("QML engine created"));
 
     // 注册自定义 3D 几何体
@@ -738,16 +756,14 @@ int main(int argc, char *argv[])
     // Release mode: always load from precompiled qrc
     // Add root qml/ import path for Qt built-in QML modules (deployed by windeployqt)
     engine.addImportPath(QCoreApplication::applicationDirPath() + QStringLiteral("/qml"));
-    engine.addImportPath(QStringLiteral("qrc:/qt/qml/ShadowLauncher/qml"));
 
     QUrl url;
     checkpoint(QStringLiteral("Loading QML (precompiled qrc)..."));
-    url = QUrl(useUiNext
-        ? QStringLiteral("qrc:/qt/qml/ShadowLauncher/Next/Main.qml")
-        : QStringLiteral("qrc:/qt/qml/ShadowLauncher/qml/MainWindow.qml"));
+    // 旧 UI（qml/）已于 2026-11-10 整体移除，只剩新 UI
+    url = QUrl(QStringLiteral("qrc:/qt/qml/ShadowLauncher/Next/Main.qml"));
 
     // ── Beta key gate（内测闸门）──
-    // 公测版（默认）不定义 SHADOW_ENABLE_BETA_GATE → 直接加载 MainWindow。
+    // 公测版（默认）不定义 SHADOW_ENABLE_BETA_GATE → 直接加载主界面。
     // 内测版：CMake -DSHADOW_ENABLE_BETA_GATE=ON 重新配置编译，启用下方密钥验证闸门。
     bool loadedBetaDialog = false;
 #ifdef SHADOW_ENABLE_BETA_GATE
@@ -758,21 +774,13 @@ int main(int argc, char *argv[])
     // 旧逻辑 validateBetaKey 为同步网络请求（5s 超时），网络波动/服务器偶发
     // 失败会把已保存的密钥误判为无效 → 频繁重弹内测验证窗口。
     // 密钥有效性在首次输入时已由 submitBetaKey 联网验证并加密落盘。
-    if (!useUiNext && savedKey.isEmpty()) {
-        // 无保存密钥 → 加载 BetaKeyDialog；betaVerified 信号会重载 MainWindow
-        QUrl betaUrl("qrc:/qt/qml/ShadowLauncher/qml/BetaKeyDialog.qml");
-        checkpoint(QStringLiteral("Loading beta key dialog..."));
-        engine.load(betaUrl);
-        checkpoint(QStringLiteral("Waiting for beta key input..."));
-
-        QObject::connect(backend, &ShadowBackend::betaVerified, &app, [&engine, url]() {
-            qCInfo(logApp) << QStringLiteral("[Beta] 密钥验证通过 加载MainWindow");
-            engine.load(url);
-        });
-
-        loadedBetaDialog = true;
-    } else if (!useUiNext) {
+    // 新 UI 暂无独立的内测密钥弹窗（旧 BetaKeyDialog.qml 随 qml/ 一并移除）。
+    // 若仍用 -DSHADOW_ENABLE_BETA_GATE=ON 构建，这里只做"有密钥就放行"，
+    // 无密钥时直接进主界面（不再有输入窗口）—— 需要内测闸门时必须先补新 UI 的密钥页。
+    if (!savedKey.isEmpty()) {
         qCInfo(logApp) << QStringLiteral("[Beta] 已保存密钥 直接放行");
+    } else {
+        qCWarning(logApp) << QStringLiteral("[Beta] 内测闸门已启用但新 UI 无密钥输入页，直接放行");
     }
 #endif // SHADOW_ENABLE_BETA_GATE
 
@@ -789,7 +797,7 @@ int main(int argc, char *argv[])
     }
     checkpoint(QStringLiteral("QML engine.load() completed"));
 
-    // Only check root objects if MainWindow was loaded (not beta dialog)
+    // 校验根对象是否加载成功
     if (!loadedBetaDialog) {
         if (engine.rootObjects().isEmpty()) {
             qCCritical(logApp) << QStringLiteral("无法加载任何QML根对象 退出");

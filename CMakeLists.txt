@@ -365,94 +365,12 @@ qt6_add_resources(ShadowLauncher "ui_stage_assets"
         ui/assets/stage-aurora.jpg
 )
 
-# QML: bundled in qrc for memory-mapped loading + runtime caching
-# Dev mode: set SHADOW_DEV=1 to load from filesystem for hot-reload
-qt6_add_resources(ShadowLauncher "qml_resources"
+# 运行时数据（不属于任何 UI）：从旧 qml/ 目录迁出，路径见 src/backend/resource_backend.cpp
+qt6_add_resources(ShadowLauncher "data_resources"
     PREFIX "/qt/qml/ShadowLauncher"
     FILES
-        qml/shaders/blur.frag.qsb
-        qml/AgreementOverlay.qml
-        qml/AnimationTokens.qml
-        qml/BackgroundCropOverlay.qml
-        qml/ConfirmDialog.qml
-        qml/CrashDialog.qml
-        qml/DetailInfoCard.qml
-        qml/DetailVersionCard.qml
-        qml/DownloadPage.qml
-        qml/ExpandableGroupCard.qml
-    qml/ExportModpackSection.qml
-        qml/HomePage.qml
-        qml/InlineToast.qml
-        qml/InstallConfigOverlay.qml
-        qml/InstallPage.qml
-        qml/KillButton.qml
-        qml/LaunchOverlay.qml
-        qml/ToastStyleWarning.qml
-        qml/ToastStyleSuccess.qml
-        qml/MainWindow.qml
-        qml/BetaKeyDialog.qml
-        qml/MinecraftHead2D.qml
-        qml/ModLoaderCard.qml
-        qml/ModDetailPage.qml
-        qml/ModpackDetailPage.qml
-        qml/MultiplayerPage.qml
-        qml/MultiplayerStateDot.qml
-        qml/MultiplayerStateIndicator.qml
-        qml/MultiplayerPlayerCard.qml
-        qml/MultiplayerRoomCodeCard.qml
-        qml/MultiplayerNetworkPanel.qml
-        qml/MultiplayerHelpPanel.qml
-        qml/ResourcePackDetailPage.qml
-        qml/SettingsGeneralPage.qml
-        qml/SettingsJavaPage.qml
-        qml/ShaderDetailPage.qml
-        qml/SettingsMemoryPage.qml
-        qml/SettingsPage.qml
-        qml/ShadowButton.qml
-        qml/ShadowSwitch.qml
-        qml/SplashWindow.qml
-        qml/SubPageOverlays.qml
-        qml/ToastManager.qml
-        qml/VersionSelectOverlay.qml
-        qml/VersionSelectPage.qml
-        qml/VersionSettingsOverlay.qml
-        qml/VersionSettingsPage.qml
-        qml/VersionMemorySection.qml
-        qml/VersionLaunchSection.qml
-        qml/ModpackImportOverlay.qml
-        qml/ModpackInfoPanel.qml
-        qml/StyleTokens.qml
-        qml/JavaPage.qml
-        qml/SettingsMemorySection.qml
-        qml/DebugPanel.qml
-        qml/DebugWindow.qml
-        qml/BackButton.qml
-        qml/DownloadCard.qml
-        qml/DownloadCardTagRow.qml
-        qml/DownloadQueueCard.qml
-        qml/DataPackDetailPage.qml
-        qml/DownloadQueuePanel.qml
-        qml/FilterCard.qml
-        qml/LoadStatus.qml
-        qml/PaginationFooter.qml
-        qml/ProfileSelectPopup.qml
-        qml/RefreshButton.qml
-        qml/SearchBox.qml
-        qml/SelectionPopup.qml
-        qml/GenericPopup.qml
-        qml/ShadowDropdown.qml
-        qml/LabeledDropdown.qml
-        qml/ShadowIconButton.qml
-        qml/VersionCard.qml
-        qml/InputBox.qml
-        qml/InstallProgressPage.qml
-        qml/LoadingSpinner.qml
-        qml/SettingsExperimentalPage.qml
-        qml/DetailLinkBar.qml
-        qml/animation_tokens.json
-        qml/mod_zh.json
-        qml/mcmod_map.json
-        qml/qmldir
+        assets/data/mod_zh.json
+        assets/data/mcmod_map.json
 )
 target_include_directories(ShadowLauncher PRIVATE src src/backend src/ui_next)
 
@@ -576,12 +494,18 @@ qt6_add_resources(ShadowLauncher "icon_resources"
 )
 
 # 鈹€鈹€ Agreement HTML resources (embedded for offline access) 鈹€鈹€
+# 必须用 QT_RESOURCE_ALIAS：否则 PREFIX + 文件相对路径会拼出
+# agreements/assets/agreements/xxx.html（旧实现就是这样多带了一层 qml/agreements），
+# 而 C++ 读的是 /qt/qml/ShadowLauncher/agreements/xxx.html。
+set_source_files_properties(assets/agreements/beta_agreement.html PROPERTIES QT_RESOURCE_ALIAS beta_agreement.html)
+set_source_files_properties(assets/agreements/terms_of_service.html PROPERTIES QT_RESOURCE_ALIAS terms_of_service.html)
+set_source_files_properties(assets/agreements/privacy_policy.html PROPERTIES QT_RESOURCE_ALIAS privacy_policy.html)
 qt6_add_resources(ShadowLauncher "agreement_resources"
     PREFIX "/qt/qml/ShadowLauncher/agreements"
     FILES
-        qml/agreements/beta_agreement.html
-        qml/agreements/terms_of_service.html
-        qml/agreements/privacy_policy.html
+        assets/agreements/beta_agreement.html
+        assets/agreements/terms_of_service.html
+        assets/agreements/privacy_policy.html
 )
 
 # ── Bootstrap tools (embedded installer helper JARs) ──
@@ -627,7 +551,7 @@ qt6_add_resources(ShadowLauncher "cape_resources"
 
 
 # 鈹€鈹€ Multi-language translations 鈹€鈹€
-file(GLOB_RECURSE I18N_QML_SOURCES "${CMAKE_SOURCE_DIR}/qml/*.qml")
+file(GLOB_RECURSE I18N_QML_SOURCES "${CMAKE_SOURCE_DIR}/ui/*.qml")
 file(GLOB_RECURSE I18N_CPP_SOURCES "${CMAKE_SOURCE_DIR}/src/*.cpp" "${CMAKE_SOURCE_DIR}/src/*.h")
 qt_add_translations(ShadowLauncher
     TS_FILES
@@ -690,17 +614,9 @@ if(WIN32)
     add_custom_command(TARGET ShadowLauncher POST_BUILD
         COMMAND "${CMAKE_PREFIX_PATH}/bin/windeployqt.exe"
             "$<TARGET_FILE:ShadowLauncher>"
-            --qmldir "${CMAKE_SOURCE_DIR}/qml"
             --qmldir "${CMAKE_SOURCE_DIR}/ui"
             --no-translations --no-compiler-runtime
-        COMMENT "Deploying Qt runtime (legacy and next QML imports)..."
-    )
-    # Copy QML source files to output dir for dev-mode hot-swap (no rebuild for QML-only changes)
-    add_custom_command(TARGET ShadowLauncher POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_SOURCE_DIR}/qml"
-            "$<TARGET_FILE_DIR:ShadowLauncher>/qml"
-        COMMENT "Copying QML sources for dev-mode..."
+        COMMENT "Deploying Qt runtime..."
     )
     add_custom_command(TARGET ShadowLauncher POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -717,7 +633,7 @@ if(WIN32)
     )
     add_custom_command(TARGET ShadowLauncher POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_SOURCE_DIR}/qml/agreements"
+            "${CMAKE_SOURCE_DIR}/assets/agreements"
             "$<TARGET_FILE_DIR:ShadowLauncher>/qml/agreements"
         COMMENT "Copying agreement HTMLs for dev-mode..."
     )
