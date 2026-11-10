@@ -57,12 +57,12 @@
 
 ### 页 1 · 常规
 - 语言选择（`languageIndex`）+ 跟随系统（`autoLangMode`，注意 `languageChanged` 是"需要重启"标志）
-- 窗口尺寸（`windowWidth` / `windowHeight`）——建议做成「记住上次窗口尺寸」开关 + 数字输入
+- ~~窗口尺寸~~ **已删（2026-11-10 影评审）**：该值实际只用于 pre-1.6 的 `${resolution_width}` 占位符，现代版本完全不解析，属于历史遗留；后端已整块移除
 - **设置导入 / 导出**（必须带安全确认，见审计 F1）
 
 ### 页 2 · Java 与内存
 - Java 路径：选择/扫描/自动检测 + 版本显示 + 就绪徽标
-- 已装 Java 列表（可移除）
+- 已装 Java 列表（**可选择**当前 Java，不可移除 —— 用户不该在启动器删掉系统里的 Java）
 - 内存：min / max 双滑块（min ≤ max，且上限受物理内存约束）+ 自动分配开关
 - `getMemoryStatus()` 显示物理内存总量与建议值
 
@@ -86,12 +86,11 @@
 - 背景模糊（`backgroundBlur`）
 - 裁剪偏移 X/Y（`cropX` / `cropY`）
 
-### 页 6 · 高级
-- 版本隔离（`isolationEnabled`）+ 单版本迁移（`migrateVersionToIsolated`）
+### 页 6 · 高级（2026-11-10 评审后大幅收窄）
 - 内嵌登录（`embeddedLoginEnabled`）
-- Mod 依赖提示（`modDepsTooltipEnabled`）
-- 打开游戏目录（`openGameDir`）
-- **危险区**：删除版本（`deleteVersion`，必须二次确认 + 显示目标路径，见审计 F2）
+- 游戏目录 + 打开目录（`openGameDir`）
+
+> 删掉的：版本隔离开关（默认就开，无需暴露）、Mod 依赖提示（功能已无用）、危险区/删除版本（版本管理页已有，设置页不该出现）。
 
 ---
 
@@ -304,6 +303,25 @@ autoJoin   'srv --username evil' → (空，被丢弃)
 - `preLaunchCommand` / `postExitCommand` 仍经 `cmd.exe /c` 执行（这是功能本身），UI 必须带风险提示。
 - `languageIndex` 的合法上限 8 是保守估计（当前实际用 0..2），做语言页时以真实语言表为准。
 
+
+---
+
+## 五·补3、设计评审决定的删减（2026-11-10 影）
+
+| # | 反馈 | 处理 | 后端影响 |
+|---|---|---|---|
+| 1 | 窗口尺寸不该支持改动（组件适配痛苦） | 常规页「窗口」整组删除 | **整块删**：`windowWidth`/`windowHeight` Q_PROPERTY、setter、QSettings 键。真相：这两个值只替换 pre-1.6 的 `${resolution_width}` / `${resolution_height}` 占位符，**现代版本完全不解析**，属于历史遗留。launch 处改为固定 854×480 字面量 |
+| 2 | 已检测 Java 只该「选择」，不该「移除」 | 列表按钮改成「选择」 | **删** `removeJavaFromList`（它连 ShadowBackend 都没转发，UI 从来调不到 —— 设计稿里的「移除」是我凭空写的）。`selectJavaByIndex` 本就存在，直接用 |
+| 3 | 版本隔离开关可删（默认隔离） | 高级页「版本隔离」组删除 | 保留后端（`VersionIsolation` 是真功能，外部目录模式会用到），只是不暴露成开关 |
+| 4 | 设置里不该有删除版本 | 高级页「危险操作」组删除 | 保留（版本管理页在用） |
+| 5 | 版本列表悬停显示依赖已无用 | 高级页该行删除 | **整块删**：`modDepsTooltipEnabled`（Q_PROPERTY + setter + signal + 成员 + 存储 + ShadowBackend 转发）—— 从无 UI、也无功能实现，纯死代码 |
+| 6 | 外观后端状况未明，先不动工 | 外观页保留在设计稿，等后端理清 | — |
+
+**处理原则**：有真实功能的后端能力 → 只从界面删；确认是死代码 → 后端整块删。
+
+**构建验证**：删完后 `cmake --build` 通过，UI 契约检查 45 文件通过。
+
+**遗留**：高级页删完只剩「内嵌登录」+「游戏目录」两行，页面很空。可选：把它并入「常规」页，或保留独立页作为未来实验性开关的落脚点。
 ---
 
 ## 六、待影决策

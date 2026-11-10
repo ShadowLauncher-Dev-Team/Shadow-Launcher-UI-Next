@@ -152,7 +152,6 @@ void SettingsBackend::loadSettings()
     m_maxMemoryMB = qBound(m_minMemoryMB, s.value(QStringLiteral("memory/maxMB"), 2048).toInt(), 32768);
     m_autoMemory = s.value(QStringLiteral("memory/autoMemory"), true).toBool();
     m_embeddedLoginEnabled = s.value(QStringLiteral("general/embeddedLogin"), false).toBool();
-    m_modDepsTooltipEnabled = s.value(QStringLiteral("general/modDepsTooltip"), false).toBool();   // 实验性，默认关
     m_languageIndex = qBound(0, s.value(QStringLiteral("general/languageIndex"), 0).toInt(), 8);
     m_launchLanguageIndex = m_languageIndex;  // snapshot for restart detection
     m_lastLaunchedVersion = s.value(QStringLiteral("general/lastVersion"), QString()).toString();
@@ -169,10 +168,6 @@ void SettingsBackend::loadSettings()
     // Auto-language mode
     m_autoLangMode = qBound(0, s.value(QStringLiteral("general/autoLangMode"), 1).toInt(), 2);
     qCInfo(logApp) << QStringLiteral("[autoLang] loaded mode=%1 from QSettings").arg(m_autoLangMode);
-
-    // Window resolution
-    m_windowWidth  = qBound(100, s.value(QStringLiteral("launch/windowWidth"), 854).toInt(), 7680);
-    m_windowHeight = qBound(100, s.value(QStringLiteral("launch/windowHeight"), 480).toInt(), 4320);
 
     // ── 启动细节（低垂果实批，2026-08-08）──
     m_gcMode = qBound(0, s.value(QStringLiteral("launch/gcMode"), 0).toInt(), 3);
@@ -215,7 +210,6 @@ void SettingsBackend::saveSettings()
     s.setValue(QStringLiteral("memory/maxMB"), m_maxMemoryMB);
     s.setValue(QStringLiteral("memory/autoMemory"), m_autoMemory);
     s.setValue(QStringLiteral("general/embeddedLogin"), m_embeddedLoginEnabled);
-    s.setValue(QStringLiteral("general/modDepsTooltip"), m_modDepsTooltipEnabled);
     s.setValue(QStringLiteral("general/languageIndex"), m_languageIndex);
     s.setValue(QStringLiteral("general/lastVersion"), m_lastLaunchedVersion);
     s.setValue(QStringLiteral("general/lastSelectedVersion"), m_lastSelectedVersion);
@@ -236,10 +230,6 @@ void SettingsBackend::saveSettings()
     s.setValue(QStringLiteral("download/listSource"), m_listDownloadSource);
     s.setValue(QStringLiteral("download/threadLimit"), m_maxDownloadThreads);
     s.setValue(QStringLiteral("download/speedLimitMB"), m_downloadSpeedLimitMB);
-
-    // Window resolution
-    s.setValue(QStringLiteral("launch/windowWidth"), m_windowWidth);
-    s.setValue(QStringLiteral("launch/windowHeight"), m_windowHeight);
 
     // ── 启动细节（低垂果实批，2026-08-08）──
     s.setValue(QStringLiteral("launch/gcMode"), m_gcMode);
@@ -916,16 +906,6 @@ void SettingsBackend::setEmbeddedLoginEnabled(bool v)
     }
 }
 
-// ── 2026-08-15：版本悬停前置依赖 tooltip（实验性）──
-void SettingsBackend::setModDepsTooltipEnabled(bool v)
-{
-    if (m_modDepsTooltipEnabled != v) {
-        m_modDepsTooltipEnabled = v;
-        saveSettings();
-        emit modDepsTooltipEnabledChanged();
-    }
-}
-
 // ============================================================
 // Isolation (delegates to VersionManager later)
 // ============================================================
@@ -1409,27 +1389,6 @@ bool SettingsBackend::isPathInCandidateDir(const QString& binDir) const
 }
 
 // ============================================================
-// removeJavaFromList -- user manually removes a Java from list
-// ============================================================
-
-void SettingsBackend::removeJavaFromList(int index)
-{
-    const auto& list = cachedJavaList();
-    if (index < 0 || index >= list.size()) return;
-    QString binDir = QDir::cleanPath(QFileInfo(list[index].path).absolutePath()).toLower();
-    m_javaRemovedPaths.insert(binDir);
-    // Persist removed paths
-    {
-        QSettings s(QCoreApplication::organizationName(),
-                    QCoreApplication::applicationName());
-        QStringList removed;
-        for (const auto& p : m_javaRemovedPaths) removed.append(p);
-        s.setValue(QStringLiteral("java/removedPaths"), removed);
-    }
-    emit logMessage(tr("已移除 Java: %1").arg(list[index].path));
-    // Trigger re-scan to update display immediately
-    scanJavaInstallations();
-}
 
 // ============================================================
 // persistedJavaList -- return persisted list (QML access)

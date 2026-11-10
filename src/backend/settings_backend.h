@@ -37,8 +37,6 @@ class SettingsBackend : public QObject {
     Q_PROPERTY(int maxDownloadThreads READ maxDownloadThreads WRITE setMaxDownloadThreads NOTIFY downloadSettingsChanged)
     Q_PROPERTY(double downloadSpeedLimitMB READ downloadSpeedLimitMB WRITE setDownloadSpeedLimitMB NOTIFY downloadSettingsChanged)
     Q_PROPERTY(int autoLangMode READ autoLangMode WRITE setAutoLangMode NOTIFY autoLangModeChanged)
-    Q_PROPERTY(int windowWidth READ windowWidth WRITE setWindowWidth NOTIFY windowSettingsChanged)
-    Q_PROPERTY(int windowHeight READ windowHeight WRITE setWindowHeight NOTIFY windowSettingsChanged)
     // ── 启动细节（低垂果实批，2026-08-08：对齐 主流启动器/主流启动器）──
     Q_PROPERTY(int gcMode READ gcMode WRITE setGcMode NOTIFY launchDetailChanged)
     Q_PROPERTY(int processPriority READ processPriority WRITE setProcessPriority NOTIFY launchDetailChanged)
@@ -135,7 +133,6 @@ public:
 
     Q_INVOKABLE QVariantList availableJavaList();
     Q_INVOKABLE void selectJavaByIndex(int index);
-    Q_INVOKABLE void removeJavaFromList(int index);
     Q_INVOKABLE QVariantList persistedJavaList();
     Q_INVOKABLE QString findJavaForVersion(int requiredMajor, int maxMajor = 0);
     // maxMajor>0 时限制在 [requiredMajor, maxMajor] 区间（老版本 Mixin 兼容上限）
@@ -159,8 +156,6 @@ public:
     bool embeddedLoginEnabled() const { return m_embeddedLoginEnabled; }
     Q_INVOKABLE void setEmbeddedLoginEnabled(bool v);
     // ── 2026-08-15：版本悬停前置依赖 tooltip（实验性，可能卡顿/信息有误）──
-    bool modDepsTooltipEnabled() const { return m_modDepsTooltipEnabled; }
-    Q_INVOKABLE void setModDepsTooltipEnabled(bool v);
     int languageIndex() const { return m_languageIndex; }
     Q_INVOKABLE void setLanguageIndex(int idx);
     bool isLanguageChanged() const { return m_languageIndex != m_launchLanguageIndex; }
@@ -210,10 +205,6 @@ public:
     int autoLangModeComboIndex() const;
     Q_INVOKABLE void setAutoLangMode(int mode);
     // Window resolution
-    int windowWidth() const { return m_windowWidth; }
-    void setWindowWidth(int w) { if (w >= 100 && w <= 7680 && w != m_windowWidth) { m_windowWidth = w; saveSettings(); emit windowSettingsChanged(); } }
-    int windowHeight() const { return m_windowHeight; }
-    void setWindowHeight(int h) { if (h >= 100 && h <= 4320 && h != m_windowHeight) { m_windowHeight = h; saveSettings(); emit windowSettingsChanged(); } }
 
     // Download settings
     int fileDownloadSource() const { return m_fileDownloadSource; }
@@ -242,7 +233,7 @@ signals:
     void generalSettingsChanged();
     void isolationChanged();
     void embeddedLoginChanged();
-    void modDepsTooltipEnabledChanged();   // 2026-08-15：实验性 tooltip 开关
+
     void languageChanged();
     void customBgChanged();
     void downloadSettingsChanged();
@@ -289,7 +280,7 @@ private:
     bool m_javaReady = false;
     QString m_gameDir;
     bool m_embeddedLoginEnabled = false;
-    bool m_modDepsTooltipEnabled = false;   // 2026-08-15：实验性 tooltip 开关
+
     int m_languageIndex = 0;
     int m_launchLanguageIndex = 0;
     VersionIsolation* m_isolation = nullptr;

@@ -436,8 +436,6 @@ ShadowBackend::ShadowBackend(QObject* parent)
             this, &ShadowBackend::isolationChanged);
     connect(m_settings, &SettingsBackend::embeddedLoginChanged,
             this, &ShadowBackend::embeddedLoginChanged);
-    connect(m_settings, &SettingsBackend::modDepsTooltipEnabledChanged,
-            this, &ShadowBackend::modDepsTooltipEnabledChanged);   // 2026-08-15：实验性 tooltip
     connect(m_settings, &SettingsBackend::customBgChanged,
             this, &ShadowBackend::customBgChanged);
     connect(m_settings, &SettingsBackend::logMessage,
@@ -1082,13 +1080,7 @@ void ShadowBackend::setEmbeddedLoginEnabled(bool v) {
 }
 
 // ── 2026-08-15：实验性 tooltip 开关 ──
-bool ShadowBackend::modDepsTooltipEnabled() const {
-    return m_settings->modDepsTooltipEnabled();
-}
 
-void ShadowBackend::setModDepsTooltipEnabled(bool v) {
-    m_settings->setModDepsTooltipEnabled(v);
-}
 
 // ── Custom background ──
 QString ShadowBackend::customBgPath() const { return m_settings->customBgPath(); }
@@ -2913,8 +2905,11 @@ void ShadowBackend::proceedLaunch(const QString& versionId, bool online, const Q
     m_launch->setWindowTitleOverride(resolvedWindowTitle(versionId));
     m_launch->setPreLaunchCommand(resolvedPreLaunchCommand(versionId));
     m_launch->setPostExitCommand(resolvedPostExitCommand(versionId));
+    // 854x480 只用于 pre-1.6 版本的 ${resolution_width}/${resolution_height} 占位符；
+    // 现代版本不解析该占位符，游戏窗口大小由 MC 自己的 options.txt 决定。
+    // 所以这里不再暴露成用户可配置项（2026-11-10 影：不该支持改动）。
     m_launch->launch(versionId, m_launchUsername, javaPath, maxMemory, jvmArgs, gameArgs, highPerfGpu,
-                     m_settings->windowWidth(), m_settings->windowHeight());
+                     854, 480);
 }
 
 void ShadowBackend::cancelLaunch() {

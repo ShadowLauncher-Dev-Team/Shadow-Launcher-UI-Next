@@ -278,7 +278,7 @@ textarea::placeholder{color:#3f4753}
     <section class="page active" id="page-general">
       <div class="page-head">
         <h1>常规</h1>
-        <p>界面语言、窗口尺寸与启动器自身的行为。</p>
+        <p>界面语言与启动器自身的行为。</p>
       </div>
 
       <div class="group">
@@ -299,30 +299,6 @@ textarea::placeholder{color:#3f4753}
               <div class="row-desc">启动游戏时按系统区域自动写入语言，覆盖版本默认</div>
             </div>
             <div class="row-ctl"><div class="switch on"></div></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="group">
-        <div class="group-title">窗口</div>
-        <div class="card">
-          <div class="row">
-            <div class="row-main">
-              <div class="row-label">记住窗口尺寸</div>
-              <div class="row-desc">关闭后每次启动都用下列固定尺寸</div>
-            </div>
-            <div class="row-ctl"><div class="switch on"></div></div>
-          </div>
-          <div class="row">
-            <div class="row-main">
-              <div class="row-label">窗口尺寸</div>
-              <div class="row-desc">宽 1024–7680，高 600–4320</div>
-            </div>
-            <div class="row-ctl">
-              <input type="number" class="w-160" value="1100">
-              <span style="color:var(--fg3)">×</span>
-              <input type="number" class="w-160" value="720">
-            </div>
           </div>
         </div>
       </div>
@@ -406,12 +382,12 @@ textarea::placeholder{color:#3f4753}
             <div class="list-item">
               <span class="badge muted">17</span>
               <span class="mono flex1">C:\Program Files\Java\jdk-17\bin\javaw.exe</span>
-              <button class="btn sm">移除</button>
+              <button class="btn sm">选择</button>
             </div>
             <div class="list-item">
               <span class="badge muted">8</span>
               <span class="mono flex1">C:\Program Files (x86)\Java\jre1.8.0_401\bin\javaw.exe</span>
-              <button class="btn sm">移除</button>
+              <button class="btn sm">选择</button>
             </div>
           </div>
         </div>
@@ -613,31 +589,11 @@ textarea::placeholder{color:#3f4753}
     <section class="page" id="page-advanced">
       <div class="page-head">
         <h1>高级</h1>
-        <p>版本隔离、实验性开关，以及不可撤销的操作。</p>
+        <p>内嵌登录与游戏目录。</p>
       </div>
 
       <div class="group">
-        <div class="group-title">版本隔离</div>
-        <div class="card">
-          <div class="row">
-            <div class="row-main">
-              <div class="row-label">启用版本隔离</div>
-              <div class="row-desc">每个版本独立的 mods / 存档 / 配置目录，互不干扰；已装版本可单独迁移</div>
-            </div>
-            <div class="row-ctl"><div class="switch on"></div></div>
-          </div>
-          <div class="row">
-            <div class="row-main">
-              <div class="row-label">游戏目录</div>
-              <div class="row-desc mono">D:\latest-code\shadow-v2\build\Release\.minecraft</div>
-            </div>
-            <div class="row-ctl"><button class="btn">打开目录</button></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="group">
-        <div class="group-title">实验性</div>
+        <div class="group-title">启动器</div>
         <div class="card">
           <div class="row">
             <div class="row-main">
@@ -646,25 +602,18 @@ textarea::placeholder{color:#3f4753}
             </div>
             <div class="row-ctl"><div class="switch"></div></div>
           </div>
-          <div class="row">
-            <div class="row-main">
-              <div class="row-label">版本列表悬停显示依赖</div>
-              <div class="row-desc">鼠标停在版本上时提示前置模组，方便判断缺不缺东西</div>
-            </div>
-            <div class="row-ctl"><div class="switch"></div></div>
-          </div>
         </div>
       </div>
 
       <div class="group">
-        <div class="group-title" style="color:#c96b6b">危险操作</div>
-        <div class="card danger-zone">
+        <div class="group-title">路径</div>
+        <div class="card">
           <div class="row">
             <div class="row-main">
-              <div class="row-label" style="color:#f0a3a3">删除版本</div>
-              <div class="row-desc">连同该版本目录一起删除，不可恢复。删除前会二次确认并显示完整路径。</div>
+              <div class="row-label">游戏目录</div>
+              <div class="row-desc mono">D:\latest-code\shadow-v2\build\Release\.minecraft</div>
             </div>
-            <div class="row-ctl"><button class="btn danger">删除版本…</button></div>
+            <div class="row-ctl"><button class="btn">打开目录</button></div>
           </div>
         </div>
       </div>
