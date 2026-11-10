@@ -16,7 +16,10 @@ Item {
     readonly property color lineColor: root.kind === "warn" ? "#3d2f12"
                                       : (root.kind === "danger" ? "#4a2226" : "#1a2b45")
 
-    implicitHeight: body.implicitHeight + 24
+    // 上下等量留白 + 行内居中。
+    // 原来 Row 用固定 y:12、Text 的 lineHeight 1.6 会撑出额外行高（多出的空隙在文字下方），
+    // 于是视觉上文字贴顶、框内下方空一块（影报的「文字偏上」）。
+    implicitHeight: body.implicitHeight + 22
 
     Rectangle {
         anchors.fill: parent
@@ -29,7 +32,7 @@ Item {
     Row {
         id: body
         x: 14
-        y: 12
+        anchors.verticalCenter: parent.verticalCenter
         width: parent.width - 28
         spacing: 9
 

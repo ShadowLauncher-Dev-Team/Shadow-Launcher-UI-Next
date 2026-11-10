@@ -43,24 +43,6 @@ Item {
                 }
             }
 
-            SetGroup {
-                width: parent.width
-                title: "路径"
-
-                SetRow {
-                    width: parent.width
-                    divider: false
-                    label: "游戏目录"
-                    desc: pane.s ? pane.s.gameDir : ""
-                    SButton {
-                        kind: 1
-                        radius: 2
-                        height: 32
-                        text: "打开目录"
-                        onClicked: { if (pane.s) pane.s.openGameDir() }
-                    }
-                }
-            }
         }
     }
 }

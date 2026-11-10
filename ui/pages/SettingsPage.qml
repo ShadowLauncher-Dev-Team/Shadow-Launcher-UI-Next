@@ -18,7 +18,7 @@ Item {
         { k: "java",       label: "Java 与内存",  icon: "cpu",      desc: "启动游戏用的 Java 运行时，以及所有版本默认分配的堆内存。" },
         { k: "launch",     label: "启动",         icon: "play",     desc: "所有版本的默认启动参数。单个版本可在版本设置里覆盖这里任意一项。" },
         { k: "download",   label: "下载",         icon: "download", desc: "版本文件与资源列表的来源、并发与限速。" },
-        { k: "advanced",   label: "高级",         icon: "settings", desc: "内嵌登录与游戏目录。" },
+        { k: "advanced",   label: "高级",         icon: "settings", desc: "实验性开关。" },
         { k: "appearance", label: "外观",         icon: "palette",  desc: "主题、密度、动效偏好与自定义背景。" },
         { k: "about",      label: "关于",         icon: "info",     desc: "版本信息、许可，以及这个启动器背后的每一个名字。" }
     ]

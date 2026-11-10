@@ -7,6 +7,9 @@ Item {
     id: root
     property bool narrow: false
     property string currentLabel: "启动"
+    /// 点击前停在哪一项。currentLabel 会被点击立刻改掉，
+    /// 外面需要「回到上一项」时只能靠这个（全局设置页退出还原用）。
+    property string previousLabel: "启动"
     property Window hostWindow: null
     /// 主菜单点击（StageShell 据此切换内容区页面）
     signal navActivated(string label)
@@ -193,7 +196,11 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     // 主项才改高亮；子项也要发信号，否则「下载进度」这类子项完全点不动
-                    if (row.isMain) root.currentLabel = modelData.label
+                    // 只对主项记录：子项（下载进度等）不参与"上一项"还原
+                    if (row.isMain) {
+                        root.previousLabel = root.currentLabel
+                        root.currentLabel = modelData.label
+                    }
                     root.navActivated(modelData.label)
                 }
             }

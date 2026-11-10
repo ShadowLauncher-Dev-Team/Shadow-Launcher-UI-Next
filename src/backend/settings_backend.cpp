@@ -420,6 +420,21 @@ QString SettingsBackend::autoSelectJava()
     return {};
 }
 
+void SettingsBackend::useAutoJava()
+{
+    if (m_javaPath.isEmpty() && !m_javaReady) return;
+    // 清空手动指定：启动时 shadow_backend 的 resolve 逻辑会走 findJavaForVersion，
+    // 按每个版本需要的 Java 主版本自动匹配（改这里之前 setJavaPath("") 是被拒绝的）。
+    m_javaPath.clear();
+    m_javaVersion.clear();
+    m_javaMajor = 0;
+    m_javaReady = false;
+    saveSettings();
+    emit javaPathChanged();
+    emit javaReadyChanged();
+    emit logMessage(tr("[完成] 已改为自动选择 Java（启动时按版本需求匹配）"));
+}
+
 QString SettingsBackend::findJavaForVersion(int requiredMajor, int maxMajor)
 {
     // Searches cached Java list for best match to required major version.

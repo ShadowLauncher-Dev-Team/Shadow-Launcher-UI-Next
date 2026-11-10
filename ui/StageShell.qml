@@ -19,6 +19,9 @@ Item {
     property bool settingsOpen: false
     // 全局设置（与「版本设置」是两件事：那个按版本，这个改全局默认值）
     property bool prefsOpen: false
+    // 进设置前侧栏选中的是哪一项：退出时要还原回去，
+    // 否则侧栏一直停在高亮的「设置」上（影报：从设置页出来，左侧仍显示设置页）。
+    property string prefsPrevLabel: "启动"
     property string settingsVersionId: ""
     property bool accountOpen: false
     // 下载页与版本页/账户页同一套：侧栏宽度收到 0，页面淡入 + 右移 24
@@ -218,22 +221,29 @@ Item {
             if (label === "下载") {
                 // 侧栏「下载」= 下载列表页：从配置态或独立进度页回来都先回到列表
                 downloadPage.resetToList()
+                root.prefsOpen = false
                 root.downloadOpen = true
                 root.progressOpen = false
                 root.multiplayerOpen = false
             } else if (label === "下载进度") {
                 // 侧栏「下载进度」：独立页面，与「下载」互不捆绑
+                root.prefsOpen = false
                 root.progressOpen = true
                 root.downloadOpen = false
                 root.multiplayerOpen = false
                 sideBar.currentLabel = "下载进度"
             } else if (label === "联机") {
                 // 联机页：与下载页同级，侧栏常驻
+                root.prefsOpen = false
                 root.downloadOpen = false
                 root.progressOpen = false
                 root.multiplayerOpen = true
             } else if (label === "设置") {
                 // 设置 = 全局默认值（独立全屏页）
+                // 记住进来之前停在哪一项（点「设置」时 currentLabel 已经被 SideBar 改掉了，
+                // 所以趁还没改记录原值）
+                root.prefsPrevLabel = sideBar.previousLabel
+                console.info("[ui] 进入设置，记住上一项: " + root.prefsPrevLabel)
                 root.downloadOpen = false
                 root.progressOpen = false
                 root.multiplayerOpen = false
@@ -437,7 +447,12 @@ Item {
                 id: prefsPage
                 anchors.fill: parent
                 toast: toastHost
-                onClose: root.prefsOpen = false
+                onClose: {
+                    root.prefsOpen = false
+                    // 还原侧栏选中项，否则退出后仍高亮「设置」
+                    sideBar.currentLabel = root.prefsPrevLabel
+                    console.info("[ui] 退出设置，侧栏还原为: " + sideBar.currentLabel)
+                }
             }
         }
     }

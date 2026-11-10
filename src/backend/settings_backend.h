@@ -75,6 +75,9 @@ public:
     Q_INVOKABLE QVariantList scanJavaInstallations();
     Q_INVOKABLE bool isJavaScanning() const { return m_javaScanning; }
     Q_INVOKABLE QString autoSelectJava();
+    /// 回到「由启动器按版本需求自动挑 Java」：清掉手动指定。
+    /// 不能复用 setJavaPath("") —— 它会因为 isFile() 失败而拒绝。
+    Q_INVOKABLE void useAutoJava();
     Q_INVOKABLE QString detectJava();         // QML alias
     Q_INVOKABLE QVariantMap getMemoryStatus();
     Q_INVOKABLE void setMinMemory(int mb);

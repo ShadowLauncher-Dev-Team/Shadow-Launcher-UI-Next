@@ -11,7 +11,10 @@ Item {
     property bool divider: true
     default property alias content: slot.data
 
-    implicitHeight: labBox.implicitHeight + 10 + slot.implicitHeight + 28
+    // 没有控件时不能再加 10 的间距和 28 的上下留白，否则只有标题+说明的行
+    // 会在下方空出一大块（影报的「每个框下方都存在较多空白」）。
+    readonly property bool _hasSlot: slot.children.length > 0
+    implicitHeight: labBox.implicitHeight + (_hasSlot ? 10 + slot.implicitHeight : 0) + 28
 
     Column {
         id: labBox
