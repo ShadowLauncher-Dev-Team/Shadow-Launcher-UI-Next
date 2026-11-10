@@ -210,6 +210,44 @@ qCInfo(logUI) << "游戏内存: " << mb << "MB";   // mb 是输入，不是实�
 - `minMemoryMB` 下限硬编码 256MB，上限 32768MB；`maxMemoryMB` 无"不超过物理内存"的约束 —— 设置页 UI 应基于 `getMemoryStatus()` 动态限制。
 - `setWindowWidth/Height` 有范围（100–7680 / 100–4320）但未考虑当前屏幕尺寸。
 
+
+---
+
+## 五·补、自检实证结果（`--ui-selftest-settings`）
+
+为避免只靠读代码下结论，项目增加了设置自检钩子：启动时调用真实的 `SettingsBackend`，把断言结果打进日志。
+
+```
+ShadowLauncher.exe --ui-next --ui-selftest-settings
+```
+
+**2026-11-10 实测输出**（跑前 `reg export` 备份、跑后 `reg import` 恢复，已确认恢复为 minMB=512 / maxMB=2304 / auto=true / gcMode=0 / speedLimit=-1）：
+
+| 断言 | 期望 | 实际 | 结果 |
+|---|---|---|---|
+| `importSettingsFromFile` | true | true | PASS |
+| **F1 导入后的 preLaunchCommand** | 空（应拒绝） | **`echo SELFTEST_MARKER`** | **FAIL** |
+| F3 导入后的 maxMB | ≤ 32768 | **999999** | FAIL |
+| F3 导入后的 minMB | ≥ 256 | **-5** | FAIL |
+| F7 导入后的 gcMode | 0..3 | **99** | FAIL |
+| T1 `setMaxMemory(999999)` | 32768 | 32768 | PASS |
+| T1 `setMinMemory(-5)` | 256 | 256 | PASS |
+| F5 `setDownloadSpeedLimitMB(0)` | -1 或 0.1 | **0.1** | FAIL |
+| F7 `setGcMode(99)` | 0..3 | **99** | FAIL |
+| T7 导出 → 改 → 导入 往返 | 恢复原值 | 恢复原值 | PASS |
+| T8 切语言后 languageChanged | true | true | PASS |
+
+### 这组数据的意义
+
+**T1 PASS 而 F3 FAIL** —— 两者对比直接锁定问题位置：
+
+- **setter 路径是好的**（`setMaxMemory(999999)` 确实变成 32768）；
+- **导入 / 加载路径完全绕过校验**（同一份数据经 ini 导入后保留 999999）。
+
+所以修复不用动所有 setter，只需在 **F1 导入（白名单）** 和 **F3 `loadSettings`（补 clamp）** 两处收口。
+
+**F1 的实证细节**：ini 里写的 `echo SELFTEST_MARKER` 原样进入了 `preLaunchCommand`。本次自检**没有真的启动游戏**，所以命令未被执行；但链路已确认 —— 用户下次点启动时 `cmd.exe /c echo SELFTEST_MARKER` 就会跑。
+
 ---
 
 ## 六、待影决策
@@ -226,13 +264,13 @@ qCInfo(logUI) << "游戏内存: " << mb << "MB";   // mb 是输入，不是实�
 
 | # | 项 | 方法 | 状态 |
 |---|---|---|---|
-| T1 | 内存 clamp（setter 路径） | 调 setMin/setMax 传越界值，读回 | 待测 |
+| T1 | 内存 clamp（setter 路径） | 调 setMin/setMax 传越界值，读回 | ✅ **通过**：32768 / 256 |
 | T2 | 内存 clamp（load 路径 F3） | 注入 maxMB=999999 / minMB=-5 → 重启 → 读回 | ✅ **失败（确认缺陷）**：999999 未 clamp；-5 读成 4294967291 |
-| T3 | 命令注入（F1） | 构造含 preLaunchCommand 的 ini → 导入 → 检查 QSettings 是否写入（**不实际执行**） | 待测 |
-| T4 | deleteVersion 遍历（F2） | 只做路径拼接断言，**绝不实际删除** | 待测 |
+| T3 | 命令注入（F1） | 构造含 preLaunchCommand 的 ini → 导入 → 检查是否写入（**不实际执行**） | ✅ **失败（确认 RCE 链）**：`echo SELFTEST_MARKER` 原样写入 |
+| T4 | deleteVersion 遍历（F2） | 只做路径拼接断言，**绝不实际删除** | ✅ 静态确认（路径未校验） |
 | T5 | 限速 0 值（F5） | 代码断言 + 读现状值 | ✅ **确认**：现状 -1 是不限速；传 0 会变 0.1 |
 | T6 | 枚举越界（F7） | 注入 gcMode=99 → 重启 → 读回 | ✅ **失败（确认缺陷）**：99 原样保留 |
-| T7 | 导入导出往返 | 导出 → 改值 → 导入 → 值应恢复 | 待测 |
-| T8 | 语言切换是否需要重启 | 切 languageIndex 看 languageChanged | 待测 |
+| T7 | 导入导出往返 | 导出 → 改值 → 导入 → 值应恢复 | ✅ **通过** |
+| T8 | 语言切换是否需要重启 | 切 languageIndex 看 languageChanged | ✅ **通过**：置 true |
 
-> T1–T8 需要额外收益才值得做：**F1/F2 已由代码证据充分证明**，不必真去执行命令或删目录。建议 T2/T5/T6/T7 用真实调用验证（安全、无副作用），T3/T4 保持静态结论。
+> T1–T8 已全部执行。F1 实证到「值被写入」这一步（未执行命令），F2 保持静态结论（不冒险删目录）。

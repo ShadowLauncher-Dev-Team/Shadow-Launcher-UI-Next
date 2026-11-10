@@ -99,6 +99,7 @@ private:
 #include "utils/logger.h"
 #include "version.h"   // 2026-08-15：SHADOW_DISPLAY_VERSION（原 CMake 宏，现头文件）
 #include "backend/shadow_backend.h"
+#include "backend/settings_backend.h"
 #include "backend/launch_backend.h"  // detachAllGames（退出时分离游戏进程）
 #include "ui_next/appearance_controller.h"
 #include "ui_next/ui_next_presenter.h"
@@ -519,6 +520,74 @@ int main(int argc, char *argv[])
 
     ShadowBackend* backend = new ShadowBackend(&app);
     checkpoint(QStringLiteral("ShadowBackend constructed"));
+
+    // ── 设置自检（--ui-selftest-settings）────────────────────────────────────
+    // 一次性跑设置项的边界 / 导入导出断言，结果打进日志。
+    // 与 --ui-pane / --ui-reenter 同类的测试基础设施。
+    // 注意：会改写 QSettings（内存 / 限速 / GC 等），调用方跑前必须自行备份。
+    if (app.arguments().contains(QStringLiteral("--ui-selftest-settings"))) {
+        SettingsBackend* st = backend->settings();
+        const QString tmpIni = QDir::temp().filePath(QStringLiteral("shadow_selftest_import.ini"));
+        // 构造一份"异常 + 恶意"配置：越界数值 + 命令字段
+        {
+            QSettings ini(tmpIni, QSettings::IniFormat);
+            ini.clear();
+            ini.setValue(QStringLiteral("memory/maxMB"), 999999);
+            ini.setValue(QStringLiteral("memory/minMB"), -5);
+            ini.setValue(QStringLiteral("launch/gcMode"), 99);
+            ini.setValue(QStringLiteral("launch/preLaunchCommand"), QStringLiteral("echo SELFTEST_MARKER"));
+            ini.setValue(QStringLiteral("download/speedLimitMB"), 0);
+            ini.sync();
+        }
+        auto report = [](const QString& name, const QString& expected, const QString& actual) {
+            qInfo().noquote() << QStringLiteral("[SELFTEST] %1  期望=%2  实际=%3  %4")
+                                 .arg(name, expected, actual,
+                                      expected == actual ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
+        };
+        report(QStringLiteral("importSettingsFromFile"),
+               QStringLiteral("true"), st->importSettingsFromFile(tmpIni) ? QStringLiteral("true") : QStringLiteral("false"));
+        // F1：命令字段是否被导入
+        report(QStringLiteral("F1 导入后的 preLaunchCommand"),
+               QStringLiteral("(空/被拒绝)"), st->preLaunchCommand());
+        // F3：导入值是否经过 clamp
+        report(QStringLiteral("F3 导入后的 maxMB"), QStringLiteral("<=32768"), QString::number(st->maxMemoryMB()));
+        report(QStringLiteral("F3 导入后的 minMB"), QStringLiteral(">=256"), QString::number(st->minMemoryMB()));
+        // F7：枚举是否被校验
+        report(QStringLiteral("F7 导入后的 gcMode"), QStringLiteral("0..3"), QString::number(st->gcMode()));
+        // T1：setter 路径（对照，证明 setter 本身是 clamp 的）
+        st->setMaxMemory(999999);
+        report(QStringLiteral("T1 setMaxMemory(999999)"), QStringLiteral("32768"), QString::number(st->maxMemoryMB()));
+        st->setMinMemory(-5);
+        report(QStringLiteral("T1 setMinMemory(-5)"), QStringLiteral("256"), QString::number(st->minMemoryMB()));
+        // F5：限速 0 的语义
+        st->setDownloadSpeedLimitMB(0);
+        report(QStringLiteral("F5 setDownloadSpeedLimitMB(0)"), QStringLiteral("-1 或 0.1"),
+               QString::number(st->downloadSpeedLimitMB()));
+        // F7：setter 路径的枚举校验
+        st->setGcMode(99);
+        report(QStringLiteral("F7 setGcMode(99)"), QStringLiteral("0..3"), QString::number(st->gcMode()));
+        // T7：导出 → 改值 → 导入 → 应恢复
+        {
+            const QString tmpOut = QDir::temp().filePath(QStringLiteral("shadow_selftest_export.ini"));
+            const int gcBefore = st->gcMode();
+            st->exportSettingsToFile(tmpOut);
+            st->setGcMode(2);
+            st->importSettingsFromFile(tmpOut);
+            report(QStringLiteral("T7 导出→改→导入 往返 gcMode"),
+                   QString::number(gcBefore), QString::number(st->gcMode()));
+            QFile::remove(tmpOut);
+        }
+        // T8：语言切换后是否置"需要重启"标志
+        {
+            const int langBefore = st->languageIndex();
+            st->setLanguageIndex(langBefore == 1 ? 0 : 1);
+            report(QStringLiteral("T8 切语言后 languageChanged"),
+                   QStringLiteral("true"), st->isLanguageChanged() ? QStringLiteral("true") : QStringLiteral("false"));
+            st->setLanguageIndex(langBefore);
+        }
+        QFile::remove(tmpIni);
+        qInfo().noquote() << QStringLiteral("[SELFTEST] 结束（本次运行已改写设置，跑完请恢复备份）");
+    }
 
     const bool useUiNext = app.arguments().contains(QStringLiteral("--ui-next"));
     auto argumentValue = [&app](const QString& name) {
