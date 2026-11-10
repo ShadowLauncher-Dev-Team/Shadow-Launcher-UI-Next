@@ -572,6 +572,21 @@ int main(int argc, char *argv[])
         report(QStringLiteral("F8 非法地址应被拒绝"), QStringLiteral("mc.example.com:25565"), st->autoJoinServer());
         st->setAutoJoinServer(QString());
 
+        // 进程优先级版本级：mode=0 跟随全局、mode=1 用版本值
+        {
+            const QString vid = QStringLiteral("__selftest__");
+            st->setProcessPriority(1);
+            st->setVersionProcessPriorityMode(vid, 0);
+            report(QStringLiteral("优先级 mode=0 应为跟随全局"),
+                   QStringLiteral("0"), QString::number(st->versionProcessPriorityMode(vid)));
+            st->setVersionProcessPriorityMode(vid, 1);
+            st->setVersionProcessPriority(vid, 2);
+            report(QStringLiteral("优先级 mode=1 覆盖值"),
+                   QStringLiteral("2"), QString::number(st->versionProcessPriority(vid)));
+            report(QStringLiteral("优先级 mode 越界应夹到 0..1"),
+                   QStringLiteral("1"), [&]{ st->setVersionProcessPriorityMode(vid, 9); return QString::number(st->versionProcessPriorityMode(vid)); }());
+        }
+
         // F10：versionId 含路径分隔符时应拒绝写键
         st->setVersionMemoryMode(QStringLiteral("../evil"), 2);
         report(QStringLiteral("F10 setVersionMemoryMode(../evil)"), QStringLiteral("0"),

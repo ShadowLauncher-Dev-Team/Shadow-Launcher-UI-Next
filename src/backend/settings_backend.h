@@ -107,6 +107,11 @@ public:
 
     // ── 启动细节（版本级覆盖，对齐主流启动器实现 VersionAdvanceGC/VersionServerEnter）──
     Q_INVOKABLE int versionGcMode(const QString& versionId) const;      // 0=跟随全局 1-3=覆盖
+    // 进程优先级版本级覆盖：mode 0=跟随全局 1=覆盖（0..2 见 launcher.cpp SetPriorityClass）
+    Q_INVOKABLE int versionProcessPriorityMode(const QString& versionId) const;
+    Q_INVOKABLE void setVersionProcessPriorityMode(const QString& versionId, int mode);
+    Q_INVOKABLE int versionProcessPriority(const QString& versionId) const;
+    Q_INVOKABLE void setVersionProcessPriority(const QString& versionId, int v);
     Q_INVOKABLE void setVersionGcMode(const QString& versionId, int mode);
     Q_INVOKABLE QString versionAutoJoinServer(const QString& versionId) const;  // 空=跟随全局
     Q_INVOKABLE void setVersionAutoJoinServer(const QString& versionId, const QString& addr);

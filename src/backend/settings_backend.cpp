@@ -723,6 +723,35 @@ void SettingsBackend::setVersionGcMode(const QString& versionId, int mode)
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/gcMode"), mode);
     s.sync();
 }
+int SettingsBackend::versionProcessPriorityMode(const QString& versionId) const
+{
+    QSettings s(QCoreApplication::organizationName(),
+                QCoreApplication::applicationName());
+    return s.value(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/priorityMode"), 0).toInt();
+}
+void SettingsBackend::setVersionProcessPriorityMode(const QString& versionId, int mode)
+{
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
+    QSettings s(QCoreApplication::organizationName(),
+                QCoreApplication::applicationName());
+    s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/priorityMode"), qBound(0, mode, 1));
+    s.sync();
+}
+int SettingsBackend::versionProcessPriority(const QString& versionId) const
+{
+    QSettings s(QCoreApplication::organizationName(),
+                QCoreApplication::applicationName());
+    return qBound(0, s.value(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/priority"), 1).toInt(), 2);
+}
+void SettingsBackend::setVersionProcessPriority(const QString& versionId, int v)
+{
+    if (!isSafeVersionId(versionId)) return;
+    QSettings s(QCoreApplication::organizationName(),
+                QCoreApplication::applicationName());
+    s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/priority"), qBound(0, v, 2));
+    s.sync();
+}
+
 QString SettingsBackend::versionAutoJoinServer(const QString& versionId) const
 {
     QSettings s(QCoreApplication::organizationName(),

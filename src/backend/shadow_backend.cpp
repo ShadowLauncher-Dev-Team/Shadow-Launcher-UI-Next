@@ -1955,9 +1955,29 @@ void ShadowBackend::setVersionAutoJoinServer(const QString& versionId, const QSt
     m_settings->setVersionAutoJoinServer(versionId, addr);
     emit versionLaunchSettingsChanged(versionId);
 }
+int ShadowBackend::versionProcessPriorityMode(const QString& versionId) const {
+    return m_settings->versionProcessPriorityMode(versionId);
+}
+void ShadowBackend::setVersionProcessPriorityMode(const QString& versionId, int mode) {
+    m_settings->setVersionProcessPriorityMode(versionId, mode);
+    emit launchDetailChanged();
+}
+int ShadowBackend::versionProcessPriority(const QString& versionId) const {
+    return m_settings->versionProcessPriority(versionId);
+}
+void ShadowBackend::setVersionProcessPriority(const QString& versionId, int v) {
+    m_settings->setVersionProcessPriority(versionId, v);
+    emit launchDetailChanged();
+}
+
 int ShadowBackend::resolvedGcMode(const QString& versionId) const {
     int ver = m_settings->versionGcMode(versionId);
     return ver > 0 ? ver : m_settings->gcMode();
+}
+int ShadowBackend::resolvedProcessPriority(const QString& versionId) const {
+    // mode==0 跟随全局；mode==1 用版本值。和 gcMode 同一套解析规则。
+    const int ver = m_settings->versionProcessPriorityMode(versionId);
+    return ver > 0 ? m_settings->versionProcessPriority(versionId) : m_settings->processPriority();
 }
 QString ShadowBackend::resolvedAutoJoinServer(const QString& versionId) const {
     QString ver = m_settings->versionAutoJoinServer(versionId);
@@ -2418,7 +2438,7 @@ QString ShadowBackend::exportLaunchScript(const QString& versionId, const QStrin
     // ——否则导出脚本用的是上次启动的残留值/默认值，版本级覆盖完全不生效（2026-08-10 修）
     if (m_settings && m_launch) {
         m_launch->setGcMode(resolvedGcMode(versionId));
-        m_launch->setProcessPriority(m_settings->processPriority());
+        m_launch->setProcessPriority(resolvedProcessPriority(versionId));
         m_launch->setFullscreenEnabled(resolvedFullscreen(versionId));
         m_launch->setAutoJoinServer(resolvedAutoJoinServer(versionId));
         m_launch->setWindowTitleOverride(resolvedWindowTitle(versionId));
@@ -2887,7 +2907,7 @@ void ShadowBackend::proceedLaunch(const QString& versionId, bool online, const Q
     m_launch->setVersionGameDir(m_settings->getVersionGameDir(versionId));
     // ── 启动细节（低垂果实批，2026-08-08）：版本级优先 → 全局 ──
     m_launch->setGcMode(resolvedGcMode(versionId));
-    m_launch->setProcessPriority(m_settings->processPriority());
+    m_launch->setProcessPriority(resolvedProcessPriority(versionId));
     m_launch->setFullscreenEnabled(resolvedFullscreen(versionId));
     m_launch->setAutoJoinServer(resolvedAutoJoinServer(versionId));
     m_launch->setWindowTitleOverride(resolvedWindowTitle(versionId));
