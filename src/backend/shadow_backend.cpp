@@ -3338,7 +3338,9 @@ void ShadowBackend::saveWardrobeSettings(const QString& skinPath, const QString&
             uploadSkin(skinPath, modelType);
         }
         if (!capeId.isEmpty()) {
-            emit logMessage(tr("披风选择: %1 (需在 Minecraft 官网设置)").arg(capeId));
+            // 披风切换走 AccountBackend::selectCape（PATCH /minecraft/profile/capes/active），
+            // 走 aliases/ID 都可；这里保留旧入口做兼容。
+            m_account->selectCape(capeId);
         }
     } else {
         // 离线账号没有皮肤服务：旧代码把 PNG 拷到 <数据目录>/skins/custom_skin.png，

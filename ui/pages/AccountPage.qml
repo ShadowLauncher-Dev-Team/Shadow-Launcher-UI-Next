@@ -28,6 +28,9 @@ Item {
         function onAccountsChanged() { page.accRev++ }
         // 衣柜失败（尺寸不对 / 上传失败）必须让用户看到，否则点"应用"像没反应
         function onWardrobeError(msg) { page.flash(msg) }
+        function onCapeChangeFinished(ok, msg) {
+            page.flash(ok ? "披风已切换" : ("披风切换失败：" + msg))
+        }
     }
     readonly property var yg: (b && b.yggdrasil) ? b.yggdrasil : null
 
@@ -54,7 +57,11 @@ Item {
     property int skinModel: 0
     readonly property string skinFile: (b && b.selectedSkinPath) ? b.selectedSkinPath : ""
     readonly property bool wardrobeBusy: (b && b.wardrobeBusy) ? b.wardrobeBusy : false
-    readonly property var capes: (b && b.availableCapes) ? b.availableCapes : []
+    // 真实可用披风：来自 AccountBackend（Mojang profile 返回你已拥有的披风）。
+    // 注意别再读 ShadowBackend.availableCapes —— 那是本地静态目录（全 Minecraft 披风图鉴），
+    // 不是"你有哪几条"，也不能切换。
+    readonly property var acct: (b && b.account) ? b.account : null
+    readonly property var capes: (acct && acct.capes) ? acct.capes : []
 
     // 原始皮肤优先（自己裁脸）；头部图兜底
     readonly property string rawHeadSource: (b && b.isOnline) ? (b.skinTexturePath || "") : ""
@@ -865,7 +872,9 @@ Item {
                     Text {
                         width: parent.width
                         topPadding: 4
-                        text: "披风仅供查阅：更换披风需到 Minecraft 官网设置，启动器无法代改。"
+                        text: page.capes.length > 0
+                              ? "点一下即刻切换；蓝框是当前使用中的披风。这里只列出你已拥有的披风。"
+                              : "这个账号没有可用披风（披风需在 Minecraft 活动中获得）。"
                         color: "#5d6673"
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -874,7 +883,8 @@ Item {
 
                     Flickable {
                         width: parent.width
-                        height: 52
+                        height: 56
+                        visible: page.capes.length > 0
                         contentWidth: capeRow.implicitWidth
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
@@ -886,25 +896,77 @@ Item {
                             Repeater {
                                 model: page.capes
                                 delegate: Rectangle {
-                                    width: 40
-                                    height: 48
+                                    id: capeTile
+                                    readonly property bool inUse: modelData && modelData.active === true
+                                    width: 44
+                                    height: 52
                                     radius: 6
-                                    color: capeHover.hovered ? "#161a22" : "#0e1116"
+                                    color: capeTile.inUse ? "#1f3b82f6"
+                                           : (capeHover.hovered ? "#161a22" : "#0e1116")
                                     border.width: 1
-                                    border.color: capeHover.hovered ? "#2a3341" : "#14171d"
+                                    border.color: capeTile.inUse ? "#3b82f6"
+                                                : (capeHover.hovered ? "#2a3341" : "#14171d")
 
                                     Image {
-                                        anchors.centerIn: parent
-                                        width: 32
-                                        height: 32
-                                        source: (modelData && modelData.preview) ? modelData.preview : ""
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        y: 4
+                                        width: 36
+                                        height: 36
+                                        // localPath 是本地缓存文件，QML 需要 file:/// 前缀
+                                        source: {
+                                            if (!modelData || !modelData.localPath) return ""
+                                            var p = modelData.localPath
+                                            return (p.indexOf("file:") === 0 || p.indexOf("qrc:") === 0)
+                                                   ? p : ("file:///" + p.replace(/\\/g, "/"))
+                                        }
                                         fillMode: Image.PreserveAspectFit
                                         asynchronous: true
                                     }
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        anchors.bottom: parent.bottom
+                                        anchors.bottomMargin: 3
+                                        width: parent.width - 6
+                                        text: capeTile.inUse ? "使用中"
+                                              : ((modelData && modelData.alias) ? modelData.alias : "")
+                                        color: capeTile.inUse ? "#cfe0ff" : "#6b7686"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 8
+                                        elide: Text.ElideRight
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
                                     HoverHandler { id: capeHover }
                                     TapHandler {
-                                        onTapped: page.flash((modelData && modelData.name) ? modelData.name : "")
+                                        onTapped: {
+                                            if (!page.acct || capeTile.inUse) return
+                                            page.acct.selectCape(modelData.alias)
+                                        }
                                     }
+                                }
+                            }
+                            // 卸下入口：selectCape("") 走 DELETE /capes/active
+                            Rectangle {
+                                width: 44
+                                height: 52
+                                radius: 6
+                                visible: {
+                                    for (var i = 0; i < page.capes.length; ++i)
+                                        if (page.capes[i] && page.capes[i].active === true) return true
+                                    return false
+                                }
+                                color: offHover.hovered ? "#161a22" : "#0e1116"
+                                border.width: 1
+                                border.color: offHover.hovered ? "#2a3341" : "#14171d"
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "卸下"
+                                    color: "#98a1ae"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 11
+                                }
+                                HoverHandler { id: offHover }
+                                TapHandler {
+                                    onTapped: { if (page.acct) page.acct.selectCape("") }
                                 }
                             }
                         }
