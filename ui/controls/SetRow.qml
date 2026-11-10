@@ -41,7 +41,9 @@ Item {
             color: Theme.fg3
             font.family: Theme.fontFamily
             font.pixelSize: 12
-            lineHeight: 1.45
+            // 同 SetNote：比例行高会把余量堆在文字下方导致偏上，用固定行高让字在行内居中
+            lineHeightMode: Text.FixedHeight
+            lineHeight: 17
             wrapMode: Text.WordWrap
         }
     }

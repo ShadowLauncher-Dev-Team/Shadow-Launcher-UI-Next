@@ -40,7 +40,8 @@ Item {
             color: Theme.fg3
             font.family: Theme.fontFamily
             font.pixelSize: 12
-            lineHeight: 1.45
+            lineHeightMode: Text.FixedHeight
+            lineHeight: 17
             wrapMode: Text.WordWrap
         }
     }
