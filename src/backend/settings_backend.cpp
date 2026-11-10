@@ -918,6 +918,7 @@ void SettingsBackend::setMinecraftDir(const QString& dir)
         QDir().mkpath(m_gameDir + QStringLiteral("/versions"));
         QDir().mkpath(m_gameDir + QStringLiteral("/libraries"));
         QDir().mkpath(m_gameDir + QStringLiteral("/assets"));
+        emit gameDirChanged();
         emit logMessage(tr("游戏目录已设置: %1").arg(m_gameDir));
     }
 }
@@ -954,6 +955,12 @@ bool SettingsBackend::isolationEnabled() const
 void SettingsBackend::setIsolationGameDir(const QString& dir)
 {
     m_isolation->setGameDir(dir);
+    // 与 setMinecraftDir 保持同一份目录：两处都会在启动时被调用，
+    // 任意一处改了都要让 QML 的 gameDir 跟着变（设置页要显示这个路径）。
+    if (!dir.isEmpty() && m_gameDir != dir) {
+        m_gameDir = dir;
+        emit gameDirChanged();
+    }
 }
 
 // ============================================================

@@ -17,6 +17,8 @@ Item {
     property bool versionsOpen: false
     // 版本设置（从版本页的版本卡片进入；叠在版本页之上，返回时回到版本页）
     property bool settingsOpen: false
+    // 全局设置（与「版本设置」是两件事：那个按版本，这个改全局默认值）
+    property bool prefsOpen: false
     property string settingsVersionId: ""
     property bool accountOpen: false
     // 下载页与版本页/账户页同一套：侧栏宽度收到 0，页面淡入 + 右移 24
@@ -34,7 +36,7 @@ Item {
     // 所以详情页的收起延后到页面已经完全不透明之后再执行（那一刻重排在纯不透明页后面，看不见）。
     property bool sideNarrowed: false          // 侧栏是否已真正收起（与页面可见性解耦）
     // fullOpen：页面是否处于"全屏页"状态（拦住底下页面的交互）
-    readonly property bool fullOpen: versionsOpen || accountOpen || resDetailOpen || settingsOpen
+    readonly property bool fullOpen: versionsOpen || accountOpen || resDetailOpen || settingsOpen || prefsOpen
     // sideCollapsed：侧栏是否应该收起。版本页/账户页立刻收；资源详情延后收（见 onResDetailOpenChanged）
     readonly property bool sideCollapsed: versionsOpen || accountOpen || sideNarrowed
     onResDetailOpenChanged: {
@@ -135,6 +137,7 @@ Item {
         || (root.resDetailOpen && resDetail ? resDetail.loadingVersions : false)
         // 版本设置里的扫盘 / 批量改名也点亮光条（几百个 jar 几秒没反馈会以为死了）
         || (root.settingsOpen && settingsPage.busy)
+        || (root.prefsOpen && prefsPage.busy)
 
     // --ui-reenter 的驱动：进/退 每 1.2s 交替一次，用于连拍验证"第二次及以后进入是否还有过渡"。
     // 第一次 open 是初始状态（不播 transition），之后每次切换都会走 states/transitions。
@@ -164,6 +167,11 @@ Item {
             root.settingsVersionId = b ? b.selectedVersion : ""
             root.settingsOpen = true
             reenterTimer.start()
+        }
+        // --ui-prefs [key]：全局设置页（截图/验收用；key 由 SettingsPage 自己解析 --ui-pane）
+        if (Qt.application.arguments.indexOf("--ui-prefs") >= 0) {
+            root.prefsOpen = true
+            sideBar.currentLabel = "设置"
         }
         if (Qt.application.arguments.indexOf("--ui-account") >= 0) root.accountOpen = true
         if (Qt.application.arguments.indexOf("--ui-download") >= 0) {
@@ -224,10 +232,17 @@ Item {
                 root.downloadOpen = false
                 root.progressOpen = false
                 root.multiplayerOpen = true
-            } else if (label === "启动" || label === "统计" || label === "设置") {
+            } else if (label === "设置") {
+                // 设置 = 全局默认值（独立全屏页）
                 root.downloadOpen = false
                 root.progressOpen = false
                 root.multiplayerOpen = false
+                root.prefsOpen = true
+            } else if (label === "启动" || label === "统计") {
+                root.downloadOpen = false
+                root.progressOpen = false
+                root.multiplayerOpen = false
+                root.prefsOpen = false
             }
             // 其余子项（帮助文档 / 实用网站）暂未实现：保持当前页面不动
         }
@@ -387,6 +402,42 @@ Item {
                 versionId: root.settingsVersionId
                 toast: toastHost
                 onClose: root.settingsOpen = false
+            }
+        }
+    }
+
+    // 全局设置（全窗覆盖；与版本设置页同一套入场）
+    Item {
+        id: prefsHost
+        anchors.fill: parent
+        visible: root.prefsOpen
+        clip: true
+        Rectangle { anchors.fill: parent; color: Theme.bg }
+        Item {
+            id: prefsSurface
+            anchors.fill: parent
+            // 收起态即出厂位置；打开时由 state 归位。
+            // 不用「Behavior + duration: open ? durPage : 0」—— 时长与位移同帧求值，
+            // 第二次打开会拿上一次的 0 直接瞬移。
+            x: 24
+            scale: 0.988
+            states: State {
+                name: "shown"
+                when: root.prefsOpen
+                PropertyChanges { target: prefsSurface; x: 0; scale: 1 }
+            }
+            transitions: Transition {
+                to: "shown"
+                ParallelAnimation {
+                    NumberAnimation { target: prefsSurface; property: "x"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                    NumberAnimation { target: prefsSurface; property: "scale"; duration: Theme.durPage; easing.type: Theme.easeEnter }
+                }
+            }
+            SettingsPage {
+                id: prefsPage
+                anchors.fill: parent
+                toast: toastHost
+                onClose: root.prefsOpen = false
             }
         }
     }

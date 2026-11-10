@@ -274,6 +274,18 @@ set_source_files_properties(ui/pages/VsModsPane.qml PROPERTIES QT_RESOURCE_ALIAS
 set_source_files_properties(ui/pages/VsPacksPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsPacksPane.qml)
 set_source_files_properties(ui/pages/VsSavesPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsSavesPane.qml)
 set_source_files_properties(ui/pages/VsExportPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsExportPane.qml)
+set_source_files_properties(ui/controls/SetGroup.qml PROPERTIES QT_RESOURCE_ALIAS controls/SetGroup.qml)
+set_source_files_properties(ui/controls/SetRow.qml PROPERTIES QT_RESOURCE_ALIAS controls/SetRow.qml)
+set_source_files_properties(ui/controls/SetStack.qml PROPERTIES QT_RESOURCE_ALIAS controls/SetStack.qml)
+set_source_files_properties(ui/controls/SetNote.qml PROPERTIES QT_RESOURCE_ALIAS controls/SetNote.qml)
+set_source_files_properties(ui/pages/SettingsPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/SettingsPage.qml)
+set_source_files_properties(ui/pages/SetGeneralPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/SetGeneralPane.qml)
+set_source_files_properties(ui/pages/SetJavaPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/SetJavaPane.qml)
+set_source_files_properties(ui/pages/SetLaunchPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/SetLaunchPane.qml)
+set_source_files_properties(ui/pages/SetDownloadPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/SetDownloadPane.qml)
+set_source_files_properties(ui/pages/SetAdvancedPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/SetAdvancedPane.qml)
+set_source_files_properties(ui/pages/SetAppearancePane.qml PROPERTIES QT_RESOURCE_ALIAS pages/SetAppearancePane.qml)
+set_source_files_properties(ui/pages/SetAboutPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/SetAboutPane.qml)
 
 qt_add_qml_module(ShadowLauncher
     URI ShadowLauncher.Next
@@ -325,6 +337,18 @@ qt_add_qml_module(ShadowLauncher
         ui/pages/VsPacksPane.qml
   ui/pages/VsSavesPane.qml
   ui/pages/VsExportPane.qml
+        ui/controls/SetGroup.qml
+        ui/controls/SetRow.qml
+        ui/controls/SetStack.qml
+        ui/controls/SetNote.qml
+        ui/pages/SettingsPage.qml
+        ui/pages/SetGeneralPane.qml
+        ui/pages/SetJavaPane.qml
+        ui/pages/SetLaunchPane.qml
+        ui/pages/SetDownloadPane.qml
+        ui/pages/SetAdvancedPane.qml
+        ui/pages/SetAppearancePane.qml
+        ui/pages/SetAboutPane.qml
 )
 
 # UI 契约检查（构建期硬失败：版本号装饰 / emoji 图标 / SpringAnimation / pixelSize 小数 ...）

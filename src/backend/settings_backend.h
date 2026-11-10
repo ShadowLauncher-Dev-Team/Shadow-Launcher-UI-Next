@@ -37,6 +37,8 @@ class SettingsBackend : public QObject {
     Q_PROPERTY(int maxDownloadThreads READ maxDownloadThreads WRITE setMaxDownloadThreads NOTIFY downloadSettingsChanged)
     Q_PROPERTY(double downloadSpeedLimitMB READ downloadSpeedLimitMB WRITE setDownloadSpeedLimitMB NOTIFY downloadSettingsChanged)
     Q_PROPERTY(int autoLangMode READ autoLangMode WRITE setAutoLangMode NOTIFY autoLangModeChanged)
+    // 游戏目录（只读）：设置页「高级」要显示绝对路径
+    Q_PROPERTY(QString gameDir READ gameDir NOTIFY gameDirChanged)
     // ── 启动细节（低垂果实批，2026-08-08：对齐 主流启动器/主流启动器）──
     Q_PROPERTY(int gcMode READ gcMode WRITE setGcMode NOTIFY launchDetailChanged)
     Q_PROPERTY(int processPriority READ processPriority WRITE setProcessPriority NOTIFY launchDetailChanged)
@@ -223,6 +225,9 @@ public:
     void setIsolationGameDir(const QString& dir);
     VersionIsolation* isolation() const { return m_isolation; }
     QString gameDir() const { return m_gameDir; }
+    // 设置页要显示「游戏目录」的绝对路径。原来只有 C++ 方法、没暴露给 QML，
+    // QML 里读 s.gameDir 会拿到 undefined（日志：Unable to assign [undefined] to QString）。
+
 
 signals:
     void javaPathChanged();
@@ -231,6 +236,7 @@ signals:
     void javaReadyChanged();
     void memorySettingsChanged();
     void generalSettingsChanged();
+    void gameDirChanged();
     void isolationChanged();
     void embeddedLoginChanged();
 
