@@ -243,25 +243,14 @@ Item {
         }
     }
 
-    // 拖动带（2026-11-05）：只有窗口上部一条可以拖。
-    // 放在 SideBar 之后、页面之前：页面里的按钮/输入框都在这层之上，
-    // 点到它们不会误触拖动；顶部空白处才拖动窗口。
-    // 放在外壳层而不是启动页，是为了让版本页/账户页这些全屏页也能拖。
-    MouseArea {
-        id: dragBand
-        anchors.left: sideBar.right
-        anchors.right: parent.right
-        anchors.top: parent.top
-        height: Theme.topH
-        acceptedButtons: Qt.LeftButton
-        property point pressPos
-        onPressed: (m) => { pressPos = Qt.point(m.x, m.y) }
-        onPositionChanged: (m) => {
-            if (!pressed || !root.hostWindow) return
-            root.hostWindow.x += m.x - pressPos.x
-            root.hostWindow.y += m.y - pressPos.y
-        }
-    }
+    // 窗口拖动已移到各页面 topBar 内部（见 DownloadPage / AccountPage 等的 topBar MouseArea →
+    // backend.beginWindowMove()）。
+    //
+    // 这里原来有一条"拖动带"（2026-11-05）：anchors.left 从侧栏右缘铺到窗口右边、高度 Theme.topH，
+    // 但它声明在页面之前 —— 后面的 stageHost / 各全屏页整个盖在它上面，不只是按钮。
+    // 结果就是它一次也收不到 press，窗口从来拖不动（owner 2026-11-10 实测报"顶栏拖不动"）。
+    // 另外它用 window.x += 手算位移，高 DPI 下会漂移、也拿不到贴边吸附。
+    // 两处都已被页面内 topBar 的 backend.beginWindowMove() 取代，故删除。
 
     // 启动页：始终在原地（被全屏页盖住），只关掉交互
     // 启动页宿主：clip + 实底包一层。
