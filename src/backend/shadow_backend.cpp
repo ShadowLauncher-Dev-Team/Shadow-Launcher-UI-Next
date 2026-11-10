@@ -68,6 +68,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QGuiApplication>
+#include <QWindow>
 #include <QDir>
 #include <QDirIterator>
 #include <QEvent>
@@ -1061,6 +1062,19 @@ void ShadowBackend::setDownloadSpeedLimitMB(double v) { m_settings->setDownloadS
 
 bool ShadowBackend::embeddedLoginEnabled() const {
     return m_settings->embeddedLoginEnabled();
+}
+
+void ShadowBackend::beginWindowMove()
+{
+    // 主窗口是唯一的 Qt::Window（任务小窗口是 Qt::Tool，弹窗是 Qt::Popup），
+    // 用它而不是"第一个可见窗口"，避免拖到别的窗口上去。
+    const auto windows = QGuiApplication::topLevelWindows();
+    for (QWindow* w : windows) {
+        if (!w || !w->isVisible()) continue;
+        if (w->type() != Qt::Window) continue;
+        w->startSystemMove();
+        return;
+    }
 }
 
 void ShadowBackend::setEmbeddedLoginEnabled(bool v) {

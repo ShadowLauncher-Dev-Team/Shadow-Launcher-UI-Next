@@ -255,6 +255,11 @@ public:
     void setDownloadSpeedLimitMB(double v);
     bool embeddedLoginEnabled() const;
     Q_INVOKABLE void setEmbeddedLoginEnabled(bool v);
+
+    // 让系统接管一次窗口拖动（无边框窗口没有系统标题栏，必须显式请求）。
+    // 用 QWindow::startSystemMove() 而不是在 QML 里改 window.x/y：后者在高 DPI 下会漂移，
+    // 也拿不到 Windows 的贴边吸附。
+    Q_INVOKABLE void beginWindowMove();
     // 2026-08-15：实验性 tooltip 开关
     bool modDepsTooltipEnabled() const;
     Q_INVOKABLE void setModDepsTooltipEnabled(bool v);

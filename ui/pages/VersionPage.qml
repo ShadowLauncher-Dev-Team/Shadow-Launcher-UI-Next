@@ -273,6 +273,14 @@ Item {
         anchors.top: parent.top
         height: 56
 
+        // 空白处拖动窗口（无边框窗口没有系统标题栏，必须显式请求系统接管移动）。
+        // 放在子项最前面：后面的按钮 / 搜索框都盖在它上面，控件照常响应，只有空白区能走到这里。
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            onPressed: { if (backend) backend.beginWindowMove() }
+        }
+
         SButton {
             anchors.left: parent.left
             anchors.leftMargin: page.narrow ? 18 : 24

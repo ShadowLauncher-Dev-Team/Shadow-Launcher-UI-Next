@@ -390,6 +390,16 @@ Item {
         anchors.top: parent.top
         height: page.topH
 
+        // 空白处拖动窗口。无边框窗口没有系统标题栏，必须显式请求系统接管移动
+        // （backend.beginWindowMove 内部走 QWindow::startSystemMove，保留贴边吸附）。
+        // 放在最前面声明：后面的标题 / tab / 搜索框 / 窗口按钮都盖在它上面，
+        // 所以只有真正的空白区能走到这里，控件仍按原样响应。
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            onPressed: { if (backend) backend.beginWindowMove() }
+        }
+
         Row {
             id: topLeft
             anchors.left: parent.left
