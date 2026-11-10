@@ -248,13 +248,13 @@ Item {
                 root.progressOpen = false
                 root.multiplayerOpen = false
                 root.prefsOpen = true
-            } else if (label === "启动" || label === "统计") {
+            } else if (label === "启动") {
                 root.downloadOpen = false
                 root.progressOpen = false
                 root.multiplayerOpen = false
                 root.prefsOpen = false
             }
-            // 其余子项（帮助文档 / 实用网站）暂未实现：保持当前页面不动
+            // 其余子项（帮助文档）暂未实现：保持当前页面不动
         }
         // 快起：前 40% 时间就收掉大部分宽度，与页面淡入同帧开始，视觉上是一次动作。
         // 复原（关闭全屏页）时 duration 归 0：那一刻全屏页还完全不透明，宽度跳变看不见；

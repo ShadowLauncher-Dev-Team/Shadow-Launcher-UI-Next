@@ -29,7 +29,6 @@ class LaunchBackend;
 class ResourceBackend;
 class ModpackImporter;
 class ModpackExporter;
-class StatsBackend;
 class JavaBackend;
 class UserDataBackend;
 class YggdrasilBackend;
@@ -883,9 +882,6 @@ signals:
     void neoforgeVersionsReady(const QVariantList& versions);
     void optifineVersionsReady(const QVariantList& versions);
 
-    // ── Game stats signals ──
-    void statsChanged();
-    void statsLoadingChanged();
 
     // ── Icon cache signal ──
     void iconCached(const QString& webpUrl, const QString& pngPath);
@@ -948,7 +944,6 @@ public:
     bool launchFinishedOk() const;
     QVariantList launchRepairs() const;
     ResourceBackend* resource() const { return m_resource; }
-    Q_INVOKABLE StatsBackend* statsBackend() const { return m_stats; }
     // 注意：QML 暴露必须用 Q_PROPERTY(QObject*) 模式——Q_INVOKABLE 返回具体类型指针
     // 会报 "Unknown method return type"（2026-08-04 导出功能踩坑实锤）
     Q_PROPERTY(QObject* javaBackend READ javaBackend CONSTANT)
@@ -956,16 +951,7 @@ public:
     QObject* javaBackend() const { return m_java; }
     QObject* userDataBackend() const { return m_userData; }
 
-    // Game stats (exposed directly on backend for QML compatibility)
-    Q_PROPERTY(double totalGameHours READ totalGameHours NOTIFY statsChanged)
-    Q_PROPERTY(QVariantList versionGameStats READ versionGameStats NOTIFY statsChanged)
-    Q_PROPERTY(bool statsLoading READ statsLoading NOTIFY statsLoadingChanged)
-    Q_PROPERTY(bool statsEmpty READ statsEmpty NOTIFY statsChanged)
-    Q_INVOKABLE void refreshGameStats();
     double totalGameHours() const;
-    QVariantList versionGameStats() const;
-    bool statsLoading() const;
-    bool statsEmpty() const;
     QObject* modManager() const;  // QML exposed (returns m_resource->modManager())
     QObject* multiplayer() const;
     QObject* mcFolder() const;  // 外部 .minecraft 选择/识别/读取（实现见 cpp，需完整类型转换）
@@ -1010,7 +996,6 @@ private:
     VersionBackend* m_version = nullptr;
     LaunchBackend* m_launch = nullptr;
     ResourceBackend* m_resource = nullptr;
-    StatsBackend*   m_stats = nullptr;
     JavaBackend*    m_java = nullptr;
     QObject* m_yggdrasil = nullptr;
     UserDataBackend* m_userData = nullptr;

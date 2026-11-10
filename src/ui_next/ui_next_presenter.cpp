@@ -5,7 +5,6 @@
 
 #include "backend/shadow_backend.h"
 #include "backend/account_backend.h"
-#include "backend/stats_backend.h"
 #include "backend/yggdrasil_backend.h"
 
 namespace ShadowLauncher {
@@ -34,8 +33,6 @@ void UiNextPresenter::initialize(ShadowBackend* backend)
     connect(m_backend, &ShadowBackend::javaPathChanged, this, [this] { bumpRevision(); });
     connect(m_backend, &ShadowBackend::memorySettingsChanged, this, [this] { bumpRevision(); });
     connect(m_backend, &ShadowBackend::gameDirChanged, this, [this] { bumpRevision(); });
-    if (auto* stats = m_backend->statsBackend())
-        connect(stats, &StatsBackend::statsChanged, this, [this] { bumpRevision(); });
     connect(m_backend, &ShadowBackend::microsoftLoginSuccess, this, [this] { emit loginSucceeded(); });
     connect(m_backend, &ShadowBackend::microsoftLoginFailed, this, [this](const QString& error) { emit loginFailed(error); });
 
@@ -275,14 +272,6 @@ int UiNextPresenter::systemMemoryPercent() const
     if (!m_backend)
         return 0;
     return m_backend->systemMemoryInfo().value(QStringLiteral("percent")).toInt();
-}
-
-double UiNextPresenter::totalHours() const
-{
-    if (!m_backend)
-        return 0.0;
-    auto* stats = m_backend->statsBackend();
-    return stats ? stats->totalHours() : 0.0;
 }
 
 QString UiNextPresenter::launchStatus() const

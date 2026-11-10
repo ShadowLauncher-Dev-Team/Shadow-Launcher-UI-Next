@@ -57,7 +57,6 @@
 #include "settings_backend.h"
 #include "version_backend.h"
 #include "../utils/temp_tracker.h"
-#include "stats_backend.h"
 #include "java_backend.h"
 
 #include <QClipboard>
@@ -193,12 +192,6 @@ ShadowBackend::ShadowBackend(QObject* parent)
     bp("LaunchBackend");
     m_resource = new ResourceBackend(this);
     bp("ResourceBackend");
-    m_stats = new StatsBackend(m_app->gameDir(), m_settings->isolation(), this);
-    // Forward stats signals to backend's QML property
-    connect(m_stats, &StatsBackend::statsChanged,     this, &ShadowBackend::statsChanged);
-    connect(m_stats, &StatsBackend::loadingChanged,    this, &ShadowBackend::statsLoadingChanged);
-    bp("StatsBackend");
-
     m_java = new JavaBackend(this);
     bp("JavaBackend");
 
@@ -2148,7 +2141,6 @@ void ShadowBackend::onApplyForeignFolder(const QString& root, int layout)
     m_version->setGameDir(root);
     m_launch->setGameDir(root);
     m_localMods->setGameDir(root);
-    if (m_stats) m_stats->setGameDir(root);
     if (m_modpackExporter)
         qobject_cast<ModpackExporter*>(m_modpackExporter)->setGameDir(root);
     if (m_modpackImporter)
@@ -2173,7 +2165,6 @@ void ShadowBackend::onRevertForeignFolder()
     m_version->setGameDir(defaultDir);
     m_launch->setGameDir(defaultDir);
     m_localMods->setGameDir(defaultDir);
-    if (m_stats) m_stats->setGameDir(defaultDir);
     if (m_modpackExporter)
         qobject_cast<ModpackExporter*>(m_modpackExporter)->setGameDir(defaultDir);
     if (m_modpackImporter)
@@ -5569,32 +5560,6 @@ void ShadowBackend::setAutoLangModeFromCombo(int idx)
     // idx → mode: 0→1(系统区域), 1→2(IP属地), 2→0(关闭)
     int mode = idx == 0 ? 1 : (idx == 1 ? 2 : 0);
     m_settings->setAutoLangMode(mode);
-}
-
-void ShadowBackend::refreshGameStats()
-{
-    if (m_stats)
-        m_stats->refresh();
-}
-
-double ShadowBackend::totalGameHours() const
-{
-    return m_stats ? m_stats->totalHours() : 0;
-}
-
-QVariantList ShadowBackend::versionGameStats() const
-{
-    return m_stats ? m_stats->versionStats() : QVariantList();
-}
-
-bool ShadowBackend::statsLoading() const
-{
-    return m_stats && m_stats->loading();
-}
-
-bool ShadowBackend::statsEmpty() const
-{
-    return m_stats ? m_stats->isEmpty() : true;
 }
 
 // ============================================================

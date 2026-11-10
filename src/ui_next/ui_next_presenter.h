@@ -45,7 +45,6 @@ class UiNextPresenter : public QObject {
     Q_PROPERTY(bool autoMemory READ autoMemory NOTIFY stateChanged)
     Q_PROPERTY(int systemMemoryTotalMb READ systemMemoryTotalMb NOTIFY stateChanged)
     Q_PROPERTY(int systemMemoryPercent READ systemMemoryPercent NOTIFY stateChanged)
-    Q_PROPERTY(double totalHours READ totalHours NOTIFY stateChanged)
     Q_PROPERTY(int revision READ revision NOTIFY stateChanged)
 
 public:
@@ -82,7 +81,6 @@ public:
     bool autoMemory() const;
     int systemMemoryTotalMb() const;
     int systemMemoryPercent() const;
-    double totalHours() const;
     int revision() const { return m_revision; }
 
     Q_INVOKABLE void refreshVersions();

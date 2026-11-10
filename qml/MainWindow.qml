@@ -35,7 +35,6 @@ Window {
     property bool _settingsFadeOut: false
     property bool _installProgressFadeOut: false
     property bool _dlFadeOut: false
-    property bool _usFadeOut: false
     property var runningListModel: []
     property bool _pendingCrashAnalyze: false   // Loader 异步时挂起崩溃分析请求
     property var _pendingCrashResult: null      // Loader 异步时挂起崩溃分析结果
@@ -91,11 +90,9 @@ Window {
             case "home": return qsTr("启动")
             case "download": return qsTr("下载")
             case "multiplayer": return qsTr("联机")
-            case "stats": return qsTr("统计")
             case "settings": return qsTr("设置")
             case "download_progress": return qsTr("下载进度")
             case "help_docs": return qsTr("帮助文档")
-            case "useful_sites": return qsTr("实用网站")
             default: return key
         }
     }
@@ -149,10 +146,9 @@ Window {
         offlineHistory = h
     }
     function switchPage(index) {
-        if (navListIndex === 4 && index !== 4) _settingsFadeOut = true
+        if (navListIndex === 3 && index !== 3) _settingsFadeOut = true
         if (navListIndex === 1 && index !== 1) _dlFadeOut = true
-        if (navListIndex === 5 && index !== 5) _installProgressFadeOut = true
-        if (navListIndex === 7 && index !== 7) _usFadeOut = true
+        if (navListIndex === 4 && index !== 4) _installProgressFadeOut = true
         navListIndex = index
         showVersionSelect = false
         showVersionSettings = false
@@ -380,7 +376,7 @@ Window {
         interval: 1800
         repeat: false
         onTriggered: {
-            if (navListIndex === 5) switchPage(0)
+            if (navListIndex === 4) switchPage(0)
         }
     }
 
@@ -579,11 +575,9 @@ Window {
                         ListElement { label: "启动"; pageKey: "home"; icon: "home" }
                         ListElement { label: "下载"; pageKey: "download"; icon: "download" }
                         ListElement { label: "联机"; pageKey: "multiplayer"; icon: "globe" }
-                        ListElement { label: "统计"; pageKey: "stats"; icon: "bar-chart-3" }
                         ListElement { label: "设置"; pageKey: "settings"; icon: "settings" }
                         ListElement { label: qsTr("下载进度"); pageKey: "download_progress"; icon: "download" }
                         ListElement { label: qsTr("帮助文档"); pageKey: "help_docs"; icon: "external-link" }
-                        ListElement { label: qsTr("实用网站"); pageKey: "useful_sites"; icon: "compass" }
                     }
 
                     Repeater {
@@ -784,14 +778,6 @@ Window {
                         Loader { asynchronous: true; anchors.fill: parent; active: true; source: "MultiplayerPage.qml"; onLoaded: { item.toastManager = toastManager } }
                     }
 
-                    Rectangle { anchors.fill: parent; visible: navListIndex === 3; color: hasCustomBg ? "transparent" : StyleTokens.bgPrimary
-                        opacity: navListIndex === 3 ? 1 : 0
-                        Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-                        Loader { id: statsPageLoader; asynchronous: true; anchors.fill: parent; active: navListIndex === 3; source: "StatsPage.qml"
-                            onLoaded: { if (item) { item.backend = backend; item.onVisible() } }
-                        }
-                    }
-
 
                     Rectangle { anchors.fill: parent; visible: navListIndex === 1 || _dlFadeOut; color: hasCustomBg ? "transparent" : StyleTokens.bgPrimary
                         opacity: navListIndex === 1 ? 1 : 0
@@ -814,11 +800,11 @@ Window {
                                 }
                             }
                         } }
-                    Rectangle { anchors.fill: parent; visible: navListIndex === 4 || _settingsFadeOut; color: hasCustomBg ? "transparent" : StyleTokens.bgPrimary
-                        opacity: navListIndex === 4 ? 1 : 0
+                    Rectangle { anchors.fill: parent; visible: navListIndex === 3 || _settingsFadeOut; color: hasCustomBg ? "transparent" : StyleTokens.bgPrimary
+                        opacity: navListIndex === 3 ? 1 : 0
                         Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
                         onOpacityChanged: { if (opacity === 0) _settingsFadeOut = false }
-                        Loader { id: settingsPageLoader; anchors.fill: parent; active: navListIndex === 4 || _settingsFadeOut; source: "SettingsPage.qml"
+                        Loader { id: settingsPageLoader; anchors.fill: parent; active: navListIndex === 3 || _settingsFadeOut; source: "SettingsPage.qml"
                             onLoaded: {
                                 if (item)
                                     item._initLangModeIdx = backend.diagAutoLangComboIdx()
@@ -828,13 +814,13 @@ Window {
                     // ── Install progress page ──
                     Rectangle {
                         anchors.fill: parent
-                        visible: navListIndex === 5 || _installProgressFadeOut
+                        visible: navListIndex === 4 || _installProgressFadeOut
                         color: hasCustomBg ? "transparent" : StyleTokens.bgPrimary
 
                         Rectangle {
                             anchors.fill: parent
                             color: hasCustomBg ? "transparent" : StyleTokens.bgPrimary
-                            opacity: navListIndex === 5 ? 1 : 0
+                            opacity: navListIndex === 4 ? 1 : 0
                             Behavior on opacity { NumberAnimation { duration: 150 } }
                             onOpacityChanged: { if (opacity === 0) _installProgressFadeOut = false }
 
@@ -847,34 +833,6 @@ Window {
                                 onLoaded: {
                                     item.mainWindow = appWindow
                                     item.backend = backend
-                                }
-                            }
-                        }
-                    }
-
-                    // ── Useful websites page ──
-                    Rectangle {
-                        anchors.fill: parent
-                        visible: navListIndex === 7 || _usFadeOut
-                        color: hasCustomBg ? "transparent" : StyleTokens.bgPrimary
-
-                        Rectangle {
-                            anchors.fill: parent
-                            color: hasCustomBg ? "transparent" : StyleTokens.bgPrimary
-                            opacity: navListIndex === 7 ? 1 : 0
-                            Behavior on opacity { NumberAnimation { duration: 150 } }
-                            onOpacityChanged: { if (opacity === 0) _usFadeOut = false }
-
-                            Loader {
-                                id: usefulSitesPageLoader
-                                asynchronous: true
-                                anchors.fill: parent
-                                active: navListIndex === 7 || _usFadeOut
-                                source: "UsefulWebsitesPage.qml"
-                                onLoaded: {
-                                    item.backend = backend
-                                    item.toastManager = toastManager
-                                    item.appWindow = appWindow
                                 }
                             }
                         }
@@ -1132,7 +1090,7 @@ Window {
                     item.navigateToProgress.connect(function() {
                         showInstallPage = false
                         // 下一帧再跳转，避免与 overlay 关闭动画竞争导致卡顿
-                        Qt.callLater(function() { navListIndex = 5 })
+                        Qt.callLater(function() { navListIndex = 4 })
                     })
                     item.requestMinimize.connect(function() { appWindow.showMinimized() })
                     item.requestClose.connect(function() { appWindow.close() })

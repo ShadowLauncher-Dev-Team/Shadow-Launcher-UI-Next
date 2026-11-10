@@ -944,16 +944,15 @@ int main(int argc, char *argv[])
             QString pageStr;
             if (parts.size() >= 1) {
                 pageStr = parts[0].toLower();
+                // 统计 / 实用网站两个页面已移除（2026-11-10），nav model 只剩 6 项
                 if (pageStr == "launch" || pageStr == "0") targetPage = 0;
                 else if (pageStr == "download" || pageStr == "1") targetPage = 1;
                 else if (pageStr == "multiplayer" || pageStr == "2") targetPage = 2;
-                else if (pageStr == "stats" || pageStr == "3") targetPage = 3;
-                else if (pageStr == "settings" || pageStr == "4") targetPage = 4;
-                else if (pageStr == "sites" || pageStr == "useful_sites" || pageStr == "7") targetPage = 7;
+                else if (pageStr == "settings" || pageStr == "3") targetPage = 3;
             }
             if (parts.size() >= 2) {
                 QString tabStr = parts[1].toLower();
-                if (pageStr == "settings" || pageStr == "4") {
+                if (pageStr == "settings" || pageStr == "3") {
                     if (tabStr == "general" || tabStr == "0") targetTab = 0;
                     else if (tabStr == "java" || tabStr == "1") targetTab = 1;
                     else if (tabStr == "memory" || tabStr == "2") targetTab = 2;

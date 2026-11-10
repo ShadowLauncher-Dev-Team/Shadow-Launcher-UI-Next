@@ -36,13 +36,11 @@ Item {
         { ic: "play",        label: "启动",     group: "main" },
         { ic: "download",    label: "下载",     group: "main" },
         { ic: "globe",       label: "联机",     group: "main" },
-        { ic: "bar-chart-3", label: "统计",     group: "main" },
         { ic: "settings",    label: "设置",     group: "main" }
     ]
     readonly property var subItems: [
         { ic: "list",     label: "下载进度", group: "sub" },
         { ic: "book-open", label: "帮助文档", group: "sub" },
-        { ic: "compass",  label: "实用网站", group: "sub" }
     ]
 
     Rectangle {
