@@ -400,9 +400,9 @@ public:
     /// 解析后的退出后命令（版本级优先）
     Q_INVOKABLE QString resolvedPostExitCommand(const QString& versionId) const;
     // ── 设置导入导出（转发 SettingsBackend）──
-    Q_INVOKABLE bool exportSettingsToFile(const QString& path);
-    Q_INVOKABLE bool importSettingsFromFile(const QString& path);
-    Q_INVOKABLE QString exportSettingsPreview() const;
+    
+    
+    
 
     // ── Language hot-switch ──
     void setEngine(QQmlEngine* engine) { m_engine = engine; }

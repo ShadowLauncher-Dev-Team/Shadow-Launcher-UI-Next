@@ -522,61 +522,61 @@ int main(int argc, char *argv[])
     checkpoint(QStringLiteral("ShadowBackend constructed"));
 
     // ── 设置自检（--ui-selftest-settings）────────────────────────────────────
-    // 一次性跑设置项的边界 / 导入导出断言，结果打进日志。
+    // 一次性跑设置项的边界 / 拒绝断言，结果打进日志。
     // 与 --ui-pane / --ui-reenter 同类的测试基础设施。
-    // 注意：会改写 QSettings（内存 / 限速 / GC 等），调用方跑前必须自行备份。
+    // 注意：会改写 QSettings（内存 / 限速 / GC / 语言等），调用方跑前必须自行备份。
     if (app.arguments().contains(QStringLiteral("--ui-selftest-settings"))) {
         SettingsBackend* st = backend->settings();
-        const QString tmpIni = QDir::temp().filePath(QStringLiteral("shadow_selftest_import.ini"));
-        // 构造一份"异常 + 恶意"配置：越界数值 + 命令字段
-        {
-            QSettings ini(tmpIni, QSettings::IniFormat);
-            ini.clear();
-            ini.setValue(QStringLiteral("memory/maxMB"), 999999);
-            ini.setValue(QStringLiteral("memory/minMB"), -5);
-            ini.setValue(QStringLiteral("launch/gcMode"), 99);
-            ini.setValue(QStringLiteral("launch/preLaunchCommand"), QStringLiteral("echo SELFTEST_MARKER"));
-            ini.setValue(QStringLiteral("download/speedLimitMB"), 0);
-            ini.sync();
-        }
         auto report = [](const QString& name, const QString& expected, const QString& actual) {
             qInfo().noquote() << QStringLiteral("[SELFTEST] %1  期望=%2  实际=%3  %4")
                                  .arg(name, expected, actual,
                                       expected == actual ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
         };
-        report(QStringLiteral("importSettingsFromFile"),
-               QStringLiteral("true"), st->importSettingsFromFile(tmpIni) ? QStringLiteral("true") : QStringLiteral("false"));
-        // F1：命令字段是否被导入
-        report(QStringLiteral("F1 导入后的 preLaunchCommand"),
-               QStringLiteral("(空/被拒绝)"), st->preLaunchCommand());
-        // F3：导入值是否经过 clamp
-        report(QStringLiteral("F3 导入后的 maxMB"), QStringLiteral("<=32768"), QString::number(st->maxMemoryMB()));
-        report(QStringLiteral("F3 导入后的 minMB"), QStringLiteral(">=256"), QString::number(st->minMemoryMB()));
-        // F7：枚举是否被校验
-        report(QStringLiteral("F7 导入后的 gcMode"), QStringLiteral("0..3"), QString::number(st->gcMode()));
-        // T1：setter 路径（对照，证明 setter 本身是 clamp 的）
+
+        // T1：内存 setter 路径（对照，证明 setter 本身是对的）
         st->setMaxMemory(999999);
         report(QStringLiteral("T1 setMaxMemory(999999)"), QStringLiteral("32768"), QString::number(st->maxMemoryMB()));
         st->setMinMemory(-5);
         report(QStringLiteral("T1 setMinMemory(-5)"), QStringLiteral("256"), QString::number(st->minMemoryMB()));
-        // F5：限速 0 的语义
+
+        // F5：限速 0 应表示不限速(-1)，而不是被夹成 0.1MB/s
         st->setDownloadSpeedLimitMB(0);
-        report(QStringLiteral("F5 setDownloadSpeedLimitMB(0)"), QStringLiteral("-1 或 0.1"),
-               QString::number(st->downloadSpeedLimitMB()));
-        // F7：setter 路径的枚举校验
+        report(QStringLiteral("F5 setDownloadSpeedLimitMB(0)"), QStringLiteral("-1"), QString::number(st->downloadSpeedLimitMB()));
+        st->setDownloadSpeedLimitMB(30);
+        report(QStringLiteral("F5 setDownloadSpeedLimitMB(30)"), QStringLiteral("20"), QString::number(st->downloadSpeedLimitMB()));
+
+        // F6：透明度 clamp
+        st->setSidebarOpacity(5.0);
+        report(QStringLiteral("F6 setSidebarOpacity(5.0)"), QStringLiteral("1"), QString::number(st->sidebarOpacity()));
+        st->setContentOpacity(-1.0);
+        report(QStringLiteral("F6 setContentOpacity(-1)"), QStringLiteral("0"), QString::number(st->contentOpacity()));
+
+        // F7：枚举范围
         st->setGcMode(99);
-        report(QStringLiteral("F7 setGcMode(99)"), QStringLiteral("0..3"), QString::number(st->gcMode()));
-        // T7：导出 → 改值 → 导入 → 应恢复
-        {
-            const QString tmpOut = QDir::temp().filePath(QStringLiteral("shadow_selftest_export.ini"));
-            const int gcBefore = st->gcMode();
-            st->exportSettingsToFile(tmpOut);
-            st->setGcMode(2);
-            st->importSettingsFromFile(tmpOut);
-            report(QStringLiteral("T7 导出→改→导入 往返 gcMode"),
-                   QString::number(gcBefore), QString::number(st->gcMode()));
-            QFile::remove(tmpOut);
-        }
+        report(QStringLiteral("F7 setGcMode(99)"), QStringLiteral("3"), QString::number(st->gcMode()));
+        st->setGcMode(0);
+        st->setProcessPriority(99);
+        report(QStringLiteral("F7 setProcessPriority(99)"), QStringLiteral("2"), QString::number(st->processPriority()));
+        st->setProcessPriority(1);
+        st->setFileDownloadSource(9);
+        report(QStringLiteral("F7 setFileDownloadSource(9)"), QStringLiteral("2"), QString::number(st->fileDownloadSource()));
+        st->setFileDownloadSource(1);
+        st->setListDownloadSource(-3);
+        report(QStringLiteral("F7 setListDownloadSource(-3)"), QStringLiteral("0"), QString::number(st->listDownloadSource()));
+        st->setListDownloadSource(1);
+
+        // F8：自动进服地址只接受 host[:port]
+        st->setAutoJoinServer(QStringLiteral("mc.example.com:25565"));
+        report(QStringLiteral("F8 合法地址应保留"), QStringLiteral("mc.example.com:25565"), st->autoJoinServer());
+        st->setAutoJoinServer(QStringLiteral("srv --username someone"));
+        report(QStringLiteral("F8 非法地址应被拒绝"), QStringLiteral("mc.example.com:25565"), st->autoJoinServer());
+        st->setAutoJoinServer(QString());
+
+        // F10：versionId 含路径分隔符时应拒绝写键
+        st->setVersionMemoryMode(QStringLiteral("../evil"), 2);
+        report(QStringLiteral("F10 setVersionMemoryMode(../evil)"), QStringLiteral("0"),
+               QString::number(st->versionMemoryMode(QStringLiteral("../evil"))));
+
         // T8：语言切换后是否置"需要重启"标志
         {
             const int langBefore = st->languageIndex();
@@ -585,7 +585,7 @@ int main(int argc, char *argv[])
                    QStringLiteral("true"), st->isLanguageChanged() ? QStringLiteral("true") : QStringLiteral("false"));
             st->setLanguageIndex(langBefore);
         }
-        QFile::remove(tmpIni);
+
         qInfo().noquote() << QStringLiteral("[SELFTEST] 结束（本次运行已改写设置，跑完请恢复备份）");
     }
 

@@ -138,11 +138,11 @@ public:
     Q_INVOKABLE QString browseJava();          // QML alias
     // ── 设置导入导出（2026-08-08：主流启动器 CacheExportConfig 对齐）──
     /// 导出全部启动器设置到指定文件（ini 格式），成功返回 true
-    Q_INVOKABLE bool exportSettingsToFile(const QString& path);
+
     /// 从文件导入设置（合并，覆盖已有值），成功返回 true
-    Q_INVOKABLE bool importSettingsFromFile(const QString& path);
+
     /// 导出的设置内容预览（供 QML 确认弹窗展示）
-    Q_INVOKABLE QString exportSettingsPreview() const;
+
     void setMinecraftDir(const QString& dir);
     Q_INVOKABLE void setIsolationEnabled(bool enabled);
     Q_INVOKABLE void migrateVersionToIsolated(const QString& versionId);
@@ -162,13 +162,16 @@ public:
 
     // ── 启动细节 getter/setter（全局）──
     int gcMode() const { return m_gcMode; }
-    void setGcMode(int v) { m_gcMode = v; saveSettings(); emit launchDetailChanged(); }
+    // GC 模式：0=自动 1=分代ZGC 2=仅G1GC 3=不指定（见 launcher.cpp collectGcArgs）
+    void setGcMode(int v) { m_gcMode = qBound(0, v, 3); saveSettings(); emit launchDetailChanged(); }
     int processPriority() const { return m_processPriority; }
-    void setProcessPriority(int v) { m_processPriority = v; saveSettings(); emit launchDetailChanged(); }
+    // 进程优先级：0=AboveNormal 1=默认 2=BelowNormal（见 launcher.cpp setProcessPriority）
+    void setProcessPriority(int v) { m_processPriority = qBound(0, v, 2); saveSettings(); emit launchDetailChanged(); }
     bool fullscreenEnabled() const { return m_fullscreenEnabled; }
     void setFullscreenEnabled(bool v) { m_fullscreenEnabled = v; saveSettings(); emit launchDetailChanged(); }
     QString autoJoinServer() const { return m_autoJoinServer; }
-    void setAutoJoinServer(const QString& v) { m_autoJoinServer = v; saveSettings(); emit launchDetailChanged(); }
+    // 实现见 cpp：只接受 host[:port]，拒绝会污染 --server 后续参数的内容
+    void setAutoJoinServer(const QString& v);
     QString windowTitleOverride() const { return m_windowTitleOverride; }
     void setWindowTitleOverride(const QString& v) { m_windowTitleOverride = v; saveSettings(); emit launchDetailChanged(); }
     QString preLaunchCommand() const { return m_preLaunchCommand; }
@@ -180,9 +183,9 @@ public:
     QString customBgPath() const { return m_customBgPath; }
     void setCustomBgPath(const QString& path) { m_customBgPath = path; saveSettings(); emit customBgChanged(); }
     qreal sidebarOpacity() const { return m_sidebarOpacity; }
-    void setSidebarOpacity(qreal v) { m_sidebarOpacity = v; saveSettings(); emit customBgChanged(); }
+    void setSidebarOpacity(qreal v) { m_sidebarOpacity = qBound(0.0, v, 1.0); saveSettings(); emit customBgChanged(); }
     qreal contentOpacity() const { return m_contentOpacity; }
-    void setContentOpacity(qreal v) { m_contentOpacity = v; saveSettings(); emit customBgChanged(); }
+    void setContentOpacity(qreal v) { m_contentOpacity = qBound(0.0, v, 1.0); saveSettings(); emit customBgChanged(); }
     qreal backgroundBlur() const { return m_backgroundBlur; }
     void setBackgroundBlur(qreal v) { m_backgroundBlur = qBound(0.0, v, 1.0); saveSettings(); emit customBgChanged(); }
     qreal cropX() const { return m_cropX; }
@@ -209,15 +212,18 @@ public:
 
     // Download settings
     int fileDownloadSource() const { return m_fileDownloadSource; }
-    void setFileDownloadSource(int v) { m_fileDownloadSource = v; saveSettings(); emit downloadSettingsChanged(); }
+    // DownloadSourcePolicy：0=镜像优先 1=官方优先 2=自动切换（utils/types.h）
+    void setFileDownloadSource(int v) { m_fileDownloadSource = qBound(0, v, 2); saveSettings(); emit downloadSettingsChanged(); }
     int listDownloadSource() const { return m_listDownloadSource; }
-    void setListDownloadSource(int v) { m_listDownloadSource = v; saveSettings(); emit downloadSettingsChanged(); }
+    void setListDownloadSource(int v) { m_listDownloadSource = qBound(0, v, 2); saveSettings(); emit downloadSettingsChanged(); }
     int maxDownloadThreads() const { return m_maxDownloadThreads; }
     /// 并发上限 1..24：默认 16。64 是旧值 —— BMCLAPI/CF 在 64 并发下会 429/饿死连接，
     /// 且 64 个 worker 各自持有 QNAM，连接数与内存都失控（契约 S1）。
     void setMaxDownloadThreads(int v) { m_maxDownloadThreads = qBound(1, v, 24); saveSettings(); emit downloadSettingsChanged(); }
     double downloadSpeedLimitMB() const { return m_downloadSpeedLimitMB; }
-    void setDownloadSpeedLimitMB(double v) { m_downloadSpeedLimitMB = (v < 0) ? -1.0 : qBound(0.1, v, 20.0); saveSettings(); emit downloadSettingsChanged(); }
+    // 限速：<=0 一律表示不限速（-1）。
+    // 旧实现用 v<0，导致 UI 拖到 0 想表示"不限速"时被夹成 0.1MB/s（几乎断网）。
+    void setDownloadSpeedLimitMB(double v) { m_downloadSpeedLimitMB = (v <= 0) ? -1.0 : qBound(0.1, v, 20.0); saveSettings(); emit downloadSettingsChanged(); }
     void setIsolationGameDir(const QString& dir);
     VersionIsolation* isolation() const { return m_isolation; }
     QString gameDir() const { return m_gameDir; }

@@ -2043,15 +2043,7 @@ QString ShadowBackend::resolvedPostExitCommand(const QString& versionId) const {
     return m_settings->postExitCommand();
 }
 
-bool ShadowBackend::exportSettingsToFile(const QString& path) {
-    return m_settings->exportSettingsToFile(path);
-}
-bool ShadowBackend::importSettingsFromFile(const QString& path) {
-    return m_settings->importSettingsFromFile(path);
-}
-QString ShadowBackend::exportSettingsPreview() const {
-    return m_settings->exportSettingsPreview();
-}
+// 设置导入导出已随 SettingsBackend 一并删除（导入路径可导致任意命令执行）。
 
 
 // ── Persistence helpers (delegated to SettingsBackend-style QSettings) ──

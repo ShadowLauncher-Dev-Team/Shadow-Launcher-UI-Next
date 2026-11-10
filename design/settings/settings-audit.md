@@ -248,6 +248,62 @@ ShadowLauncher.exe --ui-next --ui-selftest-settings
 
 **F1 的实证细节**：ini 里写的 `echo SELFTEST_MARKER` 原样进入了 `preLaunchCommand`。本次自检**没有真的启动游戏**，所以命令未被执行；但链路已确认 —— 用户下次点启动时 `cmd.exe /c echo SELFTEST_MARKER` 就会跑。
 
+
+---
+
+## 五·补2、修复记录（2026-11-10）
+
+> 影的决定：设置页做成独立全屏页；**导入导出整个后端逻辑删除**；启动前/退出后命令保留；建立「全局默认 → 版本覆盖」两层；外观页独立、后端准备重写。
+> 本轮先把后端问题修完（预备删除的除外）。
+
+| 编号 | 修复内容 | 验证方式 | 结果 |
+|---|---|---|---|
+| **F1/F4/F9** | **删除** `exportSettingsToFile` / `importSettingsFromFile` / `exportSettingsPreview`（SettingsBackend + ShadowBackend 转发 + 头文件声明全部移除） | 构建通过；攻击链从源头消失 | ✅ 已删除 |
+| **F2** | `deleteVersion` 双重校验：`isSafeVersionId()`（拒空/`.`/`..`/路径分隔符）+ `QDir::cleanPath` 前缀确认目标仍在 `<gameDir>/versions/` 下 | `isSafeVersionId` 由 F10 断言实证有效；不实际调用以免误删 | ✅ 已修 |
+| **F3** | `loadSettings` 全量 clamp：内存（256..32768 且保证 min≤max）、语言(0..8)、autoLangMode(0..2)、透明度/模糊/裁剪(0..1)、窗口尺寸(100..7680 / 100..4320)、gcMode(0..3)、processPriority(0..2)、下载源(0..2)、限速(≤0→-1) | **跨进程**：注入非法值→重启→读回 | ✅ 全部夹回 |
+| **F5** | `setDownloadSpeedLimitMB`：`v < 0` → `v <= 0`，0 表示不限速 | 自检 | ✅ 0 → -1 |
+| **F6** | `setSidebarOpacity` / `setContentOpacity` 加 `qBound(0,1)` | 自检 | ✅ 5.0→1 / -1→0 |
+| **F7** | `setGcMode`(0..3) / `setProcessPriority`(0..2) / `setFileDownloadSource`(0..2) / `setListDownloadSource`(0..2) 加范围 | 自检 | ✅ 99→3 / 99→2 / 9→2 / -3→0 |
+| **F8** | `setAutoJoinServer` 加 `isSafeServerAddress()`：只接受 `[A-Za-z0-9._:-]{1,255}`，非法**拒绝**（不静默存下）；`loadSettings` 读历史值时同样校验，非法丢弃 | 自检 | ✅ 非法地址被拒 |
+| **F10** | 新增 `isSafeVersionId()`，19 处 `setVersion*` 写盘前校验 | 自检 | ✅ `../evil` 被拒 |
+| **F11** | `setMaxMemory` 日志改为「请求=X 生效=Y」 | 代码审查 | ✅ 已修 |
+
+### 修复后的自检输出（`--ui-selftest-settings`，2026-11-10 13:50）
+
+```
+T1 setMaxMemory(999999)         期望=32768   实际=32768   PASS
+T1 setMinMemory(-5)             期望=256     实际=256     PASS
+F5 setDownloadSpeedLimitMB(0)   期望=-1      实际=-1      PASS
+F5 setDownloadSpeedLimitMB(30)  期望=20      实际=20      PASS
+F6 setSidebarOpacity(5.0)       期望=1       实际=1       PASS
+F6 setContentOpacity(-1)        期望=0       实际=0       PASS
+F7 setGcMode(99)                期望=3       实际=3       PASS
+F7 setProcessPriority(99)       期望=2       实际=2       PASS
+F7 setFileDownloadSource(9)     期望=2       实际=2       PASS
+F7 setListDownloadSource(-3)    期望=0       实际=0       PASS
+F8 合法地址应保留               期望=mc.example.com:25565  实际=mc.example.com:25565  PASS
+F8 非法地址应被拒绝             期望=mc.example.com:25565  实际=mc.example.com:25565  PASS
+F10 setVersionMemoryMode(../evil) 期望=0     实际=0       PASS
+T8 切语言后 languageChanged     期望=true    实际=true    PASS
+```
+
+### 跨进程 clamp 验证（注入 → 重启 → 读回）
+
+```
+minMB      -5      → 256
+maxMB      999999  → 32768
+gcMode     99      → 3
+priority   99      → 2
+fileSource 9       → 2
+sidebarOp  5.0     → 1
+autoJoin   'srv --username evil' → (空，被丢弃)
+```
+
+### 仍然保留、需要设置页 UI 兜的
+- `maxMemoryMB` 上限 32768 仍与物理内存无关 —— 设置页应按 `getMemoryStatus()` 动态限制。
+- `preLaunchCommand` / `postExitCommand` 仍经 `cmd.exe /c` 执行（这是功能本身），UI 必须带风险提示。
+- `languageIndex` 的合法上限 8 是保守估计（当前实际用 0..2），做语言页时以真实语言表为准。
+
 ---
 
 ## 六、待影决策

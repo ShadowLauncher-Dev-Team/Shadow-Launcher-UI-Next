@@ -105,6 +105,32 @@ SettingsBackend::SettingsBackend(QObject* parent)
     QTimer::singleShot(100, this, &SettingsBackend::doAutoDetect);
 }
 
+namespace {
+
+// versionId 会被直接拼进 QSettings 键（"versionLaunch/<id>/..."）和文件系统路径
+// （"<gameDir>/versions/<id>"）。只允许单段目录名：拒绝空、"." / ".."、路径分隔符。
+// 少了这个校验，deleteVersion("..") 会递归删掉整个 gameDir（owner 2026-11-10 审计 F2）。
+bool isSafeVersionId(const QString& id)
+{
+    if (id.isEmpty()) return false;
+    if (id == QLatin1String(".") || id == QLatin1String("..")) return false;
+    if (id.contains(QLatin1Char('/')) || id.contains(QLatin1Char('\\'))) return false;
+    if (id.contains(QLatin1String(".."))) return false;
+    return true;
+}
+
+// 自动进服地址最终作为 "--server <addr>" 传给游戏。
+// 只接受 host / host:port：拒绝空格、引号、"--" 等，
+// 否则 "srv --username someone" 这类内容可以给游戏塞额外参数（审计 F8）。
+bool isSafeServerAddress(const QString& v)
+{
+    if (v.isEmpty()) return false;
+    static const QRegularExpression re(QStringLiteral("^[A-Za-z0-9._:\\-]{1,255}$"));
+    return re.match(v).hasMatch();
+}
+
+} // namespace
+
 // ============================================================
 // Settings persistence (QSettings)
 // ============================================================
@@ -119,37 +145,44 @@ void SettingsBackend::loadSettings()
     m_javaMajor = s.value(QStringLiteral("java/major"), 0).toInt();
     m_javaReady = (m_javaMajor > 0);
 
-    m_minMemoryMB = s.value(QStringLiteral("memory/minMB"), 512).toInt();
-    m_maxMemoryMB = s.value(QStringLiteral("memory/maxMB"), 2048).toInt();
+    // 边界校验：QSettings 里的值可能来自旧版本、损坏数据或外部写入，
+    // 不能假设它们经过 setter。这里统一夹一次，保证内存态永远合法
+    // （否则 minMB=-5 会被读成 4294967291，min>max，启动参数直接非法）。
+    m_minMemoryMB = qBound(256, s.value(QStringLiteral("memory/minMB"), 512).toInt(), 32768);
+    m_maxMemoryMB = qBound(m_minMemoryMB, s.value(QStringLiteral("memory/maxMB"), 2048).toInt(), 32768);
     m_autoMemory = s.value(QStringLiteral("memory/autoMemory"), true).toBool();
     m_embeddedLoginEnabled = s.value(QStringLiteral("general/embeddedLogin"), false).toBool();
     m_modDepsTooltipEnabled = s.value(QStringLiteral("general/modDepsTooltip"), false).toBool();   // 实验性，默认关
-    m_languageIndex = s.value(QStringLiteral("general/languageIndex"), 0).toInt();
+    m_languageIndex = qBound(0, s.value(QStringLiteral("general/languageIndex"), 0).toInt(), 8);
     m_launchLanguageIndex = m_languageIndex;  // snapshot for restart detection
     m_lastLaunchedVersion = s.value(QStringLiteral("general/lastVersion"), QString()).toString();
     m_lastSelectedVersion = s.value(QStringLiteral("general/lastSelectedVersion"), QString()).toString();
 
     // Custom background
     m_customBgPath = s.value(QStringLiteral("customBg/path"), QString()).toString();
-    m_sidebarOpacity = s.value(QStringLiteral("customBg/sidebarOpacity"), 0.90).toDouble();
-    m_contentOpacity = s.value(QStringLiteral("customBg/contentOpacity"), 0.70).toDouble();
-    m_backgroundBlur = s.value(QStringLiteral("customBg/blur"), 0.0).toDouble();
-    m_cropX = s.value(QStringLiteral("customBg/cropX"), 0.5).toDouble();
-    m_cropY = s.value(QStringLiteral("customBg/cropY"), 0.5).toDouble();
+    m_sidebarOpacity = qBound(0.0, s.value(QStringLiteral("customBg/sidebarOpacity"), 0.90).toDouble(), 1.0);
+    m_contentOpacity = qBound(0.0, s.value(QStringLiteral("customBg/contentOpacity"), 0.70).toDouble(), 1.0);
+    m_backgroundBlur = qBound(0.0, s.value(QStringLiteral("customBg/blur"), 0.0).toDouble(), 1.0);
+    m_cropX = qBound(0.0, s.value(QStringLiteral("customBg/cropX"), 0.5).toDouble(), 1.0);
+    m_cropY = qBound(0.0, s.value(QStringLiteral("customBg/cropY"), 0.5).toDouble(), 1.0);
 
     // Auto-language mode
-    m_autoLangMode = s.value(QStringLiteral("general/autoLangMode"), 1).toInt();
+    m_autoLangMode = qBound(0, s.value(QStringLiteral("general/autoLangMode"), 1).toInt(), 2);
     qCInfo(logApp) << QStringLiteral("[autoLang] loaded mode=%1 from QSettings").arg(m_autoLangMode);
 
     // Window resolution
-    m_windowWidth  = s.value(QStringLiteral("launch/windowWidth"), 854).toInt();
-    m_windowHeight = s.value(QStringLiteral("launch/windowHeight"), 480).toInt();
+    m_windowWidth  = qBound(100, s.value(QStringLiteral("launch/windowWidth"), 854).toInt(), 7680);
+    m_windowHeight = qBound(100, s.value(QStringLiteral("launch/windowHeight"), 480).toInt(), 4320);
 
     // ── 启动细节（低垂果实批，2026-08-08）──
-    m_gcMode = s.value(QStringLiteral("launch/gcMode"), 0).toInt();
-    m_processPriority = s.value(QStringLiteral("launch/processPriority"), 1).toInt();
+    m_gcMode = qBound(0, s.value(QStringLiteral("launch/gcMode"), 0).toInt(), 3);
+    m_processPriority = qBound(0, s.value(QStringLiteral("launch/processPriority"), 1).toInt(), 2);
     m_fullscreenEnabled = s.value(QStringLiteral("launch/fullscreen"), false).toBool();
-    m_autoJoinServer = s.value(QStringLiteral("launch/autoJoinServer"), QString()).toString();
+    {
+        // 历史值/外部写入的地址也要过一遍校验，非法则丢弃（返回空 = 不自动进服）
+        const QString join = s.value(QStringLiteral("launch/autoJoinServer"), QString()).toString().trimmed();
+        m_autoJoinServer = isSafeServerAddress(join) ? join : QString();
+    }
     m_windowTitleOverride = s.value(QStringLiteral("launch/windowTitle"), QString()).toString();
     m_preLaunchCommand = s.value(QStringLiteral("launch/preLaunchCommand"), QString()).toString();
     m_postExitCommand = s.value(QStringLiteral("launch/postExitCommand"), QString()).toString();
@@ -159,11 +192,14 @@ void SettingsBackend::loadSettings()
     // 加载器（Forge/NeoForge/Fabric/OptiFine）的下载源在 version_backend /
     // mod_loader_installer 内独立处理（2026-08-15：加载器默认镜像优先，
     // 与全局 fileSource 解耦，避免影响 MC 下载）。
-    m_fileDownloadSource = s.value(QStringLiteral("download/fileSource"), 1).toInt();
-    m_listDownloadSource = s.value(QStringLiteral("download/listSource"), 1).toInt();
+    m_fileDownloadSource = qBound(0, s.value(QStringLiteral("download/fileSource"), 1).toInt(), 2);
+    m_listDownloadSource = qBound(0, s.value(QStringLiteral("download/listSource"), 1).toInt(), 2);
     // 旧配置里的 64 也要夹回合理区间（读时钳制，避免历史值绕过 setter）
     m_maxDownloadThreads = qBound(1, s.value(QStringLiteral("download/threadLimit"), 16).toInt(), 24);
-    m_downloadSpeedLimitMB = s.value(QStringLiteral("download/speedLimitMB"), -1.0).toDouble();
+    {
+        const double lim = s.value(QStringLiteral("download/speedLimitMB"), -1.0).toDouble();
+        m_downloadSpeedLimitMB = (lim <= 0.0) ? -1.0 : qBound(0.1, lim, 20.0);
+    }
 }
 
 void SettingsBackend::saveSettings()
@@ -515,7 +551,8 @@ void SettingsBackend::setMaxMemory(int mb)
 {
     m_maxMemoryMB = qBound(m_minMemoryMB, mb, 32768);
     saveSettings();
-    qCInfo(logUI) << QStringLiteral("游戏内存: ") << mb << QStringLiteral("MB");
+    // 打实际生效值而不是入参：入参可能被夹掉，日志打原始值会误导排查（审计 F11）
+    qCInfo(logUI) << QStringLiteral("游戏内存: 请求=") << mb << QStringLiteral(" 生效=") << m_maxMemoryMB;
     emit memorySettingsChanged();
 }
 
@@ -541,6 +578,7 @@ int SettingsBackend::versionMemoryMode(const QString& versionId) const
 
 void SettingsBackend::setVersionMemoryMode(const QString& versionId, int mode)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionMemory/") + versionId + QStringLiteral("/mode"), mode);
@@ -557,6 +595,7 @@ int SettingsBackend::versionMemoryManualMB(const QString& versionId) const
 
 void SettingsBackend::setVersionMemoryManualMB(const QString& versionId, int mb)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionMemory/") + versionId + QStringLiteral("/manualMB"), mb);
@@ -574,6 +613,7 @@ int SettingsBackend::versionJavaMode(const QString& versionId) const
 }
 void SettingsBackend::setVersionJavaMode(const QString& versionId, int mode)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/javaMode"), mode);
@@ -588,6 +628,7 @@ int SettingsBackend::versionJvmArgsMode(const QString& versionId) const
 }
 void SettingsBackend::setVersionJvmArgsMode(const QString& versionId, int mode)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/jvmArgsMode"), mode);
@@ -601,6 +642,7 @@ QString SettingsBackend::versionJvmArgs(const QString& versionId) const
 }
 void SettingsBackend::setVersionJvmArgs(const QString& versionId, const QString& args)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/jvmArgs"), args);
@@ -615,6 +657,7 @@ int SettingsBackend::versionGameArgsMode(const QString& versionId) const
 }
 void SettingsBackend::setVersionGameArgsMode(const QString& versionId, int mode)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/gameArgsMode"), mode);
@@ -628,6 +671,7 @@ QString SettingsBackend::versionGameArgs(const QString& versionId) const
 }
 void SettingsBackend::setVersionGameArgs(const QString& versionId, const QString& args)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/gameArgs"), args);
@@ -642,6 +686,7 @@ int SettingsBackend::versionHighPerfGpuMode(const QString& versionId) const
 }
 void SettingsBackend::setVersionHighPerfGpuMode(const QString& versionId, int mode)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/highPerfGpuMode"), mode);
@@ -655,6 +700,7 @@ bool SettingsBackend::versionHighPerfGpu(const QString& versionId) const
 }
 void SettingsBackend::setVersionHighPerfGpu(const QString& versionId, bool v)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/highPerfGpu"), v);
@@ -671,6 +717,7 @@ int SettingsBackend::versionGcMode(const QString& versionId) const
 }
 void SettingsBackend::setVersionGcMode(const QString& versionId, int mode)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/gcMode"), mode);
@@ -684,6 +731,7 @@ QString SettingsBackend::versionAutoJoinServer(const QString& versionId) const
 }
 void SettingsBackend::setVersionAutoJoinServer(const QString& versionId, const QString& addr)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/autoJoinServer"), addr);
@@ -700,6 +748,7 @@ int SettingsBackend::versionFullscreenMode(const QString& versionId) const
 }
 void SettingsBackend::setVersionFullscreenMode(const QString& versionId, int mode)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/fullscreenMode"), mode);
@@ -713,6 +762,7 @@ bool SettingsBackend::versionFullscreen(const QString& versionId) const
 }
 void SettingsBackend::setVersionFullscreen(const QString& versionId, bool v)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/fullscreen"), v);
@@ -726,6 +776,7 @@ int SettingsBackend::versionWindowTitleMode(const QString& versionId) const
 }
 void SettingsBackend::setVersionWindowTitleMode(const QString& versionId, int mode)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/windowTitleMode"), mode);
@@ -739,6 +790,7 @@ QString SettingsBackend::versionWindowTitle(const QString& versionId) const
 }
 void SettingsBackend::setVersionWindowTitle(const QString& versionId, const QString& v)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/windowTitle"), v);
@@ -752,6 +804,7 @@ int SettingsBackend::versionPreLaunchMode(const QString& versionId) const
 }
 void SettingsBackend::setVersionPreLaunchMode(const QString& versionId, int mode)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/preLaunchMode"), mode);
@@ -765,6 +818,7 @@ QString SettingsBackend::versionPreLaunchCommand(const QString& versionId) const
 }
 void SettingsBackend::setVersionPreLaunchCommand(const QString& versionId, const QString& v)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/preLaunchCommand"), v);
@@ -778,6 +832,7 @@ int SettingsBackend::versionPostExitMode(const QString& versionId) const
 }
 void SettingsBackend::setVersionPostExitMode(const QString& versionId, int mode)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/postExitMode"), mode);
@@ -791,99 +846,38 @@ QString SettingsBackend::versionPostExitCommand(const QString& versionId) const
 }
 void SettingsBackend::setVersionPostExitCommand(const QString& versionId, const QString& v)
 {
+    if (!isSafeVersionId(versionId)) return;   // 防键空间污染 / 路径越界
     QSettings s(QCoreApplication::organizationName(),
                 QCoreApplication::applicationName());
     s.setValue(QStringLiteral("versionLaunch/") + versionId + QStringLiteral("/postExitCommand"), v);
     s.sync();
 }
 
-// ============================================================
-// 设置导入导出（2026-08-08：主流启动器 CacheExportConfig 对齐）
-// 导出：全部 QSettings 键值 → ini 文件（QSettings 原生格式，跨启动器可读）
-// 导入：读取 ini 合并覆盖（不删现有键，避免部分导入破坏状态）
-// ============================================================
+// 设置导入导出（exportSettingsToFile / importSettingsFromFile / exportSettingsPreview）
+// 已于 2026-11-10 整体删除：功能几乎不用，且导入路径是真实攻击面 ——
+// 黑名单只过滤 token/secret/password/key/beta，launch/preLaunchCommand 会被原样写入 QSettings，
+// 重启后由 Launcher::runPreLaunchCommand() 经 cmd.exe /c 执行（导入一份 .ini = 任意命令执行）。
+// 需要迁移配置时另做「受控」方案。
 
-bool SettingsBackend::exportSettingsToFile(const QString& path)
-{
-    if (path.isEmpty()) return false;
-    QSettings src(QCoreApplication::organizationName(),
-                  QCoreApplication::applicationName());
-    // 目标 ini 用 IniFormat 保证跨平台可读；组织/应用名写入便于回读
-    QSettings dst(path, QSettings::IniFormat);
-    dst.clear();
-    const QStringList keys = src.allKeys();
-    for (const QString& key : keys) {
-        // 敏感信息不导出：令牌/密钥（微软 refresh token 等）
-        if (key.contains(QStringLiteral("token"), Qt::CaseInsensitive)
-            || key.contains(QStringLiteral("secret"), Qt::CaseInsensitive)
-            || key.contains(QStringLiteral("password"), Qt::CaseInsensitive)
-            || key.contains(QStringLiteral("key"), Qt::CaseInsensitive)
-            || key.contains(QStringLiteral("beta"), Qt::CaseInsensitive)) {
-            continue;
-        }
-        dst.setValue(key, src.value(key));
-    }
-    dst.sync();
-    qCInfo(logApp) << QStringLiteral("[设置] 导出设置 → %1（%2 项）").arg(path).arg(keys.size());
-    return dst.status() == QSettings::NoError;
-}
 
-bool SettingsBackend::importSettingsFromFile(const QString& path)
+// ============================================================
+// ============================================================
+void SettingsBackend::setAutoJoinServer(const QString& v)
 {
-    if (path.isEmpty() || !QFileInfo::exists(path)) return false;
-    QSettings src(path, QSettings::IniFormat);
-    QSettings dst(QCoreApplication::organizationName(),
-                  QCoreApplication::applicationName());
-    const QStringList keys = src.allKeys();
-    if (keys.isEmpty()) return false;
-    for (const QString& key : keys) {
-        // 同样跳过敏感键（防御导入恶意 ini）
-        if (key.contains(QStringLiteral("token"), Qt::CaseInsensitive)
-            || key.contains(QStringLiteral("secret"), Qt::CaseInsensitive)
-            || key.contains(QStringLiteral("password"), Qt::CaseInsensitive)
-            || key.contains(QStringLiteral("key"), Qt::CaseInsensitive)
-            || key.contains(QStringLiteral("beta"), Qt::CaseInsensitive)) {
-            continue;
-        }
-        dst.setValue(key, src.value(key));
+    const QString t = v.trimmed();
+    if (!t.isEmpty() && !isSafeServerAddress(t)) {
+        // 拒绝而不是静默存下：该值会拼进游戏命令行 "--server <addr>"，
+        // 允许空格/引号/-- 就等于允许给游戏塞额外参数。
+        qCWarning(logUI) << QStringLiteral("[设置] 拒绝非法自动进服地址: ") << t;
+        emit logMessage(QStringLiteral("\u26a0 自动进服地址只接受 host 或 host:port"));
+        return;
     }
-    dst.sync();
-    qCInfo(logApp) << QStringLiteral("[设置] 导入设置 ← %1（%2 项）").arg(path).arg(keys.size());
-    // 导入后重载内存态（Java 路径等）
-    loadSettings();
-    emit generalSettingsChanged();
-    emit memorySettingsChanged();
+    if (m_autoJoinServer == t) return;
+    m_autoJoinServer = t;
+    saveSettings();
     emit launchDetailChanged();
-    emit downloadSettingsChanged();
-    emit customBgChanged();
-    emit javaPathChanged();
-    return true;
 }
 
-QString SettingsBackend::exportSettingsPreview() const
-{
-    QSettings src(QCoreApplication::organizationName(),
-                  QCoreApplication::applicationName());
-    QStringList lines;
-    const QStringList keys = src.allKeys();
-    int count = 0;
-    for (const QString& key : keys) {
-        if (key.contains(QStringLiteral("token"), Qt::CaseInsensitive)
-            || key.contains(QStringLiteral("secret"), Qt::CaseInsensitive)
-            || key.contains(QStringLiteral("password"), Qt::CaseInsensitive)
-            || key.contains(QStringLiteral("key"), Qt::CaseInsensitive)
-            || key.contains(QStringLiteral("beta"), Qt::CaseInsensitive)) {
-            continue;
-        }
-        lines << QStringLiteral("%1=%2").arg(key, src.value(key).toString());
-        count++;
-        if (count >= 60) { lines << QStringLiteral("... 共 %1 项").arg(keys.size()); break; }
-    }
-    return lines.join(QLatin1Char('\n'));
-}
-
-// ============================================================
-// ============================================================
 void SettingsBackend::setEmbeddedLoginEnabled(bool v)
 {
     if (m_embeddedLoginEnabled != v) {
@@ -1012,10 +1006,26 @@ static bool forceRemoveDir(const QString& dirPath)
 
 void SettingsBackend::deleteVersion(const QString& versionId)
 {
+    // 必须先校验：verDir = "<gameDir>/versions/" + versionId 会直接交给 forceRemoveDir 递归删除。
+    // versionId=".." 时目标变成整个 gameDir，"" 时是 versions 目录（审计 F2）。
+    if (!isSafeVersionId(versionId)) {
+        qCWarning(logApp) << QStringLiteral("[设置] 拒绝删除非法版本 id: ") << versionId;
+        emit logMessage(QStringLiteral("\u26a0 版本 id 非法，已取消删除"));
+        return;
+    }
     int count = 0;
 
     // 1. Delete the vanilla version folder
     QString verDir = m_gameDir + QStringLiteral("/versions/") + versionId;
+    {
+        // 双保险：即使 id 通过了字符校验，也再确认最终路径确实落在 versions 目录下
+        const QString versionsRoot = QDir::cleanPath(m_gameDir + QStringLiteral("/versions"));
+        const QString cleaned = QDir::cleanPath(verDir);
+        if (!cleaned.startsWith(versionsRoot + QLatin1Char('/')) || cleaned == versionsRoot) {
+            qCWarning(logApp) << QStringLiteral("[设置] 拒绝越界删除: ") << cleaned;
+            return;
+        }
+    }
     if (QDir(verDir).exists()) {
         if (forceRemoveDir(verDir)) count++;
     }
