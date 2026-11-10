@@ -107,6 +107,7 @@ public:
 
     // ── 启动细节配置（低垂果实批，2026-08-08：ShadowBackend 启动前注入）──
     void setGcMode(int mode) { m_gcMode = mode; }
+    void setMinMemoryMB(int mb) { m_minMemoryMB = mb; }
     void setProcessPriority(int priority) { m_processPriority = priority; }
     void setFullscreenEnabled(bool v) { m_fullscreenEnabled = v; }
     void setAutoJoinServer(const QString& addr) { m_autoJoinServer = addr; }
@@ -249,6 +250,7 @@ private:
 
     // ── 启动细节配置（2026-08-08）──
     int m_gcMode = 0;                 // 0=自动 1=分代ZGC优先 2=仅G1GC 3=不指定
+    int m_minMemoryMB = -1;
     int m_processPriority = 1;        // 0=高 1=中 2=低
     bool m_fullscreenEnabled = false; // --fullscreen
     QString m_autoJoinServer;         // 自动进服 host[:port]

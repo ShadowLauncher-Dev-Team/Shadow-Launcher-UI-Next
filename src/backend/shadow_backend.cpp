@@ -2430,6 +2430,7 @@ QString ShadowBackend::exportLaunchScript(const QString& versionId, const QStrin
     // ——否则导出脚本用的是上次启动的残留值/默认值，版本级覆盖完全不生效（2026-08-10 修）
     if (m_settings && m_launch) {
         m_launch->setGcMode(resolvedGcMode(versionId));
+    m_launch->setMinMemoryMB(m_settings->minMemoryMB());
         m_launch->setProcessPriority(resolvedProcessPriority(versionId));
         m_launch->setFullscreenEnabled(resolvedFullscreen(versionId));
         m_launch->setAutoJoinServer(resolvedAutoJoinServer(versionId));
@@ -2899,6 +2900,7 @@ void ShadowBackend::proceedLaunch(const QString& versionId, bool online, const Q
     m_launch->setVersionGameDir(m_settings->getVersionGameDir(versionId));
     // ── 启动细节（低垂果实批，2026-08-08）：版本级优先 → 全局 ──
     m_launch->setGcMode(resolvedGcMode(versionId));
+    m_launch->setMinMemoryMB(m_settings->minMemoryMB());
     m_launch->setProcessPriority(resolvedProcessPriority(versionId));
     m_launch->setFullscreenEnabled(resolvedFullscreen(versionId));
     m_launch->setAutoJoinServer(resolvedAutoJoinServer(versionId));

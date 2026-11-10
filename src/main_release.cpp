@@ -572,6 +572,46 @@ int main(int argc, char *argv[])
         report(QStringLiteral("F8 非法地址应被拒绝"), QStringLiteral("mc.example.com:25565"), st->autoJoinServer());
         st->setAutoJoinServer(QString());
 
+        // 最小内存必须真的进 JVM 参数（-Xms）：导出启动脚本复用 buildArgs，
+        // 可以在不启动游戏的前提下验证参数组装。
+        {
+            // 自检跑在版本列表异步刷新之前，installedVersions() 还是空的。
+            // 直接从游戏目录扫一个真实存在的版本（有 <id>/<id>.json 才算）。
+            QStringList vers = backend->installedVersions();
+            if (vers.isEmpty()) {
+                const QDir vroot(st->gameDir() + QStringLiteral("/versions"));
+                const QFileInfoList dirs = vroot.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+                for (const QFileInfo& d : dirs) {
+                    const QString id = d.fileName();
+                    if (QFileInfo::exists(d.absoluteFilePath() + QLatin1Char('/') + id + QStringLiteral(".json"))) {
+                        vers << id;
+                        break;
+                    }
+                }
+            }
+            st->setMaxMemory(2048);
+            st->setMinMemory(1536);
+            if (!vers.isEmpty()) {
+                const QString bat = backend->exportLaunchScript(vers.first(), st->javaPath(), 2048);
+                report(QStringLiteral("最小内存写入 -Xms（导出脚本）"),
+                       QStringLiteral("含 -Xms1536M"),
+                       bat.contains(QStringLiteral("-Xms1536M"))
+                           ? QStringLiteral("含 -Xms1536M")
+                           : (QStringLiteral("不含，实际=") + bat.section(QStringLiteral("-Xms"), 1, 1).left(8)));
+                // 夹取：Xms 不得大于 Xmx，否则 JVM 拒绝启动
+                st->setMaxMemory(1024);
+                st->setMinMemory(1024);
+                const QString bat2 = backend->exportLaunchScript(vers.first(), st->javaPath(), 512);
+                report(QStringLiteral("Xms 不超过 Xmx（max=512）"),
+                       QStringLiteral("含 -Xms512M"),
+                       bat2.contains(QStringLiteral("-Xms512M")) ? QStringLiteral("含 -Xms512M")
+                                                                  : QStringLiteral("不含"));
+            } else {
+                report(QStringLiteral("最小内存写入 -Xms（导出脚本）"),
+                       QStringLiteral("至少装 1 个版本"), QStringLiteral("无已装版本，跳过"));
+            }
+        }
+
         // 进程优先级版本级：mode=0 跟随全局、mode=1 用版本值
         {
             const QString vid = QStringLiteral("__selftest__");

@@ -1622,6 +1622,7 @@ void LaunchBackend::runNextCheck()
         launcher->setResolution(m_windowWidth, m_windowHeight);
         // ── 启动细节配置（低垂果实批，2026-08-08）──
         launcher->setGcMode(m_gcMode);
+        launcher->setMinMemoryMB(m_minMemoryMB);
         launcher->setProcessPriority(m_processPriority);
         launcher->setFullscreen(m_fullscreenEnabled);
         launcher->setAutoJoinServer(m_autoJoinServer);
@@ -2453,6 +2454,7 @@ QString LaunchBackend::exportLaunchScript(const QString& versionId, const QStrin
     launcher.setResolution(m_windowWidth, m_windowHeight);
     // ── 启动细节配置（低垂果实批，2026-08-08：脚本与图形启动一致）──
     launcher.setGcMode(m_gcMode);
+    launcher.setMinMemoryMB(m_minMemoryMB);
     launcher.setFullscreen(m_fullscreenEnabled);
     launcher.setAutoJoinServer(m_autoJoinServer);
     launcher.setProcessPriority(m_processPriority);

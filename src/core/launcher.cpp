@@ -1286,7 +1286,12 @@ QStringList Launcher::buildArgs(const QString& versionId, int maxMemoryMB,
 
     // ── JVM memory ──
     args << QStringLiteral("-Xmx%1M").arg(maxMemoryMB);
-    args << QStringLiteral("-Xms%1M").arg(qMin(512, maxMemoryMB / 2));
+    // 最小堆：设置页给了值就用它，没给（-1）沿用旧公式。
+    // 必须夹到 <= maxMemoryMB —— Xms > Xmx 时 JVM 会直接拒绝启动。
+    {
+        const int wanted = (m_minMemoryMB > 0) ? m_minMemoryMB : qMin(512, maxMemoryMB / 2);
+        args << QStringLiteral("-Xms%1M").arg(qMin(wanted, maxMemoryMB));
+    }
 
     // ── Temp dir: old MC versions (ImageIO) try to write to C:\WINDOWS on Win10/11 ──
     // Without this, javax.imageio.ImageIO fails with AccessDeniedException.
