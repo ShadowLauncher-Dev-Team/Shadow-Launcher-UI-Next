@@ -976,13 +976,15 @@ Item {
                                                         : (capeHover.hovered ? "#2a3341" : "#14171d")
 
                                             Image {
+                                                id: capeImg
+                                                // 披风纹理 64x32 的正立面 = 左上 (0,0) 起 10x16。
+                                                // 右侧 32+ 是鞘翅 UV，整张缩放会把它带进来，必须裁。
+                                                // 宽高按 10:16 等比缩放，不要 Stretch 硬塞 —— 否则会被压窄、底部白边被吃掉。
+                                                readonly property real fitH: 42
                                                 anchors.horizontalCenter: parent.horizontalCenter
-                                                y: 4
-                                                width: 25
-                                                height: 40
-                                                // 披风纹理 64x32：正面（不穿鞘翅时看到的背面）就是左上 10x16。
-                                                // 右半 32..46 是鞘翅用；整张缩下去会把它一起带进来，必须裁。
-                                                // smooth:false = 最近邻放大，像素保持锐利（和头像同一个原则）。
+                                                y: 5
+                                                width: Math.round(capeImg.fitH * 10 / 16)
+                                                height: capeImg.fitH
                                                 sourceClipRect: Qt.rect(0, 0, 10, 16)
                                                 source: {
                                                     if (!modelData || !modelData.localPath) return ""
@@ -991,6 +993,7 @@ Item {
                                                            ? p : ("file:///" + p.replace(/\\/g, "/"))
                                                 }
                                                 fillMode: Image.Stretch
+                                                // 最近邻放大：像素保持锐利，不做插值模糊（和头像同一原则）
                                                 smooth: false
                                                 asynchronous: true
                                             }
