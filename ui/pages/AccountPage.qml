@@ -797,10 +797,12 @@ Item {
                 }
 
                 // ---- 皮肤与披风 ----
-                // 两层分组卡片：皮肤组（模型/文件/操作）自成一块，披风组自成一块。
-                // 之前所有行和按钮平铺在一起，分不清哪个按钮属于哪一组。
+                // 只有正版（Microsoft）账号能改皮肤/披风：皮肤上传走 Mojang API，
+                // 披风切换走 /minecraft/profile/capes/active，离线账号根本没有对应身份，
+                // 摆出来只是骗人。离线账号皮肤来自 UUID 哈希，改不了。
                 Column {
                     width: parent.width
+                    visible: page.hasOnline
                     spacing: 10
 
                     Text {
@@ -951,7 +953,7 @@ Item {
 
                             Flickable {
                                 width: parent.width
-                                height: page.capes.length > 0 ? 66 : 0
+                                height: page.capes.length > 0 ? 78 : 0
                                 visible: page.capes.length > 0
                                 contentWidth: capeRow.implicitWidth
                                 clip: true
@@ -967,7 +969,7 @@ Item {
                                             id: capeTile
                                             readonly property bool inUse: modelData && modelData.active === true
                                             width: 46
-                                            height: 62
+                                            height: 74
                                             radius: 6
                                             color: capeTile.inUse ? "#1f3b82f6"
                                                    : (capeHover.hovered ? "#161a22" : "#0e1116")
@@ -975,27 +977,39 @@ Item {
                                             border.color: capeTile.inUse ? "#3b82f6"
                                                         : (capeHover.hovered ? "#2a3341" : "#14171d")
 
-                                            Image {
-                                                id: capeImg
-                                                // 披风纹理 64x32 的正立面 = 左上 (0,0) 起 10x16。
-                                                // 右侧 32+ 是鞘翅 UV，整张缩放会把它带进来，必须裁。
-                                                // 宽高按 10:16 等比缩放，不要 Stretch 硬塞 —— 否则会被压窄、底部白边被吃掉。
-                                                readonly property real fitH: 42
+                                            // 披风纹理 64x32：正立面 = 左上 (0,0) 起 10x16，右侧 32+ 是鞘翅 UV。
+                                            // sourceClipRect + Image.Stretch 在实际渲染里会按原纹理 64x32 的槽位算，
+                                            // 图案被压成 0.47 比例（实测），所以改成"整图放大 2 倍后按窗口裁"：
+                                            // scale 后 10px 宽 = 20 逻辑像素，源矩形之外的像素被父 Item 的 clip 掉。
+                                            Item {
+                                                id: capeBox
+                                                readonly property int tileW: 28
+                                                readonly property int tileH: 45
+                                                // 10x16 → 30x48 是严格 0.625，放大倍数 3
+                                                readonly property real zoom: capeBox.tileW / 10.0
                                                 anchors.horizontalCenter: parent.horizontalCenter
                                                 y: 5
-                                                width: Math.round(capeImg.fitH * 10 / 16)
-                                                height: capeImg.fitH
-                                                sourceClipRect: Qt.rect(0, 0, 10, 16)
-                                                source: {
-                                                    if (!modelData || !modelData.localPath) return ""
-                                                    var p = modelData.localPath
-                                                    return (p.indexOf("file:") === 0 || p.indexOf("qrc:") === 0)
-                                                           ? p : ("file:///" + p.replace(/\\/g, "/"))
+                                                width: capeBox.tileW
+                                                height: capeBox.tileH
+                                                clip: true
+
+                                                Image {
+                                                    // 放大 3 倍后整张是 192x96；只需显示左上 30x48 那块
+                                                    width: 64 * capeBox.zoom
+                                                    height: 32 * capeBox.zoom
+                                                    x: 0
+                                                    y: 0
+                                                    source: {
+                                                        if (!modelData || !modelData.localPath) return ""
+                                                        var p = modelData.localPath
+                                                        return (p.indexOf("file:") === 0 || p.indexOf("qrc:") === 0)
+                                                               ? p : ("file:///" + p.replace(/\\/g, "/"))
+                                                    }
+                                                    fillMode: Image.Stretch
+                                                    // 最近邻放大：像素保持锐利，不做插值模糊（和头像同一原则）
+                                                    smooth: false
+                                                    asynchronous: true
                                                 }
-                                                fillMode: Image.Stretch
-                                                // 最近邻放大：像素保持锐利，不做插值模糊（和头像同一原则）
-                                                smooth: false
-                                                asynchronous: true
                                             }
                                             Text {
                                                 anchors.horizontalCenter: parent.horizontalCenter
@@ -1021,7 +1035,7 @@ Item {
                                     }
                                     Rectangle {
                                         width: 46
-                                        height: 62
+                                        height: 74
                                         radius: 6
                                         visible: {
                                             for (var i = 0; i < page.capes.length; ++i)
