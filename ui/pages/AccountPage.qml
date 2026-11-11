@@ -29,7 +29,8 @@ Item {
         ignoreUnknownSignals: true
         function onCapeChangeFinished(ok, msg) {
             page.capeBusy = false
-            page.flash(ok ? "披风已切换" : ("切换失败：" + (msg || "未知错误")))
+            if (ok) page.flash("披风已切换")
+            else page.flash("切换失败：" + (msg || "未知错误"))
         }
         function onSkinUploadFinished(ok, msg) {
             page.flash(ok ? "皮肤已上传，正在同步" : ("上传失败：" + (msg || "未知错误")))
@@ -146,7 +147,10 @@ Item {
     onLoginPanelChanged: if (!page.loginPanel) page.acctView = page.buildAcctView()
 
     // 反馈统一走 Toast（顶栏绿色文字会挤动右侧按钮，也留不住）
-    function flash(msg) { if (page.toast) page.toast.show(msg) }
+    // force=true：绕过 ToastHost 的"近期相同消息"去重。
+    // 连续两次切披风成功文案一模一样，不去重的话第二次会被静默吞掉，
+    // 表现就是"只有第一次有提示，之后再切完全没反应"。
+    function flash(msg) { if (page.toast) page.toast.show(msg, undefined, undefined, true) }
     function startMicrosoft() { if (page.b) { page.b.lastLoginMode = 0; page.b.microsoftLogin() } }
     function cancelMicrosoft() { if (page.b) page.b.cancelMicrosoftLogin() }
     function doOffline() {
@@ -942,14 +946,6 @@ Item {
                                 text: "导出当前皮肤"
                                 onClicked: { if (page.b) page.b.saveSkinToFile() }
                             }
-                            Text {
-                                visible: page.skinFile.length === 0
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "先选择皮肤文件才能上传"
-                                color: "#5d6673"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
-                            }
                         }
                     }
 
@@ -987,7 +983,9 @@ Item {
                     Flickable {
                         id: capeFlick
                         width: parent.width
-                        height: page.capes.length > 0 ? 78 : 0
+                        // 给上下各留 2px：磁贴若是正好贴着 Flickable 的裁剪边界，
+                        // 边框/圆角在高 DPI 或不同窗口尺寸下会被裁掉几个像素。
+                        height: page.capes.length > 0 ? 82 : 0
                         visible: page.capes.length > 0
                         contentWidth: capeRow.implicitWidth
                         clip: true
@@ -996,6 +994,7 @@ Item {
 
                         Row {
                             id: capeRow
+                            y: 2
                             spacing: 8
                             Repeater {
                                 model: page.capes
@@ -1052,18 +1051,8 @@ Item {
                                         elide: Text.ElideRight
                                         horizontalAlignment: Text.AlignHCenter
                                     }
-                                    // 使用中标记：右上角小圆点
-                                    Rectangle {
-                                        visible: capeTile.inUse
-                                        anchors.right: parent.right
-                                        anchors.top: parent.top
-                                        anchors.rightMargin: 4
-                                        anchors.topMargin: 4
-                                        width: 6
-                                        height: 6
-                                        radius: 3
-                                        color: Theme.accent
-                                    }
+                                    // 不加右上角圆点：蓝框本身已经表示"使用中"，
+                                    // 圆点压在磁贴边框上会把上边缘盖出一个缺口。
                                     HoverHandler { id: capeHover }
                                     TapHandler {
                                         onTapped: {
