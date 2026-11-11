@@ -33,7 +33,9 @@ Item {
             else page.flash("切换失败：" + (msg || "未知错误"))
         }
         function onSkinUploadFinished(ok, msg) {
-            page.flash(ok ? "皮肤已上传，正在同步" : ("上传失败：" + (msg || "未知错误")))
+            // 不写"正在同步"之类内部说法：对用户来说上传成功就是换好了，
+            // 头像重绘是后端自己的事，不该让他等一个看不见的"同步"。
+            page.flash(ok ? "皮肤已更换" : ("上传失败：" + (msg || "未知错误")))
         }
     }
 
