@@ -30,6 +30,32 @@ Item {
 
     // 披风/皮肤的结果信号由 AccountBackend 发出（不是 ShadowBackend），
     // 以前挂在 page.b 上 → 永远收不到，所以切换成功/失败都没有任何提示。
+    // 外置登录（yggdrasil）的结果信号以前一条都没接 ——
+    // 后端会正常 emit loginSuccess / loginFailed，但前端没人听，
+    // 所以点「登录」之后界面永远没反应，看起来就是"用不了"。
+    Connections {
+        target: page.yg
+        ignoreUnknownSignals: true
+        function onLoginSuccess() {
+            page.profilePickOpen = false
+            page.loginPanel = false
+            page.passwordInput = ""
+            page.flash("外置账号登录成功")
+        }
+        function onLoginFailed(err) {
+            page.profilePickOpen = false
+            page.flash("登录失败：" + (err || "未知错误"))
+        }
+        function onShowProfileSelection() {
+            page.profilePickOpen = true
+            page.flash("这个账号有多个角色，请选择一个")
+        }
+        function onMetaFailed(err) {
+            // 元数据拉不到不影响登录，只在状态栏提示
+            page.flash("皮肤站元数据获取失败：" + (err || ""))
+        }
+    }
+
     Connections {
         target: page.acct
         ignoreUnknownSignals: true
@@ -94,6 +120,8 @@ Item {
     // 「刷新状态」没有单一完成信号（皮肤/披风各自异步回来），
     // 用一次短计时表示进行中：够覆盖网络往返，又不会一直转。
     property bool refreshBusy: false
+    // 外置登录返回多个角色时置 true，让用户选一个再完成登录
+    property bool profilePickOpen: false
     readonly property bool skinBusy: (b && b.wardrobeBusy) ? b.wardrobeBusy : false
     // 对外（StageShell）用来点亮顶部光条。注意不能叫 busy ——
     // 上面已有 busy（登录忙碌），重名会编译失败。
@@ -203,6 +231,15 @@ Item {
         }
         if (Qt.application.arguments.indexOf("--ui-account-login") >= 0)
             page.loginPanel = true
+        // --ui-account-tab N：直接落在某个登录 tab（0 正版 / 1 离线 / 2 外置），截图验收用
+        var ti = Qt.application.arguments.indexOf("--ui-account-tab")
+        if (ti >= 0 && ti + 1 < Qt.application.arguments.length) {
+            var tv = parseInt(Qt.application.arguments[ti + 1], 10)
+            if (!isNaN(tv) && tv >= 0 && tv <= 2) {
+                page.tab = tv
+                page.loginPanel = true
+            }
+        }
     }
 
     Connections {
@@ -1446,6 +1483,62 @@ Item {
                         iconName: "globe"
                         text: "登录"
                         onClicked: page.doExternal()
+                    }
+
+                    // 多角色选择：后端 emit showProfileSelection 后必须让用户选一个，
+                    // 否则会话停在"已认证但未选角色"，等于登录没完成。
+                    Column {
+                        width: parent.width
+                        visible: page.profilePickOpen
+                        spacing: 8
+
+                        Text {
+                            text: "选择角色"
+                            color: "#ffffff"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                        }
+
+                        Repeater {
+                            model: (page.yg && page.yg.profiles) ? page.yg.profiles : []
+                            delegate: Rectangle {
+                                width: parent.width
+                                height: 44
+                                radius: 8
+                                color: profHover.hovered ? "#161a22" : "#11141b"
+                                border.width: 1
+                                border.color: profHover.hovered ? "#2a3341" : "#1c2029"
+
+                                Text {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: (modelData && modelData.name) ? modelData.name : ""
+                                    color: Theme.fg
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 13
+                                }
+                                HoverHandler { id: profHover }
+                                TapHandler {
+                                    onTapped: {
+                                        if (!page.yg) return
+                                        page.yg.selectProfile(index)
+                                    }
+                                }
+                            }
+                        }
+
+                        SButton {
+                            kind: 1
+                            radius: 2
+                            height: 30
+                            text: "取消"
+                            onClicked: {
+                                if (page.yg) page.yg.cancelLogin()
+                                page.profilePickOpen = false
+                            }
+                        }
                     }
                 }
             }
