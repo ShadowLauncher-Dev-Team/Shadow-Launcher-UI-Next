@@ -22,6 +22,12 @@ Item {
     // 行列表改用它来"原地重算"，避免 Repeater 把整列销毁重建（那就是切换账号时的闪烁）。
     property int accRev: 0
 
+    Timer {
+        id: refreshTimer
+        interval: 4000
+        onTriggered: page.refreshBusy = false
+    }
+
     // 披风/皮肤的结果信号由 AccountBackend 发出（不是 ShadowBackend），
     // 以前挂在 page.b 上 → 永远收不到，所以切换成功/失败都没有任何提示。
     Connections {
@@ -32,6 +38,8 @@ Item {
             if (ok) page.flash("披风已切换")
             else page.flash("切换失败：" + (msg || "未知错误"))
         }
+        function onSkinReady() { page.refreshBusy = false }
+        function onCapesReady() { page.refreshBusy = false }
         function onSkinUploadFinished(ok, msg) {
             // 不写"正在同步"之类内部说法：对用户来说上传成功就是换好了，
             // 头像重绘是后端自己的事，不该让他等一个看不见的"同步"。
@@ -76,10 +84,13 @@ Item {
     // 切换披风必须等服务器回包（1~3 秒），期间不给反馈就会以为没点上。
     // 这两个 busy 都是"点了置 true、收到完成信号置 false"，绝不在点击后立刻复位。
     property bool capeBusy: false
+    // 「刷新状态」没有单一完成信号（皮肤/披风各自异步回来），
+    // 用一次短计时表示进行中：够覆盖网络往返，又不会一直转。
+    property bool refreshBusy: false
     readonly property bool skinBusy: (b && b.wardrobeBusy) ? b.wardrobeBusy : false
     // 对外（StageShell）用来点亮顶部光条。注意不能叫 busy ——
     // 上面已有 busy（登录忙碌），重名会编译失败。
-    readonly property bool wardrobeBusy: skinBusy || capeBusy
+    readonly property bool wardrobeBusy: skinBusy || capeBusy || refreshBusy
     readonly property string skinFile: (b && b.selectedSkinPath) ? b.selectedSkinPath : ""
     // 真实可用披风：来自 AccountBackend（Mojang profile 返回你已拥有的披风）。
     // 注意别再读 ShadowBackend.availableCapes —— 那是本地静态目录（全 Minecraft 披风图鉴），
@@ -278,11 +289,30 @@ Item {
                 radius: 2
                 height: 32
                 iconName: "refresh-cw"
-                text: "刷新状态"
+                text: page.refreshBusy ? "刷新中" : "刷新状态"
+                busy: page.refreshBusy
+                // 以前这里只对「外置登录」调 validateSession()，正版账号什么都不做，
+                // 却照样提示"已刷新" —— 纯假按钮。
+                // 现在按账号类型做对应的真实刷新（当前账号）：
+                //   正版 -> 强制向 Mojang 重拉皮肤+披风（downloadOnlineSkin(true)）
+                //   外置 -> 校验会话
+                //   离线 -> 重算 UUID 头像
                 onClicked: {
                     if (!page.b) return
-                    if (page.yg && page.yg.loggedIn) page.yg.validateSession()
-                    page.flash("已刷新")
+                    page.refreshBusy = true
+                    refreshTimer.restart()
+                    if (page.hasOnline) {
+                        if (page.acct) page.acct.refreshSkin()
+                        page.flash("正在重新获取皮肤和披风")
+                    } else if (page.yg && page.yg.loggedIn) {
+                        page.yg.validateSession()
+                        page.flash("正在校验外置登录会话")
+                    } else if (page.hasOffline) {
+                        if (page.acct) page.acct.refreshSkin()
+                        page.flash("正在刷新头像")
+                    } else {
+                        page.flash("当前还没有账号")
+                    }
                 }
             }
         }
@@ -704,6 +734,12 @@ Item {
                     page.acctView = page.buildAcctView()
                     page.acctKey = page.acctKeyNow()
                     detailIn.restart()
+                    // 验收钩子：--acct-refresh 时自动走一次「刷新状态」（验证强制刷新路径，只读不改账号）
+                    if (Qt.application.arguments.indexOf("--acct-refresh") >= 0 && page.acct) {
+                        page.refreshBusy = true
+                        refreshTimer.restart()
+                        page.acct.refreshSkin()
+                    }
                     // 验收钩子：--acct-online 时切到第一个正版账号（截图核对用）
                     if (Qt.application.arguments.indexOf("--acct-online") >= 0 && page.b) {
                         var acc = page.b.accounts

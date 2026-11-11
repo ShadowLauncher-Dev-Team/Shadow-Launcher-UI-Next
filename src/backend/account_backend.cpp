@@ -335,8 +335,9 @@ void AccountBackend::uploadSkin(const QString &filePath, const QString &variant)
         reply->deleteLater();
         if (reply->error() == QNetworkReply::NoError) {
             qCInfo(logAccount) << QStringLiteral("皮肤上传成功");
-            // Refresh profile to get new skin
-            downloadSkin(m_username);
+            // 必须 forceRefresh：downloadSkin() 会走 downloadOnlineSkin(false)，
+            // 命中本地缓存的旧头像后直接跳过纹理下载 —— 表现就是"上传成功但头像没变"。
+            downloadOnlineSkin(true);
             emit skinUploadFinished(true, QString());
         } else {
             QString err = reply->errorString();
