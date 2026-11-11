@@ -680,6 +680,16 @@ Item {
                     page.acctView = page.buildAcctView()
                     page.acctKey = page.acctKeyNow()
                     detailIn.restart()
+                    // 验收钩子：--acct-online 时切到第一个正版账号（截图核对用）
+                    if (Qt.application.arguments.indexOf("--acct-online") >= 0 && page.b) {
+                        var acc = page.b.accounts
+                        for (var i = 0; i < acc.length; ++i) {
+                            if (acc[i] && acc[i].mode === 0 && !acc[i].current) {
+                                page.b.switchAccount(acc[i].index)
+                                break
+                            }
+                        }
+                    }
                 }
                 x: page.narrow ? 22 : 32
                 y: 28
@@ -797,273 +807,257 @@ Item {
                 }
 
                 // ---- 皮肤与披风 ----
-                // 只有正版（Microsoft）账号能改皮肤/披风：皮肤上传走 Mojang API，
-                // 披风切换走 /minecraft/profile/capes/active，离线账号根本没有对应身份，
-                // 摆出来只是骗人。离线账号皮肤来自 UUID 哈希，改不了。
+                // 样式与上方账号信息行统一：无卡片底、只用分隔线，避免一大块深色割裂版面。
+                // 分组靠小标题 + 缩进，不靠色块。
                 Column {
                     width: parent.width
                     visible: page.hasOnline
-                    spacing: 10
+                    spacing: 0
 
-                    Text {
-                        text: "皮肤与披风"
-                        color: "#ffffff"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 15
-                        font.weight: Font.Bold
+                    // 区块标题
+                    Item {
+                        width: parent.width
+                        height: 34
+                        Text {
+                            anchors.left: parent.left
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 8
+                            text: "皮肤"
+                            color: "#ffffff"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                        }
                     }
 
-                    // ══ 皮肤 ══
-                    Rectangle {
+                    // 模型
+                    Item {
+                        width: parent.width; height: 40
+                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#101319" }
+                        Text {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "模型"
+                            color: "#6d7684"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                        }
+                        SSegmented {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 104
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 180
+                            itemHeight: 26
+                            items: ["经典", "纤细"]
+                            currentIndex: page.skinModelShown
+                            onActivated: (i) => page.skinModelIndex = i
+                        }
+                    }
+
+                    // 皮肤文件
+                    Item {
+                        width: parent.width; height: 40
+                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#101319" }
+                        Text {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "皮肤文件"
+                            color: "#6d7684"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                        }
+                        Text {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 104
+                            anchors.right: pickBtn.left
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: page.skinFile.length > 0 ? page.skinFile : "未选择（64x64 或 64x32 PNG）"
+                            color: page.skinFile.length > 0 ? "#d8dde5" : "#5d6673"
+                            elide: Text.ElideMiddle
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 13
+                        }
+                        SButton {
+                            id: pickBtn
+                            kind: 1
+                            radius: 2
+                            height: 26
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "选择"
+                            onClicked: { if (page.b) page.b.browseSkin() }
+                        }
+                    }
+
+                    // 操作行
+                    Item {
                         width: parent.width
-                        height: skinInner.implicitHeight + 28
-                        radius: 10
-                        color: "#0b0e13"
-                        border.width: 1
-                        border.color: Theme.line
-
-                        Column {
-                            id: skinInner
-                            x: 14
-                            y: 14
-                            width: parent.width - 28
-                            spacing: 0
-
-                            Text {
-                                text: "皮肤"
-                                color: "#98a1ae"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 12
-                                font.weight: Font.DemiBold
-                                bottomPadding: 6
-                            }
-
-                            Item {
-                                width: parent.width; height: 40
-                                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#101319" }
-                                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "模型"; color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
-                                // Mojang 的 variant 只有 CLASSIC / SLIM 两种，没有「自动」这个第三种。
-                                SSegmented {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 88
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: 180
-                                    itemHeight: 26
-                                    items: ["经典", "纤细"]
-                                    currentIndex: page.skinModelShown
-                                    onActivated: (i) => page.skinModelIndex = i
+                        height: 56
+                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#101319" }
+                        Row {
+                            id: actionRow
+                            // 与上方字段值同一个 104 基准（"账号类型"等行的值都从 104 起）
+                            x: 104
+                            y: Math.round((parent.height - height) / 2)
+                            spacing: 10
+                            SButton {
+                                kind: 0
+                                radius: 2
+                                height: 30
+                                text: page.wardrobeBusy ? "上传中" : "应用皮肤"
+                                busy: page.wardrobeBusy
+                                enabled: page.skinFile.length > 0 && !page.wardrobeBusy
+                                onClicked: {
+                                    if (!page.b) return
+                                    page.b.saveWardrobeSettings(page.skinFile, "", page.skinModelShown === 1 ? 2 : 1)
+                                    page.flash(page.hasOnline ? "正在上传皮肤" : "皮肤已保存到本地")
                                 }
                             }
-
-                            Item {
-                                width: parent.width; height: 40
-                                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#101319" }
-                                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "皮肤文件"; color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
-                                Text {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 88
-                                    anchors.right: pickBtn.left
-                                    anchors.rightMargin: 10
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: page.skinFile.length > 0 ? page.skinFile : "未选择（64x64 或 64x32 PNG）"
-                                    color: page.skinFile.length > 0 ? "#d8dde5" : "#5d6673"
-                                    elide: Text.ElideMiddle
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 12
-                                }
-                                SButton {
-                                    id: pickBtn
-                                    kind: 1
-                                    radius: 2
-                                    height: 26
-                                    anchors.right: parent.right
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: "选择"
-                                    onClicked: { if (page.b) page.b.browseSkin() }
-                                }
-                            }
-
-                            // 操作行收在皮肤组内部，不再和上面的字段平铺混排
-                            Item {
-                                width: parent.width
-                                height: 52
-                                Row {
-                                    anchors.left: parent.left
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    spacing: 10
-                                    SButton {
-                                        kind: 0
-                                        radius: 2
-                                        height: 32
-                                        text: page.wardrobeBusy ? "上传中" : "应用皮肤"
-                                        busy: page.wardrobeBusy
-                                        enabled: page.skinFile.length > 0 && !page.wardrobeBusy
-                                        onClicked: {
-                                            if (!page.b) return
-                                            page.b.saveWardrobeSettings(page.skinFile, "", page.skinModelShown === 1 ? 2 : 1)
-                                            page.flash(page.hasOnline ? "正在上传皮肤" : "皮肤已保存到本地")
-                                        }
-                                    }
-                                    SButton {
-                                        kind: 1
-                                        radius: 2
-                                        height: 32
-                                        text: "导出当前皮肤"
-                                        onClicked: { if (page.b) page.b.saveSkinToFile() }
-                                    }
-                                }
+                            SButton {
+                                kind: 1
+                                radius: 2
+                                height: 30
+                                text: "导出当前皮肤"
+                                onClicked: { if (page.b) page.b.saveSkinToFile() }
                             }
                         }
                     }
 
-                    // ══ 披风 ══
-                    Rectangle {
+                    // 披风标题（与「皮肤」标题同样左对齐，不用 104 缩进）
+                    Item {
                         width: parent.width
-                        height: capeInner.implicitHeight + 28
-                        radius: 10
-                        color: "#0b0e13"
-                        border.width: 1
-                        border.color: Theme.line
+                        height: 42
+                        Text {
+                            id: capeTitle
+                            anchors.left: parent.left
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 8
+                            text: "披风"
+                            color: "#ffffff"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                        }
+                        Text {
+                            id: capeHint
+                            anchors.left: capeTitle.right
+                            anchors.leftMargin: 10
+                            anchors.baseline: capeTitle.baseline
+                            text: page.capes.length > 0
+                                  ? "点击切换，蓝框为当前使用"
+                                  : "此账号没有可用披风"
+                            color: "#5d6673"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+                    }
 
-                        Column {
-                            id: capeInner
-                            x: 14
-                            y: 14
-                            width: parent.width - 28
+                    // 披风列表
+                    Flickable {
+                        id: capeFlick
+                        width: parent.width
+                        height: page.capes.length > 0 ? 78 : 0
+                        visible: page.capes.length > 0
+                        contentWidth: capeRow.implicitWidth
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        flickableDirection: Flickable.HorizontalFlick
+
+                        Row {
+                            id: capeRow
                             spacing: 8
+                            Repeater {
+                                model: page.capes
+                                delegate: Rectangle {
+                                    id: capeTile
+                                    readonly property bool inUse: modelData && modelData.active === true
+                                    width: 46
+                                    height: 74
+                                    radius: 6
+                                    color: capeTile.inUse ? "#1f3b82f6"
+                                           : (capeHover.hovered ? "#161a22" : "transparent")
+                                    border.width: 1
+                                    border.color: capeTile.inUse ? "#3b82f6"
+                                                : (capeHover.hovered ? "#2a3341" : "#1a1e26")
 
-                            Text {
-                                text: "披风"
-                                color: "#98a1ae"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 12
-                                font.weight: Font.DemiBold
-                            }
+                                    Item {
+                                        id: capeBox
+                                        readonly property int tileW: 28
+                                        readonly property int tileH: 45
+                                        readonly property real zoom: capeBox.tileW / 10.0
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        y: 5
+                                        width: capeBox.tileW
+                                        height: capeBox.tileH
+                                        clip: true
 
-                            Text {
-                                width: parent.width
-                                text: page.capes.length > 0
-                                      ? "点一下即刻切换；蓝框是当前使用中的披风。"
-                                      : "这个账号没有可用披风（披风需在 Minecraft 活动中获得）。"
-                                color: "#5d6673"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
-                                wrapMode: Text.WordWrap
-                            }
-
-                            Flickable {
-                                width: parent.width
-                                height: page.capes.length > 0 ? 78 : 0
-                                visible: page.capes.length > 0
-                                contentWidth: capeRow.implicitWidth
-                                clip: true
-                                boundsBehavior: Flickable.StopAtBounds
-                                flickableDirection: Flickable.HorizontalFlick
-
-                                Row {
-                                    id: capeRow
-                                    spacing: 8
-                                    Repeater {
-                                        model: page.capes
-                                        delegate: Rectangle {
-                                            id: capeTile
-                                            readonly property bool inUse: modelData && modelData.active === true
-                                            width: 46
-                                            height: 74
-                                            radius: 6
-                                            color: capeTile.inUse ? "#1f3b82f6"
-                                                   : (capeHover.hovered ? "#161a22" : "#0e1116")
-                                            border.width: 1
-                                            border.color: capeTile.inUse ? "#3b82f6"
-                                                        : (capeHover.hovered ? "#2a3341" : "#14171d")
-
-                                            // 披风纹理 64x32：正立面 = 左上 (0,0) 起 10x16，右侧 32+ 是鞘翅 UV。
-                                            // sourceClipRect + Image.Stretch 在实际渲染里会按原纹理 64x32 的槽位算，
-                                            // 图案被压成 0.47 比例（实测），所以改成"整图放大 2 倍后按窗口裁"：
-                                            // scale 后 10px 宽 = 20 逻辑像素，源矩形之外的像素被父 Item 的 clip 掉。
-                                            Item {
-                                                id: capeBox
-                                                readonly property int tileW: 28
-                                                readonly property int tileH: 45
-                                                // 10x16 → 30x48 是严格 0.625，放大倍数 3
-                                                readonly property real zoom: capeBox.tileW / 10.0
-                                                anchors.horizontalCenter: parent.horizontalCenter
-                                                y: 5
-                                                width: capeBox.tileW
-                                                height: capeBox.tileH
-                                                clip: true
-
-                                                Image {
-                                                    // 放大后整张是 64*z x 32*z；把原点往左上偏移 1 个纹素，
-                                                    // 窗口就从 (1,1) 开始，正好露出 1..10 / 1..16 ——
-                                                    // 那才是干净的矩形正立面。(0,0) 起点会把左侧第 0 列
-                                                    // 的绿色描边带进来，就是之前"左边多一块矮的"。
-                                                    width: 64 * capeBox.zoom
-                                                    height: 32 * capeBox.zoom
-                                                    x: -capeBox.zoom
-                                                    y: -capeBox.zoom
-                                                    source: {
-                                                        if (!modelData || !modelData.localPath) return ""
-                                                        var p = modelData.localPath
-                                                        return (p.indexOf("file:") === 0 || p.indexOf("qrc:") === 0)
-                                                               ? p : ("file:///" + p.replace(/\\/g, "/"))
-                                                    }
-                                                    fillMode: Image.Stretch
-                                                    // 最近邻放大：像素保持锐利，不做插值模糊（和头像同一原则）
-                                                    smooth: false
-                                                    asynchronous: true
-                                                }
+                                        Image {
+                                            width: 64 * capeBox.zoom
+                                            height: 32 * capeBox.zoom
+                                            x: -capeBox.zoom
+                                            y: -capeBox.zoom
+                                            source: {
+                                                if (!modelData || !modelData.localPath) return ""
+                                                var p = modelData.localPath
+                                                return (p.indexOf("file:") === 0 || p.indexOf("qrc:") === 0)
+                                                       ? p : ("file:///" + p.replace(/\\/g, "/"))
                                             }
-                                            Text {
-                                                anchors.horizontalCenter: parent.horizontalCenter
-                                                anchors.bottom: parent.bottom
-                                                anchors.bottomMargin: 4
-                                                width: parent.width - 6
-                                                text: capeTile.inUse ? "使用中"
-                                                      : ((modelData && modelData.alias) ? modelData.alias : "")
-                                                color: capeTile.inUse ? "#cfe0ff" : "#6b7686"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: 8
-                                                elide: Text.ElideRight
-                                                horizontalAlignment: Text.AlignHCenter
-                                            }
-                                            HoverHandler { id: capeHover }
-                                            TapHandler {
-                                                onTapped: {
-                                                    if (!page.acct || capeTile.inUse) return
-                                                    page.acct.selectCape(modelData.alias)
-                                                }
-                                            }
+                                            fillMode: Image.Stretch
+                                            smooth: false
+                                            asynchronous: true
                                         }
                                     }
-                                    Rectangle {
-                                        width: 46
-                                        height: 74
-                                        radius: 6
-                                        visible: {
-                                            for (var i = 0; i < page.capes.length; ++i)
-                                                if (page.capes[i] && page.capes[i].active === true) return true
-                                            return false
-                                        }
-                                        color: offHover.hovered ? "#161a22" : "#0e1116"
-                                        border.width: 1
-                                        border.color: offHover.hovered ? "#2a3341" : "#14171d"
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "卸下"
-                                            color: "#98a1ae"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: 11
-                                        }
-                                        HoverHandler { id: offHover }
-                                        TapHandler {
-                                            onTapped: { if (page.acct) page.acct.selectCape("") }
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        anchors.bottom: parent.bottom
+                                        anchors.bottomMargin: 4
+                                        width: parent.width - 6
+                                        text: capeTile.inUse ? "使用中"
+                                              : ((modelData && modelData.alias) ? modelData.alias : "")
+                                        color: capeTile.inUse ? "#cfe0ff" : "#6b7686"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 8
+                                        elide: Text.ElideRight
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+                                    HoverHandler { id: capeHover }
+                                    TapHandler {
+                                        onTapped: {
+                                            if (!page.acct || capeTile.inUse) return
+                                            page.acct.selectCape(modelData.alias)
                                         }
                                     }
                                 }
                             }
+                            Rectangle {
+                                width: 46
+                                height: 74
+                                radius: 6
+                                visible: {
+                                    for (var i = 0; i < page.capes.length; ++i)
+                                        if (page.capes[i] && page.capes[i].active === true) return true
+                                    return false
+                                }
+                                color: offHover.hovered ? "#161a22" : "transparent"
+                                border.width: 1
+                                border.color: offHover.hovered ? "#2a3341" : "#1a1e26"
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "卸下"
+                                    color: "#98a1ae"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 11
+                                }
+                                HoverHandler { id: offHover }
+                                TapHandler {
+                                    onTapped: { if (page.acct) page.acct.selectCape("") }
+                                }
+                            }
                         }
                     }
+
+                    Item { width: 1; height: 12 }
                 }
 
                 Row {
