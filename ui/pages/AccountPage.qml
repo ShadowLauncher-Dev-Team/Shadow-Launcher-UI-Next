@@ -994,11 +994,14 @@ Item {
                                                 clip: true
 
                                                 Image {
-                                                    // 放大 3 倍后整张是 192x96；只需显示左上 30x48 那块
+                                                    // 放大后整张是 64*z x 32*z；把原点往左上偏移 1 个纹素，
+                                                    // 窗口就从 (1,1) 开始，正好露出 1..10 / 1..16 ——
+                                                    // 那才是干净的矩形正立面。(0,0) 起点会把左侧第 0 列
+                                                    // 的绿色描边带进来，就是之前"左边多一块矮的"。
                                                     width: 64 * capeBox.zoom
                                                     height: 32 * capeBox.zoom
-                                                    x: 0
-                                                    y: 0
+                                                    x: -capeBox.zoom
+                                                    y: -capeBox.zoom
                                                     source: {
                                                         if (!modelData || !modelData.localPath) return ""
                                                         var p = modelData.localPath
