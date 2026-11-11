@@ -109,8 +109,10 @@ Item {
     MouseArea {
         id: press
         anchors.fill: parent
-        enabled: !root.dimmed
-        cursorShape: Qt.PointingHandCursor
+        // 必须同时看 root.enabled：以前只判断 dimmed，
+        // 调用方写 enabled: false 时按钮看着灰、实际照样能点（点了触发空操作，用户以为坏了）。
+        enabled: root.enabled && !root.dimmed
+        cursorShape: (root.enabled && !root.dimmed) ? Qt.PointingHandCursor : Qt.ArrowCursor
         hoverEnabled: true
         onContainsMouseChanged: root.hovered = containsMouse
         onClicked: root.clicked()

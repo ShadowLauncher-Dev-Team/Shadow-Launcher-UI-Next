@@ -141,6 +141,8 @@ Item {
         // 版本设置里的扫盘 / 批量改名也点亮光条（几百个 jar 几秒没反馈会以为死了）
         || (root.settingsOpen && settingsPage.busy)
         || (root.prefsOpen && prefsPage.busy)
+        // 皮肤上传 / 披风切换都要等服务器，1~3 秒没反馈会以为没点上
+        || (root.accountOpen && accountPage ? accountPage.wardrobeBusy : false)
 
     // --ui-reenter 的驱动：进/退 每 1.2s 交替一次，用于连拍验证"第二次及以后进入是否还有过渡"。
     // 第一次 open 是初始状态（不播 transition），之后每次切换都会走 states/transitions。
@@ -489,6 +491,7 @@ Item {
                 }
             }
         AccountPage {
+            id: accountPage
             anchors.fill: parent
             toast: toastHost
             onClose: root.accountOpen = false

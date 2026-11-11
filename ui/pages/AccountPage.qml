@@ -22,15 +22,26 @@ Item {
     // 行列表改用它来"原地重算"，避免 Repeater 把整列销毁重建（那就是切换账号时的闪烁）。
     property int accRev: 0
 
+    // 披风/皮肤的结果信号由 AccountBackend 发出（不是 ShadowBackend），
+    // 以前挂在 page.b 上 → 永远收不到，所以切换成功/失败都没有任何提示。
+    Connections {
+        target: page.acct
+        ignoreUnknownSignals: true
+        function onCapeChangeFinished(ok, msg) {
+            page.capeBusy = false
+            page.flash(ok ? "披风已切换" : ("切换失败：" + (msg || "未知错误")))
+        }
+        function onSkinUploadFinished(ok, msg) {
+            page.flash(ok ? "皮肤已上传，正在同步" : ("上传失败：" + (msg || "未知错误")))
+        }
+    }
+
     Connections {
         target: page.b
         ignoreUnknownSignals: true
         function onAccountsChanged() { page.accRev++ }
         // 衣柜失败（尺寸不对 / 上传失败）必须让用户看到，否则点"应用"像没反应
         function onWardrobeError(msg) { page.flash(msg) }
-        function onCapeChangeFinished(ok, msg) {
-            page.flash(ok ? "披风已切换" : ("披风切换失败：" + msg))
-        }
     }
     readonly property var yg: (b && b.yggdrasil) ? b.yggdrasil : null
 
@@ -58,8 +69,15 @@ Item {
     property int skinModelIndex: -1
     readonly property int skinModelServer: (acct && String(acct.skinVariant || "").toUpperCase() === "SLIM") ? 1 : 0
     readonly property int skinModelShown: skinModelIndex >= 0 ? skinModelIndex : skinModelServer
+
+    // 切换披风必须等服务器回包（1~3 秒），期间不给反馈就会以为没点上。
+    // 这两个 busy 都是"点了置 true、收到完成信号置 false"，绝不在点击后立刻复位。
+    property bool capeBusy: false
+    readonly property bool skinBusy: (b && b.wardrobeBusy) ? b.wardrobeBusy : false
+    // 对外（StageShell）用来点亮顶部光条。注意不能叫 busy ——
+    // 上面已有 busy（登录忙碌），重名会编译失败。
+    readonly property bool wardrobeBusy: skinBusy || capeBusy
     readonly property string skinFile: (b && b.selectedSkinPath) ? b.selectedSkinPath : ""
-    readonly property bool wardrobeBusy: (b && b.wardrobeBusy) ? b.wardrobeBusy : false
     // 真实可用披风：来自 AccountBackend（Mojang profile 返回你已拥有的披风）。
     // 注意别再读 ShadowBackend.availableCapes —— 那是本地静态目录（全 Minecraft 披风图鉴），
     // 不是"你有哪几条"，也不能切换。
@@ -905,9 +923,12 @@ Item {
                                 kind: 0
                                 radius: 2
                                 height: 30
-                                text: page.wardrobeBusy ? "上传中" : "应用皮肤"
-                                busy: page.wardrobeBusy
-                                enabled: page.skinFile.length > 0 && !page.wardrobeBusy
+                                text: page.skinBusy ? "上传中" : "应用皮肤"
+                                busy: page.skinBusy
+                                // 没选文件时按钮必须真的点不动，并且视觉上要看得出来。
+                                // SButton 的 dimmed 本身就带"不可点 + 变灰"语义，
+                                // 光靠 enabled:false 只是逻辑禁用、看着还是蓝色实心按钮，等于没提示。
+                                dimmed: page.skinFile.length === 0 || page.skinBusy
                                 onClicked: {
                                     if (!page.b) return
                                     page.b.saveWardrobeSettings(page.skinFile, "", page.skinModelShown === 1 ? 2 : 1)
@@ -920,6 +941,14 @@ Item {
                                 height: 30
                                 text: "导出当前皮肤"
                                 onClicked: { if (page.b) page.b.saveSkinToFile() }
+                            }
+                            Text {
+                                visible: page.skinFile.length === 0
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "先选择皮肤文件才能上传"
+                                color: "#5d6673"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
                             }
                         }
                     }
@@ -944,9 +973,10 @@ Item {
                             anchors.left: capeTitle.right
                             anchors.leftMargin: 10
                             anchors.baseline: capeTitle.baseline
-                            text: page.capes.length > 0
-                                  ? "点击切换，蓝框为当前使用"
-                                  : "此账号没有可用披风"
+                            text: page.capeBusy ? "正在切换..."
+                                  : (page.capes.length > 0
+                                     ? "点击切换，蓝框为当前使用"
+                                     : "此账号没有可用披风")
                             color: "#5d6673"
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -1008,50 +1038,78 @@ Item {
                                             asynchronous: true
                                         }
                                     }
+                                    // 名字永远显示（以前选中后名字被「使用中」顶掉，等于看不到选的是哪条），
+                                    // 用蓝框 + 右侧小圆点表示"使用中"，两者并存。
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         anchors.bottom: parent.bottom
                                         anchors.bottomMargin: 4
                                         width: parent.width - 6
-                                        text: capeTile.inUse ? "使用中"
-                                              : ((modelData && modelData.alias) ? modelData.alias : "")
+                                        text: (modelData && modelData.alias) ? modelData.alias : ""
                                         color: capeTile.inUse ? "#cfe0ff" : "#6b7686"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 8
                                         elide: Text.ElideRight
                                         horizontalAlignment: Text.AlignHCenter
                                     }
+                                    // 使用中标记：右上角小圆点
+                                    Rectangle {
+                                        visible: capeTile.inUse
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
+                                        anchors.rightMargin: 4
+                                        anchors.topMargin: 4
+                                        width: 6
+                                        height: 6
+                                        radius: 3
+                                        color: Theme.accent
+                                    }
                                     HoverHandler { id: capeHover }
                                     TapHandler {
                                         onTapped: {
-                                            if (!page.acct || capeTile.inUse) return
+                                            if (!page.acct || capeTile.inUse || page.capeBusy) return
+                                            // 切换要走服务器，先把 busy 立起来（顶部光条 + 禁用重复点击），
+                                            // 由 onCapeChangeFinished 复位。
+                                            page.capeBusy = true
                                             page.acct.selectCape(modelData.alias)
                                         }
                                     }
                                 }
                             }
+                            // 「卸下」常驻：以前它的 visible 绑在"有 active 披风"上，
+                            // 一卸下就失去 active → 框自己消失，看着像界面出错。
+                            // 现在只按"有没有披风可选"决定，并区分已卸下状态。
                             Rectangle {
-                                width: 46
-                                height: 74
-                                radius: 6
-                                visible: {
+                                id: offTile
+                                readonly property bool anyActive: {
                                     for (var i = 0; i < page.capes.length; ++i)
                                         if (page.capes[i] && page.capes[i].active === true) return true
                                     return false
                                 }
+                                width: 46
+                                height: 74
+                                radius: 6
                                 color: offHover.hovered ? "#161a22" : "transparent"
                                 border.width: 1
-                                border.color: offHover.hovered ? "#2a3341" : "#1a1e26"
+                                border.color: offTile.anyActive
+                                              ? (offHover.hovered ? "#2a3341" : "#1a1e26")
+                                              : Theme.accent
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "卸下"
-                                    color: "#98a1ae"
+                                    text: offTile.anyActive ? "卸下" : "未穿戴"
+                                    color: offTile.anyActive ? "#98a1ae" : "#cfe0ff"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 11
                                 }
                                 HoverHandler { id: offHover }
                                 TapHandler {
-                                    onTapped: { if (page.acct) page.acct.selectCape("") }
+                                    onTapped: {
+                                        if (!page.acct || page.capeBusy) return
+                                        // 已经卸下了就别再发请求
+                                        if (!offTile.anyActive) return
+                                        page.capeBusy = true
+                                        page.acct.selectCape("")
+                                    }
                                 }
                             }
                         }
