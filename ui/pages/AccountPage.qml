@@ -40,6 +40,13 @@ Item {
         }
         function onSkinReady() { page.refreshBusy = false }
         function onCapesReady() { page.refreshBusy = false }
+        // 刷新的最终结果：成功/失败都要说清楚，
+        // 只发一句「正在重新获取」然后没下文，等于告诉用户"卡住了"。
+        function onRefreshFinished(ok, msg) {
+            page.refreshBusy = false
+            refreshTimer.stop()
+            page.flash(ok ? "状态已刷新" : ("刷新失败：" + (msg || "未知错误")))
+        }
         function onSkinUploadFinished(ok, msg) {
             // 不写"正在同步"之类内部说法：对用户来说上传成功就是换好了，
             // 头像重绘是后端自己的事，不该让他等一个看不见的"同步"。
@@ -301,16 +308,20 @@ Item {
                     if (!page.b) return
                     page.refreshBusy = true
                     refreshTimer.restart()
+                    // 不在这里 flash「正在...」——按钮已变「刷新中」、顶部光条已亮，
+                    // 再加一条过程提示只会和结果提示撞在一起。结果统一由 onRefreshFinished 给。
                     if (page.hasOnline) {
                         if (page.acct) page.acct.refreshSkin()
-                        page.flash("正在重新获取皮肤和披风")
                     } else if (page.yg && page.yg.loggedIn) {
                         page.yg.validateSession()
-                        page.flash("正在校验外置登录会话")
+                        page.refreshBusy = false
+                        refreshTimer.stop()
+                        page.flash("已校验外置登录会话")
                     } else if (page.hasOffline) {
                         if (page.acct) page.acct.refreshSkin()
-                        page.flash("正在刷新头像")
                     } else {
+                        page.refreshBusy = false
+                        refreshTimer.stop()
                         page.flash("当前还没有账号")
                     }
                 }

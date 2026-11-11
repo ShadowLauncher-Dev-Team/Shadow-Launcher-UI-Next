@@ -356,13 +356,16 @@ void AccountBackend::refreshSkin()
     if (m_loggedIn && m_isOnline && !m_username.isEmpty()) {
         qCInfo(logApp) << QStringLiteral("正版皮肤刷新");
         emit logMessage(tr("正在刷新皮肤..."));
+        m_refreshPending = true;
         downloadOnlineSkin(true);
     } else if (!m_offlineUsername.isEmpty()) {
         qCInfo(logApp) << QStringLiteral("离线皮肤刷新");
         emit logMessage(tr("正在刷新离线头像..."));
         updateOfflineSkin(m_offlineUsername);
+        emit refreshFinished(true, QString());
     } else {
         emit logMessage(tr("未登录，无需刷新"));
+        emit refreshFinished(false, tr("当前没有可刷新的账号"));
     }
 }
 
@@ -853,6 +856,11 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
             }
             m_capes.clear();
             emit capesReady();
+            // 用户主动刷新失败要明确告知，不能只留一句"正在刷新"
+            if (m_refreshPending) {
+                m_refreshPending = false;
+                emit refreshFinished(false, reply->errorString());
+            }
             if (!skinCached) {
                 // 无缓存 → fallback 史蒂夫
                 setFallbackSkin();
@@ -990,6 +998,13 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
                     }
                 });
             }
+        }
+
+        // 档案拉取成功即视为刷新成功（皮肤/披风的下载在各自回调里继续，
+        // 那属于实现细节，不该让用户等）。
+        if (m_refreshPending) {
+            m_refreshPending = false;
+            emit refreshFinished(true, QString());
         }
 
         if (!skinCached) {

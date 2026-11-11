@@ -131,6 +131,9 @@ signals:
     void skinVariantChanged();
     void capeChangeFinished(bool success, const QString &errorMsg);
     void skinUploadFinished(bool success, const QString &errorMsg);
+    // 「刷新状态」的结果。skinReady/capesReady 不带成败，UI 无法判断该提示成功还是失败，
+    // 所以单独给一条带结果的信号（只在用户主动刷新时发，启动流程不发）。
+    void refreshFinished(bool success, const QString &errorMsg);
     void offlineHistoryChanged();
     void logMessage(const QString &msg);
 
@@ -200,6 +203,8 @@ private:
     QString m_activeCapeAlias;
     QString m_skinVariant;
     QList<CapeInfo> m_capes;
+    // 用户主动刷新中：用于把 downloadOnlineSkin 的响应转成 refreshFinished
+    bool m_refreshPending = false;
     bool m_loggedIn = false;
     bool m_isOnline = false;
     QStringList m_offlineUsernames;
