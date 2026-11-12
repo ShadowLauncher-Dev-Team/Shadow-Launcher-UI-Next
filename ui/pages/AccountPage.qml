@@ -197,20 +197,19 @@ Item {
     // 对外（StageShell）用来点亮顶部光条。注意不能叫 busy ——
     // 上面已有 busy（登录忙碌），重名会编译失败。
     // 皮肤/披风在拉取（含逐张下载）也算忙：顶部 SLoadingBar 统一显示这类不确定等待。
-    readonly property bool wardrobeBusy: skinBusy || capeBusy || refreshBusy || capesLoading || identityLoading
+    readonly property bool wardrobeBusy: skinBusy || capeBusy || refreshBusy || capesLoading
     readonly property string skinFile: (b && b.selectedSkinPath) ? b.selectedSkinPath : ""
     // 真实可用披风：来自 AccountBackend（Mojang profile 返回你已拥有的披风）。
     // 注意别再读 ShadowBackend.availableCapes —— 那是本地静态目录（全 Minecraft 披风图鉴），
     // 不是"你有哪几条"，也不能切换。
     readonly property var acct: (b && b.account) ? b.account : null
     readonly property var capes: (acct && acct.capes) ? acct.capes : []
-    // 披风正在拉取（含逐张下载）。切换账号时后端会立刻把它置 false，
-    // 加载条不会跟到下一个账号身上。
-    // 身份/披风装载中：由 ShadowBackend 代理 AccountBackend 的两个标志。
-    // 注意 b 是 ShadowBackend，直接读 b.capesLoading 会拿到 undefined（踩过）。
-    readonly property bool identityLoading: (b && b.accountLoading) ? b.accountLoading : false
-    readonly property bool capesLoading: identityLoading
-    readonly property bool capeLoadingVisible: (capesLoading || identityLoading) && capes.length === 0
+    // 披风正在拉取（后端 capesLoading 的代理，含逐张下载）。
+    // 注意 b 是 ShadowBackend，直接读 b.capesLoading 会拿到 undefined（踩过），
+    // 必须走 accountLoading 这个代理；光条与文案都只认这一个状态。
+    // 切号时后端会立刻置 false，加载条不会跟到下一个账号身上。
+    readonly property bool capesLoading: (b && b.accountLoading) ? b.accountLoading : false
+    readonly property bool capeLoadingVisible: capesLoading && capes.length === 0
 
     // 原始皮肤优先（自己裁脸）；头部图兜底
     readonly property string rawHeadSource: (b && b.isOnline) ? (b.skinTexturePath || "") : ""

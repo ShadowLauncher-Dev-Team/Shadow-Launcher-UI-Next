@@ -186,9 +186,9 @@ class ShadowBackend : public QObject {
     Q_PROPERTY(QString loginType READ loginType CONSTANT)
     Q_PROPERTY(QString selectedSkinPath READ selectedSkinPath NOTIFY skinChanged)
     Q_PROPERTY(bool wardrobeBusy READ isWardrobeBusy NOTIFY wardrobeBusyChanged)
-    // 账号身份装载中（切号→令牌链→MC档案→披风下载）。
-    // QML 拿到的 b 是 ShadowBackend，AccountBackend 的 identityLoading 它看不见，
-    // 所以必须在这一层代理出去，否则顶部 SLoadingBar 永远不亮（实测踩过）。
+    // 披风正在拉取（顶部 SLoadingBar 就靠它）。
+    // QML 拿到的 b 是 ShadowBackend，AccountBackend 上的标志它看不见，
+    // 所以必须在这一层代理出去，否则光条永远不亮（实测踩过）。
     Q_PROPERTY(bool accountLoading READ accountLoading NOTIFY accountLoadingChanged)
     Q_PROPERTY(int fileDownloadSource READ fileDownloadSource WRITE setFileDownloadSource NOTIFY downloadSettingsChanged)
     Q_PROPERTY(int listDownloadSource READ listDownloadSource WRITE setListDownloadSource NOTIFY downloadSettingsChanged)

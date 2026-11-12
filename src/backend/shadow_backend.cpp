@@ -381,10 +381,8 @@ ShadowBackend::ShadowBackend(QObject* parent)
             this, &ShadowBackend::syncPlayerName);
     connect(m_account, &AccountBackend::accountsChanged,
             this, &ShadowBackend::accountsChanged);
-    // 账号身份装载状态：AccountBackend 的加载标志要代理给 QML（详见头文件注释）
+    // 披风加载状态：AccountBackend 的标志要代理给 QML（详见头文件注释）
     if (m_account) {
-        connect(m_account, &AccountBackend::identityLoadingChanged,
-                this, &ShadowBackend::accountLoadingChanged);
         connect(m_account, &AccountBackend::capesLoadingChanged,
                 this, &ShadowBackend::accountLoadingChanged);
     }
@@ -1907,7 +1905,7 @@ void ShadowBackend::switchAccount(int index) {
 bool ShadowBackend::accountLoading() const
 {
     if (!m_account) return false;
-    return m_account->identityLoading() || m_account->capesLoading();
+    return m_account->capesLoading();
 }
 
 bool ShadowBackend::removeAccount(int index) {

@@ -43,7 +43,6 @@ class AccountBackend : public QObject {
     // 整个「身份装载」过程：切号 → 令牌链 → MC 档案 → 披风下载。
     // 只从档案请求开始算是不够的：令牌链那几秒里界面同样是空白的（实测切到正版后
     // 要 3~4 秒才发档案请求，这段时间披风区就是空的，用户看不到任何反馈）。
-    Q_PROPERTY(bool identityLoading READ identityLoading NOTIFY identityLoadingChanged)
     // 原始皮肤纹理（整张 64/128）。UI 自己裁脸用：renderHead3D 对部分皮肤会渲染出
     // 错误的头部图（2026-11-04 实测某皮肤渲染成紫色竖条），所以不能只依赖 skinPath。
     Q_PROPERTY(QString skinTexturePath READ skinTexturePath NOTIFY skinReady)
@@ -78,7 +77,6 @@ public:
     QString capePath() const { return m_capePath; }
     QString skinVariant() const { return m_skinVariant; }
     bool capesLoading() const { return m_capesLoading; }
-    bool identityLoading() const { return m_identityLoading; }
     QStringList offlineUsernames() const { return m_offlineUsernames; }
 
     // ── Slots ──
@@ -138,7 +136,6 @@ signals:
     void capeReady();
     void capesReady();
     void capesLoadingChanged();
-    void identityLoadingChanged();
     void skinVariantChanged();
     void capeChangeFinished(bool success, const QString &errorMsg);
     void skinUploadFinished(bool success, const QString &errorMsg);
@@ -240,11 +237,9 @@ private:
     QList<CapeInfo> m_capes;
     // 披风拉取状态：m_capesUser 记录发起时的玩家名，防止切号后旧响应写进新账号
     bool m_capesLoading = false;
-    bool m_identityLoading = false;
     QString m_capesUser;
     int m_capesPending = 0;    // 还没回来的披风图片请求数
     void setCapesLoading(bool on);
-    void setIdentityLoading(bool on);
     // 用户主动刷新中：用于把 downloadOnlineSkin 的响应转成 refreshFinished
     bool m_refreshPending = false;
     bool m_loggedIn = false;

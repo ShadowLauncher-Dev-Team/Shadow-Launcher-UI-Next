@@ -64,20 +64,8 @@ AccountBackend::AccountBackend(QObject *parent)
         }
     }
 
-    // 启动时若恢复出了正版会话，后台会接着刷令牌、拉 MC 档案、下披风 ——
-    // 这几秒里账户页同样是空白的，必须从这一刻就点亮顶部光条。
-    // （之前只在 switchAccount 里置位，导致「首次进入账户页没有光条、
-    //   而切号回来却有」这种不对称。）
-    if (m_loggedIn && m_isOnline && !m_username.isEmpty()) {
-        setIdentityLoading(true);
-        // 兜底：万一令牌链 / 档案请求卡死，20s 后收掉
-        QTimer::singleShot(20000, this, [this]() {
-            if (m_identityLoading) {
-                qCWarning(logAccount) << QStringLiteral("启动装载超时，收掉加载状态");
-                setIdentityLoading(false);
-            }
-        });
-    }
+    // 顶部光条只跟「披风正在拉取」这一个状态走（capesLoading）：
+    // 拉披风跟登录流程无关，别把它绑到令牌链上。
 
     // 头像就绪时给当前账号存一份快照（列表用；非当前账号也能显示头像）
     connect(this, &AccountBackend::skinReady, this, &AccountBackend::saveCurrentAvatarSnapshot);
@@ -869,7 +857,6 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
                 qCWarning(logAccount) << QStringLiteral("披风加载超时，收掉加载状态");
                 m_capesPending = 0;
                 setCapesLoading(false);
-                setIdentityLoading(false);
             }
         });
     }
@@ -1554,22 +1541,10 @@ void AccountBackend::persistCurrentProfile()
     if (changed) saveAccounts();
 }
 
-void AccountBackend::setIdentityLoading(bool on)
-{
-    if (m_identityLoading == on) return;
-    m_identityLoading = on;
-    qCInfo(logAccount) << QStringLiteral("[身份] 装载状态=%1 账号=%2")
-                              .arg(on ? QStringLiteral("开始") : QStringLiteral("结束"))
-                              .arg(m_username);
-    emit identityLoadingChanged();
-}
-
 void AccountBackend::setCapesLoading(bool on)
 {
     if (m_capesLoading == on) return;
     m_capesLoading = on;
-    // 披风拉完（或被放弃）= 这一轮身份装载结束
-    if (!on) setIdentityLoading(false);
     qCInfo(logAccount) << QStringLiteral("[披风] 加载状态=%1 账号=%2")
                               .arg(on ? QStringLiteral("开始") : QStringLiteral("结束"))
                               .arg(m_capesUser);
@@ -1781,7 +1756,6 @@ void AccountBackend::clearActiveIdentity()
     m_capesPending = 0;
     m_capesUser.clear();
     setCapesLoading(false);
-    setIdentityLoading(false);
     if (m_refreshTimer) m_refreshTimer->stop();
     emit accountChanged();
     emit skinReady();
@@ -1810,11 +1784,8 @@ void AccountBackend::switchAccount(int index)
         m_msRefreshToken = a.refreshToken;
         m_loggedIn = true;
         m_isOnline = true;
-        // 从切换这一刻点亮顶部加载条：后面还有令牌链 + 档案 + 披风下载，
-        // 全都跑完（或超时）才熄灭。
-        setIdentityLoading(true);
-        // 先把它上次的资料摆上去：否则要等令牌刷新 + MC 档案 + Mojang profile
-        // 一连串接口回来（实测 3.5 秒），期间列表是字母头像、详情写「没有可用披风」。
+        // 先把它上次的资料摆上去：等令牌刷新 + MC 档案 + Mojang profile 回来
+        // 再换新的，避免中间几秒列表是字母头像、详情写「没有可用披风」。
         if (!a.skinPath.isEmpty()) m_skinPath = a.skinPath;
         if (!a.capePath.isEmpty()) m_capePath = a.capePath;
         m_activeCapeAlias = a.activeCapeAlias;
