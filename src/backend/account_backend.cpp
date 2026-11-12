@@ -1454,6 +1454,17 @@ QString AccountBackend::accountAvatarPath(const StoredAccount &a) const
     return m_dataDir + QStringLiteral("/assets/accounts/%1_%2.png").arg(a.mode).arg(safe);
 }
 
+void AccountBackend::setExternalSkinPath(const QString &url)
+{
+    if (url == m_externalSkinPath) return;
+    m_externalSkinPath = url;
+    // 落到当前外置账号的快照（切换时还会再存一次）
+    if (m_currentAccount >= 0 && m_currentAccount < m_accounts.size()
+        && m_accounts[m_currentAccount].mode == 2) {
+        saveCurrentAvatarSnapshot();
+    }
+}
+
 QString AccountBackend::accountAvatarFilePath(const StoredAccount &a) const
 {
     if (!a.avatarFile.isEmpty()) {
@@ -1496,7 +1507,13 @@ void AccountBackend::saveCurrentAvatarSnapshot()
 {
     if (m_currentAccount < 0 || m_currentAccount >= m_accounts.size()) return;
     const StoredAccount &a = m_accounts.at(m_currentAccount);
-    const QString srcUrl = (a.mode == 0) ? m_skinPath : m_offlineSkinPath;
+    // 三种账号的皮肤来源各不相同：
+    //   正版 → m_skinPath；离线 → m_offlineSkinPath；外置 → YggdrasilSkinFetcher 灌进来的 m_externalSkinPath。
+    // 之前外置走的是 m_offlineSkinPath（永远是空的），所以外置账号从来没有自己的头像快照，
+    // 它能显示头像全靠「当前账号实时头像」兜底；一旦切走就变成字母（影报的正是这个）。
+    const QString srcUrl = (a.mode == 0) ? m_skinPath
+                         : (a.mode == 2) ? m_externalSkinPath
+                         : m_offlineSkinPath;
     if (srcUrl.isEmpty()) return;
     const QString srcPath = QUrl(srcUrl).toLocalFile();
     if (srcPath.isEmpty() || !QFileInfo::exists(srcPath)) return;

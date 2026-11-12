@@ -14,6 +14,7 @@
 #include "../core/step_node.h"
 #include "../core/resource_fetch_engine.h"
 #include "../core/mod_manager.h"
+#include "yggdrasil_skin_fetcher.h"
 #include "../core/update_manager.h"
 #include "../core/icon_cache.h"
 #include "../core/modpack_importer.h"
@@ -402,6 +403,17 @@ ShadowBackend::ShadowBackend(QObject* parent)
             m_account->upsertExternalAccount(y->username(), y->uuid(), y->apiRoot(),
                                              y->accessToken(), y->clientToken());
         });
+        // 外置账号的皮肤由 YggdrasilSkinFetcher 拉，AccountBackend 看不到，
+        // 必须喂给它，否则这条账号永远没有自己的头像快照 ——
+        // 切到别的账号后，外置那行就只剩字母（影报的「外置头像变字母」）。
+        if (auto *sf = qobject_cast<YggdrasilSkinFetcher*>(ygg->skinFetcherObj())) {
+            auto pushSkin = [this, sf]() {
+                if (m_account) m_account->setExternalSkinPath(sf->skinPath());
+            };
+            connect(sf, &YggdrasilSkinFetcher::skinChanged, this, pushSkin);
+            connect(sf, &YggdrasilSkinFetcher::skinReady, this, pushSkin);
+            pushSkin();
+        }
     }
     // 皮肤上传结果：复位衣柜忙碌态，并把失败原因交给 UI。
     // （以前这个信号没有任何接收方 → 上传失败时界面毫无反应。）

@@ -193,6 +193,9 @@ private:
 public:
     /// 服务端判定某条外置账号的令牌已失效：置位 needsRelogin 并落盘。
     void markNeedsRelogin(const QString &name, int mode);
+    /// 外置账号的皮肤来自 YggdrasilSkinFetcher（不在 AccountBackend 手里）。
+    /// 由 ShadowBackend 在拉取成功后灌进来，切走时才能把它的头像快照存下来。
+    void setExternalSkinPath(const QString &url);
 private:
     void clearActiveIdentity();
     QList<StoredAccount> m_accounts;
@@ -220,6 +223,7 @@ private:
     QString m_skinPath;
     QString m_offlineSkinPath;
     QString m_capePath;  // active cape path (for avatar)
+    QString m_externalSkinPath;   // 外置账号皮肤（来自 YggdrasilSkinFetcher）
     QString m_activeCapeAlias;
     QString m_skinVariant;
     QList<CapeInfo> m_capes;
