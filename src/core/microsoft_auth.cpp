@@ -243,19 +243,25 @@ void MicrosoftAuth::startEmbeddedLogin(const QString& clientId) {
 // ═══════════════════════════════════════════════════
 
 void MicrosoftAuth::startWv2LoginProcess(const QString& clientId) {
-    beginBusy(false);
-    m_embeddedMode = true;
     m_clientId = clientId.isEmpty() ? kClientId : clientId;
     const QString redirect = u"https://login.microsoftonline.com/common/oauth2/nativeclient"_s;
-    qCInfo(logApp) << QStringLiteral("[wv2login] 启动独立登录进程 clientId=%1").arg(m_clientId);
 
+    // 先判断助手在不在，再决定要不要开始流程：
+    // startLogin() 开头有 if (m_busy) return;，若先 beginBusy 再降级会静默什么都不做。
     const QString exePath = QCoreApplication::applicationDirPath() + QStringLiteral("/wv2login.exe");
     if (!QFileInfo::exists(exePath)) {
-        qCWarning(logApp) << QStringLiteral("[wv2login] 未找到 %1").arg(exePath);
+        // 内嵌登录依赖独立的 WebView2 助手程序，它不在本仓库内、也不随构建产出。
+        // 缺它就死在这里等于「正版登录完全不可用」，所以降级到本地回调 + 系统浏览器：
+        // 流程同样是标准 OAuth 授权码，只是窗口在浏览器里而不是内嵌。
+        qCWarning(logApp) << QStringLiteral("[wv2login] 未找到 %1，降级为浏览器登录").arg(exePath);
         m_embeddedMode = false;
-        fail(tr("登录组件缺失：未找到 wv2login.exe"));
+        startLogin(m_clientId);
         return;
     }
+
+    beginBusy(false);
+    m_embeddedMode = true;
+    qCInfo(logApp) << QStringLiteral("[wv2login] 启动独立登录进程 clientId=%1").arg(m_clientId);
 
     // Result file + WebView2 profile live in the launcher's private data
     // directory (NOT C:\Users\Public — that is world-readable and would leak

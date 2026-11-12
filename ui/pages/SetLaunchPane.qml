@@ -48,7 +48,8 @@ Item {
                         itemHeight: 28
                         items: ["自动", "分代 ZGC", "仅 G1GC", "不指定"]
                         currentIndex: pane.s ? pane.s.gcMode : 0
-                        onActivated: (i) => { if (pane.s) pane.s.setGcMode(i) }
+                        // gcMode 是 Q_PROPERTY 的 WRITE 访问器：QML 只能赋值，不能当方法调
+                    onActivated: (i) => { if (pane.s) pane.s.gcMode = i }
                     }
                 }
 
@@ -61,7 +62,7 @@ Item {
                         itemHeight: 28
                         items: ["高", "正常", "低"]
                         currentIndex: pane.s ? pane.s.processPriority : 1
-                        onActivated: (i) => { if (pane.s) pane.s.setProcessPriority(i) }
+                        onActivated: (i) => { if (pane.s) pane.s.processPriority = i }
                     }
                 }
             }

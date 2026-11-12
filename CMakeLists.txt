@@ -948,3 +948,46 @@ target_link_libraries(SLUpdater PRIVATE
     shell32
     comctl32    # 2026-08-15：进度条控件 PROGRESS_CLASS
 )
+
+# ============================================================
+# wv2login — Microsoft 内嵌登录助手（Edge WebView2，独立进程，无 Qt）
+# ============================================================
+# 为什么是独立进程：登录窗口崩溃/被杀不会带崩启动器；
+# 启动器只用 QProcess 起它、等退出、读结果文件（见 src/core/microsoft_auth.cpp）。
+#
+# 2026-11-12：这个工程原本在旧仓库 cpp/thirdparty/wv2login（VS 工程 + NuGet 包 466MB），
+# v2 建仓时按“体积垃圾”整个排除了，结果 v2 的内嵌登录成了永远找不到 exe 的死代码。
+# 现在只把 src/ 4 个文件和最小 SDK 头/导入库搬进来（4.8MB），由 CMake 自己编。
+set(WV2LOGIN_DIR "${CMAKE_SOURCE_DIR}/thirdparty/wv2login")
+
+add_executable(wv2login WIN32
+    ${WV2LOGIN_DIR}/src/App.cpp
+    ${WV2LOGIN_DIR}/src/AppWindow.cpp
+)
+set_target_properties(wv2login PROPERTIES
+    WIN32_EXECUTABLE TRUE
+    AUTOMOC OFF
+)
+target_include_directories(wv2login PRIVATE
+    "${WV2LOGIN_DIR}/src"
+    "${WV2LOGIN_DIR}/sdk/WebView2"   # <WebView2.h> / <WebView2EnvironmentOptions.h>
+    "${WV2LOGIN_DIR}/sdk"            # <wil/com.h> 等
+)
+target_compile_definitions(wv2login PRIVATE UNICODE _UNICODE)
+# 旧 vcxproj 靠 <CharacterSet>Unicode</CharacterSet> 提供这两个宏；缺了 IDC_ARROW 会退化成
+# MAKEINTRESOURCEA，LoadCursorW 直接编译不过。
+target_compile_options(wv2login PRIVATE /utf-8 /MT)
+# /MT 与 SLUpdater 同理：助手进程独立运行，静态 CRT 免得受 DLL 搜索顺序影响
+target_link_libraries(wv2login PRIVATE
+    "${WV2LOGIN_DIR}/sdk/lib/x64/WebView2Loader.dll.lib"
+    ole32 oleaut32 uuid shell32 shlwapi user32 gdi32 advapi32 urlmon gdiplus comdlg32
+)
+
+# 助手 exe 与 WebView2Loader.dll 都必须和 ShadowLauncher.exe 同目录：
+# microsoft_auth.cpp 按 applicationDirPath() + "/wv2login.exe" 找它。
+add_custom_command(TARGET wv2login POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${WV2LOGIN_DIR}/sdk/lib/x64/WebView2Loader.dll"
+        "$<TARGET_FILE_DIR:wv2login>/WebView2Loader.dll"
+    COMMENT "Copying WebView2Loader.dll next to wv2login.exe"
+)

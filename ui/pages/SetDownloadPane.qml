@@ -71,7 +71,9 @@ Item {
                         to: 24
                         step: 1
                         value: pane.s ? pane.s.maxDownloadThreads : 16
-                        onMoved: (v) => { if (pane.s) pane.s.setMaxDownloadThreads(v) }
+                        // maxDownloadThreads 是 Q_PROPERTY 的 WRITE 访问器，只能赋值；
+                    // 当方法调用会抛 TypeError，滑块动了但右侧数字不变。
+                    onMoved: (v) => { if (pane.s) pane.s.maxDownloadThreads = v }
                     }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
