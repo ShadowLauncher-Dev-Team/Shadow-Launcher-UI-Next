@@ -755,6 +755,10 @@ ShadowBackend::ShadowBackend(QObject* parent)
             if (!curAcc.isEmpty()) {
                 const int curMode = curAcc.value(QStringLiteral("mode")).toInt();
                 const QString curName = curAcc.value(QStringLiteral("name")).toString();
+                // 登录方式必须跟着当前账号走：以前只在 switchAccount/removeAccount 同步，
+                // 重启后 m_lastLoginMode 还是 QSettings 里的旧值（外置账号会走进正版分支，
+                // 用户名取到空 → 启动前检查直接报「登录状态」不通过）。
+                setLastLoginMode(curMode);
                 if (curMode == 1) {
                     qCInfo(logApp) << QStringLiteral("[启动] 恢复离线登录(当前账号): ") << curName;
                     m_account->offlineLogin(curName);
@@ -2884,11 +2888,15 @@ void ShadowBackend::launch(const QString& versionId, bool online) {
     // 三种登录方式严格分离（用户要求）：0=正版(微软账号)、1=离线(离线名)、2=外置(ygg)
     QString username;
     auto *ygg = static_cast<YggdrasilBackend*>(m_yggdrasil);
-    if (m_lastLoginMode == 2 && ygg && ygg->loggedIn()) {
+    // 身份判据 = 当前账号类型（accounts.json 的 current），m_lastLoginMode 只在没有当前账号时兜底。
+    // 两套真源并存过：切号/重启后 m_lastLoginMode 与 current 不一致，启动就会拿错身份。
+    int authMode = m_account ? m_account->currentAccountMode() : -1;
+    if (authMode < 0) authMode = m_lastLoginMode;
+    if (authMode == 2 && ygg && ygg->loggedIn()) {
         username = ygg->username();
         // 通知 launch backend 使用外置登录
         m_launch->setYggdrasilMode(ygg->apiRoot(), ygg->accessToken());
-    } else if (m_lastLoginMode == 1) {
+    } else if (authMode == 1) {
         // 离线登录：用离线用户名（m_account->username() 是微软正版账号名，离线时为空）
         username = m_account->offlineUsername();
         m_launch->clearYggdrasilMode();
@@ -2953,7 +2961,7 @@ void ShadowBackend::launch(const QString& versionId, bool online) {
     // Pass auth info based on mode
     if (online) {
         auto *ygg2 = static_cast<YggdrasilBackend*>(m_yggdrasil);
-        if (m_lastLoginMode == 2 && ygg2 && ygg2->loggedIn()) {
+        if (authMode == 2 && ygg2 && ygg2->loggedIn()) {
             // 外置登录
             qCInfo(logLaunch) << QStringLiteral("[认证] 外置登录模式启动 玩家名=%1 uuid=%2").arg(ygg2->username(), ygg2->uuid());
             m_launch->setAuthInfo(ygg2->username(), ygg2->uuid(),
