@@ -12,6 +12,7 @@
 #include <cstring>
 
 #include <QCryptographicHash>
+#include <QTimer>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -840,12 +841,37 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
 
     // No cache — fetch from Mojang API
     qCInfo(logAccount) << QStringLiteral("正在调用Mojang Profile API...");
+    // 从这里开始算「披风拉取中」：UI 显示加载条。记下发起者，
+    // 万一中途切号，旧响应必须整条丢掉，不能写进新账号的披风列表。
+    m_capesUser = m_username;
+    m_capesPending = 0;
+    setCapesLoading(true);
+    // 兜底：网络卡死时不能让顶部光条一直转
+    {
+        const QString guardUser = m_username;
+        QTimer::singleShot(15000, this, [this, guardUser]() {
+            if (m_capesLoading && m_capesUser == guardUser) {
+                qCWarning(logAccount) << QStringLiteral("披风加载超时，收掉加载状态");
+                m_capesPending = 0;
+                setCapesLoading(false);
+                setIdentityLoading(false);
+            }
+        });
+    }
     QNetworkRequest req(QUrl(QStringLiteral("https://api.minecraftservices.com/minecraft/profile")));
     req.setRawHeader("Authorization", QStringLiteral("Bearer %1").arg(m_msMcToken).toUtf8());
 
     QNetworkReply* reply = HttpClient::instance().getRaw(req);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, skinCached]() {
+    const QString reqUser = m_username;
+    connect(reply, &QNetworkReply::finished, this, [this, reply, skinCached, reqUser]() {
         reply->deleteLater();
+        // 期间切了账号：这份响应属于上一个身份，整条丢掉（加载条也一起收掉）
+        if (m_username != reqUser) {
+            qCInfo(logAccount) << QStringLiteral("忽略上一个账号的档案响应: ") << reqUser;
+            setCapesLoading(false);
+            m_capesPending = 0;
+            return;
+        }
 
         if (reply->error() != QNetworkReply::NoError) {
             qCWarning(logAccount) << QStringLiteral("Mojang档案获取失败 错误=%1").arg(reply->errorString());
@@ -857,6 +883,7 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
                 refreshMicrosoftToken();
             }
             m_capes.clear();
+            setCapesLoading(false);
             emit capesReady();
             // 用户主动刷新失败要明确告知，不能只留一句"正在刷新"
             if (m_refreshPending) {
@@ -941,6 +968,7 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
 
         if (capeUrls.isEmpty()) {
             qCInfo(logAccount) << QStringLiteral("Mojang档案中无披风");
+            setCapesLoading(false);
             emit capesReady();
         } else {
             qCInfo(logAccount) << QStringLiteral("从Mojang获取到披风 总数=%1 ACTIVE=%2")
@@ -950,6 +978,8 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
         // ── Download ALL capes ──
         if (!capeUrls.isEmpty()) {
             QDir().mkpath(m_dataDir + QStringLiteral("/assets/capes"));
+            // 每张披风图一个请求：全部回来才算加载完
+            m_capesPending = capeUrls.size();
             for (int i = 0; i < capeUrls.size(); ++i) {
                 const QString& url = capeUrls[i];
                 const QString& alias = capeAliases[i];
@@ -959,6 +989,10 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
                 QNetworkReply* capeReply = HttpClient::instance().getRaw(capeReq);
                 connect(capeReply, &QNetworkReply::finished, this, [this, capeReply, alias, id, active]() {
                     capeReply->deleteLater();
+                    // 单张回来就递减；归零表示这一轮披风全部拉完
+                    auto tick = [this]() {
+                        if (--m_capesPending <= 0) { m_capesPending = 0; setCapesLoading(false); }
+                    };
                     if (capeReply->error() == QNetworkReply::NoError) {
                         QString cachePath = capeCachePath(m_username + QStringLiteral("_") + alias);
                         QFile file(cachePath);
@@ -986,6 +1020,7 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
                             emit capesReady();
                             if (active) emit capeReady();
                         }
+                        tick();
                     } else {
                         qCWarning(logAccount) << QStringLiteral("披风下载失败 alias=%1 错误=%2")
                                                       .arg(alias, capeReply->errorString());
@@ -997,6 +1032,7 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
                         info.active = active;
                         m_capes.append(info);
                         emit capesReady();
+                        tick();
                     }
                 });
             }
@@ -1503,6 +1539,28 @@ void AccountBackend::persistCurrentProfile()
     if (changed) saveAccounts();
 }
 
+void AccountBackend::setIdentityLoading(bool on)
+{
+    if (m_identityLoading == on) return;
+    m_identityLoading = on;
+    qCInfo(logAccount) << QStringLiteral("[身份] 装载状态=%1 账号=%2")
+                              .arg(on ? QStringLiteral("开始") : QStringLiteral("结束"))
+                              .arg(m_username);
+    emit identityLoadingChanged();
+}
+
+void AccountBackend::setCapesLoading(bool on)
+{
+    if (m_capesLoading == on) return;
+    m_capesLoading = on;
+    // 披风拉完（或被放弃）= 这一轮身份装载结束
+    if (!on) setIdentityLoading(false);
+    qCInfo(logAccount) << QStringLiteral("[披风] 加载状态=%1 账号=%2")
+                              .arg(on ? QStringLiteral("开始") : QStringLiteral("结束"))
+                              .arg(m_capesUser);
+    emit capesLoadingChanged();
+}
+
 void AccountBackend::saveCurrentAvatarSnapshot()
 {
     if (m_currentAccount < 0 || m_currentAccount >= m_accounts.size()) return;
@@ -1704,6 +1762,11 @@ void AccountBackend::clearActiveIdentity()
     m_msTokenExpiresIn = 0;
     m_loggedIn = false;
     m_isOnline = false;
+    // 切号时把加载状态一起收掉：披风加载条绝不能挂到下一个账号身上
+    m_capesPending = 0;
+    m_capesUser.clear();
+    setCapesLoading(false);
+    setIdentityLoading(false);
     if (m_refreshTimer) m_refreshTimer->stop();
     emit accountChanged();
     emit skinReady();
@@ -1732,6 +1795,9 @@ void AccountBackend::switchAccount(int index)
         m_msRefreshToken = a.refreshToken;
         m_loggedIn = true;
         m_isOnline = true;
+        // 从切换这一刻点亮顶部加载条：后面还有令牌链 + 档案 + 披风下载，
+        // 全都跑完（或超时）才熄灭。
+        setIdentityLoading(true);
         // 先把它上次的资料摆上去：否则要等令牌刷新 + MC 档案 + Mojang profile
         // 一连串接口回来（实测 3.5 秒），期间列表是字母头像、详情写「没有可用披风」。
         if (!a.skinPath.isEmpty()) m_skinPath = a.skinPath;

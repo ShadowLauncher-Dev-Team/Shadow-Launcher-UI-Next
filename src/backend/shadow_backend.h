@@ -186,6 +186,10 @@ class ShadowBackend : public QObject {
     Q_PROPERTY(QString loginType READ loginType CONSTANT)
     Q_PROPERTY(QString selectedSkinPath READ selectedSkinPath NOTIFY skinChanged)
     Q_PROPERTY(bool wardrobeBusy READ isWardrobeBusy NOTIFY wardrobeBusyChanged)
+    // 账号身份装载中（切号→令牌链→MC档案→披风下载）。
+    // QML 拿到的 b 是 ShadowBackend，AccountBackend 的 identityLoading 它看不见，
+    // 所以必须在这一层代理出去，否则顶部 SLoadingBar 永远不亮（实测踩过）。
+    Q_PROPERTY(bool accountLoading READ accountLoading NOTIFY accountLoadingChanged)
     Q_PROPERTY(int fileDownloadSource READ fileDownloadSource WRITE setFileDownloadSource NOTIFY downloadSettingsChanged)
     Q_PROPERTY(int listDownloadSource READ listDownloadSource WRITE setListDownloadSource NOTIFY downloadSettingsChanged)
     Q_PROPERTY(int maxDownloadThreads READ maxDownloadThreads WRITE setMaxDownloadThreads NOTIFY downloadSettingsChanged)
@@ -582,6 +586,7 @@ public:
     Q_INVOKABLE QVariantList availableCapes() const;
     QString selectedSkinPath() const { return m_selectedSkinPath; }
     bool isWardrobeBusy() const { return m_wardrobeBusy; }
+    bool accountLoading() const;
     bool isScanningVersions() const { return m_isScanningVersions; }
 
     // ── Mod Loader version queries (BMCLAPI) ──
@@ -839,6 +844,7 @@ signals:
     void logMessage(const QString& msg);
     void skinChanged();
     void wardrobeBusyChanged();
+    void accountLoadingChanged();
     void wardrobeError(const QString& error);
 
     // ── Mod loader version signals ──

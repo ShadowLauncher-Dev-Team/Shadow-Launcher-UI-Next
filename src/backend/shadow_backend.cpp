@@ -381,6 +381,13 @@ ShadowBackend::ShadowBackend(QObject* parent)
             this, &ShadowBackend::syncPlayerName);
     connect(m_account, &AccountBackend::accountsChanged,
             this, &ShadowBackend::accountsChanged);
+    // 账号身份装载状态：AccountBackend 的加载标志要代理给 QML（详见头文件注释）
+    if (m_account) {
+        connect(m_account, &AccountBackend::identityLoadingChanged,
+                this, &ShadowBackend::accountLoadingChanged);
+        connect(m_account, &AccountBackend::capesLoadingChanged,
+                this, &ShadowBackend::accountLoadingChanged);
+    }
     // 外置登录成功 → 写入多账号列表（YggdrasilBackend 自己不知道账号列表现存结构）
     if (auto *ygg = static_cast<YggdrasilBackend*>(m_yggdrasil)) {
         connect(ygg, &YggdrasilBackend::loginSuccess, this, [this]() {
@@ -1895,6 +1902,12 @@ void ShadowBackend::switchAccount(int index) {
         s.setValue(QStringLiteral("account/lastLoginMode"), curAcc.value(QStringLiteral("mode")).toInt());
         setLastLoginMode(curAcc.value(QStringLiteral("mode")).toInt());
     }
+}
+
+bool ShadowBackend::accountLoading() const
+{
+    if (!m_account) return false;
+    return m_account->identityLoading() || m_account->capesLoading();
 }
 
 bool ShadowBackend::removeAccount(int index) {
