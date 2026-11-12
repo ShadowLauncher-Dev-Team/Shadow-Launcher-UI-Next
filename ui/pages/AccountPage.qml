@@ -29,6 +29,18 @@ Item {
     }
 
     Timer {
+        id: removeProbeTimer
+        interval: 1800
+        repeat: false
+        onTriggered: {
+            if (!page.b) return
+            var cur = page.b.currentAccount
+            if (cur >= 0) page.b.removeAccount(cur)
+            console.info("[验收] 已移除当前账号 index=" + cur)
+        }
+    }
+
+    Timer {
         id: externalProbeTimer
         interval: 1500
         repeat: false
@@ -137,6 +149,32 @@ Item {
     readonly property bool hasOffline: (b && b.offlineUsername) ? b.offlineUsername.length > 0 : false
     readonly property bool hasAccount: hasOnline || hasOffline || hasExternal
     readonly property int accountCount: (b && b.accounts) ? b.accounts.length : 0
+    // 「正在浏览账号」= 有账号且不在登录表单里。
+    // 不能再用 hasAccount 判：hasAccount 只表示「真的登录着」，
+    // 唯一账号失效后它是 false，界面会同时走「无账号」和「有账号列表」两套布局 —— 就是那次 UI 紊乱。
+    readonly property bool browsingAccounts: accountCount > 0 && !loginPanel
+    // 点了某个「需重新登录」的账号：右侧改显示重新登录卡片，而不是把他扔进登录页
+    property int reloginIdx: -1
+    readonly property var reloginAcct: {
+        if (!b || !b.accounts || reloginIdx < 0 || reloginIdx >= b.accounts.length) return null
+        return b.accounts[reloginIdx]
+    }
+    readonly property bool showRelogin: !!reloginAcct && reloginAcct.needsRelogin === true
+
+    // 让右侧卡片跟着「当前账号是否失效」走：
+    // 唯一账号失效时如果只默认 -1，右侧会是空白（详情要 hasAccount、表单要 browsingAccounts=false，两边都不成立）。
+    function syncReloginCard() {
+        if (page.loginPanel || !page.b || !page.b.accounts) return
+        var accs = page.b.accounts
+        var cur = page.b.currentAccount
+        var acc = (cur >= 0 && cur < accs.length) ? accs[cur] : null
+        if (acc && acc.needsRelogin === true) {
+            page.reloginIdx = cur
+        } else if (page.reloginIdx >= 0) {
+            var sel = page.reloginAcct
+            if (!sel || sel.needsRelogin !== true) page.reloginIdx = -1
+        }
+    }
     readonly property bool busy: b ? b.microsoftLoginBusy : false
     readonly property string statusLine: (b && b.msStatus) ? b.msStatus : ""
 
@@ -301,6 +339,8 @@ Item {
         }
         if (Qt.application.arguments.indexOf("--ui-account-login") >= 0)
             page.loginPanel = true
+        // accounts.json 是异步装载的，这里先试一次；真正生效靠 accRevChanged 里的 syncReloginCard()
+        page.syncReloginCard()
         // --ui-account-tab N：直接落在某个登录 tab（0 正版 / 1 离线 / 2 外置），截图验收用
         var ti = Qt.application.arguments.indexOf("--ui-account-tab")
         if (ti >= 0 && ti + 1 < Qt.application.arguments.length) {
@@ -478,7 +518,7 @@ Item {
                 anchors.leftMargin: page.narrow ? 16 : 20
                 anchors.top: parent.top
                 anchors.topMargin: 16
-                text: page.hasAccount && !page.loginPanel ? "账户" : "登录方式"
+                text: page.browsingAccounts ? "账户" : "登录方式"
                 color: "#ffffff"
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
@@ -579,13 +619,16 @@ Item {
                             onClicked: {
                                 var a = acctRow.acct
                                 if (!page.b || !a) return
-                                // 凭据已作废（登出过）：直接打开对应的登录表单重新验证，
-                                // 而不是 switchAccount —— 那样只会静默失败
+                                // 凭据已作废：既不 switchAccount（只会静默失败），
+                                // 也不直接跳登录页（会把左侧撑成「账号列表 + 登录方式」两套布局，
+                                // 影报过的 UI 紊乱）。改为右侧显示该账号的重新登录卡片，
+                                // 由卡片上的「重新登录 / 移除此账号」决定下一步。
                                 if (a.needsRelogin === true) {
-                                    page.loginPanel = true
-                                    page.tab = a.mode
+                                    page.loginPanel = false
+                                    page.reloginIdx = a.index
                                     return
                                 }
+                                page.reloginIdx = -1
                                 if (!a.current && page.b.switchAccount)
                                     page.b.switchAccount(a.index)
                             }
@@ -644,7 +687,7 @@ Item {
                         width: menu.width
                         height: 62
                         readonly property bool sel: page.tab === index
-                        visible: !page.hasAccount || page.loginPanel
+                        visible: !page.browsingAccounts
                         Rectangle {
                             anchors.fill: parent
                             radius: 8
@@ -680,7 +723,7 @@ Item {
                 Text {
                     width: menu.width
                     topPadding: 14
-                    visible: page.tab === 1 && (!page.hasAccount || page.loginPanel) && page.b
+                    visible: page.tab === 1 && !page.browsingAccounts && page.b
                              && page.b.offlineUsernames.length > 0
                     text: "用过的名字"
                     color: Theme.fg3
@@ -692,7 +735,7 @@ Item {
                     delegate: Item {
                         width: menu.width
                         height: 30
-                        visible: !page.hasAccount || page.loginPanel
+                        visible: !page.browsingAccounts
                         Text {
                             anchors.left: parent.left
                             anchors.leftMargin: 14
@@ -745,7 +788,7 @@ Item {
                 anchors.top: menu.top
                 width: menu.width
                 height: 3 * page.tabStride - page.menuGap
-                visible: page.loginPanel || !page.hasAccount
+                visible: !page.browsingAccounts
                 clip: true
                 z: 3
 
@@ -776,6 +819,7 @@ Item {
             Connections {
                 target: page
                 function onAccRevChanged() {
+                    page.syncReloginCard()
                     var key = page.acctKeyNow()
                     var sameAccount = (key === page.acctKey)
                     page.acctKey = key
@@ -831,7 +875,7 @@ Item {
             Flickable {
                 id: detailFlick
                 anchors.fill: parent
-                visible: page.hasAccount && !page.loginPanel
+                visible: page.hasAccount && !page.loginPanel && !page.showRelogin
                 contentWidth: width
                 contentHeight: detailCol.implicitHeight + detailCol.y + 40
                 clip: true
@@ -863,6 +907,10 @@ Item {
                     // 立即读 page.b.accounts 会拿到空数组，钩子静默失效。
                     if (Qt.application.arguments.indexOf("--acct-external") >= 0) {
                         externalProbeTimer.start()
+                    }
+                    // 验收钩子：--acct-remove-current 删掉当前账号（验证「重启后不会复活」）
+                    if (Qt.application.arguments.indexOf("--acct-remove-current") >= 0) {
+                        removeProbeTimer.start()
                     }
                     // 验收钩子：--acct-online 时切到第一个正版账号（截图核对用）
                     if (Qt.application.arguments.indexOf("--acct-online") >= 0 && page.b) {
@@ -1295,9 +1343,82 @@ Item {
             }
             }
 
+            // ---- 需重新登录：右侧就地把「重新登录 / 移除」摆出来 ----
+            // 以前点这类账号会直接跳登录页，左侧于是同时渲染「账号列表」和「登录方式」，
+            // 加上 hasAccount 为 false，整页布局就乱了。现在只切右侧内容。
+            Column {
+                id: reloginCard
+                visible: page.showRelogin
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.leftMargin: page.narrow ? 22 : 32
+                anchors.rightMargin: page.narrow ? 22 : 32
+                anchors.topMargin: 28
+                spacing: 14
+
+                Text {
+                    width: parent.width
+                    text: page.reloginAcct ? page.reloginAcct.name : ""
+                    color: "#ffffff"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 22
+                    elide: Text.ElideRight
+                }
+                Text {
+                    width: parent.width
+                    text: "需重新登录"
+                    color: Theme.warn
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 12
+                }
+                Text {
+                    width: parent.width
+                    text: "这个账号的登录凭据已经失效\n（可能过期、或在别处登录过）。重新登录一次即可继续使用。"
+                    color: Theme.fg2
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 12
+                    lineHeightMode: Text.FixedHeight
+                    lineHeight: 20
+                    wrapMode: Text.WordWrap
+                }
+                Item { width: 1; height: 4 }
+                Row {
+                    spacing: 10
+                    SButton {
+                        kind: 0
+                        radius: 2
+                        height: 34
+                        text: "重新登录"
+                        onClicked: {
+                            var a = page.reloginAcct
+                            if (!a) return
+                            page.reloginIdx = -1
+                            page.tab = a.mode
+                            page.loginPanel = true
+                        }
+                    }
+                    SButton {
+                        kind: 1
+                        radius: 2
+                        height: 34
+                        iconName: "x"
+                        text: "移除此账号"
+                        danger: true
+                        onClicked: {
+                            var a = page.reloginAcct
+                            if (!page.b || !a) return
+                            page.b.removeAccount(a.index)
+                            page.reloginIdx = -1
+                            page.flash("已移除该账号")
+                        }
+                    }
+                }
+            }
+
             // ---- 登录表单 ----
             Column {
-                visible: !page.hasAccount || page.loginPanel
+                visible: !page.browsingAccounts
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top

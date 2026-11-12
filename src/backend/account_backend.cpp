@@ -1656,6 +1656,25 @@ bool AccountBackend::removeAccount(int index)
     const StoredAccount gone = m_accounts.takeAt(index);
     QFile::remove(accountAvatarPath(gone));
 
+    // 删的是「当前正在用的微软身份」时，必须连持久化会话一起删掉。
+    // 否则下次启动 loadMicrosoftSession() 会读到它，构造函数里那段
+    // 「已登录但不在列表 → 补登记」又会把账号原样写回来 —— 表现就是
+    // 移除账号、重启后它自己又出现了（影实测）。
+    const bool wasMsIdentity = (gone.mode == 0)
+        && gone.name.compare(m_username, Qt::CaseInsensitive) == 0;
+    // 必须在下面的分支之前清：分支里有 `return true`，放在后面会被跳过。
+    if (wasMsIdentity) {
+        deleteMicrosoftSession();
+        secureWipe(m_msRefreshToken);
+        m_msMcToken.clear();
+        m_msTokenObtainedAt = 0;
+        m_msTokenExpiresIn = 0;
+        m_loggedIn = false;
+        m_isOnline = false;
+        m_username.clear();
+        m_uuid.clear();
+    }
+
     if (index == m_currentAccount) {
         clearActiveIdentity();
         m_currentAccount = -1;

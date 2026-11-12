@@ -1882,7 +1882,16 @@ void ShadowBackend::switchAccount(int index) {
 
 bool ShadowBackend::removeAccount(int index) {
     if (!m_account) return false;
+    // 先记下被删的是哪一类账号：删完之后它已经从列表里消失，问不出来了。
+    const QVariantMap goneAcc = m_account->accountAt(index);
     if (!m_account->removeAccount(index)) return false;
+
+    // 外置账号的会话存在 YggdrasilBackend 的 session.json 里，
+    // 只删 accounts.json 条目的话，下次启动仍会被 loadSession 恢复回来（同微软账号那个复活 bug）。
+    if (goneAcc.value(QStringLiteral("mode")).toInt() == 2) {
+        auto *goneYgg = static_cast<YggdrasilBackend*>(m_yggdrasil);
+        if (goneYgg) goneYgg->logout();
+    }
 
     // AccountBackend::removeAccount 内部会切到列表中第一条，但那次切换不经过
     // ShadowBackend::switchAccount，于是 m_lastLoginMode 与外置会话都不会更新。
