@@ -1585,6 +1585,14 @@ void AccountBackend::upsertExternalAccount(const QString &name, const QString &u
     a.apiRoot = apiRoot;
     a.accessToken = accessToken;
     a.clientToken = clientToken;
+    {
+        const QByteArray h = QCryptographicHash::hash(accessToken.toUtf8(),
+                                                      QCryptographicHash::Sha1).toHex();
+        qCInfo(logAccount) << QStringLiteral("[账号列表] 写入外置令牌 %1/len%2 uuid=%3")
+                                  .arg(QString::fromLatin1(h.left(8)))
+                                  .arg(accessToken.size())
+                                  .arg(uuid.left(8));
+    }
     upsertAccount(a, true);
 }
 

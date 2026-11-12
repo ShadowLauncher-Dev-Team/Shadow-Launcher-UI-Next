@@ -13,6 +13,7 @@
 #include <QRegularExpression>
 #include <QTimer>
 #include <QDateTime>
+#include <QCryptographicHash>
 #include <QNetworkRequest>
 #include "yggdrasil_skin_fetcher.h"
 
@@ -26,6 +27,15 @@ static QString yggdrasilDataDir()
                    + QStringLiteral("/yggdrasil");
     QDir().mkpath(path);
     return path;
+}
+
+// 令牌指纹：只打前 8 位 SHA1，既能区分是哪一版令牌，又不会把凭据写进日志。
+// 排查「登录后立刻被判过期」时，全靠它对齐 authenticate / bind / 落盘 / 恢复 四处用的是不是同一个令牌。
+static QString tokenFp(const QString &token)
+{
+    if (token.isEmpty()) return QStringLiteral("<empty>");
+    const QByteArray h = QCryptographicHash::hash(token.toUtf8(), QCryptographicHash::Sha1).toHex();
+    return QString::fromLatin1(h.left(8)) + QStringLiteral("/len") + QString::number(token.size());
 }
 
 YggdrasilBackend::YggdrasilBackend(QObject *parent)
@@ -126,6 +136,8 @@ void YggdrasilBackend::doRefresh(bool isValidation)
 
     m_refreshing = true;
     m_tokenUsedForRefresh = m_session.accessToken;
+    qCInfo(logYggBackend) << QStringLiteral("[refresh] 使用令牌 %1 uuid=%2")
+                                 .arg(tokenFp(m_session.accessToken), m_session.uuid.left(8));
     setStatus(isValidation ? QStringLiteral("正在验证外置登录状态...")
                            : QStringLiteral("正在刷新令牌..."));
 
@@ -209,6 +221,7 @@ void YggdrasilBackend::clearSessionAfterExpiry()
     m_pendingEmail.clear();
     m_refreshing = false;
     m_tokenUsedForRefresh.clear();
+    m_deferLoginSuccess = false;
     deleteSavedSession();
     setStatus(QString());
     emit stateChanged();
@@ -257,7 +270,7 @@ void YggdrasilBackend::selectProfile(int index)
     if (m_pendingProfile) {
         m_pendingProfile = false;
         m_lastValidateMs = QDateTime::currentMSecsSinceEpoch();
-        emit loginSuccess();
+        m_deferLoginSuccess = true;   // 同样等绑定完成再发
     }
     // 选好角色后把令牌绑定上去（多角色账号必须这一步，否则令牌未绑定角色）
     bindProfile();
@@ -338,6 +351,17 @@ void YggdrasilBackend::restoreSession(const QString &apiRoot, const QString &acc
                                      const QString &clientToken, const QString &username,
                                      const QString &uuid)
 {
+    qCInfo(logYggBackend) << QStringLiteral("[恢复] 传入令牌 %1 uuid=%2 当前会话令牌 %3")
+                                 .arg(tokenFp(accessToken), uuid.left(8), tokenFp(m_session.accessToken));
+    // 已经是同一个会话（令牌、服务器、角色都一致）：这次「恢复」纯属重复劳动。
+    // 更糟的是它会再触发一次 validate/refresh —— 刚登录完立刻打这两个接口，
+    // 只会把刚拿到的令牌白白消耗一次，甚至被服务端轮换判死。直接当空操作。
+    if (m_session.isValid() && accessToken == m_session.accessToken
+        && apiRoot == m_session.apiRoot) {
+        qCInfo(logYggBackend) << QStringLiteral("[恢复] 与本会话完全一致，跳过校验");
+        emit stateChanged();
+        return;
+    }
     m_session.apiRoot = apiRoot;
     m_session.accessToken = accessToken;
     m_session.clientToken = clientToken;
@@ -646,7 +670,8 @@ void YggdrasilBackend::onAuthenticateReply()
         saveSession();
         // 刚认证成功：60s 内不必再 validate，否则会在 bindProfile 之前用未绑定令牌打接口
         m_lastValidateMs = QDateTime::currentMSecsSinceEpoch();
-        emit loginSuccess();
+        // 登录成功延后到绑定完成（见 onBindReply）
+        m_deferLoginSuccess = true;
         emit stateChanged();
         emit profilesChanged();
         // authenticate 拿到的令牌没有绑定角色，必须再刷一次才会被服务端认可，
@@ -771,7 +796,13 @@ void YggdrasilBackend::onBindReply()
                                  << "detail=" << errOut;
         const bool authError = httpStatus == 401 || httpStatus == 403
                                || data.contains("\"error\"");
-        if (authError) clearSessionAfterExpiry();
+        if (authError) {
+            clearSessionAfterExpiry();
+        } else if (m_deferLoginSuccess) {
+            // 绑角色失败但认证成功（网络原因）：会话仍可用，照常通知 UI 登录成功，别把用户卡在登录页
+            m_deferLoginSuccess = false;
+            emit loginSuccess();
+        }
         return;
     }
 
@@ -791,9 +822,14 @@ void YggdrasilBackend::onBindReply()
     m_session = session;
     saveSession();
     m_lastValidateMs = QDateTime::currentMSecsSinceEpoch();
-    qCInfo(logYggBackend) << QStringLiteral("[外置登录] 令牌已绑定角色 uuid=%1 tokenLen=%2")
-                                 .arg(m_session.uuid).arg(m_session.accessToken.length());
+    qCInfo(logYggBackend) << QStringLiteral("[外置登录] 令牌已绑定角色 uuid=%1 令牌=%2")
+                                 .arg(m_session.uuid.left(8), tokenFp(m_session.accessToken));
     emit tokensRotated();
+    // 先把绑定后的令牌交给多账号列表，再宣布登录成功
+    if (m_deferLoginSuccess) {
+        m_deferLoginSuccess = false;
+        emit loginSuccess();
+    }
     emit stateChanged();
 }
 

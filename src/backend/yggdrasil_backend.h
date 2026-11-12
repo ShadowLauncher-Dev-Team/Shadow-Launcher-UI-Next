@@ -139,6 +139,12 @@ private:
     /// 令牌被服务端判定失效：清除本地会话并通知 UI 重新登录
     void clearSessionAfterExpiry();
     bool m_bindingProfile = false;
+    // 登录成功信号要等 bindProfile 完成后再发：
+    // authenticate 返回的令牌没绑定角色，此刻若先 emit loginSuccess，
+    // 多账号列表就会把「未绑定令牌」存进 accounts.json，
+    // 而 bindProfile 随后会轮换令牌、让旧的那个立刻作废 ——
+    // 于是从列表恢复时必然 403，表现为「刚登录就需重新登录」。
+    bool m_deferLoginSuccess = false;
     // 发起 refresh/validate 时用的令牌快照。
     // 绑定角色会轮换令牌，迟到的旧请求若被 403 判死，会把刚换好的新令牌连坐清掉
     // （实测：登录成功后 0.3s 内 validate 用未绑定角色的令牌 403 → refresh 403 → 会话被清）。
