@@ -64,6 +64,21 @@ AccountBackend::AccountBackend(QObject *parent)
         }
     }
 
+    // 启动时若恢复出了正版会话，后台会接着刷令牌、拉 MC 档案、下披风 ——
+    // 这几秒里账户页同样是空白的，必须从这一刻就点亮顶部光条。
+    // （之前只在 switchAccount 里置位，导致「首次进入账户页没有光条、
+    //   而切号回来却有」这种不对称。）
+    if (m_loggedIn && m_isOnline && !m_username.isEmpty()) {
+        setIdentityLoading(true);
+        // 兜底：万一令牌链 / 档案请求卡死，20s 后收掉
+        QTimer::singleShot(20000, this, [this]() {
+            if (m_identityLoading) {
+                qCWarning(logAccount) << QStringLiteral("启动装载超时，收掉加载状态");
+                setIdentityLoading(false);
+            }
+        });
+    }
+
     // 头像就绪时给当前账号存一份快照（列表用；非当前账号也能显示头像）
     connect(this, &AccountBackend::skinReady, this, &AccountBackend::saveCurrentAvatarSnapshot);
     connect(this, &AccountBackend::skinReady, this, &AccountBackend::persistCurrentProfile);
