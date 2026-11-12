@@ -64,6 +64,35 @@ AccountBackend::AccountBackend(QObject *parent)
         }
     }
 
+    // 启动时先把当前正版账号上次的皮肤/披风摆上来 —— 和「切走再切回」读的是同一份
+    // 缓存（accounts.json 里的 skinPath / capesJson），观感才一致：先看到上次的数据，
+    // 网络回来再更新。否则同一个账号出现两套策略：切回来秒开，启动却空着等一次请求。
+    if (m_loggedIn && m_isOnline && !m_username.isEmpty()) {
+        for (const StoredAccount &a : m_accounts) {
+            if (a.mode != 0 || a.name.compare(m_username, Qt::CaseInsensitive) != 0) continue;
+            if (!a.skinPath.isEmpty()) m_skinPath = a.skinPath;
+            if (!a.capePath.isEmpty()) m_capePath = a.capePath;
+            if (!a.activeCapeAlias.isEmpty()) m_activeCapeAlias = a.activeCapeAlias;
+            if (!a.capesJson.isEmpty()) {
+                m_capes.clear();
+                const QJsonArray arr = QJsonDocument::fromJson(a.capesJson.toUtf8()).array();
+                for (const QJsonValue &v : arr) {
+                    const QJsonObject o = v.toObject();
+                    CapeInfo ci;
+                    ci.alias = o[QStringLiteral("alias")].toString();
+                    ci.capeId = o[QStringLiteral("capeId")].toString();
+                    ci.url = o[QStringLiteral("url")].toString();
+                    ci.localPath = o[QStringLiteral("localPath")].toString();
+                    ci.active = o.value(QStringLiteral("active")).toBool(false);
+                    m_capes.append(ci);
+                }
+                setCapesAsked(true);   // 缓存里的结果就是「问过」的答案
+                qCInfo(logAccount) << QStringLiteral("启动时恢复披风缓存 数量=%1").arg(m_capes.size());
+            }
+            break;
+        }
+    }
+
     // 顶部光条只跟「披风正在拉取」这一个状态走（capesLoading）：
     // 拉披风跟登录流程无关，别把它绑到令牌链上。
 
@@ -848,6 +877,7 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
     // 万一中途切号，旧响应必须整条丢掉，不能写进新账号的披风列表。
     m_capesUser = m_username;
     m_capesPending = 0;
+    setCapesAsked(false);
     setCapesLoading(true);
     // 兜底：网络卡死时不能让顶部光条一直转
     {
@@ -885,6 +915,7 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
                 refreshMicrosoftToken();
             }
             m_capes.clear();
+            setCapesAsked(true);
             setCapesLoading(false);
             emit capesReady();
             // 用户主动刷新失败要明确告知，不能只留一句"正在刷新"
@@ -944,6 +975,7 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
         }
 
         // ── Cape extraction (all capes, regardless of state) ──
+        setCapesAsked(true);   // 档案已经拿到，问过了：此时说「没有」才是真的
         m_capes.clear();
         m_activeCapeAlias.clear();
         QStringList capeUrls;
@@ -1541,6 +1573,13 @@ void AccountBackend::persistCurrentProfile()
     if (changed) saveAccounts();
 }
 
+void AccountBackend::setCapesAsked(bool asked)
+{
+    if (m_capesAsked == asked) return;
+    m_capesAsked = asked;
+    emit capesAskedChanged();
+}
+
 void AccountBackend::setCapesLoading(bool on)
 {
     if (m_capesLoading == on) return;
@@ -1756,6 +1795,7 @@ void AccountBackend::clearActiveIdentity()
     m_capesPending = 0;
     m_capesUser.clear();
     setCapesLoading(false);
+    setCapesAsked(false);
     if (m_refreshTimer) m_refreshTimer->stop();
     emit accountChanged();
     emit skinReady();
@@ -1802,6 +1842,7 @@ void AccountBackend::switchAccount(int index)
                 ci.active = o.value(QStringLiteral("active")).toBool(false);
                 m_capes.append(ci);
             }
+            setCapesAsked(true);
             emit capesReady();
         }
         saveMicrosoftSession();

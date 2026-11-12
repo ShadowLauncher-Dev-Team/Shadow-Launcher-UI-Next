@@ -385,6 +385,8 @@ ShadowBackend::ShadowBackend(QObject* parent)
     if (m_account) {
         connect(m_account, &AccountBackend::capesLoadingChanged,
                 this, &ShadowBackend::accountLoadingChanged);
+        connect(m_account, &AccountBackend::capesAskedChanged,
+                this, &ShadowBackend::capesAskedChanged);
     }
     // 外置登录成功 → 写入多账号列表（YggdrasilBackend 自己不知道账号列表现存结构）
     if (auto *ygg = static_cast<YggdrasilBackend*>(m_yggdrasil)) {
@@ -1900,6 +1902,11 @@ void ShadowBackend::switchAccount(int index) {
         s.setValue(QStringLiteral("account/lastLoginMode"), curAcc.value(QStringLiteral("mode")).toInt());
         setLastLoginMode(curAcc.value(QStringLiteral("mode")).toInt());
     }
+}
+
+bool ShadowBackend::capesAsked() const
+{
+    return m_account ? m_account->capesAsked() : false;
 }
 
 bool ShadowBackend::accountLoading() const

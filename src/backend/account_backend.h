@@ -40,6 +40,8 @@ class AccountBackend : public QObject {
     // 披风正在拉取中（含逐张下载）。UI 用它显示加载条；
     // 切号/登出时必须立刻回到 false，否则加载条会挂在另一个账号上。
     Q_PROPERTY(bool capesLoading READ capesLoading NOTIFY capesLoadingChanged)
+    // 是否已经向服务器问过披风。没问过就不能说「此账号没有可用披风」。
+    Q_PROPERTY(bool capesAsked READ capesAsked NOTIFY capesAskedChanged)
     // 整个「身份装载」过程：切号 → 令牌链 → MC 档案 → 披风下载。
     // 只从档案请求开始算是不够的：令牌链那几秒里界面同样是空白的（实测切到正版后
     // 要 3~4 秒才发档案请求，这段时间披风区就是空的，用户看不到任何反馈）。
@@ -77,6 +79,7 @@ public:
     QString capePath() const { return m_capePath; }
     QString skinVariant() const { return m_skinVariant; }
     bool capesLoading() const { return m_capesLoading; }
+    bool capesAsked() const { return m_capesAsked; }
     QStringList offlineUsernames() const { return m_offlineUsernames; }
 
     // ── Slots ──
@@ -136,6 +139,7 @@ signals:
     void capeReady();
     void capesReady();
     void capesLoadingChanged();
+    void capesAskedChanged();
     void skinVariantChanged();
     void capeChangeFinished(bool success, const QString &errorMsg);
     void skinUploadFinished(bool success, const QString &errorMsg);
@@ -237,9 +241,11 @@ private:
     QList<CapeInfo> m_capes;
     // 披风拉取状态：m_capesUser 记录发起时的玩家名，防止切号后旧响应写进新账号
     bool m_capesLoading = false;
+    bool m_capesAsked = false;
     QString m_capesUser;
     int m_capesPending = 0;    // 还没回来的披风图片请求数
     void setCapesLoading(bool on);
+    void setCapesAsked(bool asked);
     // 用户主动刷新中：用于把 downloadOnlineSkin 的响应转成 refreshFinished
     bool m_refreshPending = false;
     bool m_loggedIn = false;

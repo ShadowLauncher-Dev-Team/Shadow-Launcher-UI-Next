@@ -190,6 +190,8 @@ class ShadowBackend : public QObject {
     // QML 拿到的 b 是 ShadowBackend，AccountBackend 上的标志它看不见，
     // 所以必须在这一层代理出去，否则光条永远不亮（实测踩过）。
     Q_PROPERTY(bool accountLoading READ accountLoading NOTIFY accountLoadingChanged)
+    // 披风是否已问过服务器（QML 用它决定要不要显示「没有可用披风」）
+    Q_PROPERTY(bool capesAsked READ capesAsked NOTIFY capesAskedChanged)
     Q_PROPERTY(int fileDownloadSource READ fileDownloadSource WRITE setFileDownloadSource NOTIFY downloadSettingsChanged)
     Q_PROPERTY(int listDownloadSource READ listDownloadSource WRITE setListDownloadSource NOTIFY downloadSettingsChanged)
     Q_PROPERTY(int maxDownloadThreads READ maxDownloadThreads WRITE setMaxDownloadThreads NOTIFY downloadSettingsChanged)
@@ -587,6 +589,7 @@ public:
     QString selectedSkinPath() const { return m_selectedSkinPath; }
     bool isWardrobeBusy() const { return m_wardrobeBusy; }
     bool accountLoading() const;
+    bool capesAsked() const;
     bool isScanningVersions() const { return m_isScanningVersions; }
 
     // ── Mod Loader version queries (BMCLAPI) ──
@@ -845,6 +848,7 @@ signals:
     void skinChanged();
     void wardrobeBusyChanged();
     void accountLoadingChanged();
+    void capesAskedChanged();
     void wardrobeError(const QString& error);
 
     // ── Mod loader version signals ──

@@ -210,6 +210,8 @@ Item {
     // 切号时后端会立刻置 false，加载条不会跟到下一个账号身上。
     readonly property bool capesLoading: (b && b.accountLoading) ? b.accountLoading : false
     readonly property bool capeLoadingVisible: capesLoading && capes.length === 0
+    // 披风是否已经问过服务器：没问过时不许说「此账号没有可用披风」
+    readonly property bool capesAsked: (b && b.capesAsked) ? b.capesAsked : false
 
     // 原始皮肤优先（自己裁脸）；头部图兜底
     readonly property string rawHeadSource: (b && b.isOnline) ? (b.skinTexturePath || "") : ""
@@ -1194,7 +1196,9 @@ Item {
                                      ? "点击切换，蓝框为当前使用"
                                      : (page.capeLoadingVisible
                                         ? "正在获取…"
-                                        : "此账号没有可用披风"))
+                                        : (page.capesAsked
+                                           ? "此账号没有可用披风"
+                                           : "")))
                             color: "#5d6673"
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
