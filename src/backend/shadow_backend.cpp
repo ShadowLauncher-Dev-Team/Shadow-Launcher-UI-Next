@@ -1857,7 +1857,12 @@ void ShadowBackend::switchAccount(int index) {
     if (mode == 2) {
         // 外置：AccountBackend 只负责清掉本地正版/离线态，会话交给 YggdrasilBackend
         m_account->switchAccount(index);
-        if (ygg) {
+        // 凭据已被判失效的账号不再自动恢复：拿死令牌打接口只会再吃一次 403，
+        // 然后又把「需重新登录」重写一遍。UI 会在右侧给「重新登录」卡片。
+        if (a.value(QStringLiteral("needsRelogin")).toBool()) {
+            qCInfo(logApp) << QStringLiteral("[切号] 该外置账号需重新登录，跳过会话恢复");
+            if (ygg && ygg->loggedIn()) ygg->logout();
+        } else if (ygg) {
             ygg->restoreSession(a.value(QStringLiteral("apiRoot")).toString(),
                                 a.value(QStringLiteral("accessToken")).toString(),
                                 a.value(QStringLiteral("clientToken")).toString(),
@@ -1890,7 +1895,9 @@ bool ShadowBackend::removeAccount(int index) {
     // 只删 accounts.json 条目的话，下次启动仍会被 loadSession 恢复回来（同微软账号那个复活 bug）。
     if (goneAcc.value(QStringLiteral("mode")).toInt() == 2) {
         auto *goneYgg = static_cast<YggdrasilBackend*>(m_yggdrasil);
-        if (goneYgg) goneYgg->logout();
+        // 条目已经删掉了，这里可以放心吊销服务端令牌；
+        // 其它场合（切号）必须用 logout()，只清本地、保留令牌。
+        if (goneYgg) goneYgg->logoutRevoking();
     }
 
     // AccountBackend::removeAccount 内部会切到列表中第一条，但那次切换不经过

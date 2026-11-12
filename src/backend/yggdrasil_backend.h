@@ -68,7 +68,16 @@ public:
     /// 令牌已失效则清除会话/落盘。启动恢复会话后、用户切换回外置登录时都应调用
     /// （旧实现从不校验 → 令牌早已失效仍显示“已登录”，头像无限转圈）。
     Q_INVOKABLE void validateSession();
+    // 只清本地会话，不吊销服务端令牌。
+    // 多账号切换时用这个：账号列表存的凭据就是这个 accessToken，
+    // Yggdrasil 没有 refresh token，吊销了等于把该账号的长期凭据烧掉
+    // （实测：切到正版账号 → logout 吊销 → 切回外置 403 → 被判需重新登录）。
     Q_INVOKABLE void logout();
+    // 真正注销：吊销服务端令牌。只允许在「账号已被移除」时调用。
+    void logoutRevoking();
+private:
+    void doLogout(bool invalidateRemote);
+public:
     Q_INVOKABLE void selectProfile(int index);
     /// 取消登录流程（用户关闭多角色弹窗时调用）
     Q_INVOKABLE void cancelLogin();

@@ -233,13 +233,29 @@ void YggdrasilBackend::clearSessionAfterExpiry()
 
 void YggdrasilBackend::logout()
 {
+    doLogout(false);
+}
+
+void YggdrasilBackend::logoutRevoking()
+{
+    doLogout(true);
+}
+
+// invalidateRemote=false：只清本地，保留服务端令牌 —— 切号时必须这样，
+// 否则 accounts.json 里存的那个 accessToken 会被吊销，下次恢复必然 403。
+void YggdrasilBackend::doLogout(bool invalidateRemote)
+{
     if (!m_session.isValid()) return;
+
+    qCInfo(logYggBackend) << QStringLiteral("[登出] %1 令牌=%2")
+                                 .arg(invalidateRemote ? QStringLiteral("吊销服务端令牌")
+                                                       : QStringLiteral("仅清本地，保留令牌供账号列表使用"),
+                                      tokenFp(m_session.accessToken));
 
     m_loggingOut = true;
     setStatus(QStringLiteral("正在登出..."));
 
-    // 尝试 invalidate 服务端令牌（不需要等结果，本地直接清）
-    if (!m_session.accessToken.isEmpty()) {
+    if (invalidateRemote && !m_session.accessToken.isEmpty()) {
         QNetworkReply *reply = m_auth.invalidate(
             m_session.apiRoot, m_session.accessToken, m_session.clientToken);
         connect(reply, &QNetworkReply::finished, this, &YggdrasilBackend::onLogoutReply);
