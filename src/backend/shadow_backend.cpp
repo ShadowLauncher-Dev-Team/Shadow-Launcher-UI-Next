@@ -410,6 +410,11 @@ ShadowBackend::ShadowBackend(QObject* parent)
             m_account->upsertExternalAccount(y->username(), y->uuid(), y->apiRoot(),
                                              y->accessToken(), y->clientToken());
         });
+        // 外置会话的恢复/失效是异步的：状态一变就要让 accountOnline 重新求值，
+        // 否则启动页会一直停在切换那一刻的「离线」橙点上。
+        connect(ygg, &YggdrasilBackend::stateChanged, this, [this]() {
+            emit accountChanged();
+        });
         // 外置账号的皮肤由 YggdrasilSkinFetcher 拉，AccountBackend 看不到，
         // 必须喂给它，否则这条账号永远没有自己的头像快照 ——
         // 切到别的账号后，外置那行就只剩字母（影报的「外置头像变字母」）。
@@ -1030,7 +1035,12 @@ bool ShadowBackend::accountOnline() const
 
 QString ShadowBackend::currentAccountAvatar() const
 {
-    return m_account ? m_account->currentAccountAvatarFile() : QString();
+    if (!m_account) return QString();
+    const QString p = m_account->currentAccountAvatarFile();
+    if (p.isEmpty()) return QString();
+    // QML 的 Image 要 URL：和 accounts() 一样加 file:///，否则 source 非空却加载失败
+    // → 既不出图也不出字母（影看到的空白胶囊）。
+    return QUrl::fromLocalFile(p).toString();
 }
 
 bool ShadowBackend::microsoftLoginBusy() const {
