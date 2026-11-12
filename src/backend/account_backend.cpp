@@ -1535,6 +1535,12 @@ void AccountBackend::setExternalSkinPath(const QString &url)
     }
 }
 
+int AccountBackend::currentAccountMode() const
+{
+    if (m_currentAccount < 0 || m_currentAccount >= m_accounts.size()) return -1;
+    return m_accounts.at(m_currentAccount).mode;
+}
+
 QString AccountBackend::currentAccountAvatarFile() const
 {
     if (m_currentAccount < 0 || m_currentAccount >= m_accounts.size()) return QString();

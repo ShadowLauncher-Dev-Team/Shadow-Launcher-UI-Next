@@ -1027,10 +1027,18 @@ bool ShadowBackend::isOnline() const {
 
 bool ShadowBackend::accountOnline() const
 {
-    if (isOnline()) return true;
-    if (auto *ygg = static_cast<YggdrasilBackend *>(m_yggdrasil))
-        return ygg->loggedIn();
-    return false;
+    if (!m_account) return false;
+    // 必须按「当前账号类型」判断，不能把三种身份混在一起：
+    // 离线账号没有服务器会话，但 YggdrasilBackend 里可能还留着上一个外置会话，
+    // 那种情况下单纯 isOnline || ygg.loggedIn 会把离线账号显示成在线（绿点）。
+    switch (m_account->currentAccountMode()) {
+    case 0: return m_account->isOnline();                    // 正版：微软会话有效
+    case 2: {                                                // 外置：皮肤站会话有效
+        auto *ygg = static_cast<YggdrasilBackend *>(m_yggdrasil);
+        return ygg && ygg->loggedIn();
+    }
+    default: return false;                                   // 离线：永远不算在线
+    }
 }
 
 QString ShadowBackend::currentAccountAvatar() const

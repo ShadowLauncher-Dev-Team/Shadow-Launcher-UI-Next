@@ -73,6 +73,8 @@ public:
     QString offlineUuid() const { return m_offlineUuid; }
     // 当前账号的头像快照路径（外置/离线账号靠它显示头像；没有则返回空）
     QString currentAccountAvatarFile() const;
+    // 当前账号类型：0 正版 / 1 离线 / 2 外置 / -1 无
+    int currentAccountMode() const;
     QString mcToken() const { return m_msMcToken; }
     QString skinPath() const { return m_skinPath; }
     QString skinTexturePath() const;
