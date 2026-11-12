@@ -295,6 +295,8 @@ private:
     QTimer* m_javaInstallPoll = nullptr; // 下载进度轮询 → launchCheckProgress
     bool m_javaInstallFailed = false;    // 安装失败标志（避免重入）
     bool m_javaListRefreshed = false;    // Step 1 本轮已刷新列表（防重复刷新）
+    bool m_authlibProbed = false;        // Step 5 本轮已探测外置服务器（异步，防重复）
+    bool m_authlibArgAdded = false;      // javaagent 参数只注入一次（异步恢复会二次进入本步）
 
     // ── 自动补全任务（A2 卡片）──
     QVariantList m_repairs;

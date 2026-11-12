@@ -31,6 +31,7 @@
 #include <QUrl>
 #include <QDesktopServices>
 #include <QCoreApplication>
+#include <QSysInfo>
 
 #ifdef Q_OS_WIN
 #  ifndef WIN32_LEAN_AND_MEAN
@@ -155,6 +156,8 @@ void LaunchBackend::launch(const QString& versionId, const QString& username,
     m_cancelled = false;
     m_launchProgress = 0;
     m_javaListRefreshed = false;   // 新一轮启动：Step 1 重新刷新 Java 列表
+    m_authlibProbed = false;       // 新一轮启动：重新探测外置服务器
+    m_authlibArgAdded = false;     // 避免 javaagent 参数被注入两次
 
     m_launchStatus = tr("正在准备...");
     emit launchStateChanged();
@@ -677,6 +680,10 @@ void LaunchBackend::buildLaunchPipeline()
     m_pipeline->addStep(QStringLiteral("version"), tr("检查版本文件"));
     m_pipeline->addStep(QStringLiteral("deps"),    tr("检查依赖文件"));
     m_pipeline->addStep(QStringLiteral("memory"),  tr("检查内存分配"));
+    // 2026-11-13：外置登录的服务器探测 + authlib-injector.jar 下载原来塞在「检查内存分配」
+    // 里，用户会在内存那行卡十几秒下载网络文件、失败也标在内存上。单列一个节点。
+    // 始终添加（保证 case 索引恒定），非外置时标记跳过并隐藏。
+    m_pipeline->addStep(QStringLiteral("authlib"), tr("准备外置登录组件"));
     m_pipeline->addStep(QStringLiteral("process"), tr("启动游戏进程"));
 
     // 离线账户不校验登录：该节点标记为跳过并隐藏（不计入总进度权重）
@@ -685,6 +692,13 @@ void LaunchBackend::buildLaunchPipeline()
     const bool needLogin = m_authIsOnline || m_yggdrasilMode || m_demoForceOnline;
     if (!needLogin) {
         if (StepNode* node = m_pipeline->step(QStringLiteral("login"))) {
+            node->setSkipped();
+            node->setHidden(true);
+        }
+    }
+    // 只有外置登录才需要 authlib-injector；其它模式该节点不存在（跳过并隐藏）
+    if (!m_yggdrasilMode) {
+        if (StepNode* node = m_pipeline->step(QStringLiteral("authlib"))) {
             node->setSkipped();
             node->setHidden(true);
         }
@@ -1258,6 +1272,12 @@ void LaunchBackend::runNextCheck()
                 return;  // Don't advance; wait for callback
             }
         }
+        // 外置登录：光有名字不够，authlib-injector 必须拿到 accessToken 才能握手。
+        if (m_yggdrasilMode && m_authToken.isEmpty()) {
+            abortCheck(tr("登录状态"),
+                       tr("外置登录凭据缺失，请重新登录该账号"));
+            return;
+        }
         qCInfo(logLaunch) << QStringLiteral("[启动] 登录状态通过");
         break;
     }
@@ -1356,8 +1376,14 @@ void LaunchBackend::runNextCheck()
         jsonFile.close();
         QJsonParseError parseErr;
         QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonBytes, &parseErr);
-        if (parseErr.error != QJsonParseError::NoError)
-            emit launchCheckWarning(tr("JSON 格式警告"));
+        // ── 2026-11-13：JSON 解析失败必须拦 ──
+        // 原实现只发一条 warning 就继续：接着 Step 3 的 checkVersionLibraries 也因解析失败
+        // 直接 return 空列表 → 依赖缺失检查整条失效 → 带着坏配置启动，游戏侧才崩。
+        if (parseErr.error != QJsonParseError::NoError) {
+            abortCheck(tr("版本配置"),
+                       tr("版本配置文件格式损坏（%1）").arg(parseErr.errorString()));
+            return;
+        }
 
         // 灵活查找主 JAR（可选——加载器版本继承原版 jar）
         QString jarPath = VersionBackend::findVersionJar(versionDir, m_pendingVersionId);
@@ -1412,36 +1438,76 @@ void LaunchBackend::runNextCheck()
         break;
     }
     case 4: {
-        // Step 4 (65%): Memory
+        // Step 4 (65%)：内存分配 —— 这一步只做内存。
+        // 2026-11-13：原来这里还塞着「外置登录服务器 5s 探测 + authlib-injector.jar 下载」
+        // 和 launcher_profiles.json 写入 —— 用户会在「检查内存分配」这一行卡十几秒下载网络
+        // 文件，失败时红色也标在「检查内存分配」上，完全对不上。现已拆到 Step 5。
         emit launchCheckProgress(tr("检查内存分配..."));
         m_launchProgress = 65;
         emit launchProgressChanged(65, tr("检查内存分配..."));
         qCDebug(logLaunch) << "[PROGRESS] 65% - 检查内存分配...";
+
+        // 原实现只有一句 if (<512) 警告，「检查内存」名不副实，从不与真实物理内存比对。
+        // 现在真比对：超过物理内存必崩（拦），超过当前可用内存会频繁卡顿（警告）。
+#ifdef Q_OS_WIN
+        MEMORYSTATUSEX memInfo{};
+        memInfo.dwLength = sizeof(memInfo);
+        if (GlobalMemoryStatusEx(&memInfo)) {
+            const quint64 totalMB = memInfo.ullTotalPhys / (1024ull * 1024ull);
+            const quint64 availMB = memInfo.ullAvailPhys / (1024ull * 1024ull);
+            const quint64 needMB = static_cast<quint64>(qMax(m_pendingMaxMemory, 0));
+            qCInfo(logLaunch) << QStringLiteral("[启动] 内存 分配=%1MB 可用=%2MB 总计=%3MB")
+                                        .arg(needMB).arg(availMB).arg(totalMB);
+            if (needMB > totalMB) {
+                abortCheck(tr("内存分配"),
+                           tr("分配 %1 MB 超过物理内存 %2 MB，游戏无法启动")
+                               .arg(needMB).arg(totalMB));
+                return;
+            }
+            if (needMB > availMB) {
+                emit launchCheckWarning(tr("当前可用内存 %1 MB 小于分配值 %2 MB，可能卡顿")
+                                            .arg(availMB).arg(needMB));
+            }
+        }
+#endif
         if (m_pendingMaxMemory < 512)
             emit launchCheckWarning(tr("内存不足 512MB，可能影响运行"));
+        break;
+    }
+    case 5: {
+        // Step 5 (75%)：启动前的最后准备 —— 外置登录组件 + launcher_profiles.json
+        emit launchCheckProgress(tr("准备启动环境..."));
+        m_launchProgress = 70;
+        emit launchProgressChanged(70, tr("准备启动环境..."));
         // Inject authlib-injector JVM arg for Yggdrasil mode
         if (m_yggdrasilMode && !m_yggApiRoot.isEmpty()) {
-            // ── Prefetch: 验证外置登录服务器可达性 ──
-            emit launchCheckProgress(tr("验证外置登录服务器..."));
-            {
-                QNetworkAccessManager checkNam;
+            // ── 验证外置登录服务器可达性 ──
+            // 2026-11-13：原来用栈上 QNAM + QEventLoop 同步等 5 秒 —— 整个启动器 UI
+            // （浮层动画、进度条、取消按钮）全部冻结，用户以为卡死。
+            // 改为异步：暂停状态机，回调里恢复，与 Java 列表刷新同一套模式。
+            if (!m_authlibProbed) {
+                emit launchCheckProgress(tr("验证外置登录服务器..."));
+                m_checkTimer->stop();
+                auto *nam = new QNetworkAccessManager(this);
                 QNetworkRequest checkReq{QUrl(m_yggApiRoot)};
-                // 5秒超时 — authlib-injector 默认 15s 超时，提前告知用户
-                checkReq.setTransferTimeout(5000);
-                QNetworkReply *r = checkNam.get(checkReq);
-                QEventLoop l;
-                QObject::connect(r, &QNetworkReply::finished, &l, &QEventLoop::quit);
-                l.exec();
-                if (r->error() != QNetworkReply::NoError) {
-                    QString detail = r->errorString();
-                    r->deleteLater();
-                    abortCheck(tr("外置登录服务器"),
-                               tr("无法连接到认证服务器（%1）")
-                                   .arg(detail.isEmpty() ? m_yggApiRoot : detail));
-                    return;
-                }
-                r->deleteLater();
-                qCInfo(logLaunch) << QStringLiteral("[启动] 外置登录服务器可达: %1").arg(m_yggApiRoot);
+                checkReq.setTransferTimeout(4000);  // authlib-injector 默认 15s，提前告知
+                QNetworkReply *probe = nam->get(checkReq);
+                connect(probe, &QNetworkReply::finished, this, [this, probe, nam]() {
+                    const bool ok = probe->error() == QNetworkReply::NoError;
+                    const QString errText = probe->errorString();
+                    probe->deleteLater();
+                    nam->deleteLater();
+                    if (m_cancelled) return;
+                    m_authlibProbed = true;   // 无论成败都算问过，避免死循环
+                    if (!ok) {
+                        abortCheck(tr("外置登录服务器"),
+                                   tr("无法连接到认证服务器（%1）").arg(errText));
+                        return;
+                    }
+                    qCInfo(logLaunch) << QStringLiteral("[启动] 外置登录服务器可达: %1").arg(m_yggApiRoot);
+                    if (m_checkTimer) m_checkTimer->start();   // 重新进入本步继续
+                });
+                return;
             }
 
             QString jarPath = m_gameDir + QStringLiteral("/authlib-injector.jar");
@@ -1453,11 +1519,14 @@ void LaunchBackend::runNextCheck()
             const QString nativeJar = QDir::toNativeSeparators(jarPath);
             QString agentArg = QStringLiteral("-javaagent:\"") + nativeJar
                               + QStringLiteral("\"=") + m_yggApiRoot;
-            if (!m_pendingJvmArgs.isEmpty())
-                m_pendingJvmArgs += QStringLiteral(" ");
-            m_pendingJvmArgs += agentArg;
-            m_pendingJvmArgs += QStringLiteral(" -Dauthlibinjector.side=client");
-            qCInfo(logLaunch) << QStringLiteral("[启动] 已添加 authlib-injector 参数: %1").arg(agentArg);
+            if (!m_authlibArgAdded) {
+                m_authlibArgAdded = true;
+                if (!m_pendingJvmArgs.isEmpty())
+                    m_pendingJvmArgs += QStringLiteral(" ");
+                m_pendingJvmArgs += agentArg;
+                m_pendingJvmArgs += QStringLiteral(" -Dauthlibinjector.side=client");
+                qCInfo(logLaunch) << QStringLiteral("[启动] 已添加 authlib-injector 参数: %1").arg(agentArg);
+            }
 
             if (!QFileInfo::exists(jarPath)) {
                 emit launchCheckWarning(tr("正在下载 authlib-injector.jar..."));
@@ -1603,8 +1672,8 @@ void LaunchBackend::runNextCheck()
         qCInfo(logLaunch) << QStringLiteral("[启动] 全部检查通过，准备启动 Minecraft");
         break;
     }
-    case 5: {
-        // Step 5 (75%): Launch
+    case 6: {
+        // Step 6 (75%): Launch
         m_checkTimer->stop();
         emit launchCheckProgress(tr("正在启动..."));
         m_launchProgress = 75;
@@ -1982,12 +2051,22 @@ QStringList LaunchBackend::checkVersionLibraries(const QString& versionId)
             }
         }
 
-        // Check native classifiers (Windows)
+        // Check native classifiers (Windows)：按本机架构选 classifier
+        static const QString nativeClassifier = []() -> QString {
+            const QString arch = QSysInfo::currentCpuArchitecture();
+            if (arch.contains(QStringLiteral("arm64"), Qt::CaseInsensitive))
+                return QStringLiteral("natives-windows-arm64");
+            if (arch == QStringLiteral("x86") || arch == QStringLiteral("i386"))
+                return QStringLiteral("natives-windows-x86");
+            return QStringLiteral("natives-windows");
+        }();
         QJsonObject classifiers = downloads.value(QStringLiteral("classifiers")).toObject();
         for (auto it = classifiers.begin(); it != classifiers.end(); ++it) {
             QString key = it.key().toLower();
-            if (key.contains(QStringLiteral("natives-windows")) ||
-                key.contains(QStringLiteral("natives-windows"))) {
+            // 原条件把同一个字符串写了两遍（第二个是死代码），且不区分架构。
+            // Mojang 的 classifier 有 natives-windows / natives-windows-arm64 / natives-windows-x86，
+            // 必须按本机架构挑，否则 ARM 机器会把 x64 的 dll 当必需、x64 机器也可能误判。
+            if (key == nativeClassifier) {
                 hasArtifactCheck = true;
                 QJsonObject clsArt = it.value().toObject();
                 QString path = clsArt.value(QStringLiteral("path")).toString();
@@ -2127,7 +2206,7 @@ QStringList LaunchBackend::checkVersionMissingNatives(const QString& versionId)
         QJsonObject classifiers = downloads.value(QStringLiteral("classifiers")).toObject();
         for (auto it = classifiers.begin(); it != classifiers.end(); ++it) {
             QString key = it.key().toLower();
-            if (key.contains(QStringLiteral("natives-windows"))) {
+            if (key == QStringLiteral("natives-windows")) {   // 与库检查同一口径（x64 主机）
                 foundAnyNative = true;
                 QJsonObject clsArt = it.value().toObject();
                 QString path = clsArt.value(QStringLiteral("path")).toString();
