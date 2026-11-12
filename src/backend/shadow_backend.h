@@ -52,6 +52,11 @@ class ShadowBackend : public QObject {
     Q_PROPERTY(QString username READ username NOTIFY accountChanged)
     Q_PROPERTY(QString offlineUsername READ offlineUsername NOTIFY accountChanged)
     Q_PROPERTY(bool isOnline READ isOnline NOTIFY accountChanged)
+    // 「这个账号是否在线」要包含外置登录：外置账号在 AccountBackend 里 m_isOnline=false，
+    // 直接读 isOnline 会把外置账号显示成离线（橙点 + 字母头像）。
+    Q_PROPERTY(bool accountOnline READ accountOnline NOTIFY accountChanged)
+    // 当前账号的头像快照（外置/离线账号没有实时 skinPath，用它兜底）
+    Q_PROPERTY(QString currentAccountAvatar READ currentAccountAvatar NOTIFY accountsChanged)
     Q_PROPERTY(QString accountUuid READ accountUuid NOTIFY accountChanged)
     Q_PROPERTY(QString offlineUuid READ offlineUuid NOTIFY accountChanged)
     Q_PROPERTY(QString skinPath READ skinPath NOTIFY skinReady)
@@ -228,6 +233,8 @@ public:
     QString username() const;
     QString offlineUsername() const;
     bool isOnline() const;
+    bool accountOnline() const;
+    QString currentAccountAvatar() const;
     QString accountUuid() const;
     QString offlineUuid() const;
     // Q_PROPERTY loginType 的 READ 函数（不再额外暴露成方法；新 UI 用自己的 typeText）

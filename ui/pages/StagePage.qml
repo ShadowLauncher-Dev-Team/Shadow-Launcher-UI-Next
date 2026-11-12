@@ -155,14 +155,17 @@ Item {
         anchors.topMargin: page.narrow ? 7 : 10
         backend: page.b
         name: page.userName
-        online: page.b ? page.b.isOnline : false
-        status: (page.b && page.b.isOnline) ? 0 : 1
+        // 「在线」要包含外置登录：外置账号的后端 isOnline 是 false（那是微软会话的标志），
+        // 只读它会把外置账号显示成离线 —— 橙点 + 字母头像（影报的正是这个）。
+        online: page.b ? page.b.accountOnline : false
+        status: (page.b && page.b.accountOnline) ? 0 : 1
         // 原始皮肤优先（后端 renderHead3D 对部分皮肤会渲染出错误的头图）
         rawSkinSource: (page.b && page.b.isOnline) ? (page.b.skinTexturePath || "") : ""
         skinSource: {
             if (!page.b) return ""
             if (page.b.isOnline) return page.b.skinPath || page.b.offlineSkinPath || ""
-            return page.b.offlineSkinPath || ""
+            // 外置/离线：用这个账号存下来的头像快照，别回落到字母
+            return page.b.currentAccountAvatar || page.b.offlineSkinPath || ""
         }
         onClicked: page.openAccount()
     }

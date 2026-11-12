@@ -71,6 +71,8 @@ public:
     bool isOnline() const { return m_isOnline; }
     QString accountUuid() const { return m_uuid; }
     QString offlineUuid() const { return m_offlineUuid; }
+    // 当前账号的头像快照路径（外置/离线账号靠它显示头像；没有则返回空）
+    QString currentAccountAvatarFile() const;
     QString mcToken() const { return m_msMcToken; }
     QString skinPath() const { return m_skinPath; }
     QString skinTexturePath() const;

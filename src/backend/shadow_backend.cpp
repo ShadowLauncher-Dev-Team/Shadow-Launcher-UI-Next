@@ -1020,6 +1020,19 @@ bool ShadowBackend::isOnline() const {
     return m_account->isOnline();
 }
 
+bool ShadowBackend::accountOnline() const
+{
+    if (isOnline()) return true;
+    if (auto *ygg = static_cast<YggdrasilBackend *>(m_yggdrasil))
+        return ygg->loggedIn();
+    return false;
+}
+
+QString ShadowBackend::currentAccountAvatar() const
+{
+    return m_account ? m_account->currentAccountAvatarFile() : QString();
+}
+
 bool ShadowBackend::microsoftLoginBusy() const {
     return m_account ? m_account->isMicrosoftLoginBusy() : false;
 }
