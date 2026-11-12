@@ -169,11 +169,24 @@ private:
         // 服务端判定令牌失效后置位：此后点这条账号应直接打开登录表单，
         // 而不是再拿死令牌去 restoreSession（那只会再失败一次）。
         bool needsRelogin = false;
+        // ── 账号资料缓存 ──
+        // 切到某个账号时要立刻能显示它的头像/皮肤/披风，否则会有一段时间是
+        // 「字母头像 + 此账号没有可用披风」的空状态（实测切换后要约 3.5 秒才回填）。
+        // 这些都不是凭据，明文存即可。
+        QString avatarFile;      // 头像快照文件名（版本化：内容变了文件名就变，QML 才会重新加载）
+        QString skinPath;        // 皮肤纹理 URL
+        QString capePath;        // 当前披风图 URL
+        QString activeCapeAlias; // 当前披风别名
+        QString capesJson;       // 该账号上次拉到的披风列表（JSON 数组）
     };
     QString accountsFilePath() const;
     /// 每个账号的头像快照路径（切换/登录后把当前头像存一份，列表里每个账号都能显示）
     QString accountAvatarPath(const StoredAccount &a) const;
+    /// 该账号当前生效的头像快照绝对路径（优先条目里记的版本化文件名，回退旧固定名）
+    QString accountAvatarFilePath(const StoredAccount &a) const;
     void saveCurrentAvatarSnapshot();
+    /// 把当前身份的皮肤/披风写回它自己的账号条目，供下次切换时立即显示
+    void persistCurrentProfile();
     void loadAccounts();
     void saveAccounts();
     void upsertAccount(const StoredAccount &a, bool makeCurrent = true);

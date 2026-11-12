@@ -11,8 +11,13 @@ Item {
     /// 打开账户页（点右上胶囊 / 未登录时点主按钮）
     signal openAccount()
     signal openSettings(string versionId)
-    /// 有可用账号：正版在线登录，或设置过离线名
-    readonly property bool hasAccount: b ? (b.isOnline || (b.offlineUsername || "").length > 0) : false
+    readonly property var yg: (b && b.yggdrasil) ? b.yggdrasil : null
+    /// 有可用账号：正版在线登录 / 设置过离线名 / 外置账号已登录。
+    /// 少了外置这一条时，切到外置账号后首页会一直显示「还没有登录账号」+「先登录」，
+    /// 而账户页明明显示已登录（影报的就是这个）。
+    readonly property bool hasAccount: b ? (b.isOnline
+                                        || (b.offlineUsername || "").length > 0
+                                        || (yg !== null && yg.loggedIn === true)) : false
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     property var toast: null          // StageShell 注入的 ToastHost
@@ -20,7 +25,13 @@ Item {
     // （已扣掉侧栏），拿它和 900 比会让 1100 宽的窗口被判成窄窗、标题从 58 掉到 34。
     property bool narrow: false
     readonly property string ver: (b && b.selectedVersion) ? b.selectedVersion : ""
-    readonly property string userName: b ? (b.isOnline ? (b.username || "") : (b.offlineUsername || "")) : ""
+    readonly property string userName: {
+        if (!b) return ""
+        if (b.isOnline) return b.username || ""
+        if ((b.offlineUsername || "").length > 0) return b.offlineUsername
+        // 外置账号：名字来自 YggdrasilBackend
+        return (yg && yg.loggedIn) ? (yg.username || "") : ""
+    }
     // 演示态：--ui-demo-launch 由后端假状态机驱动真实浮层组件（不检测 Java、不拉文件、
     // 不起进程），--ui-demo-fail 走失败分支。演示走的是与真机同一条管线代码路径。
     readonly property bool demoMode: Qt.application.arguments.indexOf("--ui-demo-launch") >= 0

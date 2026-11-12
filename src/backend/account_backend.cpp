@@ -65,6 +65,8 @@ AccountBackend::AccountBackend(QObject *parent)
 
     // 头像就绪时给当前账号存一份快照（列表用；非当前账号也能显示头像）
     connect(this, &AccountBackend::skinReady, this, &AccountBackend::saveCurrentAvatarSnapshot);
+    connect(this, &AccountBackend::skinReady, this, &AccountBackend::persistCurrentProfile);
+    connect(this, &AccountBackend::capesReady, this, &AccountBackend::persistCurrentProfile);
     connect(this, &AccountBackend::offlineSkinReady, this, &AccountBackend::saveCurrentAvatarSnapshot);
 
     // Pre-render Steve and Alex offline heads (once, persistent)
@@ -1416,9 +1418,9 @@ QVariantList AccountBackend::accounts() const
                                || (a.mode == 2 && a.accessToken.isEmpty());
         m[QStringLiteral("needsRelogin")] = needsRelogin;
         // 头像快照：每个账号登录/切换时各存一份，列表里不会只剩当前那个有头像
-        const QString avatarPath = accountAvatarPath(a);
-        m[QStringLiteral("avatar")] = QFileInfo::exists(avatarPath)
-            ? (QStringLiteral("file:///") + avatarPath) : QString();
+        const QString avatarPath = accountAvatarFilePath(a);
+        m[QStringLiteral("avatar")] = avatarPath.isEmpty()
+            ? QString() : (QStringLiteral("file:///") + avatarPath);
         out.append(m);
     }
     return out;
@@ -1452,6 +1454,44 @@ QString AccountBackend::accountAvatarPath(const StoredAccount &a) const
     return m_dataDir + QStringLiteral("/assets/accounts/%1_%2.png").arg(a.mode).arg(safe);
 }
 
+QString AccountBackend::accountAvatarFilePath(const StoredAccount &a) const
+{
+    if (!a.avatarFile.isEmpty()) {
+        const QString p = m_dataDir + QStringLiteral("/assets/accounts/") + a.avatarFile;
+        if (QFileInfo::exists(p)) return p;
+    }
+    const QString legacy = accountAvatarPath(a);
+    return QFileInfo::exists(legacy) ? legacy : QString();
+}
+
+// 把当前身份的皮肤/披风写回它自己的账号条目。
+// capesReady / skinReady 之后调用：下次切回这个账号可以立刻显示，
+// 不必等 Mojang profile 接口回来（那一等就是 3 秒多的空状态）。
+void AccountBackend::persistCurrentProfile()
+{
+    if (m_currentAccount < 0 || m_currentAccount >= m_accounts.size()) return;
+    StoredAccount &a = m_accounts[m_currentAccount];
+    bool changed = false;
+    if (!m_skinPath.isEmpty() && a.skinPath != m_skinPath) { a.skinPath = m_skinPath; changed = true; }
+    if (a.capePath != m_capePath) { a.capePath = m_capePath; changed = true; }
+    if (a.activeCapeAlias != m_activeCapeAlias) { a.activeCapeAlias = m_activeCapeAlias; changed = true; }
+    if (!m_capes.isEmpty()) {
+        QJsonArray arr;
+        for (const CapeInfo &ci : m_capes) {
+            QJsonObject o;
+            o[QStringLiteral("alias")] = ci.alias;
+            o[QStringLiteral("capeId")] = ci.capeId;
+            o[QStringLiteral("url")] = ci.url;
+            o[QStringLiteral("localPath")] = ci.localPath;
+            o[QStringLiteral("active")] = ci.active;
+            arr.append(o);
+        }
+        const QString json = QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Compact));
+        if (a.capesJson != json) { a.capesJson = json; changed = true; }
+    }
+    if (changed) saveAccounts();
+}
+
 void AccountBackend::saveCurrentAvatarSnapshot()
 {
     if (m_currentAccount < 0 || m_currentAccount >= m_accounts.size()) return;
@@ -1461,13 +1501,36 @@ void AccountBackend::saveCurrentAvatarSnapshot()
     const QString srcPath = QUrl(srcUrl).toLocalFile();
     if (srcPath.isEmpty() || !QFileInfo::exists(srcPath)) return;
 
-    const QString dst = accountAvatarPath(a);
+    // 版本化文件名：内容变了文件名就变，QML 才会重新加载。
+    // 以前是固定文件名 + 先删再拷：删掉那一刻 QML 正好去读，就是「字母头像」，
+    // 而且拷完后同名 URL 命中缓存，不点第二下不会自己恢复（影实测）。
+    const QString base = accountAvatarPath(a);
+    const QFileInfo srcInfo(srcPath);
+    QString stamp = QString::number(srcInfo.lastModified().toMSecsSinceEpoch());
+    if (stamp.isEmpty()) stamp = QString::number(QDateTime::currentMSecsSinceEpoch());
+    const QString dst = base.left(base.size() - 4) + QStringLiteral("_")
+
+                        + stamp + QStringLiteral(".png");
     QDir().mkpath(QFileInfo(dst).absolutePath());
-    if (QFileInfo::exists(dst)) QFile::remove(dst);
-    if (QFile::copy(srcPath, dst)) {
-        qCInfo(logAccount) << QStringLiteral("账号头像快照已保存: ") << dst;
-        emit accountsChanged();
+
+    // 先写临时文件再整体替换：绝不留「文件不存在/写了一半」的窗口
+    const QString tmp = dst + QStringLiteral(".part");
+    QFile::remove(tmp);
+    if (!QFile::copy(srcPath, tmp)) return;
+    const QString oldFile = accountAvatarFilePath(a);
+    if (!QFileInfo::exists(dst)) {
+        if (!QFile::rename(tmp, dst)) { QFile::remove(tmp); return; }
+    } else {
+        QFile::remove(tmp);
     }
+    if (m_currentAccount >= 0 && m_currentAccount < m_accounts.size())
+        m_accounts[m_currentAccount].avatarFile = QFileInfo(dst).fileName();
+    // 旧快照清掉，避免目录里越积越多
+    if (!oldFile.isEmpty() && oldFile != dst && QFileInfo::exists(oldFile))
+        QFile::remove(oldFile);
+    saveAccounts();
+    qCInfo(logAccount) << QStringLiteral("账号头像快照已保存: ") << dst;
+    emit accountsChanged();
 }
 
 void AccountBackend::saveAccounts()
@@ -1487,6 +1550,12 @@ void AccountBackend::saveAccounts()
             o[QStringLiteral("accessToken")] = TokenCrypto::encrypt(a.accessToken);
         if (!a.clientToken.isEmpty())
             o[QStringLiteral("clientToken")] = TokenCrypto::encrypt(a.clientToken);
+        // 资料缓存（头像/皮肤/披风）：非凭据，明文存
+        if (!a.avatarFile.isEmpty()) o[QStringLiteral("avatarFile")] = a.avatarFile;
+        if (!a.skinPath.isEmpty()) o[QStringLiteral("skinPath")] = a.skinPath;
+        if (!a.capePath.isEmpty()) o[QStringLiteral("capePath")] = a.capePath;
+        if (!a.activeCapeAlias.isEmpty()) o[QStringLiteral("activeCapeAlias")] = a.activeCapeAlias;
+        if (!a.capesJson.isEmpty()) o[QStringLiteral("capesJson")] = a.capesJson;
         arr.append(o);
     }
     QJsonObject root;
@@ -1522,6 +1591,11 @@ void AccountBackend::loadAccounts()
         a.apiRoot = o[QStringLiteral("apiRoot")].toString();
         a.accessToken = TokenCrypto::decrypt(o[QStringLiteral("accessToken")].toString());
         a.clientToken = TokenCrypto::decrypt(o[QStringLiteral("clientToken")].toString());
+        a.avatarFile = o[QStringLiteral("avatarFile")].toString();
+        a.skinPath = o[QStringLiteral("skinPath")].toString();
+        a.capePath = o[QStringLiteral("capePath")].toString();
+        a.activeCapeAlias = o[QStringLiteral("activeCapeAlias")].toString();
+        a.capesJson = o[QStringLiteral("capesJson")].toString();
         m_accounts.append(a);
     }
     m_currentAccount = root[QStringLiteral("current")].toInt(-1);
@@ -1641,8 +1715,29 @@ void AccountBackend::switchAccount(int index)
         m_msRefreshToken = a.refreshToken;
         m_loggedIn = true;
         m_isOnline = true;
+        // 先把它上次的资料摆上去：否则要等令牌刷新 + MC 档案 + Mojang profile
+        // 一连串接口回来（实测 3.5 秒），期间列表是字母头像、详情写「没有可用披风」。
+        if (!a.skinPath.isEmpty()) m_skinPath = a.skinPath;
+        if (!a.capePath.isEmpty()) m_capePath = a.capePath;
+        m_activeCapeAlias = a.activeCapeAlias;
+        if (!a.capesJson.isEmpty()) {
+            m_capes.clear();
+            const QJsonArray arr = QJsonDocument::fromJson(a.capesJson.toUtf8()).array();
+            for (const QJsonValue &v : arr) {
+                const QJsonObject o = v.toObject();
+                CapeInfo ci;
+                ci.alias = o[QStringLiteral("alias")].toString();
+                ci.capeId = o[QStringLiteral("capeId")].toString();
+                ci.url = o[QStringLiteral("url")].toString();
+                ci.localPath = o[QStringLiteral("localPath")].toString();
+                ci.active = o.value(QStringLiteral("active")).toBool(false);
+                m_capes.append(ci);
+            }
+            emit capesReady();
+        }
         saveMicrosoftSession();
         emit accountChanged();
+        emit skinReady();
         startBackgroundRefresh();
         downloadSkin(a.name);
         if (!m_msRefreshToken.isEmpty()) refreshMicrosoftToken();
