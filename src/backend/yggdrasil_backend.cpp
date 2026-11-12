@@ -167,9 +167,14 @@ void YggdrasilBackend::onValidateReply()
     }
 
     if (httpStatus == 401 || httpStatus == 403) {
-        // 令牌确实已失效 → 清会话，脱离假登录态
-        qCWarning(logYggBackend) << "Yggdrasil session invalid (http=" << httpStatus << ")";
-        clearSessionAfterExpiry();
+        // 不能凭 validate 的 403 就直接判"令牌失效"：
+        // 部分皮肤站（如 LittleSkin）的 authserver/validate 对所有请求都返回 403，
+        // 用它下结论会把刚登录成功的用户"一瞬间"踢成过期。
+        // 改用 refresh 复核：令牌有效时 refresh 会成功并顺带续期；
+        // refresh 也被服务端拒绝，才真正清会话。
+        qCWarning(logYggBackend) << "validate rejected http=" << httpStatus
+                                 << ", 交给 refresh 复核";
+        doRefresh(true);
         return;
     }
 
@@ -685,6 +690,7 @@ void YggdrasilBackend::onRefreshReply()
     if (session.uuid.isEmpty()) session.uuid = m_session.uuid;
     m_session = session;
     saveSession();
+    emit tokensRotated();
     emit stateChanged();
     setStatus(QString());
     qCDebug(logYggBackend) << "Yggdrasil token refreshed/validated";

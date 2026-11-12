@@ -388,6 +388,14 @@ ShadowBackend::ShadowBackend(QObject* parent)
             m_account->upsertExternalAccount(y->username(), y->uuid(), y->apiRoot(),
                                              y->accessToken(), y->clientToken());
         });
+        // refresh 会轮换 accessToken/clientToken。以前只写 session.json，
+        // accounts.json 里留的还是旧令牌 → 下次"从多账号列表恢复"必然 403 被判过期。
+        connect(ygg, &YggdrasilBackend::tokensRotated, this, [this]() {
+            auto *y = static_cast<YggdrasilBackend*>(m_yggdrasil);
+            if (!y || !m_account || !y->loggedIn()) return;
+            m_account->upsertExternalAccount(y->username(), y->uuid(), y->apiRoot(),
+                                             y->accessToken(), y->clientToken());
+        });
     }
     // 皮肤上传结果：复位衣柜忙碌态，并把失败原因交给 UI。
     // （以前这个信号没有任何接收方 → 上传失败时界面毫无反应。）

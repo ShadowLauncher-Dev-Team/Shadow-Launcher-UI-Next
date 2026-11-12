@@ -101,6 +101,10 @@ signals:
     void metaReady();
     void metaFailed(const QString &error);
     void loginSuccess();
+    /// refresh 成功会轮换 accessToken/clientToken。
+    /// 外层必须把这个新值写回多账号列表，否则 accounts.json 里留的是旧令牌，
+    /// 下次“从多账号列表恢复”就会拿旧令牌去校验 → 403 → 被判过期。
+    void tokensRotated();
     void loginFailed(const QString &error);
     /// 登录成功后需要选择角色时触发（让 QML 弹出多角色选择弹窗）
     void showProfileSelection();

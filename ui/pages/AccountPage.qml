@@ -788,6 +788,16 @@ Item {
                         refreshTimer.restart()
                         page.acct.refreshSkin()
                     }
+                    // 验收钩子：--acct-external 时切到外置账号（验证会话恢复/校验链路）
+                    if (Qt.application.arguments.indexOf("--acct-external") >= 0 && page.b) {
+                        var accx = page.b.accounts
+                        for (var k = 0; k < accx.length; ++k) {
+                            if (accx[k] && accx[k].mode === 2 && !accx[k].current) {
+                                page.b.switchAccount(accx[k].index)
+                                break
+                            }
+                        }
+                    }
                     // 验收钩子：--acct-online 时切到第一个正版账号（截图核对用）
                     if (Qt.application.arguments.indexOf("--acct-online") >= 0 && page.b) {
                         var acc = page.b.accounts
