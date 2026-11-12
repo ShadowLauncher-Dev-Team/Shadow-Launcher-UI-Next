@@ -181,11 +181,16 @@ class ShadowBackend : public QObject {
 
     // ── Custom background ──
     Q_PROPERTY(QString customBgPath READ customBgPath NOTIFY customBgChanged)
+    // 背景图的 file:/// URL（QML Image.source 直接用）；空 = 用内置默认图
+    Q_PROPERTY(QString customBgUrl READ customBgUrl NOTIFY customBgChanged)
     Q_PROPERTY(qreal sidebarOpacity READ sidebarOpacity NOTIFY customBgChanged)
     Q_PROPERTY(qreal contentOpacity READ contentOpacity NOTIFY customBgChanged)
     Q_PROPERTY(qreal backgroundBlur READ backgroundBlur NOTIFY customBgChanged)
     Q_PROPERTY(qreal cropX READ cropX WRITE setCropX NOTIFY customBgChanged)
     Q_PROPERTY(qreal cropY READ cropY WRITE setCropY NOTIFY customBgChanged)
+    Q_PROPERTY(qreal bgZoom READ bgZoom WRITE setBgZoom NOTIFY customBgChanged)
+    // 配色方案（外观页）："dark" / "light"。Theme.scheme 由 StageShell 同步，全局生效。
+    Q_PROPERTY(QString colorScheme READ colorScheme WRITE setColorScheme NOTIFY colorSchemeChanged)
 
     // ── Version details/summary ──
     Q_PROPERTY(QVariantList versionDetails READ versionDetails NOTIFY versionDetailsReady)
@@ -296,6 +301,7 @@ public:
 
     // ── Custom background ──
     QString customBgPath() const;
+    QString customBgUrl() const;
     Q_INVOKABLE void setCustomBgPath(const QString& path);
     qreal sidebarOpacity() const;
     Q_INVOKABLE void setSidebarOpacity(qreal v);
@@ -308,6 +314,16 @@ public:
     qreal cropY() const;
     Q_INVOKABLE void setCropY(qreal v);
     Q_INVOKABLE void updateCrop(qreal x, qreal y);
+    qreal bgZoom() const;
+    Q_INVOKABLE void setBgZoom(qreal v);
+    // 外观页：内置预设 / 选图 / 恢复默认 / 取景复位
+    Q_INVOKABLE QVariantList bgPresets() const;
+    Q_INVOKABLE void applyBgPreset(const QString& presetId);
+    Q_INVOKABLE bool chooseBgImage();
+    Q_INVOKABLE void restoreDefaultBg();
+    Q_INVOKABLE void resetBgView();
+    QString colorScheme() const;
+    Q_INVOKABLE void setColorScheme(const QString& scheme);
     Q_INVOKABLE QString pickBackgroundImage();
 
     QVariantList availableJavaList() const;
@@ -869,6 +885,7 @@ signals:
     void agreementAcceptedChanged();
     void loginModeChanged();
     void customBgChanged();
+    void colorSchemeChanged();
     void logMessage(const QString& msg);
     void skinChanged();
     void wardrobeBusyChanged();

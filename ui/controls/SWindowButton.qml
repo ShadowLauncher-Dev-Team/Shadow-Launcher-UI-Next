@@ -26,7 +26,7 @@ Item {
         anchors.centerIn: parent
         name: root.iconName
         size: 15
-        color: root.danger && hover.containsMouse ? "#ffffff" : Theme.fg2
+        color: root.danger && hover.containsMouse ? Theme.accentFg : Theme.fg2
     }
 
     MouseArea {

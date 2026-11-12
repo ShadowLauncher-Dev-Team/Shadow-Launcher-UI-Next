@@ -32,6 +32,10 @@ class SettingsBackend : public QObject {
     Q_PROPERTY(qreal backgroundBlur READ backgroundBlur WRITE setBackgroundBlur NOTIFY customBgChanged)
     Q_PROPERTY(qreal cropX READ cropX WRITE setCropX NOTIFY customBgChanged)
     Q_PROPERTY(qreal cropY READ cropY WRITE setCropY NOTIFY customBgChanged)
+    // 2026-11-13 外观页：背景图缩放倍率（1.0 = 恰好铺满；>1 放大后可在框内拖动取景）
+    Q_PROPERTY(qreal bgZoom READ bgZoom WRITE setBgZoom NOTIFY customBgChanged)
+    // 配色方案："dark"（黑，默认）/ "light"（白）
+    Q_PROPERTY(QString colorScheme READ colorScheme WRITE setColorScheme NOTIFY colorSchemeChanged)
     Q_PROPERTY(int fileDownloadSource READ fileDownloadSource WRITE setFileDownloadSource NOTIFY downloadSettingsChanged)
     Q_PROPERTY(int listDownloadSource READ listDownloadSource WRITE setListDownloadSource NOTIFY downloadSettingsChanged)
     Q_PROPERTY(int maxDownloadThreads READ maxDownloadThreads WRITE setMaxDownloadThreads NOTIFY downloadSettingsChanged)
@@ -204,6 +208,24 @@ public:
     qreal cropY() const { return m_cropY; }
     void setCropY(qreal v) { m_cropY = qBound(0.0, v, 1.0); saveSettings(); emit customBgChanged(); }
 
+    // ── 启动页背景（外观页）──────────────────────────────────
+    qreal bgZoom() const { return m_bgZoom; }
+    void setBgZoom(qreal v) { m_bgZoom = qBound(1.0, v, 4.0); saveSettings(); emit customBgChanged(); }
+    /// 内置预设列表（默认极光 + 后续追加的预设图）；id/name/source/builtin/thumb
+    Q_INVOKABLE QVariantList bgPresets() const;
+    /// 选中内置预设（传空字符串或未知 id → 回落到默认极光）
+    Q_INVOKABLE void applyBgPreset(const QString& presetId);
+    /// 选择本地图片作为背景（打开文件选择框）；返回是否选定了文件
+    Q_INVOKABLE bool chooseBgImage();
+    /// 恢复默认背景：清空自定义路径 + 视图复位
+    Q_INVOKABLE void restoreDefaultBg();
+    /// 只把取景复位（缩放 1.0、居中），不换图
+    Q_INVOKABLE void resetBgView();
+
+    // ── 配色方案 ─────────────────────────────────────────────
+    QString colorScheme() const { return m_colorScheme; }
+    void setColorScheme(const QString& scheme);
+
     // ── Auto-language mode ──
     int autoLangMode() const { return m_autoLangMode; }
     // Returns combo box index for QML (mode → idx mapping: 0→2, 1→0, 2→1)
@@ -245,6 +267,7 @@ signals:
 
     void languageChanged();
     void customBgChanged();
+    void colorSchemeChanged();
     void downloadSettingsChanged();
     void autoLangModeChanged();
     /// 启动细节设置变更（GC/优先级/全屏/自动进服/窗口标题/pre-post 命令）
@@ -301,6 +324,8 @@ private:
     qreal m_backgroundBlur = 0.0;
     qreal m_cropX = 0.5;
     qreal m_cropY = 0.5;
+    qreal m_bgZoom = 1.0;
+    QString m_colorScheme = QStringLiteral("dark");
 
     // Download settings
     // 全局源策略默认 PreferOfficial(1)——仅影响 MC 下载；加载器下载源独立

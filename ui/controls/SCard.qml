@@ -17,7 +17,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: Theme.rWin
-        color: "#0b0d12"
+        color: Theme.bgCard2
         border.width: 1
         border.color: Theme.line2
     }
@@ -30,7 +30,7 @@ Item {
         width: parent.width - 40
         text: root.title
         visible: root.title.length > 0
-        color: "#eef2f8"
+        color: Theme.accentText
         font.family: Theme.fontFamily
         font.pixelSize: 13
         font.weight: Font.DemiBold

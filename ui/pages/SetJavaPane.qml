@@ -85,11 +85,11 @@ Item {
                         height: 26
                         width: javaTag.implicitWidth + 26
                         radius: 6
-                        color: pane.autoMode ? "#141a24"
-                                             : ((pane.s && pane.s.javaReady) ? "#0c1a12" : "#1a1408")
+                        color: pane.autoMode ? Theme.bgCard
+                                             : ((pane.s && pane.s.javaReady) ? Theme.bgCard2 : Theme.warn)
                         border.width: 1
                         border.color: pane.autoMode ? Theme.line2
-                                                    : ((pane.s && pane.s.javaReady) ? "#1e3a2a" : "#3d2f12")
+                                                    : ((pane.s && pane.s.javaReady) ? Theme.bgHover : Theme.warn)
                         Row {
                             anchors.centerIn: parent
                             spacing: 7
@@ -162,7 +162,7 @@ Item {
 
                     Rectangle {
                         anchors.fill: parent
-                        color: pane.autoMode ? "#101720" : "transparent"
+                        color: pane.autoMode ? Theme.accentSoft : "transparent"
                         Behavior on color {
                             ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
                         }
@@ -175,12 +175,12 @@ Item {
                         width: 34
                         height: 22
                         radius: 6
-                        color: pane.autoMode ? "#12203a" : "#141a24"
+                        color: pane.autoMode ? Theme.accentSoft : Theme.bgCard
                         SIcon {
                             anchors.centerIn: parent
                             name: "zap"
                             size: 12
-                            color: pane.autoMode ? "#a9c8ff" : Theme.fg3
+                            color: pane.autoMode ? Theme.accentText : Theme.fg3
                         }
                     }
 
@@ -229,7 +229,7 @@ Item {
 
                         Rectangle {
                             anchors.fill: parent
-                            color: jrow.cur ? "#101720" : "transparent"
+                            color: jrow.cur ? Theme.accentSoft : "transparent"
                             Behavior on color {
                                 ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
                             }
@@ -242,11 +242,11 @@ Item {
                             width: 34
                             height: 22
                             radius: 6
-                            color: jrow.cur ? "#12203a" : "#141a24"
+                            color: jrow.cur ? Theme.accentSoft : Theme.bgCard
                             Text {
                                 anchors.centerIn: parent
                                 text: modelData.major
-                                color: jrow.cur ? "#a9c8ff" : Theme.fg3
+                                color: jrow.cur ? Theme.accentText : Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                             }

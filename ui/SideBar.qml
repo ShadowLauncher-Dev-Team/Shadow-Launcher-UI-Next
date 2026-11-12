@@ -81,7 +81,7 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: Theme.rSm
-            color: "#151a23"
+            color: Theme.bgCard
         }
         // 左侧强调条跟着滑块一起走（不再是"旧的缩回去、新的长出来"）
         Rectangle {
@@ -106,7 +106,7 @@ Item {
         Text {
             visible: !root.narrow
             text: "SHADOW"
-            color: "#ffffff"
+            color: Theme.fg
             font.family: Theme.fontFamily
             font.pixelSize: 14
             font.weight: Font.Bold
@@ -135,7 +135,7 @@ Item {
             visible: !root.narrow
             // appVersion 已是可直接显示的完整串（含 v 前缀，见 src/version.h），此处禁止再做任何拼接装饰
             text: ((typeof backend !== "undefined" && backend) ? backend.appVersion : "")
-            color: "#4b535f"
+            color: Theme.line3
             font.family: Theme.fontFamily
             font.pixelSize: 11
             leftPadding: 10
@@ -156,7 +156,7 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 radius: Theme.rSm
-                color: (!row.sel && rowHover.containsMouse) ? "#12151c" : "transparent"
+                color: (!row.sel && rowHover.containsMouse) ? Theme.bgCard : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
             }
             // 几何上报：ColumnLayout 重排 / 侧栏收窄都会改 y 与高度，跟着更新滑块位置
@@ -171,7 +171,7 @@ Item {
                 SIcon {
                     name: modelData.ic
                     size: 17
-                    color: row.sel ? "#ffffff" : Theme.fg2
+                    color: row.sel ? Theme.fg : Theme.fg2
                     Layout.alignment: root.narrow ? Qt.AlignHCenter : Qt.AlignLeft
                     // 选中瞬间轻微弹一下（过冲缓动），提示"落到这一项了"
                     scale: row.sel ? 1.0 : 0.94
@@ -180,7 +180,7 @@ Item {
                 Text {
                     visible: !root.narrow
                     text: modelData.label
-                    color: row.sel ? "#ffffff" : Theme.fg2
+                    color: row.sel ? Theme.fg : Theme.fg2
                     font.family: Theme.fontFamily
                     font.pixelSize: 14
                     font.weight: row.sel ? Font.DemiBold : Font.Normal

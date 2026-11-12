@@ -56,7 +56,7 @@ Item {
             // ── 文件夹 ──
             Text {
                 text: "文件夹"
-                color: "#6b7686"
+                color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
                 font.letterSpacing: 1.1
@@ -84,7 +84,7 @@ Item {
             // ── 日志 ──
             Text {
                 text: "日志"
-                color: "#6b7686"
+                color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
                 font.letterSpacing: 1.1
@@ -112,7 +112,7 @@ Item {
             // ── 其他 ──
             Text {
                 text: "其他"
-                color: "#6b7686"
+                color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
                 font.letterSpacing: 1.1
@@ -212,7 +212,7 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: 6
-            color: "#0f131a"
+            color: Theme.bgCard2
             opacity: hover.hovered ? 1 : 0
             Behavior on opacity {
                 NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
@@ -224,7 +224,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             name: tile.iconName
             size: 15
-            color: hover.hovered ? Theme.fg2 : "#5d6673"
+            color: hover.hovered ? Theme.fg2 : Theme.fg3
             Behavior on color {
                 ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
             }
@@ -234,7 +234,7 @@ Item {
             anchors.leftMargin: 35
             anchors.verticalCenter: parent.verticalCenter
             text: tile.label
-            color: hover.hovered ? "#ffffff" : Theme.fg
+            color: hover.hovered ? Theme.fg : Theme.fg
             font.family: Theme.fontFamily
             font.pixelSize: 13
             Behavior on color {
@@ -246,7 +246,7 @@ Item {
             anchors.rightMargin: 10
             anchors.verticalCenter: parent.verticalCenter
             text: tile.tipText
-            color: hover.hovered ? "#8a94a3" : "#6b7686"
+            color: hover.hovered ? Theme.fg2 : Theme.fg3
             font.family: Theme.fontFamily
             font.pixelSize: 11
             Behavior on color {

@@ -297,7 +297,7 @@ Item {
             anchors.leftMargin: page.narrow ? 108 : 120
             anchors.verticalCenter: parent.verticalCenter
             text: "选择版本"
-            color: "#ffffff"
+            color: Theme.fg
             font.family: Theme.fontFamily
             font.pixelSize: 15
             font.weight: Font.DemiBold
@@ -324,7 +324,7 @@ Item {
                 id: folderChip
                 height: 32
                 radius: 2
-                color: "#11141b"
+                color: Theme.bgCard2
                 border.width: 1
                 border.color: Theme.line2
                 width: Math.min(210, folderChipRow.implicitWidth + 22)
@@ -335,7 +335,7 @@ Item {
                     SIcon { name: "folder"; size: 13; color: Theme.fg2 }
                     Text {
                         text: page.folderLabel
-                        color: "#cfd6e0"
+                        color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                         elide: Text.ElideRight
@@ -404,7 +404,7 @@ Item {
                 anchors.top: parent.top
                 anchors.topMargin: 14
                 text: "已安装"
-                color: "#ffffff"
+                color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
@@ -431,9 +431,9 @@ Item {
                 anchors.rightMargin: page.narrow ? 16 : 20
                 height: 32
                 radius: Theme.rSm
-                color: "#11141b"
+                color: Theme.bgCard2
                 border.width: 1
-                border.color: "#1c2029"
+                border.color: Theme.bgInput
 
                 SIcon {
                     anchors.left: parent.left
@@ -535,7 +535,7 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         radius: 8
-                        color: row.cur ? "#151a23" : (row.hov ? "#101419" : "transparent")
+                        color: row.cur ? Theme.bgCard : (row.hov ? Theme.bgCard2 : "transparent")
                         Behavior on color {
                             ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
                         }
@@ -563,7 +563,7 @@ Item {
                         Text {
                             width: parent.width
                             text: (modelData && modelData.id) ? modelData.id : ""
-                            color: row.cur ? "#ffffff" : "#e3e8ef"
+                            color: row.cur ? Theme.fg : Theme.fg
                             font.family: Theme.fontFamily
                             font.pixelSize: 13
                             font.weight: row.cur ? Font.DemiBold : Font.Normal
@@ -599,9 +599,9 @@ Item {
                         width: 28
                         height: 28
                         radius: 4
-                        color: gearHover.hovered ? "#1b212b" : "transparent"
+                        color: gearHover.hovered ? Theme.bgInput : "transparent"
                         border.width: 1
-                        border.color: gearHover.hovered ? "#333a47" : "#22262e"
+                        border.color: gearHover.hovered ? Theme.line2 : Theme.bgInput
                         opacity: (row.hov || row.cur) ? 1 : 0
                         visible: opacity > 0
                         Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
@@ -610,7 +610,7 @@ Item {
                             anchors.centerIn: parent
                             name: "settings"
                             size: 15
-                            color: gearHover.hovered ? "#e8ebf2" : "#8a94a3"
+                            color: gearHover.hovered ? Theme.fg : Theme.fg2
                         }
                         HoverHandler { id: gearHover }
                         MouseArea {
@@ -743,7 +743,7 @@ Item {
                     Text {
                         width: parent.width
                         text: page.shownSel ? (page.shownSel.id || "—") : "—"
-                        color: "#ffffff"
+                        color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: page.narrow ? 24 : 30
                         font.weight: Font.Bold
@@ -753,7 +753,7 @@ Item {
                     Text {
                         width: parent.width
                         text: page.shownSel ? page.subOf(page.shownSel) : ""
-                        color: "#9fb4cf"
+                        color: Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 13
                         elide: Text.ElideRight
@@ -782,13 +782,13 @@ Item {
                             anchors.bottom: parent.bottom
                             width: parent.width
                             height: 1
-                            color: "#101319"
+                            color: Theme.bgCard2
                         }
                         Text {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             text: page.infoLabel(modelData)
-                            color: "#6d7684"
+                            color: Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
                         }
@@ -798,7 +798,7 @@ Item {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             text: page.infoValue(modelData)
-                            color: "#d8dde5"
+                            color: Theme.fg
                             font.family: Theme.fontFamily
                             font.pixelSize: 13
                             elide: Text.ElideRight
@@ -876,7 +876,7 @@ Item {
             width: Math.min(380, page.width - 36)
             height: Math.min(page.height - 76, 16 + Math.max(1, page.folders.length) * 46 + 44)
             radius: 2
-            color: "#0c0f14"
+            color: Theme.bgCard2
             // 下拉面板：从上方 6px 落下
             transform: Translate {
                 y: page.folderMenuOpen ? 0 : -6
@@ -885,7 +885,7 @@ Item {
                 }
             }
             border.width: 1
-            border.color: "#262d38"
+            border.color: Theme.bgHover
 
             MouseArea { anchors.fill: parent }
 
@@ -902,7 +902,7 @@ Item {
                         Rectangle {
                             anchors.fill: parent
                             radius: 8
-                            color: (modelData && modelData.active) ? "#151a23" : "transparent"
+                            color: (modelData && modelData.active) ? Theme.bgCard : "transparent"
                         }
                         Column {
                             anchors.left: parent.left
@@ -915,7 +915,7 @@ Item {
                                 width: parent.width
                                 text: (modelData && modelData.name && modelData.name.length > 0)
                                       ? modelData.name : ((modelData && modelData.path) ? modelData.path : "")
-                                color: "#e3e8ef"
+                                color: Theme.fg
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 13
                                 elide: Text.ElideRight
@@ -955,7 +955,7 @@ Item {
                         anchors.leftMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
                         text: "浏览其他文件夹…"
-                        color: "#9fb4cf"
+                        color: Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 13
                     }

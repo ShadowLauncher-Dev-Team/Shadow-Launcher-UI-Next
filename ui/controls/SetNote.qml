@@ -14,12 +14,12 @@ Item {
     property string text: ""
     property string icon: ""
 
-    readonly property color tone: root.kind === "warn" ? "#e6c07a"
-                                : (root.kind === "danger" ? "#f0a3a3" : "#9db8d8")
-    readonly property color bgColor: root.kind === "warn" ? "#171106"
-                                    : (root.kind === "danger" ? "#180d10" : "#0b1220")
-    readonly property color lineColor: root.kind === "warn" ? "#3d2f12"
-                                      : (root.kind === "danger" ? "#4a2226" : "#1a2b45")
+    readonly property color tone: root.kind === "warn" ? Theme.warn
+                                : (root.kind === "danger" ? Theme.dangerText : Theme.accentText)
+    readonly property color bgColor: root.kind === "warn" ? Theme.warn
+                                    : (root.kind === "danger" ? Theme.bgCard2 : Theme.accentSoft)
+    readonly property color lineColor: root.kind === "warn" ? Theme.warn
+                                      : (root.kind === "danger" ? Theme.dangerSoft : Theme.accentSoft)
 
     readonly property int padH: 14
     readonly property int padV: 11

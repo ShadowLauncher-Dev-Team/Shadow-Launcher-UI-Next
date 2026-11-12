@@ -67,7 +67,7 @@ Item {
                 spacing: 8
                 Text {
                     text: "分配方式"
-                    color: "#6b7686"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     font.letterSpacing: 1.1
@@ -113,7 +113,7 @@ Item {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         text: "范围 " + pane.sliderMin + " – " + pane.sliderMax + " MB"
-                        color: "#6b7686"
+                        color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                     }
@@ -121,7 +121,7 @@ Item {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         text: pane.manualMB + " MB"
-                        color: "#cfd6e1"
+                        color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                     }
@@ -147,7 +147,7 @@ Item {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         text: pane.sliderMin + " MB"
-                        color: "#6b7686"
+                        color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                     }
@@ -155,7 +155,7 @@ Item {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         text: pane.sliderMax + " MB"
-                        color: "#6b7686"
+                        color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                     }
@@ -174,7 +174,7 @@ Item {
                         anchors.left: parent.left
                         anchors.baseline: parent.verticalCenter
                         text: pane.sysPercent
-                        color: "#eef2f8"
+                        color: Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 26
                         font.weight: Font.DemiBold
@@ -192,7 +192,7 @@ Item {
                         anchors.leftMargin: 34
                         anchors.baseline: pctText.baseline
                         text: "已用 " + (pane.sysTotal - pane.sysAvail) + " MB · 共 " + pane.sysTotal + " MB"
-                        color: "#5d6673"
+                        color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                     }
@@ -204,7 +204,7 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         radius: 5
-                        color: "#151a22"
+                        color: Theme.bgCard
                     }
                     Rectangle {
                         anchors.left: parent.left
@@ -212,7 +212,7 @@ Item {
                         anchors.bottom: parent.bottom
                         radius: 5
                         width: parent.width * Math.min(1, (pane.sysTotal - pane.sysAvail) / Math.max(1, pane.sysTotal))
-                        color: "#3a4a63"
+                        color: Theme.line3
                     }
                     Rectangle {
                         anchors.left: parent.left
@@ -241,7 +241,7 @@ Item {
                             }
                             Text {
                                 text: "本版本 " + pane.manualMB + " MB"
-                                color: "#5d6673"
+                                color: Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                             }
@@ -250,12 +250,12 @@ Item {
                             spacing: 6
                             Rectangle {
                                 width: 8; height: 8; radius: 4
-                                color: "#3a4a63"
+                                color: Theme.line3
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                             Text {
                                 text: "其他占用"
-                                color: "#5d6673"
+                                color: Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                             }
@@ -265,7 +265,7 @@ Item {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         text: "可用 " + pane.sysAvail + " MB"
-                        color: "#5d6673"
+                        color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                     }
@@ -288,9 +288,9 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: Theme.rMd
-            color: opt.active ? "#111a2b" : "#0b0d12"
+            color: opt.active ? Theme.accentSoft : Theme.bgCard2
             border.width: 1
-            border.color: opt.active ? "#2c4a7a" : Theme.line2
+            border.color: opt.active ? Theme.accent : Theme.line2
             Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
             Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
         }
@@ -304,7 +304,7 @@ Item {
             radius: 7
             color: "transparent"
             border.width: 1
-            border.color: opt.active ? Theme.accent : "#3a4454"
+            border.color: opt.active ? Theme.accent : Theme.line2
             Rectangle {
                 anchors.centerIn: parent
                 width: 6
@@ -320,7 +320,7 @@ Item {
             anchors.top: parent.top
             anchors.topMargin: 13
             text: opt.title
-            color: opt.active ? "#eef2f8" : Theme.fg
+            color: opt.active ? Theme.accentText : Theme.fg
             font.family: Theme.fontFamily
             font.pixelSize: 13
         }
@@ -330,7 +330,7 @@ Item {
             anchors.top: parent.top
             anchors.topMargin: 33
             text: opt.desc
-            color: "#7b8494"
+            color: Theme.fg3
             font.family: Theme.fontFamily
             font.pixelSize: 11
         }
@@ -339,7 +339,7 @@ Item {
             anchors.rightMargin: 16
             anchors.verticalCenter: parent.verticalCenter
             text: opt.val
-            color: opt.active ? "#a9c8ff" : "#5d6673"
+            color: opt.active ? Theme.accentText : Theme.fg3
             font.family: Theme.fontFamily
             font.pixelSize: 11
         }

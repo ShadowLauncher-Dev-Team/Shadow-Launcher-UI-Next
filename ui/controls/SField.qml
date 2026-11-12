@@ -27,7 +27,7 @@ Item {
         id: bg
         anchors.fill: parent
         radius: Theme.rSm
-        color: "#0d1016"
+        color: Theme.bgCard2
         border.width: 1
         border.color: input.activeFocus ? Theme.accent : Theme.line2
         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
@@ -51,7 +51,7 @@ Item {
         verticalAlignment: TextInput.AlignVCenter
         color: Theme.fg
         selectionColor: Theme.accent
-        selectedTextColor: "#ffffff"
+        selectedTextColor: Theme.accentFg
         font.family: Theme.fontFamily
         font.pixelSize: 12
         clip: true

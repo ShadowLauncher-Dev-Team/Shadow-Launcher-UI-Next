@@ -19,6 +19,17 @@ Item {
     property bool danger: false
     // 灰态但**仍可点**：用于"未登录，点了去登录"这类引导（dimmed 是不可点，别混用）
     property bool muted: false
+    // ── 色调 ──
+    // "auto"：跟随当前配色方案（默认，普通页面用）
+    // "dark"：固定在深色底上（启动页 / 账户页是照片页，背景永远是暗图，
+    //         浅色方案下若用 auto 会出现"白底白字"——实测整块按钮消失）
+    property string tone: "auto"
+    readonly property bool onDark: tone === "dark"
+    readonly property color _softBorder: onDark ? "#333a47" : Theme.line2
+    readonly property color _softFg: onDark ? "#e8ebf2" : Theme.fg
+    readonly property color _softFg2: onDark ? "#98a1ae" : Theme.fg2
+    readonly property color _softFill: onDark ? "#1b2129" : Theme.bgHover
+    readonly property color _softFg3: onDark ? "#8d96a4" : Theme.fg3
     signal clicked()
 
     implicitHeight: kind === 0 ? 48 : 34
@@ -31,13 +42,17 @@ Item {
         color: {
             if (root.kind === 0) {
                 if (root.busy) return Theme.danger
-                if (root.dimmed || root.muted) return "#1b2129"
+                // 灰态按钮不能用"浅底 + 白字"：白色方案下就是白底白字（实测按钮整块消失）。
+                // 灰态统一走"弱底 + 次要文字色"，两套方案都可读。
+                if (root.dimmed || root.muted) return root._softFill
                 return Theme.accentBot
             }
             return "transparent"
         }
-        border.width: (root.kind === 0 && root.muted) ? 1 : (root.kind === 0 ? 0 : 1)
-        border.color: root.kind === 0 ? "#222b36" : (root.danger ? "#6d2a2a" : Theme.line2)
+        border.width: (root.kind === 0 && (root.muted || root.dimmed)) ? 1 : (root.kind === 0 ? 0 : 1)
+        border.color: root.kind === 0 ? root._softBorder
+                                     : (root.danger ? (root.onDark ? "#6d2a2a" : Theme.dangerSoft)
+                                                    : root._softBorder)
         antialiasing: true
 
         // 主按钮渐亮（覆盖在纯色之上）
@@ -65,14 +80,14 @@ Item {
             name: root.iconName
             size: root.kind === 0 ? 18 : 14
             color: root.kind === 0
-                   ? (root.muted ? "#8d96a4" : "#ffffff")
-                   : (root.danger ? "#ff9a94" : Theme.fg2)
+                   ? ((root.muted || root.dimmed) ? root._softFg3 : Theme.accentFg)
+                   : (root.danger ? (root.onDark ? "#ff9a94" : Theme.dangerText) : root._softFg2)
         }
         Text {
             text: root.text
             color: root.kind === 0
-                   ? (root.muted ? "#8d96a4" : "#ffffff")
-                   : (root.danger ? "#ff9a94" : Theme.fg)
+                   ? ((root.muted || root.dimmed) ? root._softFg3 : Theme.accentFg)
+                   : (root.danger ? (root.onDark ? "#ff9a94" : Theme.dangerText) : root._softFg)
             font.family: Theme.fontFamily
             font.pixelSize: root.kind === 0 ? 15 : 13
             font.weight: root.kind === 0 ? Font.DemiBold : Font.Normal
@@ -91,7 +106,7 @@ Item {
         }
         color: root.danger ? "#1aef4444" : "#16ffffff"
         border.width: 1
-        border.color: root.danger ? "#8a3333" : "#333a47"
+        border.color: root.danger ? Theme.danger : root._softBorder
     }
 
     // 主按钮 hover 提亮（4% 白覆盖）：只解释"鼠标在这里"，不改变主色

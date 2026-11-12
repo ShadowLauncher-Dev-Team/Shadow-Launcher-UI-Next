@@ -43,7 +43,7 @@ Item {
         }
         Text {
             text: root.name.length > 0 ? root.name : "登录"
-            color: "#dfe4ec"
+            color: Theme.fg
             font.family: Theme.fontFamily
             font.pixelSize: 13
         }

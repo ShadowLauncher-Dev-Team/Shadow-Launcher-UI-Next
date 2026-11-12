@@ -22,7 +22,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         width: root.labelWidth
         text: root.label
-        color: "#7b8494"
+        color: Theme.fg3
         font.family: Theme.fontFamily
         font.pixelSize: 12
         elide: Text.ElideRight
@@ -43,7 +43,7 @@ Item {
         anchors.topMargin: 4
         text: root.hint
         visible: root.hint.length > 0
-        color: "#3f4753"
+        color: Theme.line3
         font.family: Theme.fontFamily
         font.pixelSize: 10
     }
@@ -53,7 +53,7 @@ Item {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         height: 1
-        color: "#11141d"
+        color: Theme.bgCard
         visible: root.divider
     }
 }

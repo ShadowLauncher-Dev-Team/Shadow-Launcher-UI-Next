@@ -19,7 +19,7 @@ Item {
         { k: "launch",     label: "启动",         icon: "play",     desc: "所有版本的默认启动参数。单个版本可在版本设置里覆盖这里任意一项。" },
         { k: "download",   label: "下载",         icon: "download", desc: "版本文件与资源列表的来源、并发与限速。" },
         { k: "advanced",   label: "高级",         icon: "settings", desc: "实验性开关。" },
-        { k: "appearance", label: "外观",         icon: "palette",  desc: "主题、密度、动效偏好与自定义背景。" },
+        { k: "appearance", label: "外观",         icon: "palette",  desc: "配色方案与启动页图片。" },
         { k: "about",      label: "关于",         icon: "info",     desc: "版本信息、许可，以及这个启动器背后的每一个名字。" }
     ]
 
@@ -156,7 +156,7 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: Theme.rSm
-                    color: "#151a23"
+                    color: Theme.bgCard
                 }
                 Rectangle {
                     width: 2
@@ -189,7 +189,7 @@ Item {
                             anchors.leftMargin: 10
                             anchors.rightMargin: 10
                             radius: Theme.rSm
-                            color: "#0f131a"
+                            color: Theme.bgCard2
                             opacity: (hover.hovered && !itemRoot.active) ? 1 : 0
                             Behavior on opacity {
                                 NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
@@ -205,13 +205,13 @@ Item {
                             SIcon {
                                 name: modelData.icon
                                 size: 15
-                                color: itemRoot.active ? "#7fa9f5" : "#4d5666"
+                                color: itemRoot.active ? Theme.accentText : Theme.line3
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: modelData.label
-                                color: itemRoot.active ? "#ffffff" : Theme.fg2
+                                color: itemRoot.active ? Theme.fg : Theme.fg2
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 13
                                 Behavior on color {

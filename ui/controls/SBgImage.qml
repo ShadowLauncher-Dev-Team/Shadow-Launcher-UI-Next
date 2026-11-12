@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// 背景图层：图片 + 取景（缩放 / 中心点）。启动页与外观页预览共用同一套公式，
+// 保证"预览看到的 = 启动页实际显示的"。
+//
+// 取景模型：
+//   coverScale = max(框宽/图宽, 框高/图高)   —— 先让图片恰好铺满
+//   drawW/H    = 图原生尺寸 × coverScale × zoom
+//   x/y        = (框尺寸 - 绘制尺寸) × cropX/cropY   —— crop 0..1 = 取景窗在图片内的位置
+//
+// interactive = true 时支持：拖动平移、滚轮缩放（1.0–4.0）。
+import QtQuick
+import ShadowLauncher.Next
+
+Item {
+    id: root
+    clip: true
+
+    property string source: ""
+    property real zoom: 1.0
+    property real cropX: 0.5
+    property real cropY: 0.5
+    property bool interactive: false
+    property real maxZoom: 4.0
+    // 图片没加载出来时的底色（避免闪白/黑块）
+    property color fallbackColor: Theme.bgCard2
+
+    signal viewChanged(real zoom, real cx, real cy)
+
+    readonly property real natW: img.imageWidth
+    readonly property real natH: img.imageHeight
+    readonly property real coverScale: (natW > 0 && natH > 0 && width > 0 && height > 0)
+        ? Math.max(width / natW, height / natH) : 1
+    readonly property real drawW: natW * coverScale * Math.max(1.0, root.zoom)
+    readonly property real drawH: natH * coverScale * Math.max(1.0, root.zoom)
+
+    Rectangle {
+        anchors.fill: parent
+        color: root.fallbackColor
+    }
+
+    Image {
+        id: img
+        // 原生尺寸用 implicitWidth/Height：Image 的隐式尺寸就是图片原始像素；
+        // sourceSize 在异步加载完成前是 0，首帧会算不出布局。
+        readonly property real imageWidth: implicitWidth
+        readonly property real imageHeight: implicitHeight
+        source: root.source
+        asynchronous: true
+        smooth: true
+        // 不能用 fillMode 铺：需要按 zoom 精确控制几何
+        fillMode: Image.Pad
+        width: Math.max(root.width, root.drawW)
+        height: Math.max(root.height, root.drawH)
+        x: (root.width - width) * Math.max(0, Math.min(1, root.cropX))
+        y: (root.height - height) * Math.max(0, Math.min(1, root.cropY))
+    }
+
+    // ── 交互：拖动平移 + 滚轮缩放 ──
+    MouseArea {
+        id: dragArea
+        anchors.fill: parent
+        enabled: root.interactive
+        cursorShape: root.interactive ? (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
+                                      : Qt.ArrowCursor
+        property real lastX: 0
+        property real lastY: 0
+
+        // 拖动 = 图片跟着手走；可移动范围只有图片超出框的那部分，
+        // 换算成 crop 的增量（crop 0 = 取景窗贴左/上，1 = 贴右/下）。
+        onPressed: (mouse) => {
+            lastX = mouse.x
+            lastY = mouse.y
+        }
+        onPositionChanged: (mouse) => {
+            if (!pressed) return
+            const rangeX = root.width - img.width    // 负数：图片比框宽
+            const rangeY = root.height - img.height
+            const dx = mouse.x - lastX
+            const dy = mouse.y - lastY
+            lastX = mouse.x
+            lastY = mouse.y
+            let nx = root.cropX
+            let ny = root.cropY
+            if (rangeX < -0.5) nx = Math.max(0, Math.min(1, root.cropX + dx / rangeX))
+            if (rangeY < -0.5) ny = Math.max(0, Math.min(1, root.cropY + dy / rangeY))
+            if (Math.abs(nx - root.cropX) > 0.0005 || Math.abs(ny - root.cropY) > 0.0005) {
+                root.cropX = nx
+                root.cropY = ny
+                root.viewChanged(root.zoom, nx, ny)
+            }
+        }
+    }
+
+    WheelHandler {
+        enabled: root.interactive
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onWheel: (event) => {
+            const step = event.angleDelta.y > 0 ? 1.1 : (1 / 1.1)
+            const next = Math.max(1.0, Math.min(root.maxZoom, root.zoom * step))
+            if (Math.abs(next - root.zoom) < 0.001) return
+            root.zoom = next
+            root.viewChanged(next, root.cropX, root.cropY)
+        }
+    }
+}

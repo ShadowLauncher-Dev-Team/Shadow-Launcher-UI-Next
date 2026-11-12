@@ -16,7 +16,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: Theme.rSm
-        color: "#0d1016"
+        color: Theme.bgCard2
         border.width: 1
         border.color: edit.activeFocus ? Theme.accent : Theme.line2
         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
@@ -27,7 +27,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         text: root.placeholder
         visible: edit.text.length === 0
-        color: "#3f4753"
+        color: Theme.line3
         font.family: Theme.fontFamily
         font.pixelSize: 12
     }
@@ -43,9 +43,9 @@ Item {
         anchors.bottom: parent.bottom
         verticalAlignment: TextInput.AlignVCenter
         text: root.text
-        color: "#cfd6e1"
+        color: Theme.fg
         selectionColor: Theme.accent
-        selectedTextColor: "#ffffff"
+        selectedTextColor: Theme.accentFg
         font.family: Theme.fontFamily
         font.pixelSize: 12
         clip: true

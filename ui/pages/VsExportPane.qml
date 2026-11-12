@@ -287,7 +287,7 @@ Item {
                 anchors.leftMargin: 344
                 anchors.verticalCenter: parent.verticalCenter
                 text: pane.format === 0 ? "引用在线来源，包体最小" : "CurseForge 清单，部分文件只能直接打包"
-                color: "#5d6673"
+                color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
             }
@@ -330,7 +330,7 @@ Item {
                     spacing: 10
                     Text {
                         text: "导出内容"
-                        color: "#98a1ae"
+                        color: Theme.fg2
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                         font.weight: Font.DemiBold
@@ -338,7 +338,7 @@ Item {
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "已选 " + pane.checkedIds.length + " 项"
-                        color: "#5d6673"
+                        color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                     }
@@ -361,7 +361,7 @@ Item {
                         width: 6
                         contentItem: Rectangle {
                             radius: 3
-                            color: "#2b323d"
+                            color: Theme.bgHover
                             implicitWidth: 6
                         }
                     }
@@ -372,14 +372,14 @@ Item {
                         spacing: 6
 
                         // —— 基础 ——
-                        Text { text: "基础"; color: "#3f4753"; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 6 }
+                        Text { text: "基础"; color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 6 }
                         Repeater {
                             model: ["options", "personal", "optifine", "license"]
                             delegate: parentRow
                         }
 
                         // —— Mod 与配置 ——
-                        Text { text: "Mod 与配置"; color: "#3f4753"; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
+                        Text { text: "Mod 与配置"; color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
                         Loader {
                             width: treeCol.width
                             sourceComponent: modGroup
@@ -390,7 +390,7 @@ Item {
                         }
 
                         // —— 资源包（带真实子项）——
-                        Text { text: "资源"; color: "#3f4753"; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
+                        Text { text: "资源"; color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
                         Loader {
                             width: treeCol.width
                             sourceComponent: packGroup
@@ -403,14 +403,14 @@ Item {
                         }
 
                         // —— 存档（带真实子项）——
-                        Text { text: "存档"; color: "#3f4753"; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
+                        Text { text: "存档"; color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
                         Loader {
                             width: treeCol.width
                             sourceComponent: savesGroup
                         }
 
                         // —— 其他 ——
-                        Text { text: "其他（默认不导出）"; color: "#3f4753"; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
+                        Text { text: "其他（默认不导出）"; color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
                         Repeater {
                             model: ["screenshots", "schematics", "replay", "servers"]
                             delegate: parentRow
@@ -510,7 +510,7 @@ Item {
                               + (pane.isChecked("saves")
                                  ? "  ·  存档 " + (pane.checkedSaves.length > 0 ? pane.checkedSaves.length + " 个" : "全部")
                                  : "")
-                        color: "#cfd6e1"
+                        color: Theme.fg
                         wrapMode: Text.Wrap
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -527,7 +527,7 @@ Item {
 
                     Rectangle {
                         anchors.fill: parent
-                        color: "#0a0b0f"
+                        color: Theme.bgCard2
                     }
                     Rectangle {
                         anchors.left: parent.left
@@ -554,7 +554,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             width: parent.width - 46
                             text: pane.outPath.length > 0 ? pane.outPath : "未选择导出位置"
-                            color: pathHov.hovered ? "#c3cbd8" : "#7b8494"
+                            color: pathHov.hovered ? Theme.fg : Theme.fg3
                             elide: Text.ElideMiddle
                             font.family: "Consolas"
                             font.pixelSize: 11
@@ -573,7 +573,7 @@ Item {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             text: "更改"
-                            color: "#7fa9f5"
+                            color: Theme.accentText
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                             HoverHandler { cursorShape: Qt.PointingHandCursor }
@@ -598,7 +598,7 @@ Item {
                             width: parent.width
                             height: 3
                             radius: 2
-                            color: "#151a22"
+                            color: Theme.bgCard
                             Rectangle {
                                 width: parent.width * Math.max(0, Math.min(1, pane.prog))
                                 height: parent.height
@@ -612,7 +612,7 @@ Item {
                             // 只在「开始导出、状态区出现」时淡入；导出中文案会反复刷新，逐条淡入会闪
                             opacity: pane.exporting ? 1 : 0
                             Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-                            color: "#7b8494"
+                            color: Theme.fg3
                             elide: Text.ElideRight
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -672,7 +672,7 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 radius: Theme.rSm
-                color: hov.hovered ? "#101419" : "transparent"
+                color: hov.hovered ? Theme.bgCard2 : "transparent"
             }
             Row {
                 anchors.left: parent.left
@@ -688,16 +688,16 @@ Item {
                     height: 15
                     radius: 4
                     anchors.verticalCenter: parent.verticalCenter
-                    color: pane.isChecked(rowItem.optId) ? Theme.accent : "#0d1016"
+                    color: pane.isChecked(rowItem.optId) ? Theme.accent : Theme.bgCard2
                     border.width: 1
-                    border.color: pane.isChecked(rowItem.optId) ? Theme.accent : "#39414f"
+                    border.color: pane.isChecked(rowItem.optId) ? Theme.accent : Theme.line2
                     SIcon {
                         anchors.centerIn: parent
                         width: 10
                         height: 10
                         name: "check"
                         visible: pane.isChecked(rowItem.optId)
-                        color: "#ffffff"
+                        color: Theme.accentFg
                     }
                     // 勾选时方框轻弹一下：1 -> 1.08 -> 1，总时长 Theme.durFast
                     SequentialAnimation on scale {
@@ -709,7 +709,7 @@ Item {
                 }
                 Text {
                     text: rowItem.o ? rowItem.o.title : ""
-                    color: "#dfe5ee"
+                    color: Theme.accentText
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
@@ -752,7 +752,7 @@ Item {
                 anchors.top: parent.top
                 height: 44
                 radius: Theme.rMd
-                color: modHov.hovered ? "#101419" : "#0b0d12"
+                color: modHov.hovered ? Theme.bgCard2 : Theme.bgCard2
                 border.width: 1
                 border.color: Theme.line2
             }
@@ -765,16 +765,16 @@ Item {
                 height: 15
                 radius: 4
                 anchors.verticalCenter: modHead.verticalCenter
-                color: pane.isChecked("mod") ? Theme.accent : "#0d1016"
+                color: pane.isChecked("mod") ? Theme.accent : Theme.bgCard2
                 border.width: 1
-                border.color: pane.isChecked("mod") ? Theme.accent : "#39414f"
+                border.color: pane.isChecked("mod") ? Theme.accent : Theme.line2
                 SIcon {
                     anchors.centerIn: parent
                     width: 10
                     height: 10
                     name: "check"
                     visible: pane.isChecked("mod")
-                    color: "#ffffff"
+                    color: Theme.accentFg
                 }
                 // 勾选时方框轻弹一下：1 -> 1.08 -> 1，总时长 Theme.durFast
                 SequentialAnimation on scale {
@@ -796,7 +796,7 @@ Item {
                 x: 39
                 anchors.verticalCenter: modHead.verticalCenter
                 text: "模组 (mods/)"
-                color: "#eef2f8"
+                color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
@@ -814,7 +814,7 @@ Item {
                 anchors.rightMargin: 14
                 anchors.verticalCenter: modHead.verticalCenter
                 text: pane.modExpanded ? "收起" : "挑选"
-                color: "#7fa9f5"
+                color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
                 TapHandler { acceptedButtons: Qt.LeftButton
@@ -827,7 +827,7 @@ Item {
                 anchors.rightMargin: 14
                 anchors.verticalCenter: modHead.verticalCenter
                 text: pane.modList.length + " 个 · 已选 " + pane.modPickedCount()
-                color: "#6b7686"
+                color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
             }
@@ -843,7 +843,7 @@ Item {
                 opacity: pane.modExpanded ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
 
-                Rectangle { x: 21; y: 0; width: 1; height: parent.height - 6; color: "#1b2029" }
+                Rectangle { x: 21; y: 0; width: 1; height: parent.height - 6; color: Theme.bgInput }
 
                 SField {
                     id: modSearch
@@ -865,7 +865,7 @@ Item {
                     anchors.top: modSearch.bottom
                     anchors.topMargin: 6
                     text: "全选"
-                    color: "#7fa9f5"
+                    color: Theme.accentText
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     TapHandler { acceptedButtons: Qt.LeftButton; onTapped: pane.excludedMods = [] }
@@ -877,7 +877,7 @@ Item {
                     anchors.leftMargin: 14
                     anchors.top: allOn.top
                     text: "全不选"
-                    color: "#7fa9f5"
+                    color: Theme.accentText
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     TapHandler { acceptedButtons: Qt.LeftButton
@@ -893,7 +893,7 @@ Item {
                     anchors.leftMargin: 14
                     anchors.top: allOn.top
                     text: pane.modShown.length + " / " + pane.modList.length
-                    color: "#4b5462"
+                    color: Theme.line3
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
                 }
@@ -916,7 +916,7 @@ Item {
                     ScrollBar.vertical: ScrollBar {
                         policy: ScrollBar.AsNeeded
                         width: 6
-                        contentItem: Rectangle { radius: 3; color: "#2b323d"; implicitWidth: 6 }
+                        contentItem: Rectangle { radius: 3; color: Theme.bgHover; implicitWidth: 6 }
                     }
 
                     delegate: Item {
@@ -927,7 +927,7 @@ Item {
                         Rectangle {
                             anchors.fill: parent
                             radius: 6
-                            color: rowHov.hovered ? "#11161d" : "transparent"
+                            color: rowHov.hovered ? Theme.bgCard : "transparent"
                         }
                         Rectangle {
                             id: rowCb
@@ -936,16 +936,16 @@ Item {
                             height: 14
                             radius: 4
                             anchors.verticalCenter: parent.verticalCenter
-                            color: pane.modPicked(modelData.name) ? Theme.accent : "#0d1016"
+                            color: pane.modPicked(modelData.name) ? Theme.accent : Theme.bgCard2
                             border.width: 1
-                            border.color: pane.modPicked(modelData.name) ? Theme.accent : "#39414f"
+                            border.color: pane.modPicked(modelData.name) ? Theme.accent : Theme.line2
                             SIcon {
                                 anchors.centerIn: parent
                                 width: 9
                                 height: 9
                                 name: "check"
                                 visible: pane.modPicked(modelData.name)
-                                color: "#ffffff"
+                                color: Theme.accentFg
                             }
                         }
                         Text {
@@ -954,7 +954,7 @@ Item {
                             width: parent.width - 30 - 58
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.name
-                            color: pane.modPicked(modelData.name) ? "#cfd6e1" : "#7b8494"
+                            color: pane.modPicked(modelData.name) ? Theme.fg : Theme.fg3
                             elide: Text.ElideMiddle
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
@@ -964,7 +964,7 @@ Item {
                             anchors.rightMargin: 8
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.sizeDisplay || ""
-                            color: "#4b5462"
+                            color: Theme.line3
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                         }
@@ -999,7 +999,7 @@ Item {
                 anchors.top: parent.top
                 height: 44
                 radius: Theme.rMd
-                color: hov2.hovered ? "#101419" : "#0b0d12"
+                color: hov2.hovered ? Theme.bgCard2 : Theme.bgCard2
                 border.width: 1
                 border.color: Theme.line2
             }
@@ -1009,16 +1009,16 @@ Item {
                 height: 15
                 radius: 4
                 anchors.verticalCenter: grpHead.verticalCenter
-                color: pane.isChecked(grpItem.optId) ? Theme.accent : "#0d1016"
+                color: pane.isChecked(grpItem.optId) ? Theme.accent : Theme.bgCard2
                 border.width: 1
-                border.color: pane.isChecked(grpItem.optId) ? Theme.accent : "#39414f"
+                border.color: pane.isChecked(grpItem.optId) ? Theme.accent : Theme.line2
                 SIcon {
                     anchors.centerIn: parent
                     width: 10
                     height: 10
                     name: "check"
                     visible: pane.isChecked(grpItem.optId)
-                    color: "#ffffff"
+                    color: Theme.accentFg
                 }
                 // 勾选时方框轻弹一下：1 -> 1.08 -> 1，总时长 Theme.durFast
                 SequentialAnimation on scale {
@@ -1032,7 +1032,7 @@ Item {
                 x: 39
                 anchors.verticalCenter: grpHead.verticalCenter
                 text: grpItem.o ? grpItem.o.title : grpItem.optId
-                color: "#eef2f8"
+                color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
@@ -1042,7 +1042,7 @@ Item {
                 anchors.rightMargin: 14
                 anchors.verticalCenter: grpHead.verticalCenter
                 text: grpItem.items.length + " 个"
-                color: "#6b7686"
+                color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
             }
@@ -1068,7 +1068,7 @@ Item {
                     y: 0
                     width: 1
                     height: parent.height - 8
-                    color: "#1b2029"
+                    color: Theme.bgInput
                 }
 
                 Column {
@@ -1084,7 +1084,7 @@ Item {
                         Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "全选"
-                        color: "#7fa9f5"
+                        color: Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                         HoverHandler { cursorShape: Qt.PointingHandCursor }
@@ -1094,7 +1094,7 @@ Item {
                         Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "全不选"
-                        color: "#7fa9f5"
+                        color: Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                         HoverHandler { cursorShape: Qt.PointingHandCursor }
@@ -1104,7 +1104,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: grpItem.items.length === 0 ? "此版本没有内容" : ""
-                            color: "#4b5462"
+                            color: Theme.line3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
@@ -1125,16 +1125,16 @@ Item {
                                     height: 14
                                     radius: 4
                                     anchors.verticalCenter: parent.verticalCenter
-                                    color: pane.subChecked(grpItem.optId, modelData) ? Theme.accent : "#0d1016"
+                                    color: pane.subChecked(grpItem.optId, modelData) ? Theme.accent : Theme.bgCard2
                                     border.width: 1
-                                    border.color: pane.subChecked(grpItem.optId, modelData) ? Theme.accent : "#39414f"
+                                    border.color: pane.subChecked(grpItem.optId, modelData) ? Theme.accent : Theme.line2
                                     SIcon {
                                         anchors.centerIn: parent
                                         width: 9
                                         height: 9
                                         name: "check"
                                         visible: pane.subChecked(grpItem.optId, modelData)
-                                        color: "#ffffff"
+                                        color: Theme.accentFg
                                     }
                                     // 勾选时方框轻弹一下：1 -> 1.08 -> 1，总时长 Theme.durFast
                                     SequentialAnimation on scale {
@@ -1147,7 +1147,7 @@ Item {
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: modelData.name + (modelData.type === "dir" ? "/" : "")
-                                    color: pane.subChecked(grpItem.optId, modelData) ? "#cfd6e1" : "#7b8494"
+                                    color: pane.subChecked(grpItem.optId, modelData) ? Theme.fg : Theme.fg3
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 12
                                 }
@@ -1184,7 +1184,7 @@ Item {
                 anchors.top: parent.top
                 height: 44
                 radius: Theme.rMd
-                color: hov3.hovered ? "#101419" : "#0b0d12"
+                color: hov3.hovered ? Theme.bgCard2 : Theme.bgCard2
                 border.width: 1
                 border.color: Theme.line2
             }
@@ -1194,16 +1194,16 @@ Item {
                 height: 15
                 radius: 4
                 anchors.verticalCenter: saveHead.verticalCenter
-                color: pane.isChecked("saves") ? Theme.accent : "#0d1016"
+                color: pane.isChecked("saves") ? Theme.accent : Theme.bgCard2
                 border.width: 1
-                border.color: pane.isChecked("saves") ? Theme.accent : "#39414f"
+                border.color: pane.isChecked("saves") ? Theme.accent : Theme.line2
                 SIcon {
                     anchors.centerIn: parent
                     width: 10
                     height: 10
                     name: "check"
                     visible: pane.isChecked("saves")
-                    color: "#ffffff"
+                    color: Theme.accentFg
                 }
                 // 勾选时方框轻弹一下：1 -> 1.08 -> 1，总时长 Theme.durFast
                 SequentialAnimation on scale {
@@ -1217,7 +1217,7 @@ Item {
                 x: 39
                 anchors.verticalCenter: saveHead.verticalCenter
                 text: "单机游戏存档"
-                color: "#eef2f8"
+                color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
@@ -1227,7 +1227,7 @@ Item {
                 anchors.rightMargin: 14
                 anchors.verticalCenter: saveHead.verticalCenter
                 text: saveItem.items.length + " 个"
-                color: "#6b7686"
+                color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
             }
@@ -1246,7 +1246,7 @@ Item {
                 anchors.top: saveHead.bottom
                 anchors.topMargin: 4
                 height: saveItem.height - 48
-                Rectangle { x: 21; y: 0; width: 1; height: parent.height - 8; color: "#1b2029" }
+                Rectangle { x: 21; y: 0; width: 1; height: parent.height - 8; color: Theme.bgInput }
                 Column {
                     anchors.fill: parent
                     spacing: 0
@@ -1258,7 +1258,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "全选"
-                            color: "#7fa9f5"; font.family: Theme.fontFamily; font.pixelSize: 11
+                            color: Theme.accentText; font.family: Theme.fontFamily; font.pixelSize: 11
                             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     var out = []
@@ -1270,7 +1270,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "全不选"
-                            color: "#7fa9f5"; font.family: Theme.fontFamily; font.pixelSize: 11
+                            color: Theme.accentText; font.family: Theme.fontFamily; font.pixelSize: 11
                             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                 onClicked: pane.checkedSaves = []
                             }
@@ -1279,7 +1279,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: saveItem.items.length === 0
                             text: "此版本没有存档"
-                            color: "#4b5462"; font.family: Theme.fontFamily; font.pixelSize: 11
+                            color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 11
                         }
                     }
                     Repeater {
@@ -1295,11 +1295,11 @@ Item {
                                 Rectangle {
                                     width: 14; height: 14; radius: 4
                                     anchors.verticalCenter: parent.verticalCenter
-                                    color: pane.checkedSaves.indexOf(modelData.name) >= 0 ? Theme.accent : "#0d1016"
+                                    color: pane.checkedSaves.indexOf(modelData.name) >= 0 ? Theme.accent : Theme.bgCard2
                                     border.width: 1
-                                    border.color: pane.checkedSaves.indexOf(modelData.name) >= 0 ? Theme.accent : "#39414f"
+                                    border.color: pane.checkedSaves.indexOf(modelData.name) >= 0 ? Theme.accent : Theme.line2
                                     SIcon { anchors.centerIn: parent; width: 9; height: 9; name: "check"
-                                        visible: pane.checkedSaves.indexOf(modelData.name) >= 0; color: "#ffffff" }
+                                        visible: pane.checkedSaves.indexOf(modelData.name) >= 0; color: Theme.accentFg }
                                     // 勾选时方框轻弹一下：1 -> 1.08 -> 1，总时长 Theme.durFast
                                     SequentialAnimation on scale {
                                         id: saveSubCbPulse
@@ -1311,14 +1311,14 @@ Item {
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: modelData.name
-                                    color: pane.checkedSaves.indexOf(modelData.name) >= 0 ? "#cfd6e1" : "#7b8494"
+                                    color: pane.checkedSaves.indexOf(modelData.name) >= 0 ? Theme.fg : Theme.fg3
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 12
                                 }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: modelData.modified || ""
-                                    color: "#4b5462"
+                                    color: Theme.line3
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                 }
@@ -1383,7 +1383,7 @@ Item {
         }
         background: Rectangle {
             radius: Theme.rMd
-            color: "#0b0d12"
+            color: Theme.bgCard2
             border.width: 1
             border.color: Theme.line2
         }
@@ -1393,7 +1393,7 @@ Item {
             spacing: 12
             Text {
                 text: "导出位置"
-                color: "#eef2f8"
+                color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 14
                 font.weight: Font.DemiBold
@@ -1407,7 +1407,7 @@ Item {
             Text {
                 width: parent.width - 36
                 text: "填完整文件路径（含 " + pane.suffix + "）"
-                color: "#4b5462"
+                color: Theme.line3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
             }
@@ -1523,7 +1523,7 @@ Item {
         }
         background: Rectangle {
             radius: Theme.rMd
-            color: "#0b0d12"
+            color: Theme.bgCard2
             border.width: 1
             border.color: Theme.line2
         }
@@ -1535,7 +1535,7 @@ Item {
                 text: pane.lookupPlatform === 0 ? "Modrinth 查询失败"
                      : pane.lookupPlatform === 1 ? "CurseForge 查询失败"
                      : "联网查询失败"
-                color: "#eef2f8"
+                color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 14
                 font.weight: Font.DemiBold
@@ -1543,7 +1543,7 @@ Item {
             Text {
                 width: parent.width - 36
                 text: pane.lookupDetail + "\n\n继续导出的话，查不到来源的文件会直接打进包里。"
-                color: "#9aa3b0"
+                color: Theme.fg2
                 wrapMode: Text.Wrap
                 font.family: Theme.fontFamily
                 font.pixelSize: 12

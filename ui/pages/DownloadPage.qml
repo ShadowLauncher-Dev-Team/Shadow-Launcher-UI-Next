@@ -133,10 +133,10 @@ Item {
     }
 
     function typeColor() {
-        if (page.filter === 1) return "#f5c451"
-        if (page.filter === 2) return "#a9b3c2"
-        if (page.filter === 3) return "#f5c451"
-        return "#5ee08f"
+        if (page.filter === 1) return Theme.warn
+        if (page.filter === 2) return Theme.fg2
+        if (page.filter === 3) return Theme.warn
+        return Theme.ok
     }
 
     // Sidebar 再次点"下载"时回到列表（已在本页时）
@@ -411,7 +411,7 @@ Item {
             Rectangle {
                 visible: page.mode === 1
                 width: 30; height: 30; radius: Theme.rSm
-                color: cfgBackHover.containsMouse ? "#12151c" : "transparent"
+                color: cfgBackHover.containsMouse ? Theme.bgCard : "transparent"
                 SIcon { anchors.centerIn: parent; name: "arrow-left"; size: 16; color: Theme.fg2 }
                 MouseArea {
                     id: cfgBackHover
@@ -454,7 +454,7 @@ Item {
                 z: 0
                 height: 28
                 radius: Theme.rSm
-                color: "#1b2433"
+                color: Theme.accentSoft
                 anchors.verticalCenter: parent.verticalCenter
                 readonly property var sel: page.tabGeom[page.tab] || null
                 x: tabsRow.x + (sel ? sel.x : 0)
@@ -479,12 +479,12 @@ Item {
                     Component.onCompleted: syncTabGeom()
                     onXChanged: syncTabGeom()
                     onWidthChanged: syncTabGeom()
-                    color: tabHover.containsMouse && page.tab !== index ? "#12151c" : "transparent"
+                    color: tabHover.containsMouse && page.tab !== index ? Theme.bgCard : "transparent"
                     Text {
                         id: tabTxt
                         anchors.centerIn: parent
                         text: modelData
-                        color: page.tab === index ? "#ffffff" : Theme.fg2
+                        color: page.tab === index ? Theme.fg : Theme.fg2
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                         font.weight: page.tab === index ? Font.DemiBold : Font.Normal
@@ -539,7 +539,7 @@ Item {
             }
             Rectangle {
                 width: 32; height: 32; radius: Theme.rSm
-                color: refreshHover.containsMouse ? "#12151c" : "transparent"
+                color: refreshHover.containsMouse ? Theme.bgCard : "transparent"
                 border.color: Theme.line2
                 border.width: 1
                 SIcon { anchors.centerIn: parent; name: "refresh-cw"; size: 14; color: Theme.fg2 }
@@ -607,7 +607,7 @@ Item {
             width: segContent.width + 4
             height: 32
             radius: Theme.rSm
-            color: "#0d1016"
+            color: Theme.bgCard2
             border.color: Theme.line2
             border.width: 1
 
@@ -618,7 +618,7 @@ Item {
                 id: segPill
                 height: 28
                 radius: 6
-                color: "#20262f"
+                color: Theme.bgInput
                 readonly property var sel: page.segGeom[page.filter] || null
                 x: segContent.x + (sel ? sel.x : 0)
                 y: segContent.y
@@ -650,7 +650,7 @@ Item {
                             Text {
                                 id: segLabel
                                 text: modelData.label
-                                color: page.filter === modelData.key ? "#ffffff" : Theme.fg2
+                                color: page.filter === modelData.key ? Theme.fg : Theme.fg2
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
                                 font.weight: page.filter === modelData.key ? Font.DemiBold : Font.Normal
@@ -658,7 +658,7 @@ Item {
                             Text {
                                 id: segCnt
                                 text: page.countFor(modelData.key)
-                                color: page.filter === modelData.key ? "#9fb6d8" : Theme.fg3
+                                color: page.filter === modelData.key ? Theme.accentText : Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                             }
@@ -683,7 +683,7 @@ Item {
             anchors.right: parent.right
             height: 72
             radius: 10
-            color: "#0b0d12"
+            color: Theme.bgCard2
             border.color: Theme.line2
             border.width: 1
             clip: true
@@ -716,7 +716,7 @@ Item {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 13
                 text: page.releaseV.length > 0 ? page.releaseV[0] : ""
-                color: "#ffffff"
+                color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 24
                 font.weight: Font.Bold
@@ -728,12 +728,12 @@ Item {
                 spacing: 6
                 Text {
                     text: "安装"
-                    color: "#8fb6f8"
+                    color: Theme.accentText
                     font.family: Theme.fontFamily
                     font.pixelSize: 13
                     anchors.verticalCenter: parent.verticalCenter
                 }
-                SIcon { name: "chevron-right"; size: 15; color: "#8fb6f8"; anchors.verticalCenter: parent.verticalCenter }
+                SIcon { name: "chevron-right"; size: 15; color: Theme.accentText; anchors.verticalCenter: parent.verticalCenter }
             }
             MouseArea {
                 id: hoverLatest
@@ -751,7 +751,7 @@ Item {
             SRipple {
                 id: latestRipple
                 anchors.fill: parent
-                color: "#8fb6f8"
+                color: Theme.accentText
                 maxRadius: 160
             }
         }
@@ -774,8 +774,8 @@ Item {
                 width: vlist.width
                 height: 48
                 radius: Theme.rSm
-                color: hoverCard.containsMouse ? "#101419" : "#0b0d12"
-                border.color: hoverCard.containsMouse ? "#243040" : "#161a21"
+                color: hoverCard.containsMouse ? Theme.bgCard2 : Theme.bgCard2
+                border.color: hoverCard.containsMouse ? Theme.bgHover : Theme.bgCard
                 border.width: 1
                 Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                 Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
@@ -805,13 +805,13 @@ Item {
                         Rectangle {
                             visible: page.isInstalled(modelData)
                             width: 5; height: 5; radius: 3
-                            color: "#4ade80"
+                            color: Theme.ok
                             anchors.centerIn: parent
                         }
                     }
                     Text {
                         text: modelData
-                        color: "#e8ebf2"
+                        color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 15
                         font.weight: Font.Medium
@@ -924,8 +924,8 @@ Item {
                     width: parent.width
                     height: 118
                     radius: 10
-                    color: "#0b0d12"
-                    border.color: page.nameConflict ? "#7a3b45" : Theme.line2
+                    color: Theme.bgCard2
+                    border.color: page.nameConflict ? Theme.line3 : Theme.line2
                     border.width: 1
 
                     Text {
@@ -934,7 +934,7 @@ Item {
                         anchors.top: parent.top
                         anchors.topMargin: 14
                         text: "Minecraft " + page.picked
-                        color: "#ffffff"
+                        color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 22
                         font.weight: Font.Bold
@@ -949,8 +949,8 @@ Item {
                         anchors.bottomMargin: 14
                         height: 34
                         radius: Theme.rSm
-                        color: "#0d1016"
-                        border.color: page.nameConflict ? "#b3454f"
+                        color: Theme.bgCard2
+                        border.color: page.nameConflict ? Theme.danger
                                     : (nameInput.activeFocus || pulse.running ? Theme.accent : Theme.line2)
                         border.width: 1
                         Behavior on border.color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
@@ -1013,7 +1013,7 @@ Item {
                         anchors.top: parent.top
                         anchors.topMargin: 18
                         text: "名称已存在"
-                        color: "#f0a0a0"
+                        color: Theme.dangerText
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                     }
@@ -1045,7 +1045,7 @@ Item {
                         height: page.expandedLoader === modelData.key
                                 ? 40 + Math.min(6, loaderCard.loaderVersions.length) * 30 + 8 : 44
                         radius: 10
-                        color: "#0b0d12"
+                        color: Theme.bgCard2
                         border.color: (page.activeLoader === modelData.key && modelData.key !== "fabric_api")
                                       ? Qt.rgba(0.231, 0.510, 0.965, .55) : Theme.line2
                         border.width: 1
@@ -1080,7 +1080,7 @@ Item {
                                 anchors.leftMargin: 14
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: loaderCard.llabel
-                                color: "#e8ebf2"
+                                color: Theme.fg
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 14
                                 font.weight: Font.DemiBold
@@ -1103,7 +1103,7 @@ Item {
                                         id: offTxt
                                         anchors.centerIn: parent
                                         text: loaderCard.offReason
-                                        color: "#c99a9a"
+                                        color: Theme.fg2
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 10
                                     }
@@ -1116,7 +1116,7 @@ Item {
                                              ? page.selectedVersion : "不使用")
                                     color: ((page.activeLoader === loaderCard.lkey && loaderCard.lkey !== "fabric_api")
                                             || (loaderCard.lkey === "fabric_api" && page.fabricApiVersion.length > 0))
-                                           ? "#8fb6f8" : Theme.fg3
+                                           ? Theme.accentText : Theme.fg3
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 12
                                 }
@@ -1180,13 +1180,13 @@ Item {
                                     Behavior on x { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                                     color: ((loaderCard.lkey === "fabric_api" ? page.fabricApiVersion : page.selectedVersion) === ver
                                             && (loaderCard.lkey === "fabric_api" || page.activeLoader === loaderCard.lkey))
-                                           ? Qt.rgba(0.231, 0.510, 0.965, .16) : (lvHover.containsMouse ? "#12151c" : "transparent")
+                                           ? Qt.rgba(0.231, 0.510, 0.965, .16) : (lvHover.containsMouse ? Theme.bgCard : "transparent")
                                     Text {
                                         anchors.left: parent.left
                                         anchors.leftMargin: 10
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: parent.ver
-                                        color: "#dfe5ee"
+                                        color: Theme.accentText
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 13
                                     }
@@ -1239,7 +1239,7 @@ Item {
                                 x: 10
                                 height: 28
                                 radius: 6
-                                color: noHover.containsMouse ? "#12151c" : "transparent"
+                                color: noHover.containsMouse ? Theme.bgCard : "transparent"
                                 Text {
                                     anchors.left: parent.left
                                     anchors.leftMargin: 10
@@ -1275,7 +1275,7 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: 72
-            color: "#0a0b0f"
+            color: Theme.bgCard2
             Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: Theme.line }
 
             Row {
@@ -1300,9 +1300,9 @@ Item {
                 anchors.rightMargin: page.padR
                 anchors.verticalCenter: parent.verticalCenter
                 readonly property bool ready: page.canInstall()
-                color: ready ? (installPress.containsMouse ? Theme.accent : Theme.accentTop) : "#2a2f3a"
+                color: ready ? (installPress.containsMouse ? Theme.accent : Theme.accentTop) : Theme.bgHover
                 border.width: ready ? 0 : 1
-                border.color: "#333b48"
+                border.color: Theme.line2
                 clip: true
                 // 可用 / 不可用之间有颜色与轻微缩放过渡（选择加载器版本后按钮"亮起来"）
                 Behavior on color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
@@ -1313,7 +1313,7 @@ Item {
                     text: installBtn.ready ? "开始安装"
                           : (page.activeLoader.length > 0 && page.selectedVersion.length === 0
                              ? "请选择版本" : "开始安装")
-                    color: installBtn.ready ? "#ffffff" : Theme.fg3
+                    color: installBtn.ready ? Theme.accentFg : Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
@@ -1322,7 +1322,7 @@ Item {
                 SRipple {
                     id: installRipple
                     anchors.fill: parent
-                    color: "#ffffff"
+                    color: Theme.accentFg
                     maxRadius: 140
                 }
                 MouseArea {

@@ -119,7 +119,7 @@ Item {
 
             Text {
                 text: "版本设置"
-                color: "#ffffff"
+                color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
@@ -181,7 +181,7 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         radius: Theme.rSm
-                        color: "#151a23"
+                        color: Theme.bgCard
                     }
                     // 左侧强调条跟着胶囊一起走
                     Rectangle {
@@ -224,7 +224,7 @@ Item {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 5
                 text: rowData.label
-                color: "#6b7686"
+                color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
                 font.letterSpacing: 1.1
@@ -247,7 +247,7 @@ Item {
                 anchors.leftMargin: 10
                 anchors.rightMargin: 10
                 radius: Theme.rSm
-                color: "#0f131a"
+                color: Theme.bgCard2
                 opacity: (hover.hovered && !itemRoot.active) ? 1 : 0
                 Behavior on opacity {
                     NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
@@ -262,13 +262,13 @@ Item {
                 SIcon {
                     name: rowData.icon
                     size: 15
-                    color: itemRoot.active ? "#7fa9f5" : "#4d5666"
+                    color: itemRoot.active ? Theme.accentText : Theme.line3
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: rowData.label
-                    color: itemRoot.active ? "#ffffff" : Theme.fg2
+                    color: itemRoot.active ? Theme.fg : Theme.fg2
                     font.family: Theme.fontFamily
                     font.pixelSize: 13
                     Behavior on color {

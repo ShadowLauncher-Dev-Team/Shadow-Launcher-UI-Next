@@ -96,7 +96,7 @@ Item {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: pane.allMods.length + " 个 · 启用 " + pane.enabledCount
-                    color: "#6b7686"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                 }
@@ -197,9 +197,9 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: Theme.rMd
-                    color: hov.hovered ? "#0f131a" : "#0b0d12"
+                    color: hov.hovered ? Theme.bgCard2 : Theme.bgCard2
                     border.width: 1
-                    border.color: bad ? "#2a2118" : (hov.hovered ? "#333a47" : Theme.line2)
+                    border.color: bad ? Theme.bgInput : (hov.hovered ? Theme.line2 : Theme.line2)
                     Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                     Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                 }
@@ -211,7 +211,7 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: 11
                     anchors.verticalCenter: parent.verticalCenter
-                    color: parent.on ? "#141a22" : "#10141a"
+                    color: parent.on ? Theme.bgCard : Theme.bgCard2
                     clip: true
                     Image {
                         anchors.fill: parent
@@ -226,7 +226,7 @@ Item {
                         anchors.centerIn: parent
                         visible: modelData.iconPath === undefined || modelData.iconPath === ""
                         text: modelData.modName ? modelData.modName.charAt(0).toUpperCase() : "?"
-                        color: parent.parent.on ? "#8fb4ff" : "#6b7686"
+                        color: parent.parent.on ? Theme.accentText : Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 18
                         font.weight: Font.DemiBold
@@ -243,7 +243,7 @@ Item {
                         spacing: 8
                         Text {
                             text: modelData.modName || modelData.fileName || ""
-                            color: parent.parent.on ? "#f2f5fa" : "#a8b1be"
+                            color: parent.parent.on ? Theme.accentText : Theme.fg2
                             font.family: Theme.fontFamily
                             font.pixelSize: 14
                             font.weight: Font.DemiBold
@@ -251,7 +251,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.version || ""
-                            color: "#7b8494"
+                            color: Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
@@ -260,7 +260,7 @@ Item {
                         width: parent.width
                         visible: text.length > 0
                         text: modelData.description || ""
-                        color: "#9aa3b0"
+                        color: Theme.fg2
                         elide: Text.ElideRight
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -268,7 +268,7 @@ Item {
                     Text {
                         width: parent.width
                         text: (modelData.fileName || "") + (modelData.fileSizeText ? (" · " + modelData.fileSizeText) : "")
-                        color: "#6b7686"
+                        color: Theme.fg3
                         elide: Text.ElideMiddle
                         font.family: "Consolas"
                         font.pixelSize: 11
@@ -300,7 +300,7 @@ Item {
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
                     text: pane.allMods.length === 0 ? "此版本还没有 Mod" : "没有匹配的 Mod"
-                    color: "#5d6673"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
@@ -312,7 +312,7 @@ Item {
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
                     text: "正在读取 Mod 列表…"
-                    color: "#6b7686"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }

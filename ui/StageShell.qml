@@ -12,6 +12,11 @@ import ShadowLauncher.Next
 Item {
     id: root
     property Window hostWindow: null
+
+    // ── 配色方案：后端是唯一真源，Theme.scheme 只是它的镜像 ──
+    // 外观页写 b.colorScheme → 这里同步 Theme.scheme → 全局颜色 binding 立即重算。
+    readonly property string colorScheme: (root.b && root.b.colorScheme) ? root.b.colorScheme : "dark"
+    onColorSchemeChanged: Theme.scheme = root.colorScheme
     readonly property bool narrow: width < 900
     readonly property int sideW: (narrow ? Theme.sideWNarrow : Theme.sideW)
     property bool versionsOpen: false
@@ -101,6 +106,8 @@ Item {
         // （已是最新版本 / 检查更新失败 / 发现新版本正在后台下载 / 下载失败…）
         // 以及模组安装、版本后端的提示全部石沉大海 —— 用户点「检查更新」只看到
         // 按钮闪一下「检查中」，看不出结果。这里统一接到 ToastHost。
+        function onColorSchemeChanged() { Theme.scheme = (root.b && root.b.colorScheme) ? root.b.colorScheme : "dark" }
+
         function onToastMessage(message) {
             if (!message || message.length === 0) return
             toastHost.show(message, 3000)
@@ -150,6 +157,17 @@ Item {
     }
     // 验收钩子：--update-check 延迟一点再点「检查更新」，等界面挂好、ToastHost 就绪
     Timer {
+        id: schemeFlipTimer
+        interval: 1500
+        onTriggered: {
+            if (!root.b) return
+            var next = (root.b.colorScheme === "light") ? "dark" : "light"
+            console.info("[ui] --scheme-flip ->", next)
+            root.b.setColorScheme(next)
+        }
+    }
+
+    Timer {
         id: updateCheckTimer
         interval: 1500
         onTriggered: {
@@ -186,6 +204,8 @@ Item {
     }
 
     Component.onCompleted: {
+        // 配色方案：后端是唯一真源，启动时先同步一次
+        Theme.scheme = root.colorScheme
         if (Qt.application.arguments.indexOf("--ui-versions") >= 0) root.versionsOpen = true
         // 版本设置预览：--ui-settings [versionId]（截图/验收用；不给 id 就用当前选中版本）
         var si = Qt.application.arguments.indexOf("--ui-settings")
@@ -210,6 +230,9 @@ Item {
         if (Qt.application.arguments.indexOf("--ui-account") >= 0) root.accountOpen = true
         // --update-check：启动后自动点一次「检查更新」（验收用，与按钮同一路径）
         if (Qt.application.arguments.indexOf("--update-check") >= 0) updateCheckTimer.start()
+        // --scheme-flip：1.5s 后切换一次配色（验收用：走与外观页卡片完全相同的
+        //   b.setColorScheme 路径，验证切换即时生效、无需重启）
+        if (Qt.application.arguments.indexOf("--scheme-flip") >= 0) schemeFlipTimer.start()
         if (Qt.application.arguments.indexOf("--ui-download") >= 0) {
             root.downloadOpen = true
             root.progressOpen = false

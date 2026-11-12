@@ -101,7 +101,7 @@ Item {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: pane.saves.length + " 个存档"
-                    color: "#6b7686"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                 }
@@ -172,9 +172,9 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: Theme.rMd
-                    color: hov.hovered ? "#0f131a" : "#0b0d12"
+                    color: hov.hovered ? Theme.bgCard2 : Theme.bgCard2
                     border.width: 1
-                    border.color: hov.hovered ? "#333a47" : Theme.line2
+                    border.color: hov.hovered ? Theme.line2 : Theme.line2
                     Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                     Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                 }
@@ -187,7 +187,7 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: 11
                     anchors.verticalCenter: parent.verticalCenter
-                    color: "#141a22"
+                    color: Theme.bgCard
                     clip: true
                     Image {
                         anchors.fill: parent
@@ -203,7 +203,7 @@ Item {
                         visible: !hasIcon
                         text: (modelData.name && modelData.name.length > 0)
                               ? modelData.name.charAt(0).toUpperCase() : "?"
-                        color: "#8fb4ff"
+                        color: Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 20
                         font.weight: Font.DemiBold
@@ -220,7 +220,7 @@ Item {
                     Text {
                         width: parent.width
                         text: modelData.name || ""
-                        color: "#f2f5fa"
+                        color: Theme.accentText
                         elide: Text.ElideRight
                         font.family: Theme.fontFamily
                         font.pixelSize: 14
@@ -228,7 +228,7 @@ Item {
                     }
                     Text {
                         text: modelData.sizeDisplay || ""
-                        color: "#6b7686"
+                        color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                     }
@@ -263,7 +263,7 @@ Item {
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
                     text: pane.saves.length === 0 ? "此版本还没有存档" : "没有匹配的存档"
-                    color: "#5d6673"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
@@ -275,7 +275,7 @@ Item {
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
                     text: "正在读取存档列表…"
-                    color: "#6b7686"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
@@ -294,7 +294,7 @@ Item {
         closePolicy: Popup.CloseOnEscape
         background: Rectangle {
             radius: Theme.rMd
-            color: "#0b0d12"
+            color: Theme.bgCard2
             border.width: 1
             border.color: Theme.line2
         }
@@ -304,7 +304,7 @@ Item {
             spacing: 12
             Text {
                 text: "删除存档？"
-                color: "#eef2f8"
+                color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 14
                 font.weight: Font.DemiBold
@@ -312,7 +312,7 @@ Item {
             Text {
                 width: parent.width - 36
                 text: pane.pendingDelete + "\n这个操作不能撤销。"
-                color: "#9aa3b0"
+                color: Theme.fg2
                 wrapMode: Text.Wrap
                 font.family: Theme.fontFamily
                 font.pixelSize: 12

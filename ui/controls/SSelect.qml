@@ -17,7 +17,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: Theme.rSm
-        color: "#0d1016"
+        color: Theme.bgCard2
         border.width: 1
         border.color: pop.opened ? Theme.accent : Theme.line2
         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
@@ -30,7 +30,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: (root.currentIndex >= 0 && root.currentIndex < root.items.length)
                   ? root.items[root.currentIndex] : root.fallback
-            color: (root.currentIndex >= 0) ? "#cfd6e1" : Theme.fg3
+            color: (root.currentIndex >= 0) ? Theme.fg : Theme.fg3
             elide: Text.ElideRight
             font.family: Theme.fontFamily
             font.pixelSize: 12
@@ -42,7 +42,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             name: "chevron-down"
             size: 13
-            color: "#4d5666"
+            color: Theme.line3
         }
         MouseArea {
             id: triggerArea
@@ -74,7 +74,7 @@ Item {
         }
         background: Rectangle {
             radius: Theme.rSm
-            color: "#0b0d12"
+            color: Theme.bgCard2
             border.width: 1
             border.color: Theme.line2
         }
@@ -89,7 +89,7 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: 6
-                    color: "#0f131a"
+                    color: Theme.bgCard2
                     opacity: (hov.hovered || index === root.currentIndex) ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
                 }
@@ -98,7 +98,7 @@ Item {
                     anchors.leftMargin: 10
                     anchors.verticalCenter: parent.verticalCenter
                     text: modelData
-                    color: index === root.currentIndex ? "#a9c8ff" : Theme.fg2
+                    color: index === root.currentIndex ? Theme.accentText : Theme.fg2
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }

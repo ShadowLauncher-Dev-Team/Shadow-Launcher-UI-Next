@@ -15,7 +15,7 @@ Item {
         id: track
         anchors.fill: parent
         radius: 10
-        color: root.checked ? "#24406e" : "#1c222c"
+        color: root.checked ? Theme.accentSoft : Theme.bgInput
         Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
     }
     Rectangle {
@@ -25,7 +25,7 @@ Item {
         radius: 8
         y: 2
         x: root.checked ? 18 : 2
-        color: root.checked ? "#7fa9f5" : "#5d6673"
+        color: root.checked ? Theme.accentText : Theme.fg3
         Behavior on x { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
         Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
     }

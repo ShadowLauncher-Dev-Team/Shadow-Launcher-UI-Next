@@ -118,22 +118,22 @@ Item {
         return ""
     }
     function statusColor(s) {
-        if (s === 2) return "#5bbd85"
-        if (s === 1) return "#8fbcf5"
-        if (s === 3) return "#ff9a94"
-        return "#3f4754"
+        if (s === 2) return Theme.ok
+        if (s === 1) return Theme.accentText
+        if (s === 3) return Theme.dangerText
+        return Theme.line3
     }
     function nodeColor(s) {
-        if (s === 2) return "#3b82f6"
-        if (s === 1) return "#60a5fa"
-        if (s === 3) return "#ef4444"
-        return "#2a3140"
+        if (s === 2) return Theme.accentText
+        if (s === 1) return Theme.accentText
+        if (s === 3) return Theme.dangerText
+        return Theme.bgHover
     }
     function nodeTextColor(s) {
-        if (s === 1) return "#ffffff"
-        if (s === 3) return "#ffb4b0"
-        if (s === 2) return "#8b96a4"
-        return "#5f6875"
+        if (s === 1) return Theme.fg
+        if (s === 3) return Theme.dangerText
+        if (s === 2) return Theme.fg2
+        return Theme.fg3
     }
     function rowDetail(d) {
         return (d === undefined || d === null) ? "" : String(d)
@@ -169,9 +169,9 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
         height: body.implicitHeight + 36
-        color: "#0c0f14"
+        color: Theme.bgCard2
         border.width: 1
-        border.color: "#262d38"
+        border.color: Theme.bgHover
         radius: 2
         // 出现时从下方 12px 浮上来
         transform: Translate {
@@ -202,14 +202,14 @@ Item {
                     visible: root.failed
                     color: "transparent"
                     border.width: 1.5
-                    border.color: "#ef4444"
+                    border.color: Theme.dangerText
                     anchors.left: parent.left
                     anchors.verticalCenter: titleTx.verticalCenter
                     Rectangle {
                         width: 1.5
                         height: 5
                         anchors.centerIn: parent
-                        color: "#ef4444"
+                        color: Theme.dangerText
                     }
                 }
                 Text {
@@ -222,7 +222,7 @@ Item {
                     }
                     text: root.failed ? ("启动失败 · " + root.verName)
                                       : ("启动 " + root.verName)
-                    color: "#ffffff"
+                    color: Theme.fg
                     font.family: Theme.fontFamily
                     font.pixelSize: 14
                     font.weight: Font.DemiBold
@@ -232,7 +232,7 @@ Item {
                     anchors.leftMargin: 10
                     anchors.verticalCenter: titleTx.verticalCenter
                     text: root.userName
-                    color: "#5f6875"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                 }
@@ -242,7 +242,7 @@ Item {
                     visible: root.failed
                     text: root.crashAnalyzing ? "正在分析日志…"
                                                : (root.crashReady ? "崩溃报告已生成" : "")
-                    color: root.crashAnalyzing ? "#c9a06a" : "#7b8593"
+                    color: root.crashAnalyzing ? Theme.warn : Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                 }
@@ -251,7 +251,7 @@ Item {
                     anchors.top: parent.top
                     visible: !root.failed
                     text: "第 " + root.stepNo + " / " + root.stepTotal + " 步"
-                    color: "#4f5866"
+                    color: Theme.line3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                 }
@@ -275,7 +275,7 @@ Item {
                     anchors.top: parent.top
                     anchors.topMargin: 12
                     text: "总进度"
-                    color: "#7b8593"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     font.letterSpacing: 1.2
@@ -285,7 +285,7 @@ Item {
                     anchors.top: parent.top
                     anchors.topMargin: 10
                     text: Math.round(root.overall * 100) + "%"
-                    color: root.failed ? "#ff9a94" : "#cbd5e3"
+                    color: root.failed ? Theme.dangerText : Theme.fg
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
@@ -298,7 +298,7 @@ Item {
                     Rectangle {
                         height: 4
                         width: parent.width * root.overall
-                        color: root.failed ? "#ef4444" : "#3b82f6"
+                        color: root.failed ? Theme.dangerText : Theme.accentText
                         Behavior on width { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     }
                 }
@@ -324,9 +324,9 @@ Item {
                     anchors.top: parent.top
                     visible: root.repairs.length > 0 && !root.failed
                     height: root.repairsCardHeight()
-                    color: "#0a1219"
+                    color: Theme.accentSoft
                     border.width: 1
-                    border.color: "#1d2a38"
+                    border.color: Theme.accentSoft
                     radius: 2
 
                     Column {
@@ -345,14 +345,14 @@ Item {
                                 width: 3
                                 height: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                color: "#e0a75e"
+                                color: Theme.warn
                             }
                             Text {
                                 anchors.left: parent.left
                                 anchors.leftMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "准备运行环境"
-                                color: "#cfd7e3"
+                                color: Theme.fg
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
                             }
@@ -360,7 +360,7 @@ Item {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: root.repairPendingCount() + " 项待补全"
-                                color: "#4f5866"
+                                color: Theme.line3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                             }
@@ -377,7 +377,7 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     width: 168
                                     text: modelData.name
-                                    color: modelData.state === 2 ? "#8b96a4" : "#c3ccd8"
+                                    color: modelData.state === 2 ? Theme.fg2 : Theme.fg
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 12
                                     elide: Text.ElideRight
@@ -395,8 +395,8 @@ Item {
                                         width: parent.width * (modelData.state === 2 ? 1
                                                                : (modelData.state === 3 ? 1
                                                                   : modelData.progress / 100))
-                                        color: modelData.state === 2 ? "#4f9d76"
-                                               : (modelData.state === 3 ? "#8a4040" : "#60a5fa")
+                                        color: modelData.state === 2 ? Theme.fg3
+                                               : (modelData.state === 3 ? Theme.danger : Theme.accentText)
                                         Behavior on color {
                                             ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
                                         }
@@ -415,8 +415,8 @@ Item {
                                     width: 170
                                     horizontalAlignment: Text.AlignRight
                                     text: root.repairValueText(modelData)
-                                    color: modelData.state === 2 ? "#5bbd85"
-                                           : (modelData.state === 3 ? "#e0847f" : "#8fbcf5")
+                                    color: modelData.state === 2 ? Theme.ok
+                                           : (modelData.state === 3 ? Theme.dangerText : Theme.accentText)
                                     Behavior on color {
                                         ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
                                     }
@@ -434,7 +434,7 @@ Item {
                             text: root.repairPendingCount() > 0
                                   ? "下载完成后会自动继续启动"
                                   : "补全完成，正在继续启动"
-                            color: "#6f8fb3"
+                            color: Theme.accentText
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
@@ -478,7 +478,7 @@ Item {
                         width: 1
                         height: nodeRow.height - 14
                         visible: modelData.isLast !== true
-                        color: (modelData.status === 2) ? "#24405f" : "#1c222c"
+                        color: (modelData.status === 2) ? Theme.accentSoft : Theme.bgInput
                         Behavior on color {
                             ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard }
                         }
@@ -513,7 +513,7 @@ Item {
                         width: nodeRow.width - 96
                         text: root.rowDetail(modelData.detail)
                         visible: text.length > 0 && modelData.status === 1
-                        color: modelData.status === 3 ? "#e0847f" : "#7fa8e0"
+                        color: modelData.status === 3 ? Theme.dangerText : Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                         elide: Text.ElideRight
@@ -561,11 +561,11 @@ Item {
                     Rectangle {   // 原因条：等宽字体 + 左侧红条，长原因自动换行
                         width: crashCol.width
                         height: reasonTx.implicitHeight + 16
-                        color: "#150d0f"
+                        color: Theme.bgCard2
                         Rectangle {
                             width: 2
                             height: parent.height
-                            color: "#7a2f2f"
+                            color: Theme.danger
                         }
                         Text {
                             id: reasonTx
@@ -575,7 +575,7 @@ Item {
                             anchors.rightMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
                             text: root.crashAnalyzing ? "正在分析日志，请稍候…" : root.crashReasonText()
-                            color: "#ffc9c5"
+                            color: Theme.dangerText
                             font.family: "Consolas, Menlo, monospace"
                             font.pixelSize: 12
                             wrapMode: Text.Wrap
@@ -595,7 +595,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 56
                                 text: modelData.k
-                                color: "#4f5866"
+                                color: Theme.line3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                             }
@@ -605,7 +605,7 @@ Item {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: modelData.v
-                                color: "#b9c6d6"
+                                color: Theme.fg
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                                 elide: Text.ElideRight
@@ -623,7 +623,7 @@ Item {
                         visible: root.crashSuggestions().length > 0
                         verticalAlignment: Text.AlignVCenter
                         text: "建议"
-                        color: "#4f5866"
+                        color: Theme.line3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                         font.letterSpacing: 1
@@ -639,7 +639,7 @@ Item {
                                 anchors.left: parent.left
                                 anchors.top: parent.top
                                 anchors.topMargin: 8
-                                color: "#3b4a5c"
+                                color: Theme.line3
                             }
                             Text {
                                 anchors.left: parent.left
@@ -647,7 +647,7 @@ Item {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: modelData
-                                color: "#c3ccd8"
+                                color: Theme.fg
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
                                 elide: Text.ElideRight
@@ -662,7 +662,7 @@ Item {
             Rectangle {
                 width: body.width
                 height: 1
-                color: "#161b22"
+                color: Theme.bgCard
             }
             Item {
                 width: body.width
@@ -675,7 +675,7 @@ Item {
                     text: root.failed
                           ? root.exportHint
                           : (root.done ? "游戏已启动" : "正在按阶段推进，取消后可重新启动")
-                    color: root.failed ? "#8a6a6a" : "#4f5866"
+                    color: root.failed ? Theme.fg3 : Theme.line3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     elide: Text.ElideRight
@@ -749,7 +749,7 @@ Item {
               + " panel=" + Math.round(panel.width) + "x" + Math.round(panel.height)
               + " panelY=" + Math.round(panel.y)
               + " listH=" + Math.round(stepList.height)
-        color: "#ff9a94"
+        color: Theme.dangerText
         font.family: Theme.fontFamily
         font.pixelSize: 11
     }

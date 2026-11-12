@@ -193,13 +193,13 @@ Item {
                                     height: 20
                                     width: badgeText.implicitWidth + 16
                                     radius: 6
-                                    color: "#12203a"
+                                    color: Theme.accentSoft
 
                                     Text {
                                         id: badgeText
                                         anchors.centerIn: parent
                                         text: modelData.badge
-                                        color: "#7fb0f5"
+                                        color: Theme.accentText
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
                                     }

@@ -118,7 +118,7 @@ Item {
         }
     }
 
-    readonly property color accentSoft: "#14213a"
+    readonly property color accentSoft: Theme.accentSoft
 
     function avatarColor(id, alpha) {
         var s = String(id || "x")
@@ -318,7 +318,7 @@ Item {
             radius: 14
             color: Theme.sidebar
             border.width: 1
-            border.color: page.errorText !== "" ? "#5b2a2a" : Theme.line2
+            border.color: page.errorText !== "" ? Theme.dangerSoft : Theme.line2
             // 高度是动画的，内容按固定 y 排：不裁的话收缩期间文字会漏到卡片外
             clip: true
 
@@ -349,7 +349,7 @@ Item {
                         id: stageTrack
                         anchors.fill: parent
                         radius: 2
-                        color: "#181d26"
+                        color: Theme.bgCard
                     }
 
                     Rectangle {
@@ -380,7 +380,7 @@ Item {
                 Text {
                     width: parent.width
                     text: page.titleText
-                    color: page.errorText !== "" ? "#fca5a5" : Theme.fg
+                    color: page.errorText !== "" ? Theme.dangerText : Theme.fg
                     font.family: Theme.fontFamily
                     font.pixelSize: 19
                     font.bold: true
@@ -403,7 +403,7 @@ Item {
                     width: parent.width
                     height: 3
                     radius: 2
-                    color: "#151a22"
+                    color: Theme.bgCard
                     visible: page.busy || page.st === 8
                     clip: true
                     Rectangle {
@@ -427,7 +427,7 @@ Item {
                     width: parent.width
                     horizontalAlignment: Text.AlignHCenter
                     text: page.code
-                    color: page.errorText !== "" ? "#4a5361" : "#a9c8ff"
+                    color: page.errorText !== "" ? Theme.line3 : Theme.accentText
                     font.family: Theme.fontFamily
                     font.pixelSize: 26
                     font.bold: true
@@ -488,7 +488,7 @@ Item {
                     width: parent.width
                     height: 38
                     radius: 9
-                    color: "#0d1016"
+                    color: Theme.bgCard2
                     border.width: 1
                     border.color: Theme.line2
                     visible: page.st === 0 && page.errorText === ""
@@ -532,7 +532,7 @@ Item {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             text: "修改"
-                            color: editHover.containsMouse ? Theme.accent : "#7fb0ff"
+                            color: editHover.containsMouse ? Theme.accent : Theme.accentText
                             Behavior on color { ColorAnimation { duration: Theme.durFast } }
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -558,7 +558,7 @@ Item {
                         width: parent.width - 86
                         height: 36
                         radius: 9
-                        color: "#0d1016"
+                        color: Theme.bgCard2
                         border.width: 1
                         border.color: joinInput.activeFocus ? Theme.accent : Theme.line2
                         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
@@ -569,11 +569,11 @@ Item {
                             anchors.leftMargin: 12
                             anchors.rightMargin: 10
                             verticalAlignment: TextInput.AlignVCenter
-                            color: "#a9c8ff"
+                            color: Theme.accentText
                             font.family: Theme.fontFamily
                             font.pixelSize: 13
                             selectionColor: Theme.accent
-                            selectedTextColor: "#ffffff"
+                            selectedTextColor: Theme.accentFg
                             clip: true
                             selectByMouse: true
                             onAccepted: page.doJoin()
@@ -630,7 +630,7 @@ Item {
                             width: parent.width
                             height: 50
                             radius: 9
-                            color: page.isMe(modelData) ? page.accentSoft : "#0e1117"
+                            color: page.isMe(modelData) ? page.accentSoft : Theme.bgCard2
                             border.width: 1
                             border.color: page.isMe(modelData) ? Qt.rgba(0.23, 0.51, 0.96, 0.42) : Theme.line2
 
@@ -684,7 +684,7 @@ Item {
                                 anchors.topMargin: 2
                                 width: Math.max(0, parent.width - 90)
                                 text: page.vendorText(modelData)
-                                color: "#4d5563"
+                                color: Theme.line3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
                                 elide: Text.ElideRight
@@ -714,7 +714,7 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             text: page.pendingCount + " 位玩家正在加入…"
-                            color: "#7f8b9c"
+                            color: Theme.fg2
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
@@ -814,7 +814,7 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     visible: page.st === 0 && page.errorText === ""
                     text: "联机身份跟着「这台设备」走，与 MC 账号无关。"
-                    color: "#3f4753"
+                    color: Theme.line3
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
                     wrapMode: Text.WordWrap
@@ -873,7 +873,7 @@ Item {
                     width: parent.width
                     height: 44
                     radius: 10
-                    color: "#0d1016"
+                    color: Theme.bgCard2
                     border.width: 1
                     border.color: renameInput.activeFocus ? Theme.accent : Theme.line2
                     TextInput {
@@ -886,7 +886,7 @@ Item {
                         font.family: Theme.fontFamily
                         font.pixelSize: 15
                         selectionColor: Theme.accent
-                        selectedTextColor: "#ffffff"
+                        selectedTextColor: Theme.accentFg
                         maximumLength: 16
                         selectByMouse: true
                         onAccepted: page.saveRename()

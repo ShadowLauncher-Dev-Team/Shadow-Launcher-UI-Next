@@ -167,7 +167,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         text: (pane.javaVer.length > 0 ? pane.javaVer : "未检测到")
                               + (pane.javaMajor > 0 ? "（Java " + pane.javaMajor + "）" : "")
-                        color: pane.javaVer.length > 0 ? "#cfd6e1" : Theme.warn
+                        color: pane.javaVer.length > 0 ? Theme.fg : Theme.warn
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                     }
@@ -180,7 +180,7 @@ Item {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         text: "Java " + pane.suggestedMajor + "+"
-                        color: "#cfd6e1"
+                        color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                     }
@@ -190,7 +190,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: pane.mcVer.length > 0
                         text: "游戏 " + pane.mcVer
-                        color: "#6b7686"
+                        color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                     }

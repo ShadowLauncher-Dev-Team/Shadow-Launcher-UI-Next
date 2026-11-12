@@ -16,7 +16,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: Theme.rSm
-        color: "#0d1016"
+        color: Theme.bgCard2
         border.width: 1
         border.color: edit.activeFocus ? Theme.accent : Theme.line2
         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
@@ -27,7 +27,7 @@ Item {
         anchors.margins: 11
         visible: root.text.length === 0
         text: root.placeholder
-        color: "#3f4753"
+        color: Theme.line3
         wrapMode: Text.WordWrap
         font.family: Theme.fontFamily
         font.pixelSize: 11
@@ -56,9 +56,9 @@ Item {
             // 点框的下半部分完全没反应（影报的"点快了还是不行"就是这个）。
             height: Math.max(flick.height - 22, implicitHeight)
             text: root.text
-            color: "#cfd6e1"
-            selectionColor: "#2c4a7a"
-            selectedTextColor: "#ffffff"
+            color: Theme.fg
+            selectionColor: Theme.accent
+            selectedTextColor: Theme.accentFg
             wrapMode: TextEdit.WrapAnywhere
             selectByMouse: true
             font.family: "Consolas"

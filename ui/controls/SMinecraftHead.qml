@@ -68,11 +68,11 @@ Item {
     Rectangle {
         anchors.fill: parent
         visible: root.effectiveSource.length === 0
-        color: "#1b2432"
+        color: Theme.bgInput
         Text {
             anchors.centerIn: parent
             text: root.fallbackText.length > 0 ? root.fallbackText.substring(0, 1).toUpperCase() : "?"
-            color: "#9fb4cf"
+            color: Theme.accentText
             font.family: Theme.fontFamily
             font.pixelSize: Math.max(9, Math.round(root.size * 0.45))
             font.weight: Font.DemiBold

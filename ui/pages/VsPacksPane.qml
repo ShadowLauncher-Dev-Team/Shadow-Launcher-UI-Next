@@ -91,7 +91,7 @@ Item {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: pane.allPacks.length + " 个"
-                    color: "#6b7686"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                 }
@@ -172,9 +172,9 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: Theme.rMd
-                    color: hov.hovered ? "#0f131a" : "#0b0d12"
+                    color: hov.hovered ? Theme.bgCard2 : Theme.bgCard2
                     border.width: 1
-                    border.color: bad ? "#2a2118" : (hov.hovered ? "#333a47" : Theme.line2)
+                    border.color: bad ? Theme.bgInput : (hov.hovered ? Theme.line2 : Theme.line2)
                     Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                     Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                 }
@@ -186,7 +186,7 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: 11
                     anchors.verticalCenter: parent.verticalCenter
-                    color: bad ? "#1a1410" : "#141a22"
+                    color: bad ? Theme.bgCard2 : Theme.bgCard
                     clip: true
                     Image {
                         anchors.fill: parent
@@ -201,7 +201,7 @@ Item {
                         anchors.centerIn: parent
                         visible: modelData.iconPath === undefined || modelData.iconPath === ""
                         text: modelData.displayName ? modelData.displayName.charAt(0).toUpperCase() : "?"
-                        color: bad ? "#c9a25a" : "#8fb4ff"
+                        color: bad ? Theme.warn : Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 18
                         font.weight: Font.DemiBold
@@ -218,7 +218,7 @@ Item {
                         spacing: 8
                         Text {
                             text: modelData.displayName || modelData.fileName || ""
-                            color: "#f2f5fa"
+                            color: Theme.accentText
                             font.family: Theme.fontFamily
                             font.pixelSize: 14
                             font.weight: Font.DemiBold
@@ -226,7 +226,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.versionLabel || ""
-                            color: "#7b8494"
+                            color: Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
@@ -235,7 +235,7 @@ Item {
                         width: parent.width
                         visible: text.length > 0
                         text: modelData.description || ""
-                        color: "#9aa3b0"
+                        color: Theme.fg2
                         elide: Text.ElideRight
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -243,7 +243,7 @@ Item {
                     Text {
                         width: parent.width
                         text: (modelData.fileName || "") + (modelData.fileSizeText ? (" · " + modelData.fileSizeText) : "")
-                        color: "#6b7686"
+                        color: Theme.fg3
                         elide: Text.ElideMiddle
                         font.family: "Consolas"
                         font.pixelSize: 11
@@ -278,7 +278,7 @@ Item {
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
                     text: pane.allPacks.length === 0 ? "此版本还没有资源包" : "没有匹配的资源包"
-                    color: "#5d6673"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
@@ -290,7 +290,7 @@ Item {
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
                     text: "正在读取资源包列表…"
-                    color: "#6b7686"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
@@ -309,7 +309,7 @@ Item {
         closePolicy: Popup.CloseOnEscape
         background: Rectangle {
             radius: Theme.rMd
-            color: "#0b0d12"
+            color: Theme.bgCard2
             border.width: 1
             border.color: Theme.line2
         }
@@ -319,7 +319,7 @@ Item {
             spacing: 12
             Text {
                 text: "删除资源包？"
-                color: "#eef2f8"
+                color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 14
                 font.weight: Font.DemiBold
@@ -327,7 +327,7 @@ Item {
             Text {
                 width: parent.width - 36
                 text: pane.pendingDelete + "\n这个操作不能撤销。"
-                color: "#9aa3b0"
+                color: Theme.fg2
                 wrapMode: Text.Wrap
                 font.family: Theme.fontFamily
                 font.pixelSize: 12

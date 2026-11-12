@@ -16,7 +16,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: Theme.rSm
-        color: "#0a0c11"
+        color: Theme.bgCard2
         border.width: 1
         border.color: Theme.line2
     }
@@ -33,7 +33,7 @@ Item {
         width: segW
         height: row.height
         radius: 6
-        color: "#132340"
+        color: Theme.accentSoft
         Behavior on x {
             NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter }
         }
@@ -58,7 +58,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: modelData
-                    color: index === root.currentIndex ? "#a9c8ff" : Theme.fg3
+                    color: index === root.currentIndex ? Theme.accentText : Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                     Behavior on color {

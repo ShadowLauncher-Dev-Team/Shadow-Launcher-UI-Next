@@ -219,9 +219,9 @@ Item {
                     Layout.preferredHeight: 28
                     implicitWidth: srcTxt.implicitWidth + 22
                     radius: 14
-                    color: page.source === modelData.v ? "#1b2433" : "transparent"
+                    color: page.source === modelData.v ? Theme.accentSoft : "transparent"
                     border.width: 1
-                    border.color: page.source === modelData.v ? "#2c3a4f" : Theme.line2
+                    border.color: page.source === modelData.v ? Theme.line2 : Theme.line2
                     Text {
                         id: srcTxt
                         anchors.centerIn: parent
@@ -272,7 +272,7 @@ Item {
                 Layout.preferredHeight: 28
                 implicitWidth: resetTxt.implicitWidth + 22
                 radius: 14
-                color: resetHover.containsMouse ? "#141922" : "transparent"
+                color: resetHover.containsMouse ? Theme.bgCard : "transparent"
                 border.width: 1
                 border.color: Theme.line2
                 Text {
@@ -377,7 +377,7 @@ Item {
                     width: (skeleton.width - (page.cols - 1) * 10) / page.cols
                     height: 146
                     radius: Theme.rMd
-                    color: "#0b0e13"
+                    color: Theme.bgCard2
                     border.width: 1
                     border.color: Theme.line
                     clip: true
@@ -386,25 +386,25 @@ Item {
                     Rectangle {
                         x: 12; y: 12
                         width: 40; height: 40; radius: Theme.rSm
-                        color: "#12161c"
+                        color: Theme.bgCard
                     }
                     // 标题 / 副标题 / 简介两行
                     Column {
                         x: 62; y: 14
                         spacing: 8
-                        Rectangle { width: Math.min(120, parent.parent.width - 90); height: 12; radius: 6; color: "#12161c" }
-                        Rectangle { width: Math.min(76, parent.parent.width - 120); height: 9; radius: 5; color: "#0f1319" }
+                        Rectangle { width: Math.min(120, parent.parent.width - 90); height: 12; radius: 6; color: Theme.bgCard }
+                        Rectangle { width: Math.min(76, parent.parent.width - 120); height: 9; radius: 5; color: Theme.bgCard2 }
                     }
                     Column {
                         x: 12; y: 66
                         spacing: 7
-                        Rectangle { width: parent.parent.width - 24; height: 9; radius: 5; color: "#0f1319" }
-                        Rectangle { width: (parent.parent.width - 24) * 0.72; height: 9; radius: 5; color: "#0f1319" }
+                        Rectangle { width: parent.parent.width - 24; height: 9; radius: 5; color: Theme.bgCard2 }
+                        Rectangle { width: (parent.parent.width - 24) * 0.72; height: 9; radius: 5; color: Theme.bgCard2 }
                     }
                     Column {
                         x: 12; y: 116
                         spacing: 6
-                        Rectangle { width: 54; height: 8; radius: 4; color: "#0f1319" }
+                        Rectangle { width: 54; height: 8; radius: 4; color: Theme.bgCard2 }
                     }
                     // 扫光（统一相位，不各自跑动画）
                     SShimmer {
@@ -457,7 +457,7 @@ Item {
                 visible: !page.busy
                 width: 96; height: 30
                 radius: Theme.rSm
-                color: retryHover.containsMouse ? "#141922" : "transparent"
+                color: retryHover.containsMouse ? Theme.bgCard : "transparent"
                 border.width: 1
                 border.color: Theme.line2
                 Text {
@@ -492,7 +492,7 @@ Item {
             Rectangle {
                 Layout.preferredWidth: 64; Layout.preferredHeight: 28
                 radius: Theme.rSm
-                color: prevHover.containsMouse ? "#141922" : "transparent"
+                color: prevHover.containsMouse ? Theme.bgCard : "transparent"
                 border.width: 1; border.color: Theme.line2
                 Text {
                     anchors.centerIn: parent
@@ -509,7 +509,7 @@ Item {
             Rectangle {
                 Layout.preferredWidth: 64; Layout.preferredHeight: 28
                 radius: Theme.rSm
-                color: nextHover.containsMouse ? "#141922" : "transparent"
+                color: nextHover.containsMouse ? Theme.bgCard : "transparent"
                 border.width: 1; border.color: Theme.line2
                 Text {
                     anchors.centerIn: parent
@@ -544,9 +544,9 @@ Item {
         implicitHeight: 28
         implicitWidth: ddTxt.implicitWidth + 30
         radius: 14
-        color: ddHover.containsMouse || ddPop.visible ? "#141922" : "transparent"
+        color: ddHover.containsMouse || ddPop.visible ? Theme.bgCard : "transparent"
         border.width: 1
-        border.color: current.length > 0 ? "#2c3a4f" : Theme.line2
+        border.color: current.length > 0 ? Theme.line2 : Theme.line2
 
         Text {
             id: ddTxt
@@ -579,13 +579,13 @@ Item {
             height: Math.min(260, dd.options.length * 32 + 8)
             padding: 4
             closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-            background: Rectangle { color: "#0d1016"; border.width: 1; border.color: Theme.line2; radius: Theme.rSm }
+            background: Rectangle { color: Theme.bgCard2; border.width: 1; border.color: Theme.line2; radius: Theme.rSm }
             contentItem: ListView {
                 clip: true
                 model: dd.options
                 delegate: Rectangle {
                     width: ddPop.width - 8; height: 32; radius: 4
-                    color: (dd.current === modelData.value) ? "#16202e" : (optHover.containsMouse ? "#121a26" : "transparent")
+                    color: (dd.current === modelData.value) ? Theme.accentSoft : (optHover.containsMouse ? Theme.accentSoft : "transparent")
                     Text {
                         anchors.left: parent.left; anchors.leftMargin: 10
                         anchors.right: parent.right; anchors.rightMargin: 8

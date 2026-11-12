@@ -482,6 +482,8 @@ ShadowBackend::ShadowBackend(QObject* parent)
             this, &ShadowBackend::embeddedLoginChanged);
     connect(m_settings, &SettingsBackend::customBgChanged,
             this, &ShadowBackend::customBgChanged);
+    connect(m_settings, &SettingsBackend::colorSchemeChanged,
+            this, &ShadowBackend::colorSchemeChanged);
     connect(m_settings, &SettingsBackend::logMessage,
             this, &ShadowBackend::logMessage);
 
@@ -1234,13 +1236,25 @@ void ShadowBackend::setEmbeddedLoginEnabled(bool v) {
 QString ShadowBackend::customBgPath() const { return m_settings->customBgPath(); }
 void ShadowBackend::setCustomBgPath(const QString& url) {
     // On clear, delete the cached copy
-    if (url.isEmpty() && !m_settings->customBgPath().isEmpty()) {
-        QString oldPath = QUrl(m_settings->customBgPath()).toLocalFile();
-        if (!oldPath.isEmpty() && QFile::exists(oldPath)) {
-            QFile::remove(oldPath);
+    // 只删我们自己复制到 dataDir/custom_bg 下的缓存副本。
+    // 早期实现会把自定义路径直接当缓存删——若拷贝失败退回的是用户原图路径，
+    // 一次「恢复默认」就会把用户的图片删掉。
+    if (url.isEmpty() && !m_settings->customBgPath().isEmpty() && m_app) {
+        const QString oldPath = QUrl(m_settings->customBgPath()).toLocalFile();
+        const QDir bgDir(m_app->dataDir() + QStringLiteral("/custom_bg"));
+        const QString canonicalOld = QFileInfo(oldPath).canonicalFilePath();
+        const QString canonicalDir = QFileInfo(bgDir.absolutePath()).canonicalFilePath();
+        if (!canonicalOld.isEmpty() && !canonicalDir.isEmpty()
+            && canonicalOld.startsWith(canonicalDir) && QFile::exists(canonicalOld)) {
+            QFile::remove(canonicalOld);
         }
     }
     m_settings->setCustomBgPath(url);
+}
+
+QString ShadowBackend::customBgUrl() const {
+    const QString p = m_settings->customBgPath();
+    return p.isEmpty() ? QString() : QUrl::fromLocalFile(p).toString();
 }
 qreal ShadowBackend::sidebarOpacity() const { return m_settings->sidebarOpacity(); }
 void ShadowBackend::setSidebarOpacity(qreal v) { m_settings->setSidebarOpacity(v); }
@@ -1257,6 +1271,19 @@ void ShadowBackend::updateCrop(qreal x, qreal y) {
     m_settings->setCropX(x);
     m_settings->setCropY(y);
 }
+
+qreal ShadowBackend::bgZoom() const { return m_settings->bgZoom(); }
+void ShadowBackend::setBgZoom(qreal v) { m_settings->setBgZoom(v); }
+QVariantList ShadowBackend::bgPresets() const { return m_settings->bgPresets(); }
+void ShadowBackend::applyBgPreset(const QString& presetId) { m_settings->applyBgPreset(presetId); }
+bool ShadowBackend::chooseBgImage() {
+    // 复用既有 pickBackgroundImage（会复制到 dataDir/custom_bg 防止原图被移走）
+    return !pickBackgroundImage().isEmpty();
+}
+void ShadowBackend::restoreDefaultBg() { m_settings->restoreDefaultBg(); }
+void ShadowBackend::resetBgView() { m_settings->resetBgView(); }
+QString ShadowBackend::colorScheme() const { return m_settings->colorScheme(); }
+void ShadowBackend::setColorScheme(const QString& scheme) { m_settings->setColorScheme(scheme); }
 
 QString ShadowBackend::pickBackgroundImage() {
     QString path = QFileDialog::getOpenFileName(nullptr,
@@ -1277,13 +1304,13 @@ QString ShadowBackend::pickBackgroundImage() {
     if (!QFile::copy(path, destPath)) {
         // Fallback: use original path
         qWarning() << "[pickBackgroundImage] failed to copy" << path << "to" << destPath;
-        QString url = QUrl::fromLocalFile(path).toString();
-        m_settings->setCustomBgPath(url);
-        return url;
+        // 存纯路径（settings 里统一是本地路径，不是 URL）——
+        // 之前这里存 file:///…，而 StagePage 又拼一次 "file:///" → 双层前缀图裂。
+        m_settings->setCustomBgPath(path);
+        return path;
     }
-    QString url = QUrl::fromLocalFile(destPath).toString();
-    m_settings->setCustomBgPath(url);
-    return url;
+    m_settings->setCustomBgPath(destPath);
+    return destPath;
 }
 
 QVariantList ShadowBackend::availableJavaList() const {

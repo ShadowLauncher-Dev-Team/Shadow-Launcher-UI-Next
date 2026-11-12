@@ -475,7 +475,7 @@ Item {
             anchors.left: parent.left; anchors.leftMargin: page.padL
             anchors.verticalCenter: parent.verticalCenter
             width: backRow.width + 20; height: 28; radius: Theme.rSm
-            color: backHover.containsMouse ? "#141922" : "transparent"
+            color: backHover.containsMouse ? Theme.bgCard : "transparent"
             border.width: 1; border.color: backHover.containsMouse ? Theme.line2 : Theme.line
             Row {
                 id: backRow
@@ -502,7 +502,7 @@ Item {
 
         Rectangle {
             id: headIcon
-            width: 76; height: 76; radius: Theme.rMd; color: "#12161c"; clip: true
+            width: 76; height: 76; radius: Theme.rMd; color: Theme.bgCard; clip: true
             Image {
                 anchors.fill: parent
                 source: page.item.icon || ""
@@ -522,7 +522,7 @@ Item {
             anchors.left: headTitle.right; anchors.leftMargin: 10
             anchors.verticalCenter: headTitle.verticalCenter
             width: srcTxt.implicitWidth + 16; height: 20; radius: 10
-            color: page.item.source === "CurseForge" ? "#1f1608" : "#0c1b12"
+            color: page.item.source === "CurseForge" ? Theme.warn : Theme.bgCard2
             Text {
                 id: srcTxt
                 anchors.centerIn: parent
@@ -590,7 +590,7 @@ Item {
                 id: installCard
                 anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
                 height: 168 + Math.min(4, page.myDls.length) * 15; radius: Theme.rSm
-                color: "#0b0e13"; border.width: 1; border.color: Theme.line
+                color: Theme.bgCard2; border.width: 1; border.color: Theme.line
 
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 16; anchors.top: parent.top; anchors.topMargin: 16
@@ -640,8 +640,8 @@ Item {
                         delegate: Text {
                             width: parent.width
                             text: page.dlLine(modelData)
-                            color: modelData.state === "done" ? "#5ee08f"
-                                 : (modelData.state === "fail" ? "#e28a8a" : "#8fb6f8")
+                            color: modelData.state === "done" ? Theme.ok
+                                 : (modelData.state === "fail" ? Theme.dangerText : Theme.accentText)
                             font.family: Theme.fontFamily; font.pixelSize: 10
                             elide: Text.ElideRight
                         }
@@ -661,7 +661,7 @@ Item {
                 id: pickCard
                 anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
                 height: 124; radius: Theme.rSm
-                color: "#0b0e13"; border.width: 1; border.color: Theme.line
+                color: Theme.bgCard2; border.width: 1; border.color: Theme.line
                 opacity: page.revealStep >= 1 ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                 transform: Translate {
@@ -679,7 +679,7 @@ Item {
                     id: gameBox
                     anchors.left: parent.left; anchors.leftMargin: 18; anchors.top: gLabel.bottom; anchors.topMargin: 8
                     width: (parent.width - 46) * 0.5; height: 40; radius: Theme.rSm
-                    color: "#0d1016"; border.width: 1
+                    color: Theme.bgCard2; border.width: 1
                     border.color: gameHover.containsMouse ? Theme.line2 : Theme.line
                     Text {
                         anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
@@ -711,7 +711,7 @@ Item {
                     anchors.right: parent.right; anchors.rightMargin: 18
                     anchors.top: lLabel.bottom; anchors.topMargin: 8
                     height: 40; radius: Theme.rSm
-                    color: "#0d1016"; border.width: 1
+                    color: Theme.bgCard2; border.width: 1
                     border.color: loaderHover.containsMouse ? Theme.line2 : Theme.line
                     opacity: page.selGame.length === 0 ? 0.45 : 1
                     Text {
@@ -748,7 +748,7 @@ Item {
                 anchors.left: parent.left; anchors.right: parent.right
                 anchors.top: pickCard.bottom; anchors.topMargin: 12
                 height: 92; radius: Theme.rSm
-                color: "#0b0e13"; border.width: 1; border.color: Theme.line
+                color: Theme.bgCard2; border.width: 1; border.color: Theme.line
                 opacity: (page.revealStep >= 2 ? 1 : 0)
                 Behavior on opacity { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                 transform: Translate {
@@ -809,7 +809,7 @@ Item {
                     id: oldHead
                     anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
                     height: 38; radius: Theme.rSm
-                    color: oldHover.containsMouse ? "#10141b" : "#0b0e13"
+                    color: oldHover.containsMouse ? Theme.bgCard2 : Theme.bgCard2
                     border.width: 1; border.color: oldHover.containsMouse ? Theme.line2 : Theme.line
                     Text {
                         anchors.left: parent.left; anchors.leftMargin: 18
@@ -875,7 +875,7 @@ Item {
                 height: 44 + page.deps.length * 44
                 visible: page.deps.length > 0
                 radius: Theme.rSm
-                color: "#0b0e13"; border.width: 1; border.color: Theme.line
+                color: Theme.bgCard2; border.width: 1; border.color: Theme.line
 
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 18; anchors.top: parent.top; anchors.topMargin: 14
@@ -906,7 +906,7 @@ Item {
                             border.color: Theme.line2
                             SIcon {
                                 anchors.centerIn: parent
-                                name: "check"; size: 11; color: "#ffffff"
+                                name: "check"; size: 11; color: Theme.accentFg
                                 visible: page.depChecked[modelData.project_id] === true
                             }
                             MouseArea {
@@ -917,7 +917,7 @@ Item {
                         }
                         Rectangle {
                             x: 44; anchors.verticalCenter: parent.verticalCenter
-                            width: 24; height: 24; radius: Theme.rSm; color: "#12161c"; clip: true
+                            width: 24; height: 24; radius: Theme.rSm; color: Theme.bgCard; clip: true
                             Image {
                                 anchors.fill: parent
                                 // 原始 cdn 是 .webp，Qt 解不了 → 走司南缓存换成可解码的本地路径
@@ -976,13 +976,13 @@ Item {
         exit: Transition {
             NumberAnimation { target: gamePopup.contentItem; property: "opacity"; from: 1; to: 0; duration: Theme.durFast; easing.type: Theme.easeExit }
         }
-        background: Rectangle { color: "#0d1016"; border.width: 1; border.color: Theme.line2; radius: Theme.rSm }
+        background: Rectangle { color: Theme.bgCard2; border.width: 1; border.color: Theme.line2; radius: Theme.rSm }
         contentItem: ListView {
             clip: true
             model: page.gameList
             delegate: Rectangle {
                 width: gamePopup.width - 8; height: 34; radius: 4
-                color: page.selGame === modelData ? "#16202e" : (gHover.containsMouse ? "#121a26" : "transparent")
+                color: page.selGame === modelData ? Theme.accentSoft : (gHover.containsMouse ? Theme.accentSoft : "transparent")
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 10
                     anchors.verticalCenter: parent.verticalCenter
@@ -1017,13 +1017,13 @@ Item {
         exit: Transition {
             NumberAnimation { target: loaderPopup.contentItem; property: "opacity"; from: 1; to: 0; duration: Theme.durFast; easing.type: Theme.easeExit }
         }
-        background: Rectangle { color: "#0d1016"; border.width: 1; border.color: Theme.line2; radius: Theme.rSm }
+        background: Rectangle { color: Theme.bgCard2; border.width: 1; border.color: Theme.line2; radius: Theme.rSm }
         contentItem: ListView {
             clip: true
             model: page.loaderList
             delegate: Rectangle {
                 width: loaderPopup.width - 8; height: 34; radius: 4
-                color: page.selLoader === modelData ? "#16202e" : (lHover.containsMouse ? "#121a26" : "transparent")
+                color: page.selLoader === modelData ? Theme.accentSoft : (lHover.containsMouse ? Theme.accentSoft : "transparent")
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 10
                     anchors.verticalCenter: parent.verticalCenter

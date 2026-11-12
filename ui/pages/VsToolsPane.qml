@@ -99,7 +99,7 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: Theme.rWin
-                    color: "#0b0d12"
+                    color: Theme.bgCard2
                     border.width: 1
                     border.color: Theme.line2
                 }
@@ -120,13 +120,13 @@ Item {
                             height: 8
                             radius: 4
                             anchors.verticalCenter: parent.verticalCenter
-                            color: pane.verifying ? "#4b5462"
+                            color: pane.verifying ? Theme.line3
                                  : (statusCard.hasIssues ? Theme.warn
-                                 : (pane.hasResult ? Theme.ok : "#4b5462"))
+                                 : (pane.hasResult ? Theme.ok : Theme.line3))
                         }
                         Text {
                             text: pane.statusTitle()
-                            color: "#eef2f8"
+                            color: Theme.accentText
                             font.family: Theme.fontFamily
                             font.pixelSize: 14
                             font.weight: Font.DemiBold
@@ -134,7 +134,7 @@ Item {
                     }
                     Text {
                         text: pane.statusSub()
-                        color: "#7b8494"
+                        color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                         leftPadding: 18
@@ -150,7 +150,7 @@ Item {
                             width: parent.width
                             height: 3
                             radius: 2
-                            color: "#151a22"
+                            color: Theme.bgCard
                             Rectangle {
                                 // 宽度直接绑定，绝不加 Behavior on width：
                                 // 后端校验信号频率很高，每条信号都会把动画重置回起点，进度条永远追不上真实进度。
@@ -165,7 +165,7 @@ Item {
                             text: pane.totalCount > 0
                                   ? ("已扫描 " + pane.checkedCount + " / " + pane.totalCount + " 个文件")
                                   : "正在统计文件…"
-                            color: "#7b8494"
+                            color: Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
@@ -241,7 +241,7 @@ Item {
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "共 " + pane.failedFiles.length + " 项待修复"
-                        color: "#8a94a3"
+                        color: Theme.fg2
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                     }
@@ -274,7 +274,7 @@ Item {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData
-                            color: "#a9b2c0"
+                            color: Theme.fg2
                             elide: Text.ElideMiddle
                             font.family: "Consolas"
                             font.pixelSize: 11
@@ -287,7 +287,7 @@ Item {
                     bottomPadding: pane.failedFiles.length > 8 ? 10 : 0
                     visible: pane.failedFiles.length > 8
                     text: "另有 " + (pane.failedFiles.length - 8) + " 项未列出"
-                    color: "#6b7686"
+                    color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                 }
@@ -345,7 +345,7 @@ Item {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         height: 1
-                        color: "#11141d"
+                        color: Theme.bgCard
                     }
                 }
                 Row {
@@ -381,7 +381,7 @@ Item {
         closePolicy: Popup.CloseOnEscape | Popup.OnPressOutside
         background: Rectangle {
             radius: Theme.rMd
-            color: "#0b0d12"
+            color: Theme.bgCard2
             border.width: 1
             border.color: Theme.line2
         }
@@ -391,7 +391,7 @@ Item {
             spacing: 12
             Text {
                 text: "重命名版本"
-                color: "#eef2f8"
+                color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
                 font.weight: Font.DemiBold

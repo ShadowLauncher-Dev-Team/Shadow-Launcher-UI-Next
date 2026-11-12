@@ -164,6 +164,9 @@ void SettingsBackend::loadSettings()
     m_backgroundBlur = qBound(0.0, s.value(QStringLiteral("customBg/blur"), 0.0).toDouble(), 1.0);
     m_cropX = qBound(0.0, s.value(QStringLiteral("customBg/cropX"), 0.5).toDouble(), 1.0);
     m_cropY = qBound(0.0, s.value(QStringLiteral("customBg/cropY"), 0.5).toDouble(), 1.0);
+    m_bgZoom = qBound(1.0, s.value(QStringLiteral("customBg/zoom"), 1.0).toDouble(), 4.0);
+    m_colorScheme = s.value(QStringLiteral("appearance/scheme"), QStringLiteral("dark")).toString();
+    if (m_colorScheme != QStringLiteral("light")) m_colorScheme = QStringLiteral("dark");
 
     // Auto-language mode
     m_autoLangMode = qBound(0, s.value(QStringLiteral("general/autoLangMode"), 1).toInt(), 2);
@@ -221,6 +224,8 @@ void SettingsBackend::saveSettings()
     s.setValue(QStringLiteral("customBg/blur"), m_backgroundBlur);
     s.setValue(QStringLiteral("customBg/cropX"), m_cropX);
     s.setValue(QStringLiteral("customBg/cropY"), m_cropY);
+    s.setValue(QStringLiteral("customBg/zoom"), m_bgZoom);
+    s.setValue(QStringLiteral("appearance/scheme"), m_colorScheme);
 
     // Auto-language mode
     s.setValue(QStringLiteral("general/autoLangMode"), m_autoLangMode);
@@ -1473,4 +1478,101 @@ void SettingsBackend::saveJavaList(const QVector<JavaInfo>& list)
     }
 }
 
+// ============================================================
+// 外观页：启动页背景 + 配色方案（2026-11-13）
+// ============================================================
+// 设计要点：
+//   • 内置预设（默认极光）不落到磁盘，靠 qrc 资源提供；customBgPath 为空即"用内置"，
+//     所以「恢复默认」= 清空路径 + 复位取景，永远不会丢图，随时能回来。
+//   • 取景 = 缩放倍率(bgZoom 1..4) + 中心点(cropX/cropY 0..1)。渲染侧按
+//     cover 尺寸 × zoom 画图，再把中心点对齐到框内，两处（启动页/外观页预览）共用同一个
+//     公式，避免"预览和实际不一样"。
+//   • 预留扩展：bgPresets() 返回列表，后续加预设图只往这里追加一项（id/name/source/
+//     builtin），UI 自动多出一张卡，不需要改页面结构。
+
+QVariantList SettingsBackend::bgPresets() const
+{
+    // builtin=true：随程序打包（qrc），不占用户磁盘，不可删除
+    return {
+        QVariantMap{
+            { QStringLiteral("id"),       QStringLiteral("aurora") },
+            { QStringLiteral("name"),     tr("极光（默认）") },
+            { QStringLiteral("source"),   QStringLiteral("qrc:/ui/stage-aurora.jpg") },
+            { QStringLiteral("builtin"),  true }
+        }
+        // 后续预设图示例（等素材到位再打开）：
+        // { id: "night-city", name: "夜色城市", source: "qrc:/ui/bg/night-city.jpg", builtin: true }
+    };
+}
+
+void SettingsBackend::applyBgPreset(const QString& presetId)
+{
+    const QVariantList presets = bgPresets();
+    for (const QVariant& v : presets) {
+        const QVariantMap m = v.toMap();
+        if (m.value(QStringLiteral("id")).toString() == presetId) {
+            // 内置图不写路径（空 = 用内置），顺便复位取景，避免带着上一张图的缩放
+            m_customBgPath.clear();
+            m_bgZoom = 1.0;
+            m_cropX = 0.5;
+            m_cropY = 0.5;
+            saveSettings();
+            emit customBgChanged();
+            qCInfo(logUI) << QStringLiteral("[外观] 使用内置背景: %1").arg(presetId);
+            return;
+        }
+    }
+    qCWarning(logUI) << QStringLiteral("[外观] 未知的内置背景 id: %1，回落到默认").arg(presetId);
+    restoreDefaultBg();
+}
+
+bool SettingsBackend::chooseBgImage()
+{
+    const QString file = QFileDialog::getOpenFileName(
+        nullptr, tr("选择启动页背景图片"), QString(),
+        tr("图片 (*.png *.jpg *.jpeg *.webp *.bmp)"));
+    if (file.isEmpty()) return false;
+
+    m_customBgPath = file;
+    m_bgZoom = 1.0;      // 换图后取景复位：新图还没调过，沿用旧缩放会莫名其妙地裁掉一圈
+    m_cropX = 0.5;
+    m_cropY = 0.5;
+    saveSettings();
+    emit customBgChanged();
+    qCInfo(logUI) << QStringLiteral("[外观] 自定义背景: %1").arg(file);
+    return true;
+}
+
+void SettingsBackend::restoreDefaultBg()
+{
+    m_customBgPath.clear();
+    m_bgZoom = 1.0;
+    m_cropX = 0.5;
+    m_cropY = 0.5;
+    saveSettings();
+    emit customBgChanged();
+    qCInfo(logUI) << QStringLiteral("[外观] 已恢复默认背景（内置极光）");
+}
+
+void SettingsBackend::resetBgView()
+{
+    m_bgZoom = 1.0;
+    m_cropX = 0.5;
+    m_cropY = 0.5;
+    saveSettings();
+    emit customBgChanged();
+}
+
+void SettingsBackend::setColorScheme(const QString& scheme)
+{
+    const QString next = (scheme == QStringLiteral("light")) ? QStringLiteral("light")
+                                                            : QStringLiteral("dark");
+    if (m_colorScheme == next) return;
+    m_colorScheme = next;
+    saveSettings();
+    emit colorSchemeChanged();
+    qCInfo(logUI) << QStringLiteral("[外观] 配色方案 = %1").arg(m_colorScheme);
+}
+
 } // namespace ShadowLauncher
+

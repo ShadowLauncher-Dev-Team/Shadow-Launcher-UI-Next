@@ -238,6 +238,7 @@ set_source_files_properties(ui/pages/ProgressPage.qml PROPERTIES QT_RESOURCE_ALI
 set_source_files_properties(ui/LaunchOverlay.qml PROPERTIES QT_RESOURCE_ALIAS LaunchOverlay.qml)
 set_source_files_properties(ui/controls/SIcon.qml PROPERTIES QT_RESOURCE_ALIAS controls/SIcon.qml)
 set_source_files_properties(ui/controls/SButton.qml PROPERTIES QT_RESOURCE_ALIAS controls/SButton.qml)
+set_source_files_properties(ui/controls/SBgImage.qml PROPERTIES QT_RESOURCE_ALIAS controls/SBgImage.qml)
 set_source_files_properties(ui/controls/SWindowButton.qml PROPERTIES QT_RESOURCE_ALIAS controls/SWindowButton.qml)
 set_source_files_properties(ui/controls/SAcctChip.qml PROPERTIES QT_RESOURCE_ALIAS controls/SAcctChip.qml)
 set_source_files_properties(ui/controls/SMinecraftHead.qml PROPERTIES QT_RESOURCE_ALIAS controls/SMinecraftHead.qml)
@@ -301,6 +302,7 @@ qt_add_qml_module(ShadowLauncher
         ui/LaunchOverlay.qml
         ui/controls/SIcon.qml
         ui/controls/SButton.qml
+        ui/controls/SBgImage.qml
         ui/controls/SWindowButton.qml
         ui/controls/SAcctChip.qml
         ui/controls/SMinecraftHead.qml

@@ -214,7 +214,7 @@ Item {
             anchors.top: parent.top
             height: 76
             radius: 10
-            color: "#0b0d12"
+            color: Theme.bgCard2
             border.color: Theme.line2
             border.width: 1
 
@@ -233,7 +233,7 @@ Item {
                 Text {
                     width: parent.width
                     text: Math.round(page.totalProgress * 100) + "%"
-                    color: "#ffffff"
+                    color: Theme.fg
                     font.family: Theme.fontFamily
                     font.pixelSize: 22
                     font.weight: Font.Bold
@@ -254,7 +254,7 @@ Item {
                     width: parent.width
                     height: 3
                     radius: 2
-                    color: "#181c24"
+                    color: Theme.bgCard
                     Rectangle {
                         width: Math.max(0, Math.min(1, page.totalProgress)) * parent.width
                         height: 3
@@ -279,7 +279,7 @@ Item {
                     Text {
                         width: parent.width
                         text: (page.totalSpeed / 1048576).toFixed(1) + " MB/s"
-                        color: "#dfe6f0"
+                        color: Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 18
                         font.weight: Font.DemiBold
@@ -293,7 +293,7 @@ Item {
                     Text {
                         width: parent.width
                         text: page.runningCount + " 进行中"
-                        color: "#dfe6f0"
+                        color: Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 18
                         font.weight: Font.DemiBold
@@ -307,7 +307,7 @@ Item {
                     Text {
                         width: parent.width
                         text: page.remainText
-                        color: "#dfe6f0"
+                        color: Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 18
                         font.weight: Font.DemiBold
@@ -330,7 +330,7 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 radius: 10
-                color: "#0b0d12"
+                color: Theme.bgCard2
                 border.color: Theme.line2
                 border.width: 1
             }
@@ -359,8 +359,8 @@ Item {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             text: page.dlStateText(modelData)
-                            color: modelData.state === "done" ? "#5ee08f"
-                                 : (modelData.state === "fail" ? "#e28a8a" : "#8fb6f8")
+                            color: modelData.state === "done" ? Theme.ok
+                                 : (modelData.state === "fail" ? Theme.dangerText : Theme.accentText)
                             font.family: Theme.fontFamily; font.pixelSize: 12
                         }
                     }
@@ -400,8 +400,8 @@ Item {
                 height: 46 + 10 + 3 + 8 + stepCount * 23 + 12 + 32 + 12
                 readonly property int stepCount: page.countSteps(steps)
                 radius: 10
-                color: tcard.isFailed ? "#141013" : "#0b0d12"
-                border.color: tcard.isFailed ? "#4a2530" : Theme.line2
+                color: tcard.isFailed ? Theme.bgCard2 : Theme.bgCard2
+                border.color: tcard.isFailed ? Theme.bgHover : Theme.line2
                 border.width: 1
 
                 // 角色名在 delegate 里直接可用（不是 model.xxx）。
@@ -436,14 +436,14 @@ Item {
                     width: 30
                     height: 30
                     radius: 8
-                    color: tcard.isFailed ? Qt.rgba(0.973, 0.443, 0.443, .06) : "#12161d"
-                    border.color: tcard.isFailed ? Qt.rgba(0.973, 0.443, 0.443, .25) : "#1c212a"
+                    color: tcard.isFailed ? Qt.rgba(0.973, 0.443, 0.443, .06) : Theme.bgCard
+                    border.color: tcard.isFailed ? Qt.rgba(0.973, 0.443, 0.443, .25) : Theme.bgInput
                     border.width: 1
                     SIcon {
                         anchors.centerIn: parent
                         name: tcard.isFailed ? "alert-triangle" : "box"
                         size: 15
-                        color: tcard.isFailed ? "#e0a0a0" : "#9fb0c6"
+                        color: tcard.isFailed ? Theme.dangerText : Theme.fg2
                     }
                 }
                 Row {
@@ -459,14 +459,14 @@ Item {
                         spacing: 2
                         Text {
                             text: tcard.cardName
-                            color: "#e8ebf2"
+                            color: Theme.fg
                             font.family: Theme.fontFamily
                             font.pixelSize: 13
                             font.weight: Font.DemiBold
                         }
                         Text {
                             text: tcard.isFailed ? "部分失败" : tcard.ph
-                            color: tcard.isFailed ? "#f0a0a0" : Theme.fg3
+                            color: tcard.isFailed ? Theme.dangerText : Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
@@ -482,7 +482,7 @@ Item {
                         text: tcard.isFailed ? "0 MB/s"
                               : ((tcard.sp / 1048576).toFixed(1) + " MB/s · "
                                  + Math.round(tcard.pv * 100) + "%")
-                        color: tcard.isFailed ? "#f0a0a0" : "#9fb6d8"
+                        color: tcard.isFailed ? Theme.dangerText : Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                     }
@@ -500,7 +500,7 @@ Item {
                     height: 3
                     radius: 2
                     clip: true
-                    color: "#181c24"
+                    color: Theme.bgCard
                     // 已填充段：流光放在**这一层里面**，所以它永远只出现在已经走过的区域，
                     // 不可能穿到未填充的轨道上（clip 就是"不穿模"的保证，不是靠算位置）。
                     Rectangle {
@@ -508,7 +508,7 @@ Item {
                         width: Math.max(0, Math.min(1, tcard.pv)) * parent.width
                         height: 3
                         radius: 2
-                        color: tcard.isFailed ? "#f87171" : Theme.accent
+                        color: tcard.isFailed ? Theme.dangerText : Theme.accent
                         clip: true
                         // 真实进度也要平滑地"走过去"，而不是每 400ms 跳一格
                         Behavior on width { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
@@ -521,7 +521,7 @@ Item {
                             width: Math.max(28, fillBar.width * 0.35)
                             height: parent.height
                             radius: height / 2
-                            color: "#dce9ff"
+                            color: Theme.accentText
                             opacity: 0.5
                             x: -shine.width + page.flowPhase * (fillBar.width + shine.width)
                         }
@@ -538,7 +538,7 @@ Item {
                     anchors.top: bar.bottom
                     anchors.topMargin: 8
                     text: tcard.cardError.length > 0 ? tcard.cardError : "安装失败，可重试"
-                    color: "#f2a3a3"
+                    color: Theme.dangerText
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     elide: Text.ElideRight
@@ -584,7 +584,7 @@ Item {
                                     height: 16
                                     radius: 8
                                     color: st === "completed" ? Qt.rgba(0.290, 0.871, 0.502, 0.12) : "transparent"
-                                    border.color: st === "completed" ? "#4ade80" : "#2a313c"
+                                    border.color: st === "completed" ? Theme.ok : Theme.bgHover
                                     border.width: 1.5
                                 }
 
@@ -596,8 +596,8 @@ Item {
                                     width: 16
                                     height: 16
                                     running: visible
-                                    color: "#3b82f6"
-                                    trackColor: "#232a34"
+                                    color: Theme.accentText
+                                    trackColor: Theme.bgHover
                                 }
                             }
                             Text {
@@ -605,7 +605,7 @@ Item {
                                 anchors.leftMargin: 9
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: stepName
-                                color: st === "completed" ? "#95a1b0" : (st === "active" ? "#ffffff" : Theme.fg3)
+                                color: st === "completed" ? Theme.fg2 : (st === "active" ? Theme.fg : Theme.fg3)
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                             }
@@ -613,7 +613,7 @@ Item {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: st === "completed" ? "完成" : (st === "active" ? (stepDetail.length > 0 ? stepDetail : (stepPct + "%")) : "")
-                                color: st === "active" ? "#7cb0fb" : Theme.fg3
+                                color: st === "active" ? Theme.accentText : Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
                             }

@@ -331,17 +331,17 @@ Item {
                                 width: 18; height: 18; radius: 9
                                 anchors.verticalCenter: parent.verticalCenter
                                 color: page.step > index ? Theme.accent
-                                     : page.step === index ? "#0d1016" : "transparent"
+                                     : page.step === index ? Theme.bgCard2 : "transparent"
                                 border.width: 1
                                 border.color: page.step > index ? Theme.accent
-                                            : page.step === index ? Theme.accent : "#2b313c"
+                                            : page.step === index ? Theme.accent : Theme.bgHover
                                 // 状态切换走颜色过渡，不再硬切
                                 Behavior on color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                                 Behavior on border.color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                                 Text {
                                     anchors.centerIn: parent
                                     text: (index + 1)
-                                    color: page.step > index ? "#ffffff"
+                                    color: page.step > index ? Theme.accentFg
                                          : page.step === index ? Theme.accent : Theme.fg3
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
@@ -381,7 +381,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: parent.width
                                 height: 1
-                                color: (wire.done || wire.active) ? Theme.accent : "#20252e"
+                                color: (wire.done || wire.active) ? Theme.accent : Theme.bgInput
                                 opacity: wire.done ? 0.55 : (wire.active ? 0.9 : 1)
                                 Behavior on color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                                 Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
@@ -402,9 +402,9 @@ Item {
             height: page.anyBusy ? 46 : 0
             visible: height > 1
             radius: Theme.rMd
-            color: "#0b0d12"
+            color: Theme.bgCard2
             border.width: 1
-            border.color: "#2a3a54"
+            border.color: Theme.accentSoft
             clip: true
             opacity: page.anyBusy ? 1 : 0
             Behavior on height { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
@@ -433,7 +433,7 @@ Item {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: Math.round(page.transferPct()) + "% · " + page.transferSpeed().toFixed(1) + " MB/s"
-                    color: "#8fb6f8"
+                    color: Theme.accentText
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                 }
@@ -446,9 +446,9 @@ Item {
                     width: cancelText.implicitWidth + 16
                     radius: 5
                     anchors.verticalCenter: parent.verticalCenter
-                    color: hovered ? "#161c25" : "transparent"
+                    color: hovered ? Theme.bgCard : "transparent"
                     border.width: 1
-                    border.color: hovered ? "#3a2b30" : Theme.line2
+                    border.color: hovered ? Theme.bgHover : Theme.line2
                     scale: pressed ? 0.96 : 1
                     Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                     Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
@@ -527,9 +527,9 @@ Item {
                     width: parent.width
                     height: done ? 56 : (active ? (index === 4 ? 64 : boxH) : 60)
                     radius: Theme.rMd
-                    color: ghost ? "#0a0c11" : "#0b0d12"
+                    color: ghost ? Theme.bgCard2 : Theme.bgCard2
                     border.width: 1
-                    border.color: active ? "#2a3a54" : (done ? Theme.line2 : "#1b1f27")
+                    border.color: active ? Theme.accentSoft : (done ? Theme.line2 : Theme.bgInput)
                     clip: true
                     Behavior on height { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     Behavior on color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
@@ -577,9 +577,9 @@ Item {
                             width: editText.implicitWidth + 16
                             radius: 5
                             anchors.verticalCenter: parent.verticalCenter
-                            color: hovered ? "#161c25" : "transparent"
+                            color: hovered ? Theme.bgCard : "transparent"
                             border.width: 1
-                            border.color: hovered ? "#334054" : "transparent"
+                            border.color: hovered ? Theme.line2 : "transparent"
                             scale: pressed ? 0.96 : 1
                             Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                             Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
@@ -618,7 +618,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "STEP " + (stepBox.stepIndex + 1)
-                            color: "#3a424f"
+                            color: Theme.line2
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                             font.weight: Font.DemiBold
@@ -627,7 +627,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: page.stepNames[stepBox.stepIndex]
-                            color: "#4a5361"
+                            color: Theme.line3
                             font.family: Theme.fontFamily
                             font.pixelSize: 14
                             font.weight: Font.DemiBold
@@ -636,7 +636,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "选完上一步后展开"
-                            color: "#333a45"
+                            color: Theme.line2
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
@@ -684,11 +684,11 @@ Item {
                                     height: 34
                                     width: pillRow.width + 32
                                     radius: Theme.rSm
-                                    color: page.isPicked(stepBox.stepIndex, modelData) ? "#10203a"
-                                         : hovered ? "#12161d" : "#0d1016"
+                                    color: page.isPicked(stepBox.stepIndex, modelData) ? Theme.accentSoft
+                                         : hovered ? Theme.bgCard : Theme.bgCard2
                                     border.width: 1
                                     border.color: page.isPicked(stepBox.stepIndex, modelData) ? Theme.accent
-                                                : hovered ? "#39424f" : Theme.line2
+                                                : hovered ? Theme.line2 : Theme.line2
                                     scale: pressed ? 0.97 : 1
                                     Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                                     Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
@@ -703,7 +703,7 @@ Item {
                                             id: pillMain
                                             x: 0; y: 0
                                             text: page.optionLabel(stepBox.stepIndex, modelData)
-                                            color: page.isPicked(stepBox.stepIndex, modelData) ? "#ffffff" : "#c3cbd8"
+                                            color: page.isPicked(stepBox.stepIndex, modelData) ? Theme.accentFg : Theme.fg
                                             font.family: Theme.fontFamily
                                             font.pixelSize: 13
                                         }
@@ -713,7 +713,7 @@ Item {
                                             x: pillMain.width + 7
                                             anchors.baseline: pillMain.baseline
                                             text: page.optionSub(stepBox.stepIndex, modelData)
-                                            color: page.isPicked(stepBox.stepIndex, modelData) ? "#8fb6f8" : Theme.fg3
+                                            color: page.isPicked(stepBox.stepIndex, modelData) ? Theme.accentText : Theme.fg3
                                             font.family: Theme.fontFamily
                                             font.pixelSize: 10
                                         }
@@ -783,9 +783,9 @@ Item {
                             width: reselectText.implicitWidth + 16
                             radius: 5
                             anchors.verticalCenter: parent.verticalCenter
-                            color: hovered ? "#161c25" : "transparent"
+                            color: hovered ? Theme.bgCard : "transparent"
                             border.width: 1
-                            border.color: hovered ? "#334054" : "transparent"
+                            border.color: hovered ? Theme.line2 : "transparent"
                             scale: pressed ? 0.96 : 1
                             Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                             Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
@@ -857,9 +857,9 @@ Item {
                     width: parent.width
                     height: 88
                     radius: Theme.rMd
-                    color: hovered ? "#0e1117" : "#0b0d12"
+                    color: hovered ? Theme.bgCard2 : Theme.bgCard2
                     border.width: 1
-                    border.color: (modelData.isZip && page.zipInstalling) || hovered ? "#2a3a54" : "#262b35"
+                    border.color: (modelData.isZip && page.zipInstalling) || hovered ? Theme.accentSoft : Theme.bgHover
                     clip: true
                     scale: pressed ? 0.995 : 1
                     opacity: page.reveal
@@ -883,13 +883,13 @@ Item {
                             width: 38; height: 38; radius: 9
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
-                            color: modelData.isZip ? "#0c1626" : "#12151a"
+                            color: modelData.isZip ? Theme.accentSoft : Theme.bgCard2
                             border.width: 1
-                            border.color: modelData.isZip ? "#1e324f" : "#2b3038"
+                            border.color: modelData.isZip ? Theme.accentSoft : Theme.bgHover
                             Text {
                                 anchors.centerIn: parent
                                 text: modelData.ext.toUpperCase()
-                                color: modelData.isZip ? "#8fb6f8" : "#98a1ae"
+                                color: modelData.isZip ? Theme.accentText : Theme.fg2
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
                                 font.weight: Font.DemiBold
@@ -906,7 +906,7 @@ Item {
                             Text {
                                 width: parent.width
                                 text: modelData.name
-                                color: "#ffffff"
+                                color: Theme.fg
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
                                 elide: Text.ElideMiddle
@@ -936,7 +936,7 @@ Item {
                                     anchors.right: parent.right
                                     text: page.java ? (page.java.javaDownloadPercent + "% · "
                                           + page.java.javaDownloadSpeedMBps.toFixed(1) + " MB/s") : ""
-                                    color: "#8fb6f8"
+                                    color: Theme.accentText
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 12
                                 }
@@ -958,7 +958,7 @@ Item {
                                 Text {
                                     anchors.right: parent.right
                                     text: page.msiPct + "% · " + page.msiSpeed.toFixed(1) + " MB/s"
-                                    color: "#8fb6f8"
+                                    color: Theme.accentText
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 12
                                 }
@@ -1040,7 +1040,7 @@ Item {
         opacity: page.enter
         transform: Translate { y: (1 - page.enter) * 8 }
             radius: Theme.rMd
-            color: "#0b0d12"
+            color: Theme.bgCard2
             border.width: 1
             border.color: Theme.line2
 
@@ -1078,9 +1078,9 @@ Item {
                         width: rescanText.implicitWidth + 16
                         radius: 5
                         anchors.verticalCenter: parent.verticalCenter
-                        color: page.scanning ? "#12161d" : (hovered ? "#161c25" : "transparent")
+                        color: page.scanning ? Theme.bgCard : (hovered ? Theme.bgCard : "transparent")
                         border.width: 1
-                        border.color: page.scanning ? Theme.line2 : (hovered ? "#334054" : "transparent")
+                        border.color: page.scanning ? Theme.line2 : (hovered ? Theme.line2 : "transparent")
                         property bool pressed: false
                         scale: pressed ? 0.96 : 1
                         Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
@@ -1123,9 +1123,9 @@ Item {
                             height: 24
                             width: localChipRow.implicitWidth + 20
                             radius: 6
-                            color: hovered ? "#141a24" : "#0d1016"
+                            color: hovered ? Theme.bgCard : Theme.bgCard2
                             border.width: 1
-                            border.color: hovered ? "#334054" : Theme.line2
+                            border.color: hovered ? Theme.line2 : Theme.line2
                             Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                             Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                             MouseArea {

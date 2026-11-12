@@ -223,7 +223,7 @@ Item {
     component KvGroupLabel: Text {
         topPadding: 16
         bottomPadding: 4
-        color: "#6b7686"
+        color: Theme.fg3
         font.family: Theme.fontFamily
         font.pixelSize: 11
         font.letterSpacing: 1.1
@@ -263,13 +263,13 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: 1
-            color: "#11141d"
+            color: Theme.bgCard
         }
         Text {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: kv.k
-            color: "#7b8494"
+            color: Theme.fg3
             font.family: Theme.fontFamily
             font.pixelSize: 12
         }
@@ -280,7 +280,7 @@ Item {
             anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             text: kv.v
-            color: kv.mono ? "#b6c0cd" : "#cfd6e1"
+            color: kv.mono ? Theme.fg : Theme.fg
             elide: Text.ElideMiddle
             font.family: kv.mono ? "Consolas" : Theme.fontFamily
             font.pixelSize: 12
@@ -291,7 +291,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: kv.a
             visible: kv.a.length > 0
-            color: "#7fa9f5"
+            color: Theme.accentText
             font.family: Theme.fontFamily
             font.pixelSize: 11
         }

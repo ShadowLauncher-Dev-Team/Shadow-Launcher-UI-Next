@@ -111,17 +111,19 @@ Item {
     // ---------- 底色 ----------
     Rectangle {
         anchors.fill: parent
-        color: Theme.bg
+        color: Theme.pBg
     }
 
     // ---------- 背景 ----------
-    Image {
+    // 取景（缩放/平移）由 SBgImage 统一计算，与外观页预览共用同一套公式。
+    SBgImage {
         anchors.fill: parent
-        fillMode: Image.PreserveAspectCrop
-        asynchronous: true
-        source: (page.b && page.b.customBgPath && page.b.customBgPath.length > 0)
-                ? ("file:///" + page.b.customBgPath)
+        source: (page.b && page.b.customBgUrl && page.b.customBgUrl.length > 0)
+                ? page.b.customBgUrl
                 : "qrc:/ui/stage-aurora.jpg"
+        zoom: (page.b && page.b.bgZoom) ? page.b.bgZoom : 1.0
+        cropX: (page.b && page.b.cropX !== undefined) ? page.b.cropX : 0.5
+        cropY: (page.b && page.b.cropY !== undefined) ? page.b.cropY : 0.5
     }
 
     // ---------- 遮罩 ----------
@@ -131,10 +133,10 @@ Item {
         anchors.bottom: parent.bottom
         height: parent.height * 0.70
         gradient: Gradient {
-            GradientStop { position: 0.00; color: "#0005080e" }
-            GradientStop { position: 0.30; color: "#2805080e" }
-            GradientStop { position: 0.62; color: "#8c05080e" }
-            GradientStop { position: 1.00; color: "#f005080e" }
+            GradientStop { position: 0.00; color: Theme.imageScrim0 }
+            GradientStop { position: 0.30; color: Theme.imageScrim1 }
+            GradientStop { position: 0.62; color: Theme.imageScrim2 }
+            GradientStop { position: 1.00; color: Theme.imageScrim3 }
         }
     }
     Rectangle {
@@ -144,9 +146,9 @@ Item {
         width: parent.width * (page.narrow ? 0.72 : 0.62)
         gradient: Gradient {
             orientation: Gradient.Horizontal
-            GradientStop { position: 0.00; color: "#b805080e" }
-            GradientStop { position: 0.46; color: "#2e05080e" }
-            GradientStop { position: 1.00; color: "#0005080e" }
+            GradientStop { position: 0.00; color: Theme.imageScrimSide0 }
+            GradientStop { position: 0.46; color: Theme.imageScrimSide1 }
+            GradientStop { position: 1.00; color: Theme.imageScrim0 }
         }
     }
     Rectangle {
@@ -155,9 +157,9 @@ Item {
         anchors.right: parent.right
         height: parent.height * 0.40
         gradient: Gradient {
-            GradientStop { position: 0.00; color: "#a005080e" }
-            GradientStop { position: 0.34; color: "#1a05080e" }
-            GradientStop { position: 0.80; color: "#0005080e" }
+            GradientStop { position: 0.00; color: Theme.imageScrimSide0 }
+            GradientStop { position: 0.34; color: Theme.imageScrim1 }
+            GradientStop { position: 0.80; color: Theme.imageScrim0 }
         }
     }
 
@@ -191,6 +193,7 @@ Item {
         spacing: 10
 
         SButton {
+            tone: "dark"
             id: launchBtn
             kind: 0
             busy: page.launching
@@ -226,7 +229,7 @@ Item {
                 anchors.centerIn: parent
                 name: "chevron-down"
                 size: 15
-                color: procHover.containsMouse ? Theme.fg : Theme.fg3
+                color: procHover.containsMouse ? Theme.imageFg : Theme.imageFgFaint
                 opacity: page.procOpen ? 0 : 1
                 Behavior on color {
                     ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
@@ -239,7 +242,7 @@ Item {
                 anchors.centerIn: parent
                 name: "chevron-up"
                 size: 15
-                color: procHover.containsMouse ? Theme.fg : Theme.fg3
+                color: procHover.containsMouse ? Theme.imageFg : Theme.imageFgFaint
                 opacity: page.procOpen ? 1 : 0
                 Behavior on color {
                     ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
@@ -256,8 +259,9 @@ Item {
                 onClicked: page.procOpen = !page.procOpen
             }
         }
-        SButton { kind: 1; text: "版本"; iconName: "list"; onClicked: page.openVersions() }
+        SButton { tone: "dark"; kind: 1; text: "版本"; iconName: "list"; onClicked: page.openVersions() }
         SButton {
+            tone: "dark"
         kind: 1
         text: "设置"
         iconName: "settings"
@@ -354,6 +358,7 @@ Item {
                         font.pixelSize: 10
                     }
                     SButton {
+                        tone: "dark"
                         anchors.right: parent.right
                         anchors.rightMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
@@ -371,6 +376,7 @@ Item {
                 width: procCol.width
                 height: 42
                 SButton {
+                    tone: "dark"
                     anchors.right: parent.right
                     anchors.rightMargin: 10
                     anchors.verticalCenter: parent.verticalCenter
@@ -438,11 +444,11 @@ Item {
             height: 1
             color: page.launching ? Theme.accent
                    : (page.running ? Theme.ok
-                      : (page.kickerWarn ? Theme.warn : Theme.fg3))
+                      : (page.kickerWarn ? Theme.warn : Theme.imageFgFaint))
         }
         Text {
             text: page.kicker
-            color: page.kickerWarn ? "#d8a24a" : Theme.fg2
+            color: page.kickerWarn ? "#d8a24a" : Theme.imageFgDim
             font.family: Theme.fontFamily
             font.pixelSize: 11
             font.letterSpacing: 1.0

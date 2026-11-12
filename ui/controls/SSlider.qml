@@ -32,13 +32,13 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         height: 6
         radius: 3
-        color: "#151a22"
+        color: Theme.bgCard
 
         Rectangle {
             width: parent.width * root.ratio
             height: parent.height
             radius: 3
-            color: root.enabled ? Theme.accent : "#2a3444"
+            color: root.enabled ? Theme.accent : Theme.bgHover
         }
     }
     Rectangle {
@@ -48,9 +48,9 @@ Item {
         radius: 8
         y: (parent.height - 16) / 2
         x: Math.max(0, Math.min(track.width - 16, track.width * root.ratio - 8))
-        color: root.enabled ? "#ffffff" : "#4b5462"
+        color: root.enabled ? Theme.fg : Theme.line3
         border.width: 2
-        border.color: root.enabled ? Theme.accent : "#2a3444"
+        border.color: root.enabled ? Theme.accent : Theme.bgHover
         Behavior on x { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
     }
     MouseArea {

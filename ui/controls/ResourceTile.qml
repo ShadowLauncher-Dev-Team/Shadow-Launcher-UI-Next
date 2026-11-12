@@ -22,9 +22,9 @@ Rectangle {
     property bool pressed: false
     implicitHeight: 150
     radius: Theme.rMd
-    color: hovered ? "#0f141b" : "#0b0e13"
+    color: hovered ? Theme.bgCard2 : Theme.bgCard2
     border.width: 1
-    border.color: hovered ? "#33465e" : Theme.line
+    border.color: hovered ? Theme.line2 : Theme.line
     clip: true
     Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
     Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
@@ -69,7 +69,7 @@ Rectangle {
     SRipple {
         id: ripple
         anchors.fill: parent
-        color: "#8fb6f8"
+        color: Theme.accentText
         maxRadius: 260
     }
 
@@ -84,7 +84,7 @@ Rectangle {
             Rectangle {
                 width: 40; height: 40
                 radius: Theme.rSm
-                color: tile.hovered ? "#161c25" : "#12161c"
+                color: tile.hovered ? Theme.bgCard : Theme.bgCard
                 clip: true
                 Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                 Image {

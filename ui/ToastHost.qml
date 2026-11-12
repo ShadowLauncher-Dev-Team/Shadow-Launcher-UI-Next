@@ -147,9 +147,9 @@ Item {
                     height: 34
                     radius: Theme.rSm
                     width: Math.min(toastText.implicitWidth + 34, 420)
-                    color: toastMouse.containsMouse && model.clickable ? "#1b222c" : "#141a23"
+                    color: toastMouse.containsMouse && model.clickable ? Theme.bgInput : Theme.bgCard
                     border.width: 1
-                    border.color: "#242c38"
+                    border.color: Theme.bgHover
 
                     Behavior on color {
                         ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
@@ -173,7 +173,7 @@ Item {
                         anchors.rightMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
                         text: model.msg
-                        color: "#d8dde5"
+                        color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                         elide: Text.ElideRight

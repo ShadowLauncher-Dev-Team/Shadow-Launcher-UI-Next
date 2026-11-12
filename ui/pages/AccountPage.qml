@@ -399,6 +399,7 @@ Item {
         }
 
         SButton {
+            tone: "dark"
             id: backBtn
             anchors.left: parent.left
             anchors.leftMargin: page.narrow ? 18 : 24
@@ -436,7 +437,7 @@ Item {
             anchors.leftMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             text: page.typeText
-            color: Theme.fg3
+            color: Theme.imageFgFaint
             font.family: Theme.fontFamily
             font.pixelSize: 11
         }
@@ -448,6 +449,7 @@ Item {
             spacing: 8
 
             SButton {
+                tone: "dark"
                 kind: 1
                 radius: 2
                 height: 32
@@ -490,7 +492,7 @@ Item {
         anchors.right: parent.right
         anchors.top: topBar.bottom
         height: 1
-        color: Theme.line
+        color: Theme.pLine
     }
 
     // ---------- 主体 ----------
@@ -518,7 +520,7 @@ Item {
                 anchors.bottom: parent.bottom
                 anchors.right: parent.right
                 width: 1
-                color: Theme.line
+                color: Theme.pLine
             }
 
             Text {
@@ -614,7 +616,7 @@ Item {
                                 width: parent.width
                                 readonly property bool relog: !!acctRow.acct && acctRow.acct.needsRelogin === true
                                 text: relog ? "需重新登录" : (acctRow.acct ? acctRow.acct.typeText : "")
-                                color: relog ? Theme.warn : (acctRow.cur ? Theme.ok : Theme.fg3)
+                                color: relog ? Theme.warn : (acctRow.cur ? Theme.ok : Theme.imageFgFaint)
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                             }
@@ -667,7 +669,7 @@ Item {
                         anchors.leftMargin: 14
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 8
-                        SIcon { name: "users"; size: 14; color: Theme.fg2 }
+                        SIcon { name: "users"; size: 14; color: Theme.imageFgDim }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "添加账号"
@@ -716,7 +718,7 @@ Item {
                             x: 14
                             y: 34
                             text: modelData.s
-                            color: Theme.fg3
+                            color: Theme.imageFgFaint
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                         }
@@ -735,7 +737,7 @@ Item {
                     visible: page.tab === 1 && !page.browsingAccounts && page.b
                              && page.b.offlineUsernames.length > 0
                     text: "用过的名字"
-                    color: Theme.fg3
+                    color: Theme.imageFgFaint
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                 }
@@ -1006,6 +1008,7 @@ Item {
                             font.pixelSize: 12
                         }
                         SButton {
+                            tone: "dark"
                             id: copyUuid
                             kind: 1
                             radius: 2
@@ -1123,6 +1126,7 @@ Item {
                             font.pixelSize: 13
                         }
                         SButton {
+                            tone: "dark"
                             id: pickBtn
                             kind: 1
                             radius: 2
@@ -1146,6 +1150,7 @@ Item {
                             y: Math.round((parent.height - height) / 2)
                             spacing: 10
                             SButton {
+                                tone: "dark"
                                 kind: 0
                                 radius: 2
                                 height: 30
@@ -1162,6 +1167,7 @@ Item {
                                 }
                             }
                             SButton {
+                                tone: "dark"
                                 kind: 1
                                 radius: 2
                                 height: 30
@@ -1337,6 +1343,7 @@ Item {
                     spacing: 10
                     // 只保留"移除此账号"：退出登录与它语义重叠，用户明确要求合并
                     SButton {
+                        tone: "dark"
                         kind: 1
                         radius: 2
                         height: 34
@@ -1388,7 +1395,7 @@ Item {
                 Text {
                     width: parent.width
                     text: "这个账号的登录凭据已经失效\n（可能过期、或在别处登录过）。重新登录一次即可继续使用。"
-                    color: Theme.fg2
+                    color: Theme.imageFgDim
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                     lineHeightMode: Text.FixedHeight
@@ -1399,6 +1406,7 @@ Item {
                 Row {
                     spacing: 10
                     SButton {
+                        tone: "dark"
                         kind: 0
                         radius: 2
                         height: 34
@@ -1412,6 +1420,7 @@ Item {
                         }
                     }
                     SButton {
+                        tone: "dark"
                         kind: 1
                         radius: 2
                         height: 34
@@ -1470,6 +1479,7 @@ Item {
                         wrapMode: Text.WordWrap
                     }
                     SButton {
+                        tone: "dark"
                         kind: 0
                         height: 40
                         iconName: page.busy ? "x" : "globe"
@@ -1581,7 +1591,7 @@ Item {
                             anchors.rightMargin: 12
                             anchors.verticalCenter: parent.verticalCenter
                             text: page.offlineInput
-                            color: Theme.fg
+                            color: Theme.imageFg
                             font.family: Theme.fontFamily
                             font.pixelSize: 13
                             selectionColor: Theme.accent
@@ -1591,7 +1601,7 @@ Item {
                                 anchors.fill: parent
                                 visible: offlineField.text.length === 0
                                 text: "用户名"
-                                color: Theme.fg3
+                                color: Theme.imageFgFaint
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 13
                                 verticalAlignment: Text.AlignVCenter
@@ -1599,6 +1609,7 @@ Item {
                         }
                     }
                     SButton {
+                        tone: "dark"
                         kind: 0
                         height: 40
                         iconName: "play"
@@ -1657,7 +1668,7 @@ Item {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                color: Theme.fg
+                                color: Theme.imageFg
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 13
                                 selectionColor: Theme.accent
@@ -1673,7 +1684,7 @@ Item {
                                     anchors.fill: parent
                                     visible: f.text.length === 0
                                     text: modelData.ph
-                                    color: Theme.fg3
+                                    color: Theme.imageFgFaint
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 13
                                     verticalAlignment: Text.AlignVCenter
@@ -1691,6 +1702,7 @@ Item {
                         wrapMode: Text.WordWrap
                     }
                     SButton {
+                        tone: "dark"
                         kind: 0
                         height: 40
                         iconName: "globe"
@@ -1728,7 +1740,7 @@ Item {
                                     anchors.leftMargin: 12
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: (modelData && modelData.name) ? modelData.name : ""
-                                    color: Theme.fg
+                                    color: Theme.imageFg
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 13
                                 }
@@ -1743,6 +1755,7 @@ Item {
                         }
 
                         SButton {
+                            tone: "dark"
                             kind: 1
                             radius: 2
                             height: 30

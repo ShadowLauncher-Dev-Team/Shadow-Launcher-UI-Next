@@ -23,7 +23,7 @@ Item {
             width: parent.width - 4
             text: root.title
             visible: root.title.length > 0
-            color: root.danger ? "#c96b6b" : "#5d6673"
+            color: root.danger ? Theme.dangerText : Theme.fg3
             font.family: Theme.fontFamily
             font.pixelSize: 11
             font.letterSpacing: 1.1
@@ -36,9 +36,9 @@ Item {
         width: parent.width
         height: body.implicitHeight
         radius: Theme.rMd
-        color: "#0d1016"
+        color: Theme.bgCard2
         border.width: 1
-        border.color: root.danger ? "#3a1f23" : Theme.line
+        border.color: root.danger ? Theme.bgHover : Theme.line
         clip: true
 
         Column {
