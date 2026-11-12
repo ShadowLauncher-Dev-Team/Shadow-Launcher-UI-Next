@@ -95,6 +95,25 @@ Item {
     Connections {
         target: root.b
         ignoreUnknownSignals: true
+
+        // ── 后端统一反馈通道（2026-11-13 补接线）─────────────────
+        // ShadowBackend::toastMessage 原来没有任何 QML 监听：更新模块的 16 条提示
+        // （已是最新版本 / 检查更新失败 / 发现新版本正在后台下载 / 下载失败…）
+        // 以及模组安装、版本后端的提示全部石沉大海 —— 用户点「检查更新」只看到
+        // 按钮闪一下「检查中」，看不出结果。这里统一接到 ToastHost。
+        function onToastMessage(message) {
+            if (!message || message.length === 0) return
+            toastHost.show(message, 3000)
+        }
+
+        // 更新下载完成：常驻可点，点了重启并由 SLUpdater 安装
+        function onUpdateReadyForRestart(version) {
+            var v = (version && version.length > 0) ? version : "新版本"
+            toastHost.showAction("更新已就绪：" + v + "，点击立即重启安装", function() {
+                if (root.b) root.b.quitForUpdate()
+            }, "success")
+        }
+
         function onModFileDownloadStarted(downloadId, fileName, fileSize, displayName) {
             root._dlPatch(downloadId, { name: displayName || fileName, total: fileSize, state: "run" })
         }
@@ -129,6 +148,16 @@ Item {
             root._dlPatch(downloadId, { state: "fail", error: "已取消", speed: 0, hideAt: Date.now() + 3000 })
         }
     }
+    // 验收钩子：--update-check 延迟一点再点「检查更新」，等界面挂好、ToastHost 就绪
+    Timer {
+        id: updateCheckTimer
+        interval: 1500
+        onTriggered: {
+            console.info("[ui] --update-check: 触发检查更新")
+            if (root.b) root.b.checkForUpdate()
+        }
+    }
+
     // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
     // 登录这类不确定等待 + 资源库在途请求，统一走顶部 SLoadingBar
     readonly property bool loading: (b ? b.microsoftLoginBusy : false)
@@ -179,6 +208,8 @@ Item {
             sideBar.currentLabel = "设置"
         }
         if (Qt.application.arguments.indexOf("--ui-account") >= 0) root.accountOpen = true
+        // --update-check：启动后自动点一次「检查更新」（验收用，与按钮同一路径）
+        if (Qt.application.arguments.indexOf("--update-check") >= 0) updateCheckTimer.start()
         if (Qt.application.arguments.indexOf("--ui-download") >= 0) {
             root.downloadOpen = true
             root.progressOpen = false

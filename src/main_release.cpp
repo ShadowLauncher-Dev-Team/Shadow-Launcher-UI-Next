@@ -447,11 +447,26 @@ int main(int argc, char *argv[])
                             PROCESS_INFORMATION pi = {};
                             si.dwFlags = STARTF_USESHOWWINDOW;
                             si.wShowWindow = SW_SHOW;   // 2026-08-15：SLUpdater 带进度窗口，不再隐藏
-                            CreateProcessW(nullptr, cmdLine, nullptr, nullptr,
+                            const BOOL started = CreateProcessW(nullptr, cmdLine, nullptr, nullptr,
                                            FALSE, 0, nullptr, nullptr, &si, &pi);
-                            CloseHandle(pi.hProcess);
-                            CloseHandle(pi.hThread);
-                            return 0; // Updated, exit immediately
+                            if (started) {
+                                CloseHandle(pi.hProcess);
+                                CloseHandle(pi.hThread);
+                                return 0; // Updated, exit immediately
+                            }
+                            // ── 2026-11-13：SLUpdater 起不来时**不能退出** ──
+                            // 原实现在 CreateProcessW 失败（杀软拦截/文件被占用/路径含特殊字符）
+                            // 后仍然 CloseHandle(NULL) 并 return 0：启动器直接消失、更新没装上、
+                            // 用户以为「更新的把启动器删了」。改为清锁、保留 state.json（下次再试）、
+                            // 继续以当前版本启动。
+                            {
+                                const DWORD err = GetLastError();
+                                char buf[256];
+                                wsprintfA(buf, "[PreInit] SLUpdater 启动失败 err=%lu，继续用当前版本\n",
+                                          static_cast<unsigned long>(err));
+                                OutputDebugStringA(buf);
+                            }
+                            DeleteFileW(lockPath.c_str());
                         } else {
                             OutputDebugStringA("[PreInit] 缺少 SLUpdater 或更新文件，跳过\n");
                         }

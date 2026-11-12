@@ -5023,7 +5023,12 @@ void ShadowBackend::quitForUpdate()
     qCInfo(logApp) << QStringLiteral("[更新] 用户确认重启安装，自动重启启动器触发更新");
     const QString exePath = QCoreApplication::applicationFilePath();
     if (!QProcess::startDetached(exePath, QStringList())) {
+        // ── 2026-11-13：重启失败时不能退出 ──
+        // 原实现只记一条日志照样 quit：用户点了「立即重启安装」，启动器关掉却没起来，
+        // 更新也没装，桌面只剩一个消失的窗口。改为提示并留在当前版本。
         qCWarning(logApp) << QStringLiteral("[更新] 自动重启启动器失败，请手动打开") << exePath;
+        emit toastMessage(tr("自动重启失败，请手动重新打开启动器以完成更新"));
+        return;
     }
     // 给子进程一点启动时间再退出（避免当前进程过早退出影响文件锁）
     QTimer::singleShot(500, qApp, &QCoreApplication::quit);

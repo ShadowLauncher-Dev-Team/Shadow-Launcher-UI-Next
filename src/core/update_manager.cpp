@@ -22,6 +22,17 @@ UpdateManager::UpdateManager(QObject* parent)
     : QObject(parent)
 {
     QTimer::singleShot(0, this, [this]() { m_initPhase = false; });
+    // 退出时把「下载中」落盘成 Paused：resumePausedDownload 只认 Paused，
+    // 否则用户关掉启动器再打开，已下的部分会被当垃圾删掉重下（34MB 白跑）。
+    if (auto *app = QCoreApplication::instance()) {
+        connect(app, &QCoreApplication::aboutToQuit, this, [this]() {
+            if (m_state == Downloading) {
+                qCInfo(logApp) << "[UpdateManager] 退出时下载未完成，标记 Paused 供下次续传"
+                               << "已下载:" << m_downloadReceived;
+                setState(Paused);
+            }
+        });
+    }
 }
 
 QString UpdateManager::stateDir() const
@@ -191,9 +202,8 @@ void UpdateManager::doCheck()
         return;
     }
 
-    // 标记检查时间
-    if (!m_userInitiated)
-        m_lastSilentCheck = QDateTime::currentMSecsSinceEpoch();
+    // 检查时间戳只在**拿到服务器版本**后写（见下方 success 分支）。
+    // 原实现在发请求前就打戳：网络一失败，下一次静默检查要等 6 小时才重试。
 
     setState(Checking);
     qCInfo(logApp) << "[UpdateManager] 检查更新... 当前版本:" << m_currentVersion;
@@ -224,6 +234,11 @@ void UpdateManager::doCheck()
             }
 
             QVersionNumber server = parseTag(tagName);
+            // 拿到了有效响应才记「上次检查时间」——失败/超时要允许下次重试
+            if (!m_userInitiated) {
+                m_lastSilentCheck = QDateTime::currentMSecsSinceEpoch();
+                saveState();
+            }
             qCInfo(logApp) << "[UpdateManager] 服务器版本:" << tagName
                            << "需要更新:" << (QVersionNumber::compare(server, current) > 0);
 
