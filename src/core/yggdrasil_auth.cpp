@@ -115,12 +115,27 @@ QNetworkReply* YggdrasilAuth::authenticate(const QString &apiRoot,
 
 QNetworkReply* YggdrasilAuth::refresh(const QString &apiRoot,
                                        const QString &accessToken,
-                                       const QString &clientToken)
+                                       const QString &clientToken,
+                                       const QString &selectedProfile,
+                                       const QString &selectedProfileName)
 {
     QJsonObject payload;
     payload[QStringLiteral("accessToken")] = accessToken;
     payload[QStringLiteral("clientToken")] = clientToken;
     payload[QStringLiteral("requestUser")] = true;
+    // 账号下有多个角色时，authenticate 拿到的令牌**不绑定任何角色**，
+    // 这种令牌在 validate/refresh 一律被拒（LittleSkin 报
+    // “访问令牌未绑定角色，请在刷新时指定角色”）。
+    // 带 selectedProfile 刷新一次，换回绑定好角色的令牌。
+    // selectedProfile 必须是对象 {"id","name"}，传裸字符串服务端会报
+    // “selectedProfile must be an object”
+    if (!selectedProfile.isEmpty()) {
+        QJsonObject sp;
+        sp[QStringLiteral("id")] = selectedProfile;
+        if (!selectedProfileName.isEmpty())
+            sp[QStringLiteral("name")] = selectedProfileName;
+        payload[QStringLiteral("selectedProfile")] = sp;
+    }
 
     QString url = apiRoot;
     if (!url.endsWith(QLatin1Char('/')))

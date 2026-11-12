@@ -58,7 +58,9 @@ public:
                                 const QString &clientToken);
     QNetworkReply* refresh(const QString &apiRoot,
                            const QString &accessToken,
-                           const QString &clientToken);
+                           const QString &clientToken,
+                           const QString &selectedProfile = QString(),
+                           const QString &selectedProfileName = QString());
     /// 校验令牌是否仍然有效（authserver/validate，不轮换令牌）
     /// 204 = 有效；403 = 已失效；404/405 = 服务端未实现该端点
     QNetworkReply* validate(const QString &apiRoot,

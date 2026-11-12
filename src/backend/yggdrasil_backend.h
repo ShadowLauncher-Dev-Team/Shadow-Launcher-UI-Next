@@ -124,6 +124,7 @@ private slots:
     void onMetaReply();
     void onAuthenticateReply();
     void onRefreshReply();
+    void onBindReply();
     void onValidateReply();
     void onLogoutReply();
     void onSkinPreloaded();
@@ -132,9 +133,12 @@ private:
     void preloadNextSkin();
     void setStatus(const QString &msg);
     void doRefresh(bool isValidation);
+    /// 用 selectedProfile 刷新一次，换取“已绑定角色”的令牌
+    void bindProfile();
     void doValidate();
     /// 令牌被服务端判定失效：清除本地会话并通知 UI 重新登录
     void clearSessionAfterExpiry();
+    bool m_bindingProfile = false;
 
     QNetworkAccessManager *m_nam = nullptr;
     YggdrasilAuth m_auth;

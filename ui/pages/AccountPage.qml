@@ -107,6 +107,20 @@ Item {
         function onWardrobeError(msg) { page.flash(msg) }
     }
     readonly property var yg: (b && b.yggdrasil) ? b.yggdrasil : null
+    // 当前"被选中"的那条账号（accounts 数组 + currentAccount 索引）。
+    // 详情面板必须以它为准：外置账号身份属于 YggdrasilBackend，
+    // 光看 backend.isOnline 会把正版身份套到外置条目上。
+    readonly property var curAcct: {
+        if (!b || !b.accounts) return null
+        const idx = b.currentAccount
+        if (idx < 0 || idx >= b.accounts.length) return null
+        return b.accounts[idx]
+    }
+    readonly property int curMode: curAcct ? curAcct.mode : -1
+    // 外置账号真正可用的判定：已登录 且 未被服务端标记失效。
+    // 只信 yg.loggedIn 会出错——恢复会话时它立刻就 true，而校验还没回来。
+    readonly property bool externalLive: !!yg && yg.loggedIn === true
+        && !(curAcct && curAcct.needsRelogin === true)
 
     property int tab: 0                      // 0 正版 / 1 离线 / 2 外置
     property bool loginPanel: false          // true = 显示登录表单（切换账号时打开）
@@ -156,11 +170,19 @@ Item {
     readonly property string rawHeadSource: (b && b.isOnline) ? (b.skinTexturePath || "") : ""
     readonly property string headSource: {
         if (!b) return ""
+        // 外置账号的头像来自它自己的皮肤站，不能借用正版/离线的头像
+        if (curMode === 2) {
+            const sf = (yg && yg.skinFetcher) ? yg.skinFetcher : null
+            return (sf && sf.skinPath) ? sf.skinPath : ""
+        }
+        if (curMode === 1) return b.offlineSkinPath || ""
         if (b.isOnline) return b.skinPath || b.offlineSkinPath || ""
         return b.offlineSkinPath || ""
     }
     readonly property string displayName: {
         if (!b) return "未登录"
+        // 选中哪条就显示哪条的名字
+        if (curAcct && curAcct.name) return curAcct.name
         if (b.isOnline && b.username) return b.username
         if (hasExternal && yg && yg.username) return yg.username
         if (b.offlineUsername) return b.offlineUsername
@@ -169,6 +191,11 @@ Item {
     readonly property string typeText: {
         // 正在登录（换号）时不显示当前账号类型，避免顶栏写着"已登录"而正文在登录
         if (loginPanel) return ""
+        // 以"选中的那条账号"为准，而不是 backend 当前是谁在线。
+        // 否则选中外置账号时，会被 backend.isOnline（正版还在线）抢先判成正版。
+        if (curMode === 0) return "Microsoft 正版账户"
+        if (curMode === 2) return page.externalLive ? "外置账户" : "外置账户（需重新登录）"
+        if (curMode === 1) return "离线账户"
         if (b && b.isOnline) return "Microsoft 正版账户"
         if (hasExternal) return "外置账户"
         if (hasOffline) return "离线账户"
@@ -198,17 +225,38 @@ Item {
     }
     function buildAcctView() {
         if (!page.b) return null
-        var online = page.b.isOnline === true
-        var u = online ? page.b.accountUuid : page.b.offlineUuid
-        var skin = page.b.skinPath || ""
+        var m = page.curMode
+        var u = ""
+        var skinText = "未设置"
+        if (m === 2) {
+            // 外置：uuid 取 YggdrasilBackend，皮肤取它的皮肤站贴图
+            u = (page.yg && page.yg.uuid) ? page.yg.uuid
+              : (page.curAcct && page.curAcct.uuid ? page.curAcct.uuid : "")
+            var sf = (page.yg && page.yg.skinFetcher) ? page.yg.skinFetcher : null
+            if (page.externalLive) {
+                skinText = (sf && sf.skinPath) ? "已同步（皮肤站）" : "未获取"
+            } else {
+                skinText = "需重新登录"
+            }
+        } else if (m === 1) {
+            u = page.b.offlineUuid || ""
+            skinText = (page.b.offlineSkinPath || "").length > 0 ? "已同步" : "未设置"
+        } else {
+            var online = page.b.isOnline === true
+            u = online ? page.b.accountUuid : page.b.offlineUuid
+            skinText = (page.b.skinPath || "").length > 0 ? "已同步" : "未设置"
+        }
         return {
             name: page.displayName,
             typeText: page.typeText,
-            online: online,
+            online: m === 0 ? (page.b.isOnline === true) : (m === 2 ? page.externalLive : false),
             head: page.headSource,
             rawHead: page.rawHeadSource,
             uuid: u ? u : "",
-            skinText: skin.length > 0 ? "已同步" : "未设置"
+            skinText: skinText,
+            tokenText: (m === 0) ? ((page.b.isOnline === true) ? "已获取" : "不需要（离线）")
+                     : (m === 2) ? (page.externalLive ? "已获取（皮肤站）" : "已失效，需重新登录")
+                     : "不需要（离线）"
         }
     }
     onLoginPanelChanged: if (!page.loginPanel) page.acctView = page.buildAcctView()
@@ -922,12 +970,12 @@ Item {
                         Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "访问令牌"; color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
                         Text {
                             anchors.left: parent.left; anchors.leftMargin: 104; anchors.verticalCenter: parent.verticalCenter
-                            text: (page.acctView && page.acctView.online) ? "已获取" : "不需要（离线）"
+                            text: page.acctView ? (page.acctView.tokenText || "") : ""
                             color: "#d8dde5"; font.family: Theme.fontFamily; font.pixelSize: 13
                         }
                         Text {
                             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                            text: (page.acctView && page.acctView.online) ? "后台自动续期" : ""
+                            text: (page.curMode === 0 && page.acctView && page.acctView.online) ? "后台自动续期" : ""
                             color: "#79828f"; font.family: Theme.fontFamily; font.pixelSize: 11
                         }
                     }
@@ -947,7 +995,10 @@ Item {
                 // 分组靠小标题 + 缩进，不靠色块。
                 Column {
                     width: parent.width
-                    visible: page.hasOnline
+                    // 只有正版账号能在这里换皮肤/披风：
+                    // 上传走 Mojang API，外置账号属于皮肤站，接口完全不同且当前未实现，
+                    // 摆出来只会是点了没用的假控件。
+                    visible: page.curMode === 0 && page.hasOnline
                     spacing: 0
 
                     // 区块标题

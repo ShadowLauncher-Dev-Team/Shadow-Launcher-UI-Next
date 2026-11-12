@@ -127,8 +127,10 @@ void YggdrasilBackend::doRefresh(bool isValidation)
     setStatus(isValidation ? QStringLiteral("正在验证外置登录状态...")
                            : QStringLiteral("正在刷新令牌..."));
 
+    // 带上 selectedProfile：多角色账号的令牌必须绑定角色，否则 refresh 会被拒
     QNetworkReply *reply = m_auth.refresh(
-        m_session.apiRoot, m_session.accessToken, m_session.clientToken);
+        m_session.apiRoot, m_session.accessToken, m_session.clientToken,
+        m_session.uuid, m_session.username);
     connect(reply, &QNetworkReply::finished, this, &YggdrasilBackend::onRefreshReply);
 }
 
@@ -250,6 +252,8 @@ void YggdrasilBackend::selectProfile(int index)
         m_pendingProfile = false;
         emit loginSuccess();
     }
+    // 选好角色后把令牌绑定上去（多角色账号必须这一步，否则令牌未绑定角色）
+    bindProfile();
     fetchSkin();
 }
 
@@ -636,6 +640,9 @@ void YggdrasilBackend::onAuthenticateReply()
         emit loginSuccess();
         emit stateChanged();
         emit profilesChanged();
+        // authenticate 拿到的令牌没有绑定角色，必须再刷一次才会被服务端认可，
+        // 否则重启后 validate/refresh 一律 403（表现为“重启一次就过期”）。
+        bindProfile();
         fetchSkin();
     } else {
         // 多角色：等待用户选择
@@ -706,6 +713,67 @@ void YggdrasilBackend::onRefreshReply()
     emit stateChanged();
     setStatus(QString());
     qCDebug(logYggBackend) << "Yggdrasil token refreshed/validated";
+}
+
+// 用 selectedProfile 刷新一次，换回“已绑定角色”的令牌。
+// 账号下有多个角色时，authenticate 直接返回的令牌是不绑定角色的，
+// 这种令牌在 validate/refresh 会被服务端拒绝，等于登录只在本次运行有效。
+void YggdrasilBackend::bindProfile()
+{
+    if (m_session.accessToken.isEmpty() || m_session.uuid.isEmpty()) return;
+    if (m_bindingProfile) return;
+    m_bindingProfile = true;
+
+    QNetworkReply *reply = m_auth.refresh(
+        m_session.apiRoot, m_session.accessToken, m_session.clientToken,
+        m_session.uuid, m_session.username);
+    connect(reply, &QNetworkReply::finished, this, &YggdrasilBackend::onBindReply);
+}
+
+void YggdrasilBackend::onBindReply()
+{
+    auto *reply = qobject_cast<QNetworkReply*>(sender());
+    if (!reply) return;
+    reply->deleteLater();
+    m_bindingProfile = false;
+
+    if (reply->error() == QNetworkReply::OperationCanceledError) return;
+    if (m_session.accessToken.isEmpty()) return;   // 期间已登出
+
+    const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    QByteArray data = reply->readAll();
+
+    if (reply->error() != QNetworkReply::NoError) {
+        QString errOut;
+        YggdrasilAuth::parseRefresh(data, m_session.apiRoot, m_session.email, errOut);
+        qCWarning(logYggBackend) << "Yggdrasil bind-profile failed http=" << httpStatus
+                                 << "detail=" << errOut;
+        const bool authError = httpStatus == 401 || httpStatus == 403
+                               || data.contains("\"error\"");
+        if (authError) clearSessionAfterExpiry();
+        return;
+    }
+
+    QString errorOut;
+    YggdrasilSession session = YggdrasilAuth::parseRefresh(
+        data, m_session.apiRoot, m_session.email, errorOut);
+    if (!errorOut.isEmpty()) {
+        qCWarning(logYggBackend) << "Yggdrasil bind-profile rejected:" << errorOut;
+        clearSessionAfterExpiry();
+        return;
+    }
+
+    session.profiles = m_session.profiles;
+    session.selectedProfileIndex = m_session.selectedProfileIndex;
+    if (session.username.isEmpty()) session.username = m_session.username;
+    if (session.uuid.isEmpty()) session.uuid = m_session.uuid;
+    m_session = session;
+    saveSession();
+    m_lastValidateMs = QDateTime::currentMSecsSinceEpoch();
+    qCInfo(logYggBackend) << QStringLiteral("[外置登录] 令牌已绑定角色 uuid=%1 tokenLen=%2")
+                                 .arg(m_session.uuid).arg(m_session.accessToken.length());
+    emit tokensRotated();
+    emit stateChanged();
 }
 
 void YggdrasilBackend::onLogoutReply()
