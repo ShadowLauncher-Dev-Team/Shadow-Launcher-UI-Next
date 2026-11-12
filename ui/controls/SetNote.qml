@@ -45,7 +45,11 @@ Item {
         visible: root.hasIcon
         anchors.left: parent.left
         anchors.leftMargin: root.padH
-        anchors.verticalCenter: parent.verticalCenter
+        // 对齐「首行文字的视觉中心」，不是行框中心：
+        // Microsoft YaHei UI 12px 的汉字墨迹在 19px 行框里偏上约 2px，
+        // 直接 verticalCenter 图标会显得偏低（影实测：图标中心 42px、文字墨迹中心 40px）。
+        anchors.verticalCenter: txt.top
+        anchors.verticalCenterOffset: Math.round(txt.lineHeight / 2) - 2
     }
 
     Text {

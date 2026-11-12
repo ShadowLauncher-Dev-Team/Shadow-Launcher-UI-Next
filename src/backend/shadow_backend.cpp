@@ -1881,7 +1881,41 @@ void ShadowBackend::switchAccount(int index) {
 }
 
 bool ShadowBackend::removeAccount(int index) {
-    return m_account && m_account->removeAccount(index);
+    if (!m_account) return false;
+    if (!m_account->removeAccount(index)) return false;
+
+    // AccountBackend::removeAccount 内部会切到列表中第一条，但那次切换不经过
+    // ShadowBackend::switchAccount，于是 m_lastLoginMode 与外置会话都不会更新。
+    // 结果是「当前账号是 A、实际身份还是 B」，删正版会顺带把外置会话打得半死。
+    // 删完必须在这里按新的 current 重新落定身份。
+    auto *ygg = static_cast<YggdrasilBackend*>(m_yggdrasil);
+    const int cur = m_account->currentAccount();
+    const QVariantMap curAcc = cur >= 0 ? m_account->accountAt(cur) : QVariantMap();
+
+    if (curAcc.isEmpty()) {
+        if (ygg && ygg->loggedIn()) ygg->logout();
+        return true;
+    }
+
+    const int mode = curAcc.value(QStringLiteral("mode")).toInt();
+    if (mode == 2) {
+        if (ygg) {
+            ygg->restoreSession(curAcc.value(QStringLiteral("apiRoot")).toString(),
+                                curAcc.value(QStringLiteral("accessToken")).toString(),
+                                curAcc.value(QStringLiteral("clientToken")).toString(),
+                                curAcc.value(QStringLiteral("name")).toString(),
+                                curAcc.value(QStringLiteral("uuid")).toString());
+        }
+    } else if (ygg && ygg->loggedIn()) {
+        // 删完落到本地账号：外置会话必须一起退，否则两套身份同时在线
+        ygg->logout();
+    }
+
+    QSettings s(QCoreApplication::organizationName(), QCoreApplication::applicationName());
+    s.setValue(QStringLiteral("account/lastUsername"), curAcc.value(QStringLiteral("name")).toString());
+    s.setValue(QStringLiteral("account/lastLoginMode"), mode);
+    setLastLoginMode(mode);
+    return true;
 }
 
 // ============================================================

@@ -54,11 +54,14 @@ Item {
         Behavior on x { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
     }
     MouseArea {
+        id: drag
         anchors.fill: parent
         enabled: root.enabled
         cursorShape: Qt.PointingHandCursor
-        onPressed: (m) => root.setFromX(m.x)
-        onPositionChanged: (m) => { if (pressed) root.setFromX(m.x) }
+        // setFromX 定义在本 MouseArea 内，不是 root 的方法。
+        // 原来写成 root.setFromX(...) → 每次按下都抛 TypeError，滑块既不能点也不能拖。
+        onPressed: (m) => drag.setFromX(m.x)
+        onPositionChanged: (m) => { if (pressed) drag.setFromX(m.x) }
         function setFromX(x) {
             var v = root.valueAt(x)
             if (v === root.value) return
