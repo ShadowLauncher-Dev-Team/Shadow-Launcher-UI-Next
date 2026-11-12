@@ -388,6 +388,12 @@ ShadowBackend::ShadowBackend(QObject* parent)
             m_account->upsertExternalAccount(y->username(), y->uuid(), y->apiRoot(),
                                              y->accessToken(), y->clientToken());
         });
+        // 令牌被判失效时把账号条目标记为"需重新登录"，
+        // 这样点它只会打开登录表单，不会拿死令牌再恢复一次。
+        connect(ygg, &YggdrasilBackend::externalSessionExpired, this,
+                [this](const QString& user) {
+            if (m_account) m_account->markNeedsRelogin(user, 2);
+        });
         // refresh 会轮换 accessToken/clientToken。以前只写 session.json，
         // accounts.json 里留的还是旧令牌 → 下次"从多账号列表恢复"必然 403 被判过期。
         connect(ygg, &YggdrasilBackend::tokensRotated, this, [this]() {

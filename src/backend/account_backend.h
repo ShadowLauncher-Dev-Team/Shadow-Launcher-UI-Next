@@ -166,6 +166,9 @@ private:
         QString apiRoot;       // mode 2
         QString accessToken;   // mode 2
         QString clientToken;   // mode 2
+        // 服务端判定令牌失效后置位：此后点这条账号应直接打开登录表单，
+        // 而不是再拿死令牌去 restoreSession（那只会再失败一次）。
+        bool needsRelogin = false;
     };
     QString accountsFilePath() const;
     /// 每个账号的头像快照路径（切换/登录后把当前头像存一份，列表里每个账号都能显示）
@@ -174,6 +177,10 @@ private:
     void loadAccounts();
     void saveAccounts();
     void upsertAccount(const StoredAccount &a, bool makeCurrent = true);
+public:
+    /// 服务端判定某条外置账号的令牌已失效：置位 needsRelogin 并落盘。
+    void markNeedsRelogin(const QString &name, int mode);
+private:
     void clearActiveIdentity();
     QList<StoredAccount> m_accounts;
     int m_currentAccount = -1;

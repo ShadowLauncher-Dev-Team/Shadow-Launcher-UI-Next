@@ -1411,7 +1411,8 @@ QVariantList AccountBackend::accounts() const
         m[QStringLiteral("typeText")] = accountTypeText(a.mode);
         m[QStringLiteral("current")] = (i == m_currentAccount);
         // 凭据被登出作废后，条目还在但需要重新验证；UI 据此把点击行为改成"打开登录表单"
-        const bool needsRelogin = (a.mode == 0 && a.refreshToken.isEmpty())
+        const bool needsRelogin = a.needsRelogin
+                               || (a.mode == 0 && a.refreshToken.isEmpty())
                                || (a.mode == 2 && a.accessToken.isEmpty());
         m[QStringLiteral("needsRelogin")] = needsRelogin;
         // 头像快照：每个账号登录/切换时各存一份，列表里不会只剩当前那个有头像
@@ -1476,6 +1477,7 @@ void AccountBackend::saveAccounts()
         QJsonObject o;
         o[QStringLiteral("mode")] = a.mode;
         o[QStringLiteral("name")] = a.name;
+        if (a.needsRelogin) o[QStringLiteral("needsRelogin")] = true;
         o[QStringLiteral("uuid")] = TokenCrypto::encrypt(a.uuid);
         if (!a.refreshToken.isEmpty())
             o[QStringLiteral("refreshToken")] = TokenCrypto::encrypt(a.refreshToken);
@@ -1514,6 +1516,7 @@ void AccountBackend::loadAccounts()
         a.mode = o[QStringLiteral("mode")].toInt(1);
         a.name = o[QStringLiteral("name")].toString();
         if (a.name.isEmpty()) continue;
+        a.needsRelogin = o.value(QStringLiteral("needsRelogin")).toBool(false);
         a.uuid = TokenCrypto::decrypt(o[QStringLiteral("uuid")].toString());
         a.refreshToken = TokenCrypto::decrypt(o[QStringLiteral("refreshToken")].toString());
         a.apiRoot = o[QStringLiteral("apiRoot")].toString();
@@ -1525,6 +1528,22 @@ void AccountBackend::loadAccounts()
     if (m_currentAccount >= m_accounts.size()) m_currentAccount = -1;
     qCInfo(logAccount) << QStringLiteral("账号列表已加载: ") << m_accounts.size()
                        << QStringLiteral(" 当前=") << m_currentAccount;
+}
+
+void AccountBackend::markNeedsRelogin(const QString &name, int mode)
+{
+    if (name.isEmpty()) return;
+    bool changed = false;
+    for (StoredAccount &a : m_accounts) {
+        if (a.mode == mode && a.name.compare(name, Qt::CaseInsensitive) == 0) {
+            if (!a.needsRelogin) { a.needsRelogin = true; changed = true; }
+        }
+    }
+    if (changed) {
+        saveAccounts();
+        emit accountsChanged();
+        qCInfo(logAccount) << QStringLiteral("账号已标记为需重新登录:") << name << "mode=" << mode;
+    }
 }
 
 void AccountBackend::upsertAccount(const StoredAccount &a, bool makeCurrent)
@@ -1539,6 +1558,8 @@ void AccountBackend::upsertAccount(const StoredAccount &a, bool makeCurrent)
     }
     if (found >= 0) {
         StoredAccount &dst = m_accounts[found];
+        // 这次是带着新令牌来的 → 之前"需重新登录"的标记作废
+        dst.needsRelogin = false;
         if (!a.uuid.isEmpty()) dst.uuid = a.uuid;
         if (!a.refreshToken.isEmpty()) dst.refreshToken = a.refreshToken;
         if (!a.apiRoot.isEmpty()) dst.apiRoot = a.apiRoot;

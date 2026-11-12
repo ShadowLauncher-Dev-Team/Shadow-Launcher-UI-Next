@@ -28,6 +28,24 @@ Item {
         onTriggered: page.refreshBusy = false
     }
 
+    Timer {
+        id: externalProbeTimer
+        interval: 1500
+        repeat: false
+        onTriggered: {
+            if (!page.b) return
+            var accx = page.b.accounts
+            // 不要过滤 current：外置账号本来就可能是 current，
+            // 之前加了 !current 条件导致钩子永远选不到它（静默失效）。
+            for (var k = 0; k < accx.length; ++k) {
+                if (accx[k] && accx[k].mode === 2) {
+                    page.b.switchAccount(accx[k].index)
+                    return
+                }
+            }
+        }
+    }
+
     // 披风/皮肤的结果信号由 AccountBackend 发出（不是 ShadowBackend），
     // 以前挂在 page.b 上 → 永远收不到，所以切换成功/失败都没有任何提示。
     // 外置登录（yggdrasil）的结果信号以前一条都没接 ——
@@ -40,6 +58,7 @@ Item {
             page.profilePickOpen = false
             page.loginPanel = false
             page.passwordInput = ""
+            if (page.b) page.b.lastLoginMode = 2
             page.flash("外置账号登录成功")
         }
         function onLoginFailed(err) {
@@ -215,7 +234,10 @@ Item {
             page.flash("API 地址、账号、密码都要填")
             return
         }
-        page.b.lastLoginMode = 2
+        // 不能在认证成功之前写 lastLoginMode：
+        // 一旦写了，下次启动会按"上次是外置"去恢复那条（可能已失效的）会话，
+        // 失败后又被判过期 —— 用户看到的就是"一点就说过期"的死循环。
+        // 改为在 onLoginSuccess 里再落 lastLoginMode。
         page.yg.login(page.apiRootInput.trim(), page.emailInput.trim(), page.passwordInput)
         page.flash("正在登录外置账户…")
     }
@@ -788,15 +810,11 @@ Item {
                         refreshTimer.restart()
                         page.acct.refreshSkin()
                     }
-                    // 验收钩子：--acct-external 时切到外置账号（验证会话恢复/校验链路）
-                    if (Qt.application.arguments.indexOf("--acct-external") >= 0 && page.b) {
-                        var accx = page.b.accounts
-                        for (var k = 0; k < accx.length; ++k) {
-                            if (accx[k] && accx[k].mode === 2 && !accx[k].current) {
-                                page.b.switchAccount(accx[k].index)
-                                break
-                            }
-                        }
+                    // 验收钩子：--acct-external 时切到外置账号（验证会话恢复/校验链路）。
+                    // 必须延时：Component.onCompleted 时 accounts.json 还没加载完，
+                    // 立即读 page.b.accounts 会拿到空数组，钩子静默失效。
+                    if (Qt.application.arguments.indexOf("--acct-external") >= 0) {
+                        externalProbeTimer.start()
                     }
                     // 验收钩子：--acct-online 时切到第一个正版账号（截图核对用）
                     if (Qt.application.arguments.indexOf("--acct-online") >= 0 && page.b) {

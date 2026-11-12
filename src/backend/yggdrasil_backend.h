@@ -106,6 +106,10 @@ signals:
     /// 下次“从多账号列表恢复”就会拿旧令牌去校验 → 403 → 被判过期。
     void tokensRotated();
     void loginFailed(const QString &error);
+    /// 服务端判定令牌已失效、本地会话被清掉。
+    /// username 是被清掉的那个账号，外层据此把账号列表里对应条目标记为"需重新登录"，
+    /// 否则下次点它还会拿死令牌去恢复，形成"一点就过期"的循环。
+    void externalSessionExpired(const QString &username);
     /// 登录成功后需要选择角色时触发（让 QML 弹出多角色选择弹窗）
     void showProfileSelection();
     void stateChanged();

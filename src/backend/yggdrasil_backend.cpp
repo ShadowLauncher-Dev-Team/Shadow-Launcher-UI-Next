@@ -85,7 +85,9 @@ void YggdrasilBackend::login(const QString &apiRoot, const QString &email, const
     m_pendingEmail = email.trimmed();
 
     setStatus(QStringLiteral("正在登录..."));
-    qCDebug(logYggBackend) << "Starting yggdrasil login for" << m_pendingEmail << "at" << apiRoot;
+    qCInfo(logYggBackend) << QStringLiteral("[外置登录] 发起认证 apiRoot=%1 user=%2 pwdLen=%3")
+                                 .arg(apiRoot.trimmed(), m_pendingEmail)
+                                 .arg(password.length());
 
     QNetworkReply *reply = m_auth.authenticate(
         apiRoot.trimmed(), email.trimmed(), password,
@@ -194,6 +196,7 @@ void YggdrasilBackend::onValidateReply()
 void YggdrasilBackend::clearSessionAfterExpiry()
 {
     qCWarning(logYggBackend) << "Yggdrasil session expired/invalid, clearing local session";
+    const QString expiredUser = m_session.username;
     m_session.clear();
     m_meta = YggdrasilMeta();
     m_pendingEmail.clear();
@@ -202,6 +205,8 @@ void YggdrasilBackend::clearSessionAfterExpiry()
     setStatus(QString());
     emit stateChanged();
     emit profilesChanged();
+    if (!expiredUser.isEmpty())
+        emit externalSessionExpired(expiredUser);
     emit loginFailed(QStringLiteral("外置登录会话已过期，请重新登录"));
 }
 
@@ -579,9 +584,12 @@ void YggdrasilBackend::onAuthenticateReply()
         return;
     }
 
+    const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     if (reply->error() != QNetworkReply::NoError) {
         // 尝试从响应体解析结构化错误信息
         QByteArray body = reply->readAll();
+        qCWarning(logYggBackend) << QStringLiteral("[外置登录] 认证失败 http=%1 body=%2")
+                                        .arg(httpStatus).arg(QString::fromUtf8(body.left(300)));
         QString errorOut;
         YggdrasilSession tmp = YggdrasilAuth::parseAuthenticate(body, m_pendingApiRoot, m_pendingEmail, errorOut);
         setStatus(QString());
@@ -608,7 +616,11 @@ void YggdrasilBackend::onAuthenticateReply()
     setStatus(QString());
     // 暂不保存 session、不发射 loginSuccess、不获取皮肤
 
-    qCDebug(logYggBackend) << "Yggdrasil login success, profiles=" << m_session.profiles.size();
+    qCInfo(logYggBackend) << QStringLiteral("[外置登录] 认证成功 http=%1 profiles=%2 tokenLen=%3 clientTokenLen=%4")
+                                 .arg(httpStatus)
+                                 .arg(m_session.profiles.size())
+                                 .arg(m_session.accessToken.length())
+                                 .arg(m_session.clientToken.length());
 
     if (m_session.profiles.isEmpty()) {
         emit loginFailed(QStringLiteral("该账号下没有可用角色"));
