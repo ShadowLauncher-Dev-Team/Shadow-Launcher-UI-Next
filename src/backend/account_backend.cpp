@@ -907,13 +907,23 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
 
         if (reply->error() != QNetworkReply::NoError) {
             qCWarning(logAccount) << QStringLiteral("Mojang档案获取失败 错误=%1").arg(reply->errorString());
-            // 令牌被 Mojang 明确拒绝（401/403）→ 本地记录的有效期不可信，主动刷新。
-            // 否则会带着已死令牌启动游戏，游戏内表现就是“无效会话”。
             const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            if ((httpStatus == 401 || httpStatus == 403) && !m_msRefreshToken.isEmpty()) {
-                qCWarning(logAccount) << QStringLiteral("MC令牌被服务器拒绝(HTTP %1)，触发令牌刷新").arg(httpStatus);
+            const bool authRejected = (httpStatus == 401 || httpStatus == 403);
+
+            // 401/403 = 令牌过期，不是失败：刷新令牌后自动重试一次。
+            // 以前这里既刷新又立刻上报「刷新失败：Host requires authentication」——
+            // 英文原文直出给用户，而且它其实正在自愈（影问过「这是什么」）。
+            if (authRejected && !m_msRefreshToken.isEmpty() && !m_authRetryPending) {
+                m_authRetryPending = true;
+                qCWarning(logAccount) << QStringLiteral("MC令牌被服务器拒绝(HTTP %1)，刷新令牌后重试").arg(httpStatus);
+                emit logMessage(tr("登录凭据已过期，正在重新获取…"));
                 refreshMicrosoftToken();
+                setCapesLoading(true);   // 光条继续亮，等重试结果
+                return;                  // 不报失败、不清空已有披风
             }
+
+            // 到这里才是真失败（重试后仍被拒，或者根本不是鉴权问题）
+            m_authRetryPending = false;
             m_capes.clear();
             setCapesAsked(true);
             setCapesLoading(false);
@@ -921,7 +931,9 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
             // 用户主动刷新失败要明确告知，不能只留一句"正在刷新"
             if (m_refreshPending) {
                 m_refreshPending = false;
-                emit refreshFinished(false, reply->errorString());
+                const QString why = authRejected ? tr("登录凭据已过期，请重新登录该账号")
+                                                 : tr("网络请求失败，请稍后重试");
+                emit refreshFinished(false, why);
             }
             if (!skinCached) {
                 // 无缓存 → fallback 史蒂夫
@@ -975,6 +987,7 @@ void AccountBackend::downloadOnlineSkin(bool forceRefresh)
         }
 
         // ── Cape extraction (all capes, regardless of state) ──
+        m_authRetryPending = false;   // 这一轮拿到了，重试标记复位
         setCapesAsked(true);   // 档案已经拿到，问过了：此时说「没有」才是真的
         m_capes.clear();
         m_activeCapeAlias.clear();
@@ -1806,6 +1819,7 @@ void AccountBackend::clearActiveIdentity()
     // 切号时把加载状态一起收掉：披风加载条绝不能挂到下一个账号身上
     m_capesPending = 0;
     m_capesUser.clear();
+    m_authRetryPending = false;
     setCapesLoading(false);
     setCapesAsked(false);
     if (m_refreshTimer) m_refreshTimer->stop();

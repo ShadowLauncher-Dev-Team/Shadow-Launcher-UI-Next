@@ -246,6 +246,8 @@ private:
     // 披风拉取状态：m_capesUser 记录发起时的玩家名，防止切号后旧响应写进新账号
     bool m_capesLoading = false;
     bool m_capesAsked = false;
+    // 401/403 后「刷新令牌再重试」只做一次：第二次仍被拒才是真失败
+    bool m_authRetryPending = false;
     QString m_capesUser;
     int m_capesPending = 0;    // 还没回来的披风图片请求数
     void setCapesLoading(bool on);
