@@ -139,6 +139,10 @@ private:
     /// 令牌被服务端判定失效：清除本地会话并通知 UI 重新登录
     void clearSessionAfterExpiry();
     bool m_bindingProfile = false;
+    // 发起 refresh/validate 时用的令牌快照。
+    // 绑定角色会轮换令牌，迟到的旧请求若被 403 判死，会把刚换好的新令牌连坐清掉
+    // （实测：登录成功后 0.3s 内 validate 用未绑定角色的令牌 403 → refresh 403 → 会话被清）。
+    QString m_tokenUsedForRefresh;
 
     QNetworkAccessManager *m_nam = nullptr;
     YggdrasilAuth m_auth;

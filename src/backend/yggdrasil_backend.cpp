@@ -108,6 +108,7 @@ void YggdrasilBackend::validateSession()
 {
     if (!m_session.isValid() || m_session.accessToken.isEmpty()) return;
     if (m_refreshing) return;
+    if (m_bindingProfile) return;   // 同 doValidate：绑定中校验必然 403
 
     // 节流：60s 内已校验过就不再打接口（反复切换 tab 不会反复请求）
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
@@ -124,6 +125,7 @@ void YggdrasilBackend::doRefresh(bool isValidation)
     if (m_refreshing) return;
 
     m_refreshing = true;
+    m_tokenUsedForRefresh = m_session.accessToken;
     setStatus(isValidation ? QStringLiteral("正在验证外置登录状态...")
                            : QStringLiteral("正在刷新令牌..."));
 
@@ -140,6 +142,9 @@ void YggdrasilBackend::doValidate()
 {
     if (!m_session.isValid() || m_session.accessToken.isEmpty()) return;
     if (m_refreshing) return;
+    // 正在绑定角色：此刻手上的令牌还没绑定 profile，validate 必然 403，
+    // 那条 403 会顺着 refresh 复核把刚登录好的会话判死。等绑定完再说。
+    if (m_bindingProfile) return;
 
     m_refreshing = true;
     setStatus(QStringLiteral("正在验证外置登录状态..."));
@@ -203,6 +208,7 @@ void YggdrasilBackend::clearSessionAfterExpiry()
     m_meta = YggdrasilMeta();
     m_pendingEmail.clear();
     m_refreshing = false;
+    m_tokenUsedForRefresh.clear();
     deleteSavedSession();
     setStatus(QString());
     emit stateChanged();
@@ -250,6 +256,7 @@ void YggdrasilBackend::selectProfile(int index)
     saveSession();
     if (m_pendingProfile) {
         m_pendingProfile = false;
+        m_lastValidateMs = QDateTime::currentMSecsSinceEpoch();
         emit loginSuccess();
     }
     // 选好角色后把令牌绑定上去（多角色账号必须这一步，否则令牌未绑定角色）
@@ -637,6 +644,8 @@ void YggdrasilBackend::onAuthenticateReply()
         m_session.username = m_session.profiles[0].name;
         m_session.uuid = m_session.profiles[0].id;
         saveSession();
+        // 刚认证成功：60s 内不必再 validate，否则会在 bindProfile 之前用未绑定令牌打接口
+        m_lastValidateMs = QDateTime::currentMSecsSinceEpoch();
         emit loginSuccess();
         emit stateChanged();
         emit profilesChanged();
@@ -681,6 +690,13 @@ void YggdrasilBackend::onRefreshReply()
             || reply->error() == QNetworkReply::AuthenticationRequiredError
             || data.contains("\"error\"");
         if (tokenRejected) {
+            // 迟到的 403：本次请求用的令牌已经被换掉了（bindProfile/refresh 轮换），
+            // 这条失败说的是旧令牌，不能拿来判死当前会话。
+            if (!m_tokenUsedForRefresh.isEmpty()
+                && m_tokenUsedForRefresh != m_session.accessToken) {
+                qCDebug(logYggBackend) << "忽略过期令牌的迟到失败响应 http=" << httpStatus;
+                return;
+            }
             qCWarning(logYggBackend) << "Yggdrasil token rejected http=" << httpStatus
                                      << "detail=" << errOut;
             clearSessionAfterExpiry();
@@ -696,7 +712,12 @@ void YggdrasilBackend::onRefreshReply()
         data, m_session.apiRoot, m_session.email, errorOut);
 
     if (!errorOut.isEmpty()) {
-        // HTTP 200 但响应体是 error → 令牌同样已失效
+        // HTTP 200 但响应体是 error → 令牌同样已失效（同样要挡迟到响应）
+        if (!m_tokenUsedForRefresh.isEmpty()
+            && m_tokenUsedForRefresh != m_session.accessToken) {
+            qCDebug(logYggBackend) << "忽略过期令牌的迟到拒绝响应:" << errorOut;
+            return;
+        }
         qCWarning(logYggBackend) << "Yggdrasil token refresh rejected:" << errorOut;
         clearSessionAfterExpiry();
         return;
