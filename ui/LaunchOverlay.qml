@@ -22,7 +22,7 @@ Item {
     readonly property bool busy: b ? b.launching : false
     readonly property string failReason: (b && b.launchFailReason) ? b.launchFailReason : ""
     readonly property string verName: (b && b.selectedVersion) ? b.selectedVersion : ""
-    readonly property string userName: b ? (b.username || "") : ""
+    readonly property string userName: b ? (b.activeAccountName || "") : ""
     readonly property bool debugOverlay: Qt.application.arguments.indexOf("--ui-overlay-debug") >= 0
     // A2「准备运行环境」的行数据：{key,name,detail,progress,state}，空=本次无需补全
     readonly property var repairs: b ? b.launchRepairs : []
@@ -711,7 +711,7 @@ Item {
                         height: 32
                         danger: true
                         text: "重试"
-                        onClicked: { if (root.b && root.verName.length > 0) root.b.launch(root.verName, root.b.isOnline) }
+                        onClicked: { if (root.b && root.verName.length > 0) root.b.launch(root.verName, root.b.activeAccountOnline) }
                     }
                 }
 

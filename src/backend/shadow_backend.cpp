@@ -1055,6 +1055,80 @@ QString ShadowBackend::currentAccountAvatar() const
     return QUrl::fromLocalFile(p).toString();
 }
 
+// ── 统一身份视图 ──────────────────────────────────────────────
+// 真源：accounts.json 的 current（currentAccountMode）+ 该类型的会话。
+// 所有「当前账号是谁」的问题都从这里回答，别再各页面自己拼。
+
+int ShadowBackend::activeAccountMode() const
+{
+    if (!m_account) return -1;
+    const int mode = m_account->currentAccountMode();
+    return mode >= 0 ? mode : m_lastLoginMode;
+}
+
+QString ShadowBackend::activeAccountName() const
+{
+    if (!m_account) return QString();
+    switch (activeAccountMode()) {
+    case 0: return m_account->username();
+    case 2: {
+        auto *ygg = static_cast<YggdrasilBackend *>(m_yggdrasil);
+        if (ygg && !ygg->username().isEmpty()) return ygg->username();
+        break;
+    }
+    case 1: return m_account->offlineUsername();
+    default: break;
+    }
+    // 会话还没恢复好：回落到账号条目里的名字（至少名字是对的）
+    const int cur = m_account->currentAccount();
+    const QVariantMap acc = cur >= 0 ? m_account->accountAt(cur) : QVariantMap();
+    return acc.value(QStringLiteral("name")).toString();
+}
+
+QString ShadowBackend::activeAccountUuid() const
+{
+    if (!m_account) return QString();
+    switch (activeAccountMode()) {
+    case 0: return m_account->accountUuid();
+    case 2: {
+        auto *ygg = static_cast<YggdrasilBackend *>(m_yggdrasil);
+        if (ygg && !ygg->uuid().isEmpty()) return ygg->uuid();
+        break;
+    }
+    case 1: return m_account->offlineUuid();
+    default: break;
+    }
+    const int cur = m_account->currentAccount();
+    const QVariantMap acc = cur >= 0 ? m_account->accountAt(cur) : QVariantMap();
+    return acc.value(QStringLiteral("uuid")).toString();
+}
+
+bool ShadowBackend::activeAccountOnline() const
+{
+    return accountOnline();   // 同一套按类型分派的判据
+}
+
+QString ShadowBackend::activeAccountAvatar() const
+{
+    if (!m_account) return QString();
+    switch (activeAccountMode()) {
+    case 0: {
+        const QString p = m_account->skinPath();
+        return p.isEmpty() ? currentAccountAvatar() : p;
+    }
+    default:
+        // 外置/离线没有实时 skinPath：用账号自己的头像快照
+        return currentAccountAvatar();
+    }
+}
+
+QString ShadowBackend::activeAccountSkin() const
+{
+    if (!m_account) return QString();
+    // 只有正版有原始皮肤纹理（自己裁脸用）；外置/离线给空，走头像图
+    return activeAccountMode() == 0 ? m_account->skinTexturePath() : QString();
+}
+
 bool ShadowBackend::microsoftLoginBusy() const {
     return m_account ? m_account->isMicrosoftLoginBusy() : false;
 }
@@ -2468,11 +2542,12 @@ QString ShadowBackend::exportLaunchScript(const QString& versionId, const QStrin
     // 2026-08-10 修：原实现只看 m_account->isOnline()，外置登录时导出的是无关的
     // 微软/离线账号信息，且外置 token/authlib-injector 完全不进脚本。
     auto *ygg = static_cast<YggdrasilBackend*>(m_yggdrasil);
-    if (m_lastLoginMode == 2 && ygg && ygg->loggedIn()) {
+    const int exportMode = activeAccountMode();
+    if (exportMode == 2 && ygg && ygg->loggedIn()) {
         // 外置登录：ygg 账号信息 + ygg 模式（authlib-injector agent 由 launch_backend 注入）
         m_launch->setAuthInfo(ygg->username(), ygg->uuid(), ygg->accessToken(), true);
         m_launch->setYggdrasilMode(ygg->apiRoot(), ygg->accessToken());
-    } else if (m_lastLoginMode == 1) {
+    } else if (exportMode == 1) {
         // 离线登录：离线名/uuid，无 token（buildArgs 会以 0 占位）
         const QString name = m_account ? m_account->offlineUsername() : QString();
         const QString uuid = m_account ? m_account->offlineUuid() : QString();
@@ -2959,13 +3034,18 @@ void ShadowBackend::launch(const QString& versionId, bool online) {
     QString javaPath;
 
     // Pass auth info based on mode
-    if (online) {
+    // 判据只看当前账号类型（authMode），不看调用方传的 online ——
+    // 以前 QML 传 b.isOnline，外置账号它是 false，于是外置身份被当成离线送进去，
+    // 用户名取到空 → 启动前检查第 0 步「登录状态」直接拦下（影实测）。
+    const bool useOnline = (authMode == 0 || authMode == 2);
+    if (useOnline) {
         auto *ygg2 = static_cast<YggdrasilBackend*>(m_yggdrasil);
         if (authMode == 2 && ygg2 && ygg2->loggedIn()) {
             // 外置登录
             qCInfo(logLaunch) << QStringLiteral("[认证] 外置登录模式启动 玩家名=%1 uuid=%2").arg(ygg2->username(), ygg2->uuid());
             m_launch->setAuthInfo(ygg2->username(), ygg2->uuid(),
                                   ygg2->accessToken(), true);
+            m_launch->setYggdrasilMode(ygg2->apiRoot(), ygg2->accessToken());
         } else {
             qCInfo(logLaunch) << QStringLiteral("[认证] 在线模式启动 玩家名=%1 uuid=%2").arg(m_account->username(), m_account->accountUuid());
             m_launch->setAuthInfo(m_account->username(), m_account->accountUuid(),
@@ -3420,7 +3500,11 @@ QVariantList ShadowBackend::availableCapes() const {
 }
 
 QString ShadowBackend::loginType() const {
-    return m_lastLoginMode == 0 ? QStringLiteral("microsoft") : QStringLiteral("offline");
+    switch (activeAccountMode()) {
+    case 0: return QStringLiteral("microsoft");
+    case 2: return QStringLiteral("yggdrasil");
+    default: return QStringLiteral("offline");
+    }
 }
 
 void ShadowBackend::browseSkin() {
@@ -3465,7 +3549,7 @@ void ShadowBackend::uploadSkin(const QString& skinPath, int modelType) {
 void ShadowBackend::saveWardrobeSettings(const QString& skinPath, const QString& capeId, int modelType) {
     qCInfo(logApp) << QStringLiteral("衣帽间保存 skin=%1 cape=%2 model=%3").arg(skinPath, capeId).arg(modelType);
 
-    if (m_lastLoginMode == 0 && m_account && !m_account->mcToken().isEmpty()) {
+    if (activeAccountMode() == 0 && m_account && !m_account->mcToken().isEmpty()) {
         // Online: upload to Mojang
         if (!skinPath.isEmpty()) {
             uploadSkin(skinPath, modelType);

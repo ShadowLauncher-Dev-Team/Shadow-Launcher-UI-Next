@@ -15,9 +15,10 @@ Item {
     /// 有可用账号：正版在线登录 / 设置过离线名 / 外置账号已登录。
     /// 少了外置这一条时，切到外置账号后首页会一直显示「还没有登录账号」+「先登录」，
     /// 而账户页明明显示已登录（影报的就是这个）。
-    readonly property bool hasAccount: b ? (b.isOnline
-                                        || (b.offlineUsername || "").length > 0
-                                        || (yg !== null && yg.loggedIn === true)) : false
+    // 单一真源：当前账号类型 + 该类型的会话（由 ShadowBackend::activeAccount* 统一回答）。
+    // 以前这里自己拼 isOnline / offlineUsername / yg.loggedIn，三处分支注定和账户页、
+    // 启动预检对不上（选了账号A首页却不认A，就是这个）。
+    readonly property bool hasAccount: b ? (b.activeAccountMode >= 0 && (b.activeAccountName || "").length > 0) : false
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     property var toast: null          // StageShell 注入的 ToastHost
@@ -25,13 +26,7 @@ Item {
     // （已扣掉侧栏），拿它和 900 比会让 1100 宽的窗口被判成窄窗、标题从 58 掉到 34。
     property bool narrow: false
     readonly property string ver: (b && b.selectedVersion) ? b.selectedVersion : ""
-    readonly property string userName: {
-        if (!b) return ""
-        if (b.isOnline) return b.username || ""
-        if ((b.offlineUsername || "").length > 0) return b.offlineUsername
-        // 外置账号：名字来自 YggdrasilBackend
-        return (yg && yg.loggedIn) ? (yg.username || "") : ""
-    }
+    readonly property string userName: b ? (b.activeAccountName || "") : ""
     // 演示态：--ui-demo-launch 由后端假状态机驱动真实浮层组件（不检测 Java、不拉文件、
     // 不起进程），--ui-demo-fail 走失败分支。演示走的是与真机同一条管线代码路径。
     readonly property bool demoMode: Qt.application.arguments.indexOf("--ui-demo-launch") >= 0
@@ -78,6 +73,25 @@ Item {
         page.refreshRunningList()
         if (page.demoMode && page.b)
             page.b.demoLaunch((page.demoFail ? 1 : 0) + (page.demoOnline ? 2 : 0))
+        // 验收钩子：--launch-now 自动点一次「启动游戏」（走与按钮完全相同的路径，用于
+        // 三种账号类型各跑一遍预检/身份，不必手点）。只在传参时触发。
+        if (Qt.application.arguments.indexOf("--launch-now") >= 0) {
+            launchNowTimer.start()
+        }
+    }
+
+    Timer {
+        id: launchNowTimer
+        interval: 1200
+        onTriggered: {
+            if (!page.b) return
+            if (!page.ver || page.ver.length === 0) {
+                console.info("[ui] --launch-now: 没有选中版本，跳过")
+                return
+            }
+            console.info("[ui] --launch-now: 启动", page.ver, "身份=", page.userName)
+            page.b.launch(page.ver, page.b.activeAccountOnline)
+        }
     }
 
     Connections {
@@ -157,16 +171,11 @@ Item {
         name: page.userName
         // 「在线」要包含外置登录：外置账号的后端 isOnline 是 false（那是微软会话的标志），
         // 只读它会把外置账号显示成离线 —— 橙点 + 字母头像（影报的正是这个）。
-        online: page.b ? page.b.accountOnline : false
-        status: (page.b && page.b.accountOnline) ? 0 : 1
-        // 原始皮肤优先（后端 renderHead3D 对部分皮肤会渲染出错误的头图）
-        rawSkinSource: (page.b && page.b.isOnline) ? (page.b.skinTexturePath || "") : ""
-        skinSource: {
-            if (!page.b) return ""
-            if (page.b.isOnline) return page.b.skinPath || page.b.offlineSkinPath || ""
-            // 外置/离线：用这个账号存下来的头像快照，别回落到字母
-            return page.b.currentAccountAvatar || page.b.offlineSkinPath || ""
-        }
+        online: page.b ? page.b.activeAccountOnline : false
+        status: (page.b && page.b.activeAccountOnline) ? 0 : 1
+        // 原始皮肤优先（后端 renderHead3D 对部分皮肤会渲染出错误的头图）；只有正版有
+        rawSkinSource: page.b ? (page.b.activeAccountSkin || "") : ""
+        skinSource: page.b ? (page.b.activeAccountAvatar || "") : ""
         onClicked: page.openAccount()
     }
 
@@ -199,7 +208,7 @@ Item {
                 if (page.launching) { page.b.cancelLaunch(); return }
                 if (!page.hasAccount) { page.openAccount(); return }
                 if (page.ver.length === 0) return
-                page.b.launch(page.ver, page.b.isOnline)   // 允许多开：再开一个该版本
+                page.b.launch(page.ver, page.b.activeAccountOnline)   // 允许多开：再开一个该版本
             }
         }
         // 只留箭头、不画方框：方框和主按钮圆角/边框都不是一套，怎么摆都像错位。

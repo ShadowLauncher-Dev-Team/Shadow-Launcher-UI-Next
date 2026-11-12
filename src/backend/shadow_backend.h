@@ -57,6 +57,18 @@ class ShadowBackend : public QObject {
     Q_PROPERTY(bool accountOnline READ accountOnline NOTIFY accountChanged)
     // 当前账号的头像快照（外置/离线账号没有实时 skinPath，用它兜底）
     Q_PROPERTY(QString currentAccountAvatar READ currentAccountAvatar NOTIFY accountsChanged)
+
+    // ── 统一的「当前账号」视图（单一真源）──────────────────────────
+    // 唯一真源是 accounts.json 的 current（AccountBackend::currentAccountMode），
+    // 三种类型（0 正版 / 1 离线 / 2 外置）各自取自己那份会话。
+    // 页面显示、启动预检、启动参数全部只读这组属性 —— 不要再直接问
+    // isOnline / offlineUsername / m_lastLoginMode，那些是全局或「上次」值，跨账号必然错位。
+    Q_PROPERTY(int activeAccountMode READ activeAccountMode NOTIFY accountChanged)
+    Q_PROPERTY(QString activeAccountName READ activeAccountName NOTIFY accountChanged)
+    Q_PROPERTY(QString activeAccountUuid READ activeAccountUuid NOTIFY accountChanged)
+    Q_PROPERTY(bool activeAccountOnline READ activeAccountOnline NOTIFY accountChanged)
+    Q_PROPERTY(QString activeAccountAvatar READ activeAccountAvatar NOTIFY accountsChanged)
+    Q_PROPERTY(QString activeAccountSkin READ activeAccountSkin NOTIFY skinReady)
     Q_PROPERTY(QString accountUuid READ accountUuid NOTIFY accountChanged)
     Q_PROPERTY(QString offlineUuid READ offlineUuid NOTIFY accountChanged)
     Q_PROPERTY(QString skinPath READ skinPath NOTIFY skinReady)
@@ -235,6 +247,12 @@ public:
     bool isOnline() const;
     bool accountOnline() const;
     QString currentAccountAvatar() const;
+    int activeAccountMode() const;
+    QString activeAccountName() const;
+    QString activeAccountUuid() const;
+    bool activeAccountOnline() const;
+    QString activeAccountAvatar() const;
+    QString activeAccountSkin() const;
     QString accountUuid() const;
     QString offlineUuid() const;
     // Q_PROPERTY loginType 的 READ 函数（不再额外暴露成方法；新 UI 用自己的 typeText）

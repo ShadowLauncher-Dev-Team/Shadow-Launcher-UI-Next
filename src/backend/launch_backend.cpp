@@ -1209,10 +1209,16 @@ void LaunchBackend::runNextCheck()
         emit launchProgressChanged(5, tr("检查登录状态..."));
         qCDebug(logLaunch) << "[PROGRESS] 5% - 检查登录状态...";
         if (m_authName.isEmpty()) {
+            // 身份没传进来。正常路径下不该发生：ShadowBackend 已按当前账号类型
+            // 决定用哪套凭据；真走到这里说明会话没恢复或账号条目损坏。
+            qCWarning(logLaunch) << QStringLiteral("[启动] 身份为空，无法启动 在线=%1 外置模式=%2")
+                                        .arg(m_authIsOnline).arg(m_yggdrasilMode);
             abortCheck(tr("登录状态"),
-                       tr("请先登录后再启动游戏"));
+                       tr("当前账号身份未就绪，请重新登录后再启动"));
             return;
         }
+        qCInfo(logLaunch) << QStringLiteral("[启动] 身份=%1 在线=%2 外置=%3 uuid=%4")
+                                  .arg(m_authName).arg(m_authIsOnline).arg(m_yggdrasilMode).arg(m_authUuid);
         // For online auth: refresh the Minecraft token before launching
         // (skip for yggdrasil mode - authlib-injector handles token validation)
         if (m_authIsOnline && m_account && !m_yggdrasilMode) {
