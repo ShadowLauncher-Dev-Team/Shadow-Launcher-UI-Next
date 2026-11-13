@@ -1002,6 +1002,9 @@ Item {
                     id: oldList
                     anchors.left: parent.left; anchors.right: parent.right
                     anchors.top: oldHead.bottom; anchors.topMargin: 4
+                    // 固定显示 6 行高度（与 oldBox.height 保持一致），**可滚动**：
+                    // 之前 interactive:false + 写死 min(6) 行，导致「还有 41 个旧版本」却永远只能看到 6 个，
+                    // 第 7 个往后的版本完全选不到 —— 与“能展开就能选”的承诺不符。
                     height: page.showOld ? Math.min(6, page.oldCount) * 38 : 0
                     visible: page.showOld
                     clip: true
@@ -1009,7 +1012,18 @@ Item {
                     Behavior on height { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     model: page.showOld ? page.comboList.slice(1) : []
-                    interactive: false
+                    interactive: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    // 滚动条沿用 VsExportPane 的样式（细轨道 + bgHover 滑块），保持全项目一致
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                        width: 6
+                        contentItem: Rectangle {
+                            radius: 3
+                            color: Theme.bgHover
+                            implicitWidth: 6
+                        }
+                    }
                     delegate: Item {
                         id: row   // 下面底色/竖条都要读 row.picked；少了这个 id，绑定求值失败会静默落回白色
                         width: oldList.width; height: 38

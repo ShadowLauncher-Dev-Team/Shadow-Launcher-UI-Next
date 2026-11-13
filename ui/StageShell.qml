@@ -258,10 +258,11 @@ Item {
         // 详情页要经过「下载页 → 选 tab → 等网络列表 → 点卡片」才能进来，
         // 自动化里任何一步慢了或点偏了就测不到，所以直接塞一份样本 item。
         if (Qt.application.arguments.indexOf("--ui-res-detail") >= 0) {
+            // 用 fabric-api：它单个组合下就有 40+ 个历史版本，正好覆盖「旧版本列表需要滚动」这条路径。
             var sample = {
-                slug: "sodium",
-                title: "Sodium",
-                zh: "钠",
+                slug: "fabric-api",
+                title: "Fabric API",
+                zh: "",
                 desc: "Lightweight and modular API providing common hooks and interoperability measures utilized by mods using the Fabric toolchain.",
                 icon: "",
                 source: "Modrinth",
