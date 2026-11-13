@@ -127,8 +127,11 @@ Item {
                     // 卡片名是文件名（.jar/.zip）时说明这是"下载"任务，措辞跟着变，
                     // 避免同一个动作一处说"下载完成"、一处说"安装完成"
                     var nm = r.name || qsTr("任务")
-                    var isFile = /\.(jar|zip|mrpack)$/i.test(nm)
-                    if (page.toast) page.toast.show(isFile ? qsTr("%1 下载完成").arg(nm) : qsTr("%1 安装完成").arg(nm), 2600, "success")
+                    // 卡片名对整合包是「导入整合包：XXX」（动作+名字），
+                    // 直接拿去拼 toast 会变成「导入整合包：XXX 安装完成」。先剥掉动作前缀。
+                    var cleanNm = String(nm).replace(/^导入整合包[：:]\s*/, "")
+                    var isFile = /\.(jar|zip|mrpack)$/i.test(cleanNm)
+                    if (page.toast) page.toast.show(isFile ? qsTr("%1 下载完成").arg(cleanNm) : qsTr("%1 安装完成").arg(cleanNm), 2600, "success")
                     if (page.b.refreshInstalled) page.b.refreshInstalled()
                 }
                 continue

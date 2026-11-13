@@ -390,7 +390,11 @@ Item {
         enabled: page.importer !== null
         function onImportFinished(ok, name, info) {
             if (ok) {
-                page.flash(qsTr("整合包已导入：%1").arg(name))
+                // 完成提示只由「下载进度」页发布（它会弹「%1 安装完成」）。
+                // 这里原来另弹一条「整合包已导入：%1」，两句主题不同，
+                // ToastHost 的去重（按去掉「完成/失败」后的主题比对）失效
+                // → 导入完成时用户看到两条 toast。
+                // 同一件事只能有一个播报者。
                 // info 在成功分支是注册后的版本 id（ModpackImporter::resultVersionId 同值）
                 page.selectAfterRefresh = String(info || "")
                 page.refreshLocal(true)
