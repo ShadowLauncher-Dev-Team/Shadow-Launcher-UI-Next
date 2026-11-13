@@ -104,6 +104,12 @@ Item {
         enabled: root.interactive
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
         onWheel: (event) => {
+            // 只有按住 Ctrl 才缩放取景；否则把滚轮让给外层 Flickable 正常滚页面。
+            // （之前无修饰键也缩放，导致"鼠标停在预览上就滚不动设置页"，而缩放条还在下面）
+            if (!(event.modifiers & Qt.ControlModifier)) {
+                event.accepted = false
+                return
+            }
             const step = event.angleDelta.y > 0 ? 1.1 : (1 / 1.1)
             const next = Math.max(1.0, Math.min(root.maxZoom, root.zoom * step))
             if (Math.abs(next - root.zoom) < 0.001) {

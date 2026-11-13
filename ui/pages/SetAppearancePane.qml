@@ -7,6 +7,7 @@
 //   预览与启动页共用 SBgImage，取景公式只此一处，避免"预览和实际不一样"。
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Window
 import ShadowLauncher.Next
 
 Item {
@@ -25,6 +26,22 @@ Item {
     property real viewCx: 0.5
     property real viewCy: 0.5
 
+    // ── 取景框必须和「启动页内容区」同比例 ──────────────────────
+    // 之前预览是 2.2:1 的宽条，而启动页内容区约 1.24:1 —— 在宽条里挪到边的位置，
+    // 启动页上根本看不到，等于选不准（用户实测）。这里按真实窗口算比例：
+    // 启动页内容区 = (窗口宽 - 侧栏宽) × 窗口高。
+    readonly property var win: Window.window
+    readonly property real stageAspect: {
+        const w = pane.win ? pane.win.width : 1100
+        const h = pane.win ? pane.win.height : 720
+        const sw = (w < 900) ? Theme.sideWNarrow : Theme.sideW
+        return Math.max(0.6, Math.min(3.0, (w - sw) / Math.max(1, h)))
+    }
+    readonly property real previewMaxH: 340   // 太高会把缩放条挤出可视区，用户得边滚边调
+
+    // 「实时预览」：拖动/缩放的这段时间里，把设置页淡下去，让背后的启动页直接透出来。
+    readonly property bool livePreview: previewHold.running || (preview && preview.dragActive)
+
     function syncFromBackend() {
         if (!pane.b) return
         pane.viewZoom = pane.b.bgZoom !== undefined ? pane.b.bgZoom : 1.0
@@ -39,6 +56,11 @@ Item {
         ignoreUnknownSignals: true
         // 后端改图/恢复默认时把本地取景拉回来（避免预览停在旧图的缩放上）
         function onCustomBgChanged() { pane.syncFromBackend() }
+    }
+
+    Timer {
+        id: previewHold
+        interval: 900
     }
 
     Timer {
@@ -321,12 +343,13 @@ Item {
                     width: parent.width
                     divider: false
                     label: "取景"
-                    desc: "在预览框内拖动调整位置，滚轮或下方滑块缩放。这里的取景就是启动页实际显示的范围。"
+                    desc: "在预览框内拖动调整位置；按住 Ctrl 滚轮或拖动下方滑块缩放。预览框与启动页同比例，框里看到的就是启动页实际显示的范围。"
 
                     SBgImage {
                         id: preview
-                        width: parent.width
-                        height: Math.max(180, Math.min(280, width * 0.4))
+                        // 宽度取「上限高度 × 比例」与可用宽度的较小者，高度反算 —— 保证与启动页同比例
+                        width: Math.min(parent.width, Math.round(pane.previewMaxH * pane.stageAspect))
+                        height: Math.max(160, Math.round(width / pane.stageAspect))
                         source: (pane.b && pane.b.customBgUrl && pane.b.customBgUrl.length > 0)
                                 ? pane.b.customBgUrl
                                 : (pane.presets.length > 0 ? pane.presets[0].source : "")
@@ -339,6 +362,7 @@ Item {
                             pane.viewCx = cx
                             pane.viewCy = cy
                             applyTimer.restart()
+                            previewHold.restart()   // 拖动/滚轮期间与之后 0.9s 保持半透明实时预览
                         }
                     }
 
@@ -356,6 +380,7 @@ Item {
                             onMoved: (v) => {
                                 pane.viewZoom = v / 100.0
                                 applyTimer.restart()
+                                previewHold.restart()
                             }
                         }
 

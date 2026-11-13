@@ -478,6 +478,14 @@ Item {
         anchors.fill: parent
         visible: root.prefsOpen
         clip: true
+        // ── 外观页「实时预览」──────────────────────────────────
+        // 拖取景 / 调缩放时把整页淡到 0.22，背后的启动页直接透出来 ——
+        // 用户改的是「启动页长什么样」，就必须在启动页本身上看到结果。
+        // 松手 0.9s 后自动恢复（子页的 livePreview 由外观页驱动）。
+        opacity: (root.prefsOpen && prefsPage.livePreview) ? 0.22 : 1.0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard }
+        }
         Rectangle { anchors.fill: parent; color: Theme.bg }
         Item {
             id: prefsSurface

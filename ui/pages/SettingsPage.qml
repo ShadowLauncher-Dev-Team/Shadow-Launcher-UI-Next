@@ -11,6 +11,9 @@ Item {
     property var toast: null
     // 子页自学自报忙碌（Java 扫描等），转给壳的顶部光条
     property bool busy: false
+    // 子页要求「半透明实时预览」（外观页拖取景时）：壳据此把整页淡下去，
+    // 让背后的启动页透出来，用户看到的就是最终效果。
+    property bool livePreview: false
     signal close()
 
     readonly property var rows: [
@@ -279,9 +282,14 @@ Item {
 
             onLoaded: {
                 page.busy = (paneLoader.item && paneLoader.item.busy) ? true : false
+                // 子页的属性会变，必须用绑定转发，不能只拷一次值
+                page.livePreview = Qt.binding(function() {
+                    return paneLoader.item ? paneLoader.item.livePreview === true : false
+                })
             }
             onSourceComponentChanged: {
                 page.busy = false
+                page.livePreview = false
                 if (paneIn) paneIn.restart()
             }
 
