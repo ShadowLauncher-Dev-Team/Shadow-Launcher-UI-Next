@@ -72,6 +72,12 @@ QtObject {
     readonly property color imageScrimSide0: "#b805080e"
     readonly property color imageScrimSide1: "#2e05080e"
     readonly property color imageScrim: "#05080e"
+    // 通用遮罩（弹层背景 / 图片压暗条）。
+    // 之前 SetAppearancePane 和 MultiplayerPage 都写了 Theme.scrim，但 Theme 里根本没有这个
+    // token —— binding 求值失败后 Rectangle 落回默认色（白），于是图片底部的名字条是白的、
+    // 白字糊在灰白条上（影报的截图）。这里把 token 正式定义出来，两套方案都用深色：
+    // 遮罩的语义是「压暗后面」，浅色方案下用亮色遮罩反而会把内容洗白。
+    readonly property color scrim: "#05080e"
     // 照片页（启动页 / 账户页）专用固定暗色：这两页背景是图片，任何配色方案下都保持
     // 暗色文字体系，避免"浅色方案里深色文字压在暗图上"（文字不可见红线）。
     readonly property color pBg: "#08090d"

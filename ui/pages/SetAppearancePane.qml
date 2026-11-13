@@ -289,42 +289,57 @@ Item {
                                 height: 104
                                 readonly property bool selected: modelData.active === true
 
+                                // 图片容器：**不画边框**。图片是直角矩形，若边框画在它下面，
+                                // 四个圆角处会被图片的直角盖掉一截 —— 看起来就是「边框缺角」。
+                                // 所以边框单独抽成最上层一条（见下面 borderLayer），四角永远完整。
                                 Rectangle {
                                     anchors.fill: parent
                                     radius: Theme.rMd
                                     color: Theme.bgCard2
-                                    border.width: selected ? 2 : 1
-                                    border.color: selected ? Theme.accent : Theme.line2
                                     clip: true
 
                                     Image {
                                         anchors.fill: parent
-                                        anchors.margins: selected ? 2 : 1
+                                        anchors.margins: 1
                                         source: modelData.source
                                         fillMode: Image.PreserveAspectCrop
                                         asynchronous: true
                                         opacity: 0.92
                                     }
 
+                                    // 名字条：从透明渐隐到深色，白字永远压得住（不再是一块灰白条）
                                     Rectangle {
                                         anchors.left: parent.left
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
-                                        height: 26
-                                        color: Theme.scrim
-                                        opacity: 0.62
+                                        height: 34
+                                        gradient: Gradient {
+                                            GradientStop { position: 0.0; color: "transparent" }
+                                            GradientStop { position: 1.0; color: Theme.scrim }
+                                        }
                                     }
                                     Text {
                                         anchors.left: parent.left
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
-                                        anchors.margins: 8
+                                        anchors.leftMargin: 8
+                                        anchors.rightMargin: 8
+                                        anchors.bottomMargin: 6
                                         text: modelData.name
                                         color: Theme.imageFg
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
                                         elide: Text.ElideMiddle
                                     }
+                                }
+
+                                // 边框层（最上层，圆角完整）
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: Theme.rMd
+                                    color: "transparent"
+                                    border.width: selected ? 2 : 1
+                                    border.color: selected ? Theme.accent : Theme.line2
                                 }
 
                                 MouseArea {
@@ -348,37 +363,41 @@ Item {
                                 height: 104
                                 readonly property bool selected: modelData.active === true
 
+                                // 同上：图片容器不画边框，边框单独一层压在最上面
                                 Rectangle {
                                     anchors.fill: parent
                                     radius: Theme.rMd
                                     color: Theme.bgCard2
-                                    border.width: selected ? 2 : 1
-                                    border.color: selected ? Theme.accent : Theme.line2
                                     clip: true
 
                                     // 缩略图用这张图**自己的**取景，所见即启动页上会看到的
                                     SBgImage {
                                         anchors.fill: parent
-                                        anchors.margins: selected ? 2 : 1
+                                        anchors.margins: 1
                                         source: modelData.source
                                         zoom: modelData.zoom
                                         cropX: modelData.cropX
                                         cropY: modelData.cropY
                                     }
 
+                                    // 名字条：透明 → 深色渐隐，白字永远压得住
                                     Rectangle {
                                         anchors.left: parent.left
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
-                                        height: 26
-                                        color: Theme.scrim
-                                        opacity: 0.62
+                                        height: 34
+                                        gradient: Gradient {
+                                            GradientStop { position: 0.0; color: "transparent" }
+                                            GradientStop { position: 1.0; color: Theme.scrim }
+                                        }
                                     }
                                     Text {
                                         anchors.left: parent.left
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
-                                        anchors.margins: 8
+                                        anchors.leftMargin: 8
+                                        anchors.rightMargin: 8
+                                        anchors.bottomMargin: 6
                                         text: modelData.name
                                         color: Theme.imageFg
                                         font.family: Theme.fontFamily
@@ -418,6 +437,15 @@ Item {
                                             }
                                         }
                                     }
+                                }
+
+                                // 边框层（最上层，压住图片的直角，圆角完整）
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: Theme.rMd
+                                    color: "transparent"
+                                    border.width: selected ? 2 : 1
+                                    border.color: selected ? Theme.accent : Theme.line2
                                 }
 
                                 MouseArea {
