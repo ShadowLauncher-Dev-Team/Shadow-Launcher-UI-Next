@@ -47,8 +47,10 @@ Item {
         source: root.source
         asynchronous: true
         smooth: true
-        // 不能用 fillMode 铺：需要按 zoom 精确控制几何
-        fillMode: Image.Pad
+        // 几何由我们自己算（保持比例），所以这里必须用 Stretch ——
+        // 用 Image.Pad 的话 Qt 会按**原始像素尺寸**绘制、忽略我们设的宽高，
+        // 默认极光图就变成"放大后裁切"（用户实测报的缩放不对）。
+        fillMode: Image.Stretch
         width: Math.max(root.width, root.drawW)
         height: Math.max(root.height, root.drawH)
         x: (root.width - width) * Math.max(0, Math.min(1, root.cropX))
