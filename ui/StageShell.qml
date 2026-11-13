@@ -354,18 +354,19 @@ Item {
         }
         Item {
             anchors.fill: parent
-            // 视差（左移 22 + 缩到 0.99）只在「有全屏页盖着」的时候有意义；
-            // 回来时必须硬切归位（duration 0），否则全屏页瞬间收起后，
-            // 启动页还在慢慢滑回来的那几帧里，右侧会露一条空白（实测 2~3 帧白边）。
+            // 回主页的过渡：**只做透明度**，不做位移/缩放。
+            // 位移(-22)和缩放(0.99)会让页面在回到一半时四周各留一条 1~22px 的缝，
+            // 那几帧里缝里露出的是窗口外的东西 —— 用户看到的就是「一圈白边」。
+            // 透明度过渡没有几何缝隙，观感一样是「从暗处浮回启动页」。
             readonly property bool shifted: (root.downloadOpen || root.progressOpen
                                              || root.fullOpen || root.multiplayerOpen)
-            transform: Translate {
-                x: (shifted && !stageHost.previewing) ? -22 : 0
-                Behavior on x { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
+            opacity: (shifted && !stageHost.previewing) ? 0.55 : 1.0
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: shifted ? Theme.durPage * 0.5 : Theme.durPage
+                    easing.type: Theme.easeEnter
+                }
             }
-            // 回主页时也带一点「顶回来」的缩放，和全屏页入场保持同一套语言
-            scale: (shifted && !stageHost.previewing) ? 0.99 : 1.0
-            Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
             StagePage {
                 anchors.fill: parent
                 enabled: !root.fullOpen && !root.downloadOpen && !root.progressOpen && !root.multiplayerOpen

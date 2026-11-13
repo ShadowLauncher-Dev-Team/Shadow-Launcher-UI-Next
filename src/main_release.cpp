@@ -723,8 +723,10 @@ int main(int argc, char *argv[])
             QQuickWindow* win = qobject_cast<QQuickWindow*>(obj);
             if (!win) return;
 
-            // ── Force transparent window background (prevents white corner artifacts) ──
-            win->setColor(Qt::transparent);
+            // ── 窗口底色：深色实底（曾经设成 transparent 来躲角落白边）──
+            // 透明实底在「起页回退动画」的那一两帧会从边缘缝里透出桌面 → 一圈白边。
+            // 深色实底 + DWM 圆角裁剪 = 缝里露的是自己的底色，看不出来。
+            win->setColor(QColor(8, 9, 13));
 
 #ifdef Q_OS_WIN
             // ── Windows 11 窗口圆角 ──
@@ -735,6 +737,12 @@ int main(int argc, char *argv[])
                     DWM_WINDOW_CORNER_PREFERENCE pref = DWMWCP_ROUND;
                     DwmSetWindowAttribute(hwndDwm, DWMWA_WINDOW_CORNER_PREFERENCE,
                                           &pref, sizeof(pref));
+                    // 去掉 DWM 自己在窗沿画的那圈 1px 边框（跟随系统强调色，浅色下是白线）。
+                    // 页面切换那种「瞬间一帧」里，圆角重绘会把这条边框露出来 —— 就是用户报的
+                    // 「白边组成的框」。DWMWA_BORDER_COLOR(34) + DWMWA_COLOR_NONE 直接不要它。
+                    const DWORD borderNone = 0xFFFFFFFE; // DWMWA_COLOR_NONE
+                    DwmSetWindowAttribute(hwndDwm, 34 /*DWMWA_BORDER_COLOR*/,
+                                          &borderNone, sizeof(borderNone));
                 }
             }
 #endif
