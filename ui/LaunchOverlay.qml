@@ -206,14 +206,16 @@ Item {
                     visible: root.failed
                     color: "transparent"
                     border.width: 1.5
-                    border.color: Theme.dangerText
+                    // 失败标记是**图形**（方块边框 + 竖条），原色 #ef4444，要饱和红；
+                    // dangerText 是给文字用的浅红，画成图标会发灰。
+                    border.color: Theme.danger
                     anchors.left: parent.left
                     anchors.verticalCenter: titleTx.verticalCenter
                     Rectangle {
                         width: 1.5
                         height: 5
                         anchors.centerIn: parent
-                        color: Theme.dangerText
+                        color: Theme.danger
                     }
                 }
                 Text {
@@ -302,7 +304,9 @@ Item {
                     Rectangle {
                         height: 4
                         width: parent.width * root.overall
-                        color: root.failed ? Theme.dangerText : Theme.accentText
+                        // 进度条是**实心填充**：原色 #3b82f6 / 失败 #ef4444，都是饱和色。
+                        // 黑白配色那次换成了给文字用的浅色（accentText / dangerText），条子整根发白。
+                        color: root.failed ? Theme.danger : Theme.accent
                         Behavior on width { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     }
                 }
@@ -399,8 +403,10 @@ Item {
                                         width: parent.width * (modelData.state === 2 ? 1
                                                                : (modelData.state === 3 ? 1
                                                                   : modelData.progress / 100))
-                                        color: modelData.state === 2 ? Theme.fg3
-                                               : (modelData.state === 3 ? Theme.danger : Theme.accentText)
+                                        // 细进度条是填充色：完成原色 #4f9d76(绿) 被换成了 fg3(灰)，
+                                        // 进行中原色 #60a5fa(亮蓝) 被换成了 accentText。都改回饱和色。
+                                        color: modelData.state === 2 ? Theme.ok
+                                               : (modelData.state === 3 ? Theme.danger : Theme.accentTop)
                                         Behavior on color {
                                             ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
                                         }
