@@ -12,6 +12,9 @@
 
 #include "version_backend.h"
 
+#include <QtConcurrent>
+#include <QThreadPool>
+
 #include "../core/step_keys.h"
 #include "../core/source_policy.h"
 #include "../core/cleanup_guard.h"
@@ -9598,10 +9601,27 @@ void VersionBackend::destroyMergedContext(const QString& installId)
         && (ctx->installer->installWorkerBusy() || ctx->installer->bootstrapperRunning()
             || ctx->installer->syncInstallRunning());
     if (!ctx->tempDir.isEmpty() && lastUser && !workerBusy) {
-        QDir d(ctx->tempDir);
-        if (d.exists()) d.removeRecursively();
-        TempTracker::forget(ctx->tempDir);
-        qCInfo(logVersion) << QStringLiteral("[追踪] 清理临时目录: %1").arg(ctx->tempDir);
+        // ── 2026-11-14：删除搬到后台线程 ──
+        // 原实现在主线程 d.removeRecursively() 删整个合并临时目录
+        // （解压出来的几千个 MC 文件 / 几百 MB）。实测 Forge 安装收尾
+        // 固定卡 667ms / 695ms，大整合包更久 —— 用户看到的就是「装完了却卡一下」。
+        // 现在主线程只登记，删除交给线程池；删成功才 forget，
+        // 失败则留着 .track 让 TempTracker::cleanupOrphans() 下次兜底。
+        const QString dir = ctx->tempDir;
+        qCInfo(logVersion) << QStringLiteral("[追踪] 临时目录转入后台清理: %1").arg(dir);
+        // 用 QThreadPool 直接投递（Qt 6 对丢弃 QFuture 的 QtConcurrent::run 报 C4858）
+        QThreadPool::globalInstance()->start([dir]() {
+            bool gone = true;
+            if (QDir(dir).exists()) {
+                QDir d(dir);
+                gone = d.removeRecursively();
+            }
+            if (gone) {
+                TempTracker::forget(dir);
+            } else {
+                qCWarning(logVersion) << QStringLiteral("[追踪] 后台清理未完成，留待孤儿清扫: %1").arg(dir);
+            }
+        });
     } else if (workerBusy) {
         // ── 取消后临时目录必须清干净（2026-11-05 实测：取消一次留下 673MB / 4048 文件）──
         // 旧实现只是"跳过"，把清理甩给下次启动的 TempTracker::cleanupOrphans()。
