@@ -35,6 +35,9 @@ Item {
     property bool progressOpen: false
     // 联机：与下载页同一套宿主（侧栏常驻、页面自绘标题），不是全屏页
     property bool multiplayerOpen: false
+    // 帮助文档：官网的 VitePress 站点。启动器不内嵌，直接开系统浏览器 ——
+    // 文档、截图、更新节奏跟官网是同一份，也省得打包体积翻倍。
+    readonly property string helpDocsUrl: "https://shadowlauncher.cn/docs/"
     // 资源详情页（从资源库卡片打开）
     property bool resDetailOpen: false
     // 资源详情按"全屏独立页"处理：打开时侧栏收起、页面铺满整窗（与版本页/账户页同一套）
@@ -309,8 +312,14 @@ Item {
                 root.progressOpen = false
                 root.multiplayerOpen = false
                 root.prefsOpen = false
+            } else if (label === "帮助文档") {
+                // 帮助文档 = 官网上的 VitePress 站点（shadowlauncher.cn/docs），
+                // 不在启动器里另做一份：内容、截图、更新节奏跟官网保持同一份，
+                // 也免得打包体积和「文档与官网不一致」的问题。
+                // 侧栏这一项是子项（isMain=false），点它不会改高亮，页面也不需要切。
+                console.info("[ui] 打开帮助文档: " + root.helpDocsUrl)
+                Qt.openUrlExternally(root.helpDocsUrl)
             }
-            // 其余子项（帮助文档）暂未实现：保持当前页面不动
         }
         // 快起：前 40% 时间就收掉大部分宽度，与页面淡入同帧开始，视觉上是一次动作。
         // 复原（关闭全屏页）时 duration 归 0：那一刻全屏页还完全不透明，宽度跳变看不见；
