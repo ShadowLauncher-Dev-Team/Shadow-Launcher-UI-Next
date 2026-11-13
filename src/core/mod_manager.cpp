@@ -1473,13 +1473,37 @@ void ModManager::fetchVersionDependencies(const QString& slug, const QString& ve
                     QString::fromUtf8(QJsonDocument(QJsonArray::fromStringList(verIds)).toJson(QJsonDocument::Compact)));
                 vu.setQuery(vq);
                 fetchViaSinan(vu.toString(), true,
-                    [verMap, commonDone](int s, const QByteArray& b) {
+                    [verMap, resolvedFiles, depVerId, commonDone](int s, const QByteArray& b) {
                         if (s == 200) {
                             const QJsonArray arr = QJsonDocument::fromJson(b).array();
                             for (const QJsonValue& vv : arr) {
                                 const QJsonObject vo = vv.toObject();
-                                (*verMap)[vo.value(QStringLiteral("id")).toString()]
-                                    = vo.value(QStringLiteral("version_number")).toString();
+                                const QString vid = vo.value(QStringLiteral("id")).toString();
+                                (*verMap)[vid] = vo.value(QStringLiteral("version_number")).toString();
+                                // ★ 这里以前只取 version_number，把 files 整个丢掉了。
+                                //   而「依赖带了 version_id」的项不会进下面 resolveDepFile 的 need 列表，
+                                //   于是它既没有 url 也没有 filename 就被回传给前端 —— 前端只好再逐个
+                                //   fetchVersionFile() 补；那一步失败，前置就静默消失了。
+                                //   /versions?ids= 的响应本来就带完整 files，一次就能拿全，不该再赌第二次请求。
+                                const QJsonArray fs = vo.value(QStringLiteral("files")).toArray();
+                                QJsonObject picked;
+                                for (const QJsonValue& fv : fs) {
+                                    const QJsonObject f = fv.toObject();
+                                    if (f.value(QStringLiteral("primary")).toBool()) { picked = f; break; }
+                                }
+                                if (picked.isEmpty() && !fs.isEmpty()) picked = fs.first().toObject();
+                                if (picked.isEmpty()) continue;
+                                QJsonObject r;
+                                r[QStringLiteral("url")] = picked.value(QStringLiteral("url"));
+                                r[QStringLiteral("filename")] = picked.value(QStringLiteral("filename"));
+                                r[QStringLiteral("size")] = picked.value(QStringLiteral("size"));
+                                r[QStringLiteral("sha1")] = picked.value(QStringLiteral("hashes")).toObject()
+                                                                 .value(QStringLiteral("sha1"));
+                                r[QStringLiteral("version_number")] = vo.value(QStringLiteral("version_number"));
+                                // resolvedFiles 是按 project_id 索引的，用 depVerId 反查
+                                for (auto it = depVerId.constBegin(); it != depVerId.constEnd(); ++it) {
+                                    if (it.value() == vid) { (*resolvedFiles)[it.key()] = r; break; }
+                                }
                             }
                         }
                         commonDone();

@@ -258,8 +258,7 @@ Item {
         // 详情页要经过「下载页 → 选 tab → 等网络列表 → 点卡片」才能进来，
         // 自动化里任何一步慢了或点偏了就测不到，所以直接塞一份样本 item。
         if (Qt.application.arguments.indexOf("--ui-res-detail") >= 0) {
-            // iris：前置 sodium 在 Modrinth 侧给的元数据不全（url/filename 都空、只有 version_id），
-            // 会走「异步解析前置文件」这条路径 —— 也就是之前静默丢前置的那条。
+            // iris：必需前置 sodium，覆盖「模组 + 前置一起下载」这条路径（也是之前丢前置的那条）。
             var sample = {
                 slug: "iris",
                 title: "Iris Shaders",
