@@ -240,6 +240,11 @@ Item {
             root.downloadOpen = true
             root.progressOpen = false
             sideBar.currentKey = "download"
+            // --ui-dl-filter <N>：直接切到某个版本类型（0 正式 / 1 快照 / 2 远古 / 3 愚人节）。
+            // 原生窗口的 tab 点击坐标随 DPI/窗口位置漂移，用参数切换才能稳定复现切换动画与数据一致性。
+            var fi = Qt.application.arguments.indexOf("--ui-dl-filter")
+            if (fi >= 0 && fi + 1 < Qt.application.arguments.length)
+                downloadPage.filter = parseInt(Qt.application.arguments[fi + 1], 10) || 0
         }
         if (Qt.application.arguments.indexOf("--ui-progress") >= 0) {
             root.progressOpen = true

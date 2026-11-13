@@ -58,6 +58,14 @@ Item {
     }
     property int mode: 0        // 0 列表 1 配置
     property int filter: 0      // 0 正式版 1 快照版 2 远古版 3 愚人节版
+    // 切换类型时走一次「淡出 → 换数据 → 淡入」；点当前项不重播。
+    // swapTimer.running 也要看：从 A 切到 B 再切回 A 时，filterShown 可能还是 A，
+    // 但那次切换的淡出已经发生，必须把列表重新淡入回来，否则一直停在半透明。
+    onFilterChanged: {
+        if (page.filter === page.filterShown && !swapTimer.running) return
+        listFadeOut.restart()
+        swapTimer.restart()
+    }
     property string search: ""
     property string picked: ""
     property string instName: ""
@@ -125,8 +133,8 @@ Item {
 
     function isInstalled(id) { return installedV.indexOf(id) >= 0 }
 
-    function visibleList() {
-        var src = listFor(page.filter)
+    function visibleList(k) {
+        var src = listFor(k === undefined ? page.filter : k)
         if (page.search.trim().length === 0) return src
         var q = page.search.trim().toLowerCase()
         var out = []
@@ -134,7 +142,10 @@ Item {
             if (src[i].toLowerCase().indexOf(q) >= 0) out.push(src[i])
         return out
     }
-    readonly property var rows: visibleList()
+    // 列表实际渲染的版本类型。刻意与 page.filter 分开：切换时先让旧列表淡出，
+    // 动画走到中点再换数据 —— 直接换 model 是「硬载入」，一帧内内容全变，看不出发生了什么。
+    property int filterShown: 0
+    readonly property var rows: visibleList(page.filterShown)
 
     function typeLabel() {
         if (page.filter === 1) return qsTr("快照")
@@ -625,7 +636,9 @@ Item {
         Rectangle {
             id: filterRow
             visible: page.tab === 0
-            width: segContent.width + 4
+            // 左右各留 3px（不是 2px）：外层圆角 rSm=6，内块圆角 4，两者同心才贴得住；
+            // 只留 2px 时内块的圆角会在四角顶到外框，看起来像「滑块冲出边框」。
+            width: segContent.width + 6
             height: 32
             radius: Theme.rSm
             color: Theme.bgCard2
@@ -637,13 +650,20 @@ Item {
             // itemAt 在首帧可能还是 null，滑块宽度会是 0，整排"选中态"就消失了（用户报的"正式版 Tab 缺失"）。
             Rectangle {
                 id: segPill
-                height: 28
-                radius: 6
-                color: Theme.bgInput
+                height: 26
+                radius: 4
+                // 原来用 bgInput(#0f131a) 压在容器 bgCard2(#0b0d12) 上 —— 亮度只差一档，
+                // 深色屏上几乎看不出选中块，读起来像「只有文字变色」。
+                // 现在与顶栏那排 tab 的选中块用同一套（accentSoft 蓝底）：
+                // 两排都是「筛选」，选中态用同一个颜色，用户不用重新学一遍。
+                color: Theme.accentSoft
                 readonly property var sel: page.segGeom[page.filter] || null
                 x: segContent.x + (sel ? sel.x : 0)
                 y: segContent.y
                 width: sel ? sel.w : 0
+                // 这里**不能**用 easePop：OutBack 有约 10% 的过冲，滑块在两端会越过容器边界
+                // （从最右滑到最左时左边缘冲出圆角外，用户报的「滑块冲出左右两侧」就是这个）。
+                // 选中块的识别度改由 accentSoft 蓝底承担，位移本身用无过冲的 easeEnter。
                 Behavior on x { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
                 Behavior on width { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
             }
@@ -656,9 +676,9 @@ Item {
                     id: segRep
                     model: page.filters
                     delegate: Rectangle {
-                        height: 28
+                        height: 26
                         width: segLabel.implicitWidth + segCnt.implicitWidth + 24
-                        radius: 6
+                        radius: 4
                         color: "transparent"
                         // 几何上报（首帧即写入，滑块不会出现"宽度 0"的空窗）
                         function syncGeom() { page.reportSegGeom(modelData.key, this) }
@@ -777,10 +797,36 @@ Item {
             }
         }
 
+        // 版本类型切换：淡出 → 换数据 → 淡入 + 自下而上轻推。
+        // 「换数据」刻意用 Timer 而不是 SequentialAnimation 里的 ScriptAction：
+        // 连点两次时 restart() 会把动画从第一步重来，中间那次 ScriptAction 直接不执行，
+        // 于是标签已经是新类型、列表还停在旧数据（实测踩到）。Timer 每次 restart 都会兑现，不会漏。
+        ParallelAnimation {
+            id: listFadeOut
+            NumberAnimation { target: vlist; property: "opacity"; to: 0; duration: Theme.durFast; easing.type: Theme.easeExit }
+            NumberAnimation { target: listShift; property: "y"; to: -6; duration: Theme.durFast; easing.type: Theme.easeExit }
+        }
+        Timer {
+            id: swapTimer
+            interval: Theme.durFast
+            onTriggered: {
+                page.filterShown = page.filter
+                vlist.positionViewAtBeginning()
+                listShift.y = 10
+                listFadeIn.restart()
+            }
+        }
+        ParallelAnimation {
+            id: listFadeIn
+            NumberAnimation { target: vlist; property: "opacity"; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+            NumberAnimation { target: listShift; property: "y"; to: 0; duration: Theme.durBase; easing.type: Theme.easeEnter }
+        }
+
         // 版本卡列表
         ListView {
             id: vlist
             visible: page.tab === 0
+            transform: Translate { id: listShift; y: 0 }
             anchors.top: latestCard.visible ? latestCard.bottom : filterRow.bottom
             anchors.topMargin: 16
             anchors.left: parent.left
