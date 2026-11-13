@@ -13,7 +13,9 @@ Item {
     implicitHeight: itemHeight + 4
     // 每项等宽，宽度由**最长那条文案**决定 —— 不能只看 60px 下限。
     // 之前英文 "System language" 比 60px 宽，文字溢出到隔壁项上，三项叠在卡片外。
-    readonly property real segW: Math.max(60, maxTextW + 12)
+    // +20 而不是 +12：TextMetrics 与实际 Text 的排版有细微差异（字距/微调），
+    // 只留 12px 时「分代 ZGC」这类刚好卡边的文案会被省略号吃掉。左右各 6px 内边距 + 8px 余量。
+    readonly property real segW: Math.max(60, maxTextW + 20)
     implicitWidth: segW * Math.max(1, items.length) + Math.max(0, items.length - 1) * 2 + 4
 
     TextMetrics {
@@ -79,7 +81,14 @@ Item {
                 // 选中底色由上面的 segPill 承担；这里不再自己变色，否则滑块滑动时旧项还在亮
                 color: "transparent"
                 Text {
-                    anchors.centerIn: parent
+                    // 文字永远在自己这一段里：超长就省略号，绝不能溢出去压到相邻项、
+                    // 也不能突破外面那层圆角边框（英文长标签踩过这个坑）。
+                    anchors.fill: parent
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
                     text: modelData
                     color: index === root.currentIndex ? Theme.accentText : Theme.fg3
                     font.family: Theme.fontFamily

@@ -2489,7 +2489,7 @@
     <message>
         <location filename="../ui/pages/SetLaunchPane.qml" line="76" />
         <source>全屏启动</source>
-        <translation>Launch fullscreen</translation>
+        <translation>Fullscreen</translation>
     </message>
     <message>
         <location filename="../ui/pages/SetLaunchPane.qml" line="85" />
@@ -8287,12 +8287,12 @@ If you continue, files whose source can't be found will be packed as-is.</transl
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="135" />
         <source>跟随全局设置</source>
-        <translation>Follow global settings</translation>
+        <translation>Follow global</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="135" />
         <source>独立配置</source>
-        <translation>Custom config</translation>
+        <translation>Custom</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="144" />
@@ -8409,12 +8409,12 @@ If you continue, files whose source can't be found will be packed as-is.</transl
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="277" />
         <source>全屏启动</source>
-        <translation>Launch fullscreen</translation>
+        <translation>Fullscreen</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="292" />
         <source>高性能 GPU</source>
-        <translation>High-performance GPU</translation>
+        <translation>High-perf GPU</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="307" />
@@ -8508,7 +8508,7 @@ If you continue, files whose source can't be found will be packed as-is.</transl
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="77" />
         <source>跟随全局设置</source>
-        <translation>Follow global settings</translation>
+        <translation>Follow global</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="78" />
