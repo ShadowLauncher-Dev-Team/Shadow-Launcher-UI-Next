@@ -5,13 +5,13 @@
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="74" />
         <source>外置账号登录成功</source>
-        <translation type="unfinished" />
+        <translation>外置帳戶登入成功</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="78" />
         <location filename="../ui/pages/AccountPage.qml" line="368" />
         <source>登录失败：%1</source>
-        <translation type="unfinished" />
+        <translation>登入失敗：%1</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="78" />
@@ -19,71 +19,71 @@
         <location filename="../ui/pages/AccountPage.qml" line="105" />
         <location filename="../ui/pages/AccountPage.qml" line="110" />
         <source>未知错误</source>
-        <translation type="unfinished" />
+        <translation>未知錯誤</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="82" />
         <source>这个账号有多个角色，请选择一个</source>
-        <translation type="unfinished" />
+        <translation>這個帳戶有多個角色，請選擇一個</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="86" />
         <source>皮肤站元数据获取失败：%1</source>
-        <translation type="unfinished" />
+        <translation>皮膚站元資料獲取失敗：%1</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="95" />
         <source>披风已切换</source>
-        <translation type="unfinished" />
+        <translation>披風已切換</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="96" />
         <source>切换失败：%1</source>
-        <translation type="unfinished" />
+        <translation>切換失敗：%1</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="105" />
         <source>状态已刷新</source>
-        <translation type="unfinished" />
+        <translation>狀態已重新整理</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="105" />
         <source>刷新失败：%1</source>
-        <translation type="unfinished" />
+        <translation>重新整理失敗：%1</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="110" />
         <source>皮肤已更换</source>
-        <translation type="unfinished" />
+        <translation>皮膚已更換</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="110" />
         <source>上传失败：%1</source>
-        <translation type="unfinished" />
+        <translation>上載失敗：%1</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="230" />
         <location filename="../ui/pages/AccountPage.qml" line="236" />
         <location filename="../ui/pages/AccountPage.qml" line="249" />
         <source>未登录</source>
-        <translation type="unfinished" />
+        <translation>未登入</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="243" />
         <location filename="../ui/pages/AccountPage.qml" line="246" />
         <source>Microsoft 正版账户</source>
-        <translation type="unfinished" />
+        <translation>Microsoft 正版帳戶</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="244" />
         <location filename="../ui/pages/AccountPage.qml" line="247" />
         <source>外置账户</source>
-        <translation type="unfinished" />
+        <translation>外置帳戶</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="244" />
         <source>外置账户（需重新登录）</source>
-        <translation type="unfinished" />
+        <translation>外置帳戶（需重新登入）</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="245" />
@@ -91,379 +91,380 @@
         <location filename="../ui/pages/AccountPage.qml" line="694" />
         <location filename="../ui/pages/AccountPage.qml" line="1565" />
         <source>离线账户</source>
-        <translation type="unfinished" />
+        <translation>離線帳戶</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="277" />
         <location filename="../ui/pages/AccountPage.qml" line="290" />
         <location filename="../ui/pages/AccountPage.qml" line="294" />
         <source>未设置</source>
-        <translation type="unfinished" />
+        <translation>未設定</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="284" />
         <source>已同步（皮肤站）</source>
-        <translation type="unfinished" />
+        <translation>已同步（皮膚站）</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="284" />
         <source>未获取</source>
-        <translation type="unfinished" />
+        <translation>未獲取</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="286" />
         <location filename="../ui/pages/AccountPage.qml" line="618" />
         <location filename="../ui/pages/AccountPage.qml" line="1390" />
         <source>需重新登录</source>
-        <translation type="unfinished" />
+        <translation>需重新登入</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="290" />
         <location filename="../ui/pages/AccountPage.qml" line="294" />
         <source>已同步</source>
-        <translation type="unfinished" />
+        <translation>已同步</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="304" />
         <source>已获取</source>
-        <translation type="unfinished" />
+        <translation>已獲取</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="304" />
         <location filename="../ui/pages/AccountPage.qml" line="306" />
         <source>不需要（离线）</source>
-        <translation type="unfinished" />
+        <translation>不需要（離線）</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="305" />
         <source>已获取（皮肤站）</source>
-        <translation type="unfinished" />
+        <translation>已獲取（皮膚站）</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="305" />
         <source>已失效，需重新登录</source>
-        <translation type="unfinished" />
+        <translation>已失效，需重新登入</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="321" />
         <source>先填一个用户名</source>
-        <translation type="unfinished" />
+        <translation>先填一個使用者名稱</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="324" />
         <source>已切换到离线账户 %1</source>
-        <translation type="unfinished" />
+        <translation>已切換到離線帳戶 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="329" />
         <source>API 地址、账号、密码都要填</source>
-        <translation type="unfinished" />
+        <translation>API 位址、帳戶、密碼都要填</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="337" />
         <source>正在登录外置账户…</source>
-        <translation type="unfinished" />
+        <translation>正在登入外置帳戶…</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="367" />
         <source>登录成功</source>
-        <translation type="unfinished" />
+        <translation>登入成功</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="411" />
         <source>返回账户</source>
-        <translation type="unfinished" />
+        <translation>返回帳戶</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="411" />
         <source>返回</source>
-        <translation type="unfinished" />
+        <translation>返回</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="429" />
         <location filename="../ui/pages/AccountPage.qml" line="532" />
         <source>账户</source>
-        <translation type="unfinished" />
+        <translation>帳戶</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="457" />
         <source>刷新中</source>
-        <translation type="unfinished" />
+        <translation>重新整理中</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="457" />
         <source>刷新状态</source>
-        <translation type="unfinished" />
+        <translation>重新整理狀態</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="477" />
         <source>已校验外置登录会话</source>
-        <translation type="unfinished" />
+        <translation>已校驗外置登入工作階段</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="483" />
         <source>当前还没有账号</source>
-        <translation type="unfinished" />
+        <translation>目前還沒有帳戶</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="532" />
         <source>登录方式</source>
-        <translation type="unfinished" />
+        <translation>登入方式</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="675" />
         <source>添加账号</source>
-        <translation type="unfinished" />
+        <translation>新增帳戶</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="693" />
         <source>正版账户</source>
-        <translation type="unfinished" />
+        <translation>正版帳戶</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="693" />
         <source>Microsoft 登录</source>
-        <translation type="unfinished" />
+        <translation>Microsoft 登入</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="694" />
         <source>只用用户名</source>
-        <translation type="unfinished" />
+        <translation>只用使用者名稱</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="695" />
         <location filename="../ui/pages/AccountPage.qml" line="1637" />
         <source>外置登录</source>
-        <translation type="unfinished" />
+        <translation>外置登入</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="695" />
         <source>皮肤站 / 第三方验证</source>
-        <translation type="unfinished" />
+        <translation>皮膚站 / 第三方驗證</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="739" />
         <source>用过的名字</source>
-        <translation type="unfinished" />
+        <translation>用過的名稱</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="988" />
         <source>账号类型</source>
-        <translation type="unfinished" />
+        <translation>帳戶類型</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1018" />
         <source>复制</source>
-        <translation type="unfinished" />
+        <translation>複製</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1023" />
         <source>已复制 UUID</source>
-        <translation type="unfinished" />
+        <translation>已複製 UUID</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1030" />
         <source>访问令牌</source>
-        <translation type="unfinished" />
+        <translation>存取權杖</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1038" />
         <source>后台自动续期</source>
-        <translation type="unfinished" />
+        <translation>背景自動續期</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1044" />
         <location filename="../ui/pages/AccountPage.qml" line="1072" />
         <source>皮肤</source>
-        <translation type="unfinished" />
+        <translation>皮膚</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1087" />
         <source>模型</source>
-        <translation type="unfinished" />
+        <translation>模型</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1098" />
         <source>经典</source>
-        <translation type="unfinished" />
+        <translation>經典</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1098" />
         <source>纤细</source>
-        <translation type="unfinished" />
+        <translation>纖細</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1111" />
         <source>皮肤文件</source>
-        <translation type="unfinished" />
+        <translation>皮膚檔案</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1122" />
         <source>未选择（64x64 或 64x32 PNG）</source>
-        <translation type="unfinished" />
+        <translation>未選擇（64x64 或 64x32 PNG）</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1136" />
         <source>选择</source>
-        <translation type="unfinished" />
+        <translation>選擇</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1157" />
         <source>上传中</source>
-        <translation type="unfinished" />
+        <translation>上載中</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1157" />
         <source>应用皮肤</source>
-        <translation type="unfinished" />
+        <translation>套用皮膚</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1166" />
         <source>正在上传皮肤</source>
-        <translation type="unfinished" />
+        <translation>正在上載皮膚</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1166" />
         <source>皮肤已保存到本地</source>
-        <translation type="unfinished" />
+        <translation>皮膚已儲存到本機</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1174" />
         <source>导出当前皮肤</source>
-        <translation type="unfinished" />
+        <translation>匯出目前皮膚</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1189" />
         <source>披风</source>
-        <translation type="unfinished" />
+        <translation>披風</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1200" />
         <source>正在切换...</source>
-        <translation type="unfinished" />
+        <translation>正在切換...</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1202" />
         <source>点击切换，蓝框为当前使用</source>
-        <translation type="unfinished" />
+        <translation>點擊切換，藍框為目前使用</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1204" />
         <source>正在获取…</source>
-        <translation type="unfinished" />
+        <translation>正在獲取…</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1206" />
         <source>此账号没有可用披风</source>
-        <translation type="unfinished" />
+        <translation>此帳戶沒有可用披風</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1320" />
         <source>卸下</source>
-        <translation type="unfinished" />
+        <translation>卸下</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1320" />
         <source>未穿戴</source>
-        <translation type="unfinished" />
+        <translation>未穿戴</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1351" />
         <location filename="../ui/pages/AccountPage.qml" line="1428" />
         <source>移除此账号</source>
-        <translation type="unfinished" />
+        <translation>移除此帳戶</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1359" />
         <location filename="../ui/pages/AccountPage.qml" line="1435" />
         <source>已移除该账号</source>
-        <translation type="unfinished" />
+        <translation>已移除該帳戶</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1397" />
         <source>这个账号的登录凭据已经失效
 （可能过期、或在别处登录过）。重新登录一次即可继续使用。</source>
-        <translation type="unfinished" />
+        <translation>這個帳戶的登入憑證已經失效
+（可能過期、或在別處登入過）。重新登入一次即可繼續使用。</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1413" />
         <source>重新登录</source>
-        <translation type="unfinished" />
+        <translation>重新登入</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1467" />
         <source>用 Microsoft 账号登录</source>
-        <translation type="unfinished" />
+        <translation>用 Microsoft 帳戶登入</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1475" />
         <source>登录后可在正版服务器上玩，也会同步你的皮肤。</source>
-        <translation type="unfinished" />
+        <translation>登入後可在正版伺服器上遊玩，也會同步你的皮膚。</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1486" />
         <source>取消登录</source>
-        <translation type="unfinished" />
+        <translation>取消登入</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1486" />
         <source>开始登录</source>
-        <translation type="unfinished" />
+        <translation>開始登入</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1529" />
         <source>正在登录 Microsoft 账号</source>
-        <translation type="unfinished" />
+        <translation>正在登入 Microsoft 帳戶</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1529" />
         <source>登录状态</source>
-        <translation type="unfinished" />
+        <translation>登入狀態</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1573" />
         <source>只填一个用户名，不需要密码。</source>
-        <translation type="unfinished" />
+        <translation>只填一個使用者名稱，不需要密碼。</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1603" />
         <source>用户名</source>
-        <translation type="unfinished" />
+        <translation>使用者名稱</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1616" />
         <source>使用这个用户名</source>
-        <translation type="unfinished" />
+        <translation>使用這個使用者名稱</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1645" />
         <source>填皮肤站的 API 地址与账号（如 LittleSkin）。</source>
-        <translation type="unfinished" />
+        <translation>填皮膚站的 API 位址與帳戶（如 LittleSkin）。</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1654" />
         <source>邮箱</source>
-        <translation type="unfinished" />
+        <translation>電郵</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1655" />
         <source>密码</source>
-        <translation type="unfinished" />
+        <translation>密碼</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1709" />
         <source>登录</source>
-        <translation type="unfinished" />
+        <translation>登入</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1721" />
         <source>选择角色</source>
-        <translation type="unfinished" />
+        <translation>選擇角色</translation>
     </message>
     <message>
         <location filename="../ui/pages/AccountPage.qml" line="1762" />
         <source>取消</source>
-        <translation type="unfinished" />
+        <translation>取消</translation>
     </message>
 </context>
 <context>
@@ -471,205 +472,205 @@
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="86" />
         <source>MC 版本</source>
-        <translation type="unfinished" />
+        <translation>MC 版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="86" />
         <source>光影</source>
-        <translation type="unfinished" />
+        <translation>光影</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="86" />
         <source>资源包</source>
-        <translation type="unfinished" />
+        <translation>資源包</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="86" />
         <source>整合包</source>
-        <translation type="unfinished" />
+        <translation>整合包</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="86" />
         <source>数据包</source>
-        <translation type="unfinished" />
+        <translation>資料包</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="95" />
         <location filename="../ui/pages/DownloadPage.qml" line="132" />
         <source>正式版</source>
-        <translation type="unfinished" />
+        <translation>正式版</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="96" />
         <source>快照版</source>
-        <translation type="unfinished" />
+        <translation>快照版</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="97" />
         <source>远古版</source>
-        <translation type="unfinished" />
+        <translation>遠古版</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="98" />
         <source>愚人节版</source>
-        <translation type="unfinished" />
+        <translation>愚人節版</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="129" />
         <source>快照</source>
-        <translation type="unfinished" />
+        <translation>快照</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="130" />
         <source>旧版</source>
-        <translation type="unfinished" />
+        <translation>舊版</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="131" />
         <source>愚人节</source>
-        <translation type="unfinished" />
+        <translation>愚人節</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="276" />
         <source>仅 Fabric 可用</source>
-        <translation type="unfinished" />
+        <translation>僅 Fabric 可用</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="279" />
         <source>与 %1 不兼容</source>
-        <translation type="unfinished" />
+        <translation>與 %1 不兼容</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="281" />
         <source>与 OptiFine 不兼容</source>
-        <translation type="unfinished" />
+        <translation>與 OptiFine 不兼容</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="282" />
         <source>已选 %1</source>
-        <translation type="unfinished" />
+        <translation>已選 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="286" />
         <source>原版</source>
-        <translation type="unfinished" />
+        <translation>原版</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="287" />
         <source>整合安装</source>
-        <translation type="unfinished" />
+        <translation>整合安裝</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="317" />
         <source>已开始安装 %1</source>
-        <translation type="unfinished" />
+        <translation>已開始安裝 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="375" />
         <source>版本列表刷新成功</source>
-        <translation type="unfinished" />
+        <translation>版本列表重新整理成功</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="375" />
         <source>版本列表刷新失败</source>
-        <translation type="unfinished" />
+        <translation>版本列表重新整理失敗</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="436" />
         <source>安装配置</source>
-        <translation type="unfinished" />
+        <translation>安裝配置</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="436" />
         <source>下载</source>
-        <translation type="unfinished" />
+        <translation>下載</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="527" />
         <source>Java 无需搜索</source>
-        <translation type="unfinished" />
+        <translation>Java 無需搜尋</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="528" />
         <source>搜索版本号</source>
-        <translation type="unfinished" />
+        <translation>搜尋版本號</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="529" />
         <source>搜索 Mod</source>
-        <translation type="unfinished" />
+        <translation>搜尋 Mod</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="530" />
         <source>搜索光影</source>
-        <translation type="unfinished" />
+        <translation>搜尋光影</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="531" />
         <source>搜索资源包</source>
-        <translation type="unfinished" />
+        <translation>搜尋資源包</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="532" />
         <source>搜索整合包</source>
-        <translation type="unfinished" />
+        <translation>搜尋整合包</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="532" />
         <source>搜索数据包</source>
-        <translation type="unfinished" />
+        <translation>搜尋資料包</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="716" />
         <source>最新正式版</source>
-        <translation type="unfinished" />
+        <translation>最新正式版</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="740" />
         <source>安装</source>
-        <translation type="unfinished" />
+        <translation>安裝</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="887" />
         <source>没有匹配的版本</source>
-        <translation type="unfinished" />
+        <translation>沒有符合的版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="1025" />
         <source>名称已存在</source>
-        <translation type="unfinished" />
+        <translation>名稱已存在</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="1034" />
         <source>Mod 加载器</source>
-        <translation type="unfinished" />
+        <translation>Mod 載入器</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="1124" />
         <source>可选</source>
-        <translation type="unfinished" />
+        <translation>可選</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="1126" />
         <location filename="../ui/pages/DownloadPage.qml" line="1257" />
         <source>不使用</source>
-        <translation type="unfinished" />
+        <translation>不使用</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="1239" />
         <source>没有可用版本</source>
-        <translation type="unfinished" />
+        <translation>沒有可用版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="1323" />
         <location filename="../ui/pages/DownloadPage.qml" line="1325" />
         <source>开始安装</source>
-        <translation type="unfinished" />
+        <translation>開始安裝</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="1325" />
         <source>请选择版本</source>
-        <translation type="unfinished" />
+        <translation>請選擇版本</translation>
     </message>
 </context>
 <context>
@@ -677,207 +678,207 @@
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="55" />
         <source>Java 版本</source>
-        <translation type="unfinished" />
+        <translation>Java 版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="55" />
         <source>CPU 架构</source>
-        <translation type="unfinished" />
+        <translation>CPU 架構</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="55" />
         <source>操作系统</source>
-        <translation type="unfinished" />
+        <translation>作業系統</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="55" />
         <source>分发形式</source>
-        <translation type="unfinished" />
+        <translation>發佈形式</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="57" />
         <source>选启动器/游戏需要的主版本。拿不准就选 17——覆盖目前绝大多数整合包与 Forge。</source>
-        <translation type="unfinished" />
+        <translation>選啟動器/遊戲需要的主版本。拿不準就選 17——覆蓋目前絕大多數整合包與 Forge。</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="58" />
         <source>JDK 含 JRE 与编译工具；JRE 只有运行环境。启动器一键安装用 JDK（JRE 缺少 jdk.crypto.ec，部分加载器会崩）。</source>
-        <translation type="unfinished" />
+        <translation>JDK 含 JRE 與編譯工具；JRE 只有執行環境。啟動器一鍵安裝用 JDK（JRE 缺少 jdk.crypto.ec，部分載入器會崩）。</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="59" />
         <source>绝大多数机器是 x64。32 位系统选 x32；注意 Java 21 及以上没有 32 位版本。</source>
-        <translation type="unfinished" />
+        <translation>絕大多數機器是 x64。32 位元系統選 x32；注意 Java 21 及以上沒有 32 位元版本。</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="60" />
         <source>选择你的操作系统。</source>
-        <translation type="unfinished" />
+        <translation>選擇你的作業系統。</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="61" />
         <source>便携版（ZIP）解压后由启动器托管，不写注册表；安装版（MSI）装进系统并写入 PATH / JAVA_HOME。</source>
-        <translation type="unfinished" />
+        <translation>可攜版（ZIP）解壓後由啟動器託管，不寫登錄檔；安裝版（MSI）裝進系統並寫入 PATH / JAVA_HOME。</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="81" />
         <source>已重新扫描：%1 个运行时</source>
-        <translation type="unfinished" />
+        <translation>已重新掃描：%1 個執行環境</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="151" />
         <source>Java %1 · 便携版（ZIP）</source>
-        <translation type="unfinished" />
+        <translation>Java %1 · 可攜版（ZIP）</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="152" />
         <source>MSI 安装包</source>
-        <translation type="unfinished" />
+        <translation>MSI 安裝套件</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="183" />
         <source>Java %1 · %2 · %3 · 便携版（ZIP）</source>
-        <translation type="unfinished" />
+        <translation>Java %1 · %2 · %3 · 可攜版（ZIP）</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="184" />
         <source>正在下载 Java %1…</source>
-        <translation type="unfinished" />
+        <translation>正在下載 Java %1…</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="258" />
         <source>已保存到 %1</source>
-        <translation type="unfinished" />
+        <translation>已儲存到 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="260" />
         <source>下载失败</source>
-        <translation type="unfinished" />
+        <translation>下載失敗</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="267" />
         <source>选择 MSI 保存位置</source>
-        <translation type="unfinished" />
+        <translation>選擇 MSI 儲存位置</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="457" />
         <source>取消</source>
-        <translation type="unfinished" />
+        <translation>取消</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="588" />
         <source>修改</source>
-        <translation type="unfinished" />
+        <translation>修改</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="636" />
         <source>选完上一步后展开</source>
-        <translation type="unfinished" />
+        <translation>選完上一步後展開</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="761" />
         <source>已选</source>
-        <translation type="unfinished" />
+        <translation>已選</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="794" />
         <source>重新选择</source>
-        <translation type="unfinished" />
+        <translation>重新選擇</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="833" />
         <source>选择分发形式 · %1 个文件</source>
-        <translation type="unfinished" />
+        <translation>選擇發佈形式 · %1 個檔案</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="842" />
         <source>来源 mirrors.tuna.tsinghua.edu.cn</source>
-        <translation type="unfinished" />
+        <translation>來源 mirrors.tuna.tsinghua.edu.cn</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="965" />
         <source>正在保存…</source>
-        <translation type="unfinished" />
+        <translation>正在儲存…</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="980" />
         <source>重新安装</source>
-        <translation type="unfinished" />
+        <translation>重新安裝</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="980" />
         <source>下载并安装</source>
-        <translation type="unfinished" />
+        <translation>下載並安裝</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="981" />
         <source>下载</source>
-        <translation type="unfinished" />
+        <translation>下載</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="1057" />
         <source>本机已检测到</source>
-        <translation type="unfinished" />
+        <translation>本機已偵測到</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="1091" />
         <source>扫描中…</source>
-        <translation type="unfinished" />
+        <translation>掃描中…</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="1091" />
         <source>重新扫描</source>
-        <translation type="unfinished" />
+        <translation>重新掃描</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="1198" />
         <source>旧版整合包</source>
-        <translation type="unfinished" />
+        <translation>舊版整合包</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="1199" />
         <source>主流</source>
-        <translation type="unfinished" />
+        <translation>主流</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="1201" />
         <source>最新</source>
-        <translation type="unfinished" />
+        <translation>最新</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="1203" />
         <source>已识别</source>
-        <translation type="unfinished" />
+        <translation>已識別</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="1253" />
         <source>便携版（Portable）· 解压后由启动器托管，不写注册表</source>
-        <translation type="unfinished" />
+        <translation>可攜版（Portable）· 解壓後由啟動器託管，不寫登錄檔</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="1254" />
         <source>安装版（Installer）· 写入系统目录与 PATH / JAVA_HOME，需管理员权限</source>
-        <translation type="unfinished" />
+        <translation>安裝版（Installer）· 寫入系統目錄與 PATH / JAVA_HOME，需管理員權限</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="1255" />
         <source>归档包 · 解压后手动指定给启动器</source>
-        <translation type="unfinished" />
+        <translation>封存包 · 解壓後手動指定給啟動器</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="1274" />
         <source>%1 · 启动器托管%2</source>
-        <translation type="unfinished" />
+        <translation>%1 · 啟動器託管%2</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="1282" />
         <source>未发现可用 Java —— 建议装一个</source>
-        <translation type="unfinished" />
+        <translation>未發現可用 Java —— 建議裝一個</translation>
     </message>
     <message>
         <location filename="../ui/pages/JavaPage.qml" line="1283" />
         <source>%1 个运行时 · 你可能并不需要下载</source>
-        <translation type="unfinished" />
+        <translation>%1 個執行環境 · 你可能並不需要下載</translation>
     </message>
 </context>
 <context>
@@ -885,168 +886,168 @@
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="49" />
         <source>启动前检查未通过</source>
-        <translation type="unfinished" />
+        <translation>啟動前檢查未通過</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="50" />
         <source>JVM 崩溃</source>
-        <translation type="unfinished" />
+        <translation>JVM 崩潰</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="51" />
         <source>游戏崩溃</source>
-        <translation type="unfinished" />
+        <translation>遊戲崩潰</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="53" />
         <source>启动失败</source>
-        <translation type="unfinished" />
+        <translation>啟動失敗</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="66" />
         <source>等 %1 个</source>
-        <translation type="unfinished" />
+        <translation>等 %1 個</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="72" />
         <source>类型</source>
-        <translation type="unfinished" />
+        <translation>類型</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="74" />
         <source>时间</source>
-        <translation type="unfinished" />
+        <translation>時間</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="76" />
         <source>疑似</source>
-        <translation type="unfinished" />
+        <translation>疑似</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="97" />
         <source>已就绪</source>
-        <translation type="unfinished" />
+        <translation>已就緒</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="98" />
         <location filename="../ui/LaunchOverlay.qml" line="116" />
         <source>失败</source>
-        <translation type="unfinished" />
+        <translation>失敗</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="114" />
         <source>完成</source>
-        <translation type="unfinished" />
+        <translation>完成</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="115" />
         <source>进行中</source>
-        <translation type="unfinished" />
+        <translation>進行中</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="117" />
         <source>跳过</source>
-        <translation type="unfinished" />
+        <translation>略過</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="223" />
         <source>启动失败 · %1</source>
-        <translation type="unfinished" />
+        <translation>啟動失敗 · %1</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="224" />
         <source>启动 %1</source>
-        <translation type="unfinished" />
+        <translation>啟動 %1</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="243" />
         <source>正在分析日志…</source>
-        <translation type="unfinished" />
+        <translation>正在分析日誌…</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="244" />
         <source>崩溃报告已生成</source>
-        <translation type="unfinished" />
+        <translation>崩潰報告已生成</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="253" />
         <source>第 %1 / %2 步</source>
-        <translation type="unfinished" />
+        <translation>第 %1 / %2 步</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="277" />
         <source>总进度</source>
-        <translation type="unfinished" />
+        <translation>總進度</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="354" />
         <source>准备运行环境</source>
-        <translation type="unfinished" />
+        <translation>準備執行環境</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="362" />
         <source>%1 项待补全</source>
-        <translation type="unfinished" />
+        <translation>%1 項待補全</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="435" />
         <source>下载完成后会自动继续启动</source>
-        <translation type="unfinished" />
+        <translation>下載完成後會自動繼續啟動</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="436" />
         <source>补全完成，正在继续启动</source>
-        <translation type="unfinished" />
+        <translation>補全完成，正在繼續啟動</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="577" />
         <source>正在分析日志，请稍候…</source>
-        <translation type="unfinished" />
+        <translation>正在分析日誌，請稍候…</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="625" />
         <source>建议</source>
-        <translation type="unfinished" />
+        <translation>建議</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="677" />
         <source>游戏已启动</source>
-        <translation type="unfinished" />
+        <translation>遊戲已啟動</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="677" />
         <source>正在按阶段推进，取消后可重新启动</source>
-        <translation type="unfinished" />
+        <translation>正在按階段推進，取消後可重新啟動</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="694" />
         <source>导出日志</source>
-        <translation type="unfinished" />
+        <translation>匯出日誌</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="698" />
         <source>已导出: %1</source>
-        <translation type="unfinished" />
+        <translation>已匯出：%1</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="698" />
         <source>导出失败，可先查看日志文件夹</source>
-        <translation type="unfinished" />
+        <translation>匯出失敗，可先查看日誌資料夾</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="705" />
         <source>查看日志</source>
-        <translation type="unfinished" />
+        <translation>查看日誌</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="713" />
         <source>重试</source>
-        <translation type="unfinished" />
+        <translation>重試</translation>
     </message>
     <message>
         <location filename="../ui/LaunchOverlay.qml" line="726" />
         <source>取消启动</source>
-        <translation type="unfinished" />
+        <translation>取消啟動</translation>
     </message>
 </context>
 <context>
@@ -1057,314 +1058,314 @@
         <location filename="../ui/pages/MultiplayerPage.qml" line="454" />
         <location filename="../ui/pages/MultiplayerPage.qml" line="672" />
         <source>房主</source>
-        <translation type="unfinished" />
+        <translation>房主</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="85" />
         <source>房主已离开</source>
-        <translation type="unfinished" />
+        <translation>房主已離開</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="85" />
         <source>出错了</source>
-        <translation type="unfinished" />
+        <translation>出錯了</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="87" />
         <source>正在创建房间…</source>
-        <translation type="unfinished" />
+        <translation>正在建立房間…</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="88" />
         <source>正在加入联机网络…</source>
-        <translation type="unfinished" />
+        <translation>正在加入連線網絡…</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="89" />
         <source>正在查找联机中心…</source>
-        <translation type="unfinished" />
+        <translation>正在尋找連線中心…</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="90" />
         <source>正在连接联机中心…</source>
-        <translation type="unfinished" />
+        <translation>正在連接連線中心…</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="91" />
         <source>房间已建好 · 还差游戏里开服</source>
-        <translation type="unfinished" />
+        <translation>房間已建好 · 還差遊戲裡開服</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="92" />
         <source>正在验证 MC 连接…</source>
-        <translation type="unfinished" />
+        <translation>正在驗證 MC 連線…</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="93" />
         <source>房间已连通</source>
-        <translation type="unfinished" />
+        <translation>房間已連通</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="93" />
         <source>已加入 · %1 的房间</source>
-        <translation type="unfinished" />
+        <translation>已加入 · %1 的房間</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="94" />
         <source>房间在线 · %1/%2</source>
-        <translation type="unfinished" />
+        <translation>房間線上 · %1/%2</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="95" />
         <source>和朋友一起玩</source>
-        <translation type="unfinished" />
+        <translation>和朋友一起玩</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="102" />
         <source>房间已自动退出。可以重新加入，或者自己开一间。</source>
-        <translation type="unfinished" />
+        <translation>房間已自動退出。可以重新加入，或者自己開一間。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="104" />
         <source>少了位数，或者校验位不对。连续 3 次失败会冷却 60 秒。</source>
-        <translation type="unfinished" />
+        <translation>少了位數，或者校驗位不對。連續 3 次失敗會冷卻 60 秒。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="108" />
         <source>生成房间码并启动隧道，通常 2–5 秒。</source>
-        <translation type="unfinished" />
+        <translation>生成房間碼並啟動隧道，通常 2–5 秒。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="109" />
         <source>正在建立到房主的隧道。</source>
-        <translation type="unfinished" />
+        <translation>正在建立到房主的隧道。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="110" />
         <source>房主刚创建房间时可能需要多等几秒。</source>
-        <translation type="unfinished" />
+        <translation>房主剛建立房間時可能需要多等幾秒。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="111" />
         <source>正在连到房主的联机中心…</source>
-        <translation type="unfinished" />
+        <translation>正在連到房主的連線中心…</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="112" />
         <source>请打开游戏，进入单人世界后按 Esc 选「对局域网开放」。开好后会自动识别，不用填端口。</source>
-        <translation type="unfinished" />
+        <translation>請開啟遊戲，進入單人世界後按 Esc 選「對區域網絡開放」。開好後會自動識別，不用填端口。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="113" />
         <source>现在把码发出去，朋友加进来会直接失败。</source>
-        <translation type="unfinished" />
+        <translation>現在把碼發出去，朋友加進來會直接失敗。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="114" />
         <source>最多 8 次尝试；不过也会放行，先进游戏再看。</source>
-        <translation type="unfinished" />
+        <translation>最多 8 次嘗試；不過也會放行，先進遊戲再看。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="115" />
         <source>朋友现在可以在游戏里进去了。</source>
-        <translation type="unfinished" />
+        <translation>朋友現在可以在遊戲裡進去了。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="115" />
         <source>打开 Minecraft 的「多人游戏」，进「局域网世界」即可。</source>
-        <translation type="unfinished" />
+        <translation>開啟 Minecraft 的「多人遊戲」，進「區域網絡世界」即可。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="116" />
         <source>朋友在「多人游戏」的「局域网世界」里能直接看到，无需输入 IP。</source>
-        <translation type="unfinished" />
+        <translation>朋友在「多人遊戲」的「區域網絡世界」裡能直接看到，無需輸入 IP。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="117" />
         <source>房主在自己游戏里「对局域网开放」，其他人凭房间码加入。不用公网 IP、不用开端口，最多 5 人。</source>
-        <translation type="unfinished" />
+        <translation>房主在自己遊戲裡「對區域網絡開放」，其他人憑房間碼加入。不用公網 IP、不用開端口，最多 5 人。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="139" />
         <source>未知来源</source>
-        <translation type="unfinished" />
+        <translation>未知來源</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="152" />
         <source>直连</source>
-        <translation type="unfinished" />
+        <translation>直連</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="153" />
         <source>简单</source>
-        <translation type="unfinished" />
+        <translation>簡單</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="154" />
         <source>中等</source>
-        <translation type="unfinished" />
+        <translation>中等</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="155" />
         <source>困难</source>
-        <translation type="unfinished" />
+        <translation>困難</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="171" />
         <source>先粘贴房间码</source>
-        <translation type="unfinished" />
+        <translation>先貼上房間碼</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="179" />
         <source>房间里不能改名，请先离开房间</source>
-        <translation type="unfinished" />
+        <translation>房間裡不能改名，請先離開房間</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="191" />
         <source>已保存</source>
-        <translation type="unfinished" />
+        <translation>已儲存</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="218" />
         <source>游戏端口已就绪：%1</source>
-        <translation type="unfinished" />
+        <translation>遊戲端口已就緒：%1</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="243" />
         <source>联机</source>
-        <translation type="unfinished" />
+        <translation>連線</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="454" />
         <location filename="../ui/pages/MultiplayerPage.qml" line="672" />
         <source>访客</source>
-        <translation type="unfinished" />
+        <translation>訪客</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="478" />
         <source>2 分钟内没开服会自动关闭</source>
-        <translation type="unfinished" />
+        <translation>2 分鐘內沒開服會自動關閉</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="504" />
         <source>这台设备叫</source>
-        <translation type="unfinished" />
+        <translation>這台裝置叫</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="534" />
         <source>修改</source>
-        <translation type="unfinished" />
+        <translation>修改</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="583" />
         <source>粘贴房间码</source>
-        <translation type="unfinished" />
+        <translation>貼上房間碼</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="594" />
         <source>加入</source>
-        <translation type="unfinished" />
+        <translation>加入</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="612" />
         <source>在房间里</source>
-        <translation type="unfinished" />
+        <translation>在房間裡</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="673" />
         <source>%1 · 这台设备</source>
-        <translation type="unfinished" />
+        <translation>%1 · 這台裝置</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="696" />
         <source>本机</source>
-        <translation type="unfinished" />
+        <translation>本機</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="716" />
         <source>%1 位玩家正在加入…</source>
-        <translation type="unfinished" />
+        <translation>%1 位玩家正在加入…</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="733" />
         <source>还有 %1 个空位</source>
-        <translation type="unfinished" />
+        <translation>還有 %1 個空位</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="750" />
         <source>创建房间</source>
-        <translation type="unfinished" />
+        <translation>建立房間</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="759" />
         <location filename="../ui/pages/MultiplayerPage.qml" line="925" />
         <source>取消</source>
-        <translation type="unfinished" />
+        <translation>取消</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="770" />
         <source>开好服后再复制房间码</source>
-        <translation type="unfinished" />
+        <translation>開好服後再複製房間碼</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="777" />
         <source>复制房间码</source>
-        <translation type="unfinished" />
+        <translation>複製房間碼</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="780" />
         <source>房间码已复制</source>
-        <translation type="unfinished" />
+        <translation>房間碼已複製</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="789" />
         <source>关闭房间</source>
-        <translation type="unfinished" />
+        <translation>關閉房間</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="798" />
         <source>离开房间</source>
-        <translation type="unfinished" />
+        <translation>離開房間</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="807" />
         <source>重新输入</source>
-        <translation type="unfinished" />
+        <translation>重新輸入</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="807" />
         <source>知道了</source>
-        <translation type="unfinished" />
+        <translation>知道了</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="816" />
         <source>联机身份跟着「这台设备」走，与 MC 账号无关。</source>
-        <translation type="unfinished" />
+        <translation>連線身份跟着「這台裝置」走，與 MC 帳戶無關。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="857" />
         <source>这台设备的昵称</source>
-        <translation type="unfinished" />
+        <translation>這台裝置的暱稱</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="865" />
         <source>别人在成员列表里看到的就是它。只改这块牌子，不改设备、不改 MC 账号。</source>
-        <translation type="unfinished" />
+        <translation>別人在成員列表裡看到的就是它。只改這塊牌子，不改裝置、不改 MC 帳戶。</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="901" />
         <source>设备码 %1</source>
-        <translation type="unfinished" />
+        <translation>裝置碼 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="909" />
         <source>固定不变，用于区分同名设备</source>
-        <translation type="unfinished" />
+        <translation>固定不變，用於區分同名裝置</translation>
     </message>
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="918" />
         <source>保存</source>
-        <translation type="unfinished" />
+        <translation>儲存</translation>
     </message>
 </context>
 <context>
@@ -1372,108 +1373,108 @@
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="15" />
         <source>已完成</source>
-        <translation type="unfinished" />
+        <translation>已完成</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="16" />
         <source>失败 · %1</source>
-        <translation type="unfinished" />
+        <translation>失敗 · %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="16" />
         <source>失败</source>
-        <translation type="unfinished" />
+        <translation>失敗</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="42" />
         <source>%1 秒</source>
-        <translation type="unfinished" />
+        <translation>%1 秒</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="43" />
         <source>%1 分钟</source>
-        <translation type="unfinished" />
+        <translation>%1 分鐘</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="44" />
         <source>%1 小时 %2 分</source>
-        <translation type="unfinished" />
+        <translation>%1 小時 %2 分</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="119" />
         <location filename="../ui/pages/ProgressPage.qml" line="292" />
         <source>任务</source>
-        <translation type="unfinished" />
+        <translation>任務</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="121" />
         <source>%1 下载完成</source>
-        <translation type="unfinished" />
+        <translation>%1 下載完成</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="121" />
         <source>%1 安装完成</source>
-        <translation type="unfinished" />
+        <translation>%1 安裝完成</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="192" />
         <source>下载进度</source>
-        <translation type="unfinished" />
+        <translation>下載進度</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="232" />
         <source>总进度</source>
-        <translation type="unfinished" />
+        <translation>總進度</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="278" />
         <source>总速度</source>
-        <translation type="unfinished" />
+        <translation>總速度</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="295" />
         <source>%1 进行中</source>
-        <translation type="unfinished" />
+        <translation>%1 進行中</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="306" />
         <source>剩余</source>
-        <translation type="unfinished" />
+        <translation>剩餘</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="352" />
         <source>文件</source>
-        <translation type="unfinished" />
+        <translation>檔案</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="468" />
         <source>部分失败</source>
-        <translation type="unfinished" />
+        <translation>部分失敗</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="540" />
         <source>安装失败，可重试</source>
-        <translation type="unfinished" />
+        <translation>安裝失敗，可重試</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="615" />
         <source>完成</source>
-        <translation type="unfinished" />
+        <translation>完成</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="654" />
         <source>重试</source>
-        <translation type="unfinished" />
+        <translation>重試</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="666" />
         <source>取消</source>
-        <translation type="unfinished" />
+        <translation>取消</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="677" />
         <source>当前没有下载任务</source>
-        <translation type="unfinished" />
+        <translation>目前沒有下載任務</translation>
     </message>
 </context>
 <context>
@@ -1481,221 +1482,221 @@
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="84" />
         <source>已完成 %1</source>
-        <translation type="unfinished" />
+        <translation>已完成 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="85" />
         <source>失败 %1</source>
-        <translation type="unfinished" />
+        <translation>失敗 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="88" />
         <source>下载中 %1%2 %3</source>
-        <translation type="unfinished" />
+        <translation>下載中 %1%2 %3</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="271" />
         <source>%1 亿</source>
-        <translation type="unfinished" />
+        <translation>%1 億</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="272" />
         <source>%1 万</source>
-        <translation type="unfinished" />
+        <translation>%1 萬</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="290" />
         <location filename="../ui/pages/ResourceDetailPage.qml" line="329" />
         <source>该组合没有可下载文件</source>
-        <translation type="unfinished" />
+        <translation>該組合沒有可下載檔案</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="327" />
         <source>前置还在解析，请稍候</source>
-        <translation type="unfinished" />
+        <translation>前置仍在解析，請稍候</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="342" />
         <location filename="../ui/pages/ResourceDetailPage.qml" line="455" />
         <source>已取消</source>
-        <translation type="unfinished" />
+        <translation>已取消</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="374" />
         <source>有前置缺少下载信息</source>
-        <translation type="unfinished" />
+        <translation>有前置缺少下載資訊</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="374" />
         <source>没有可下载的文件</source>
-        <translation type="unfinished" />
+        <translation>沒有可下載的檔案</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="408" />
         <source>已提交 %1 个文件</source>
-        <translation type="unfinished" />
+        <translation>已提交 %1 個檔案</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="420" />
         <source>已提交下载</source>
-        <translation type="unfinished" />
+        <translation>已提交下載</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="430" />
         <source>选择保存位置（共 %1 个文件，其余存入同一文件夹）</source>
-        <translation type="unfinished" />
+        <translation>選擇儲存位置（共 %1 個檔案，其餘存入同一資料夾）</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="431" />
         <source>选择保存位置</source>
-        <translation type="unfinished" />
+        <translation>選擇儲存位置</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="445" />
         <source>开始下载 %1</source>
-        <translation type="unfinished" />
+        <translation>開始下載 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="486" />
         <source>返回</source>
-        <translation type="unfinished" />
+        <translation>返回</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="550" />
         <source>下载量</source>
-        <translation type="unfinished" />
+        <translation>下載量</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="555" />
         <source>版本</source>
-        <translation type="unfinished" />
+        <translation>版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="563" />
         <source>更新</source>
-        <translation type="unfinished" />
+        <translation>更新</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="597" />
         <source>本次安装</source>
-        <translation type="unfinished" />
+        <translation>本次安裝</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="603" />
         <source>未选择版本</source>
-        <translation type="unfinished" />
+        <translation>未選擇版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="611" />
         <source>+ %1 个必需前置</source>
-        <translation type="unfinished" />
+        <translation>+ %1 個必需前置</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="619" />
         <source>下载 %1 个文件</source>
-        <translation type="unfinished" />
+        <translation>下載 %1 個檔案</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="619" />
         <location filename="../ui/pages/ResourceDetailPage.qml" line="794" />
         <location filename="../ui/pages/ResourceDetailPage.qml" line="864" />
         <source>下载</source>
-        <translation type="unfinished" />
+        <translation>下載</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="628" />
         <source>多文件：选一次文件夹，全部存入</source>
-        <translation type="unfinished" />
+        <translation>多檔案：選一次資料夾，全部存入</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="628" />
         <source>下载时由你选择保存位置</source>
-        <translation type="unfinished" />
+        <translation>下載時由你選擇儲存位置</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="675" />
         <source>游戏版本</source>
-        <translation type="unfinished" />
+        <translation>遊戲版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="686" />
         <source>选择版本</source>
-        <translation type="unfinished" />
+        <translation>選擇版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="705" />
         <source>加载器</source>
-        <translation type="unfinished" />
+        <translation>載入器</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="719" />
         <source>先选版本</source>
-        <translation type="unfinished" />
+        <translation>先選版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="738" />
         <source>正在读取版本…</source>
-        <translation type="unfinished" />
+        <translation>正在讀取版本…</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="739" />
         <source>选择版本后，加载器只列出该版本实际有文件的项</source>
-        <translation type="unfinished" />
+        <translation>選擇版本後，載入器只列出該版本實際有檔案的項</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="740" />
         <source>%1 个加载器 · 该组合 %2 个版本</source>
-        <translation type="unfinished" />
+        <translation>%1 個載入器 · 該組合 %2 個版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="761" />
         <source>可下载版本</source>
-        <translation type="unfinished" />
+        <translation>可下載版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="766" />
         <source>最新 · 另有 %1 个旧版</source>
-        <translation type="unfinished" />
+        <translation>最新 · 另有 %1 個舊版</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="766" />
         <source>最新</source>
-        <translation type="unfinished" />
+        <translation>最新</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="783" />
         <source>没有匹配的文件</source>
-        <translation type="unfinished" />
+        <translation>沒有符合的檔案</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="817" />
         <source>该组合下还有 %1 个旧版本</source>
-        <translation type="unfinished" />
+        <translation>該組合下還有 %1 個舊版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="823" />
         <source>收起</source>
-        <translation type="unfinished" />
+        <translation>收起</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="823" />
         <source>展开</source>
-        <translation type="unfinished" />
+        <translation>展開</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="882" />
         <source>前置模组</source>
-        <translation type="unfinished" />
+        <translation>前置模組</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="949" />
         <source>必需</source>
-        <translation type="unfinished" />
+        <translation>必需</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourceDetailPage.qml" line="949" />
         <source>可选</source>
-        <translation type="unfinished" />
+        <translation>可選</translation>
     </message>
 </context>
 <context>
@@ -1704,89 +1705,89 @@
         <location filename="../ui/pages/ResourcePage.qml" line="78" />
         <location filename="../ui/pages/ResourcePage.qml" line="247" />
         <source>全部加载器</source>
-        <translation type="unfinished" />
+        <translation>全部載入器</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="217" />
         <source>全部来源</source>
-        <translation type="unfinished" />
+        <translation>全部來源</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="246" />
         <source>加载器</source>
-        <translation type="unfinished" />
+        <translation>載入器</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="255" />
         <source>环境</source>
-        <translation type="unfinished" />
+        <translation>環境</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="256" />
         <location filename="../ui/pages/ResourcePage.qml" line="258" />
         <source>全部环境</source>
-        <translation type="unfinished" />
+        <translation>全部環境</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="258" />
         <source>客户端</source>
-        <translation type="unfinished" />
+        <translation>客戶端</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="258" />
         <source>服务端</source>
-        <translation type="unfinished" />
+        <translation>伺服器端</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="264" />
         <source>排序</source>
-        <translation type="unfinished" />
+        <translation>排序</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="265" />
         <location filename="../ui/pages/ResourcePage.qml" line="267" />
         <source>下载量</source>
-        <translation type="unfinished" />
+        <translation>下載量</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="267" />
         <source>最近更新</source>
-        <translation type="unfinished" />
+        <translation>最近更新</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="267" />
         <source>名称</source>
-        <translation type="unfinished" />
+        <translation>名稱</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="281" />
         <source>重置</source>
-        <translation type="unfinished" />
+        <translation>重設</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="450" />
         <source>正在加载…</source>
-        <translation type="unfinished" />
+        <translation>正在載入…</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="450" />
         <source>没有找到匹配的资源</source>
-        <translation type="unfinished" />
+        <translation>沒有找到符合的資源</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="465" />
         <source>重新加载</source>
-        <translation type="unfinished" />
+        <translation>重新載入</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="499" />
         <source>上一页</source>
-        <translation type="unfinished" />
+        <translation>上一頁</translation>
     </message>
     <message>
         <location filename="../ui/pages/ResourcePage.qml" line="516" />
         <source>下一页</source>
-        <translation type="unfinished" />
+        <translation>下一頁</translation>
     </message>
 </context>
 <context>
@@ -7455,183 +7456,184 @@
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="89" />
         <source>版本名</source>
-        <translation type="unfinished" />
+        <translation>版本名稱</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="90" />
         <source>MC 版本</source>
-        <translation type="unfinished" />
+        <translation>MC 版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="91" />
         <source>加载器</source>
-        <translation type="unfinished" />
+        <translation>載入器</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="92" />
         <source>版本类型</source>
-        <translation type="unfinished" />
+        <translation>版本類型</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="93" />
         <source>模组</source>
-        <translation type="unfinished" />
+        <translation>模組</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="94" />
         <source>大小</source>
-        <translation type="unfinished" />
+        <translation>大小</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="95" />
         <source>上次游玩</source>
-        <translation type="unfinished" />
+        <translation>上次遊玩</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="96" />
         <source>游戏目录</source>
-        <translation type="unfinished" />
+        <translation>遊戲目錄</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="105" />
         <source>未识别</source>
-        <translation type="unfinished" />
+        <translation>未識別</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="108" />
         <source>%1 · 整合包</source>
-        <translation type="unfinished" />
+        <translation>%1 · 整合包</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="109" />
         <source>%1 个</source>
-        <translation type="unfinished" />
+        <translation>%1 個</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="109" />
         <source>无模组</source>
-        <translation type="unfinished" />
+        <translation>無模組</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="113" />
         <source>没有记录</source>
-        <translation type="unfinished" />
+        <translation>沒有記錄</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="139" />
         <source>游戏文件夹</source>
-        <translation type="unfinished" />
+        <translation>遊戲資料夾</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="149" />
         <source>切换失败：这个文件夹不是有效的游戏目录</source>
-        <translation type="unfinished" />
+        <translation>切換失敗：這個資料夾不是有效的遊戲目錄</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="152" />
         <source>已切回默认游戏目录</source>
-        <translation type="unfinished" />
+        <translation>已切回預設遊戲目錄</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="152" />
         <source>已切换游戏文件夹</source>
-        <translation type="unfinished" />
+        <translation>已切換遊戲資料夾</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="162" />
         <source>已添加文件夹 %1</source>
-        <translation type="unfinished" />
+        <translation>已新增資料夾 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="169" />
         <source>已切换到 %1</source>
-        <translation type="unfinished" />
+        <translation>已切換到 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="201" />
         <source>原版</source>
-        <translation type="unfinished" />
+        <translation>原版</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="207" />
         <source>快照版</source>
-        <translation type="unfinished" />
+        <translation>快照版</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="208" />
         <source>旧版</source>
-        <translation type="unfinished" />
+        <translation>舊版</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="209" />
         <source>正式版</source>
-        <translation type="unfinished" />
+        <translation>正式版</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="292" />
         <source>返回</source>
-        <translation type="unfinished" />
+        <translation>返回</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="299" />
         <source>选择版本</source>
-        <translation type="unfinished" />
+        <translation>選擇版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="309" />
         <source>%1 个已安装</source>
-        <translation type="unfinished" />
+        <translation>%1 個已安裝</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="358" />
         <source>刷新</source>
-        <translation type="unfinished" />
+        <translation>重新整理</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="363" />
         <source>已刷新版本列表</source>
-        <translation type="unfinished" />
+        <translation>已重新整理版本列表</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="406" />
         <source>已安装</source>
-        <translation type="unfinished" />
+        <translation>已安裝</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="464" />
         <source>搜索版本 / 加载器</source>
-        <translation type="unfinished" />
+        <translation>搜尋版本 / 載入器</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="635" />
         <source>还没有可用的版本
 在「下载」页安装一个版本后回到这里</source>
-        <translation type="unfinished" />
+        <translation>還沒有可用的版本
+在「下載」頁安裝一個版本後回到這裡</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="636" />
         <source>没有匹配「%1」的版本</source>
-        <translation type="unfinished" />
+        <translation>沒有符合「%1」的版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="836" />
         <source>打开目录</source>
-        <translation type="unfinished" />
+        <translation>開啟目錄</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="848" />
         <source>确定</source>
-        <translation type="unfinished" />
+        <translation>確定</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="937" />
         <source>使用中</source>
-        <translation type="unfinished" />
+        <translation>使用中</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="957" />
         <source>浏览其他文件夹…</source>
-        <translation type="unfinished" />
+        <translation>瀏覽其他資料夾…</translation>
     </message>
 </context>
 <context>
@@ -7639,72 +7641,72 @@
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="23" />
         <source>快捷入口</source>
-        <translation type="unfinished" />
+        <translation>快速入口</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="24" />
         <source>概览</source>
-        <translation type="unfinished" />
+        <translation>概覽</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="25" />
         <source>启动</source>
-        <translation type="unfinished" />
+        <translation>啟動</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="26" />
         <source>启动配置</source>
-        <translation type="unfinished" />
+        <translation>啟動配置</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="27" />
         <source>内存设置</source>
-        <translation type="unfinished" />
+        <translation>記憶體設定</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="28" />
         <source>内容</source>
-        <translation type="unfinished" />
+        <translation>內容</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="29" />
         <source>Mod 管理</source>
-        <translation type="unfinished" />
+        <translation>Mod 管理</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="30" />
         <source>资源包</source>
-        <translation type="unfinished" />
+        <translation>資源包</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="31" />
         <source>存档</source>
-        <translation type="unfinished" />
+        <translation>存檔</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="32" />
         <source>维护</source>
-        <translation type="unfinished" />
+        <translation>維護</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="33" />
         <source>工具与维护</source>
-        <translation type="unfinished" />
+        <translation>工具與維護</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="34" />
         <source>导出整合包</source>
-        <translation type="unfinished" />
+        <translation>匯出整合包</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="110" />
         <source>返回</source>
-        <translation type="unfinished" />
+        <translation>返回</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionSettingsPage.qml" line="121" />
         <source>版本设置</source>
-        <translation type="unfinished" />
+        <translation>版本設定</translation>
     </message>
 </context>
 <context>
@@ -7712,317 +7714,319 @@
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="199" />
         <source>先填整合包名称</source>
-        <translation type="unfinished" />
+        <translation>先填整合包名稱</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="203" />
         <source>先选择输出位置</source>
-        <translation type="unfinished" />
+        <translation>先選擇輸出路徑</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="211" />
         <source>输出位置在游戏目录里，已改为 %1</source>
-        <translation type="unfinished" />
+        <translation>輸出路徑在遊戲目錄裡，已改為 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="213" />
         <source>不能导出到游戏目录，请换个位置</source>
-        <translation type="unfinished" />
+        <translation>不能匯出到遊戲目錄，請換個位置</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="230" />
         <source>准备导出…</source>
-        <translation type="unfinished" />
+        <translation>準備匯出…</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="254" />
         <source>导出完成</source>
-        <translation type="unfinished" />
+        <translation>匯出完成</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="256" />
         <source>已导出到 %1</source>
-        <translation type="unfinished" />
+        <translation>已匯出到 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="258" />
         <location filename="../ui/pages/VsExportPane.qml" line="261" />
         <source>导出失败</source>
-        <translation type="unfinished" />
+        <translation>匯出失敗</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="289" />
         <source>引用在线来源，包体最小</source>
-        <translation type="unfinished" />
+        <translation>引用線上來源，包體最小</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="289" />
         <source>CurseForge 清单，部分文件只能直接打包</source>
-        <translation type="unfinished" />
+        <translation>CurseForge 清單，部分檔案只能直接打包</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="301" />
         <source>恢复默认</source>
-        <translation type="unfinished" />
+        <translation>還原預設</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="304" />
         <source>已恢复默认勾选</source>
-        <translation type="unfinished" />
+        <translation>已還原預設勾選</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="332" />
         <source>导出内容</source>
-        <translation type="unfinished" />
+        <translation>匯出內容</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="340" />
         <source>已选 %1 项</source>
-        <translation type="unfinished" />
+        <translation>已選 %1 項</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="375" />
         <source>基础</source>
-        <translation type="unfinished" />
+        <translation>基礎</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="382" />
         <source>Mod 与配置</source>
-        <translation type="unfinished" />
+        <translation>Mod 與配置</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="393" />
         <source>资源</source>
-        <translation type="unfinished" />
+        <translation>資源</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="406" />
         <source>存档</source>
-        <translation type="unfinished" />
+        <translation>存檔</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="413" />
         <source>其他（默认不导出）</source>
-        <translation type="unfinished" />
+        <translation>其他（預設不匯出）</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="442" />
         <source>打包信息</source>
-        <translation type="unfinished" />
+        <translation>打包資訊</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="445" />
         <source>名称</source>
-        <translation type="unfinished" />
+        <translation>名稱</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="457" />
         <source>版本</source>
-        <translation type="unfinished" />
+        <translation>版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="472" />
         <source>高级</source>
-        <translation type="unfinished" />
+        <translation>高級</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="475" />
         <source>仅包内资源</source>
-        <translation type="unfinished" />
+        <translation>僅包內資源</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="485" />
         <source>仅 Modrinth</source>
-        <translation type="unfinished" />
+        <translation>僅 Modrinth</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="495" />
         <source>打包 Java</source>
-        <translation type="unfinished" />
+        <translation>打包 Java</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="510" />
         <source>%1  ·  已选 %2 项</source>
-        <translation type="unfinished" />
+        <translation>%1  ·  已選 %2 項</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="513" />
         <source>%1  ·  存档 %2</source>
-        <translation type="unfinished" />
+        <translation>%1  ·  存檔 %2</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="514" />
         <location filename="../ui/pages/VsExportPane.qml" line="1047" />
         <location filename="../ui/pages/VsExportPane.qml" line="1232" />
         <source>%1 个</source>
-        <translation type="unfinished" />
+        <translation>%1 個</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="514" />
         <source>全部</source>
-        <translation type="unfinished" />
+        <translation>全部</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="559" />
         <source>未选择导出位置</source>
-        <translation type="unfinished" />
+        <translation>未選擇輸出路徑</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="578" />
         <source>更改</source>
-        <translation type="unfinished" />
+        <translation>更改</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="635" />
         <location filename="../ui/pages/VsExportPane.qml" line="1560" />
         <source>取消导出</source>
-        <translation type="unfinished" />
+        <translation>取消匯出</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="635" />
         <source>开始导出</source>
-        <translation type="unfinished" />
+        <translation>開始匯出</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="641" />
         <source>正在取消…</source>
-        <translation type="unfinished" />
+        <translation>正在取消…</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="722" />
         <source>含个人数据</source>
-        <translation type="unfinished" />
+        <translation>含個人資料</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="801" />
         <source>模组 (mods/)</source>
-        <translation type="unfinished" />
+        <translation>模組 (mods/)</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="819" />
         <source>收起</source>
-        <translation type="unfinished" />
+        <translation>收起</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="819" />
         <source>挑选</source>
-        <translation type="unfinished" />
+        <translation>挑選</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="832" />
         <source>%1 个 · 已选 %2</source>
-        <translation type="unfinished" />
+        <translation>%1 個 · 已選 %2</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="859" />
         <source>搜索模组</source>
-        <translation type="unfinished" />
+        <translation>搜尋模組</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="870" />
         <location filename="../ui/pages/VsExportPane.qml" line="1089" />
         <location filename="../ui/pages/VsExportPane.qml" line="1263" />
         <source>全选</source>
-        <translation type="unfinished" />
+        <translation>全選</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="882" />
         <location filename="../ui/pages/VsExportPane.qml" line="1099" />
         <location filename="../ui/pages/VsExportPane.qml" line="1275" />
         <source>全不选</source>
-        <translation type="unfinished" />
+        <translation>全不選</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1109" />
         <source>此版本没有内容</source>
-        <translation type="unfinished" />
+        <translation>此版本沒有內容</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1222" />
         <source>单机游戏存档</source>
-        <translation type="unfinished" />
+        <translation>單機遊戲存檔</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1284" />
         <source>此版本没有存档</source>
-        <translation type="unfinished" />
+        <translation>此版本沒有存檔</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1360" />
         <source>选择导出文件夹</source>
-        <translation type="unfinished" />
+        <translation>選擇匯出資料夾</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1366" />
         <source>导出位置： %1</source>
-        <translation type="unfinished" />
+        <translation>輸出路徑： %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1398" />
         <source>导出位置</source>
-        <translation type="unfinished" />
+        <translation>輸出路徑</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1412" />
         <source>填完整文件路径（含 %1）</source>
-        <translation type="unfinished" />
+        <translation>填完整檔案路徑（含 %1）</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1441" />
         <source>选择文件夹…</source>
-        <translation type="unfinished" />
+        <translation>選擇資料夾…</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1453" />
         <source>取消</source>
-        <translation type="unfinished" />
+        <translation>取消</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1463" />
         <source>确定</source>
-        <translation type="unfinished" />
+        <translation>確定</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1484" />
         <source>桌面</source>
-        <translation type="unfinished" />
+        <translation>桌面</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1485" />
         <source>下载</source>
-        <translation type="unfinished" />
+        <translation>下載</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1486" />
         <source>文档</source>
-        <translation type="unfinished" />
+        <translation>文件</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1538" />
         <source>Modrinth 查询失败</source>
-        <translation type="unfinished" />
+        <translation>Modrinth 查詢失敗</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1539" />
         <source>CurseForge 查询失败</source>
-        <translation type="unfinished" />
+        <translation>CurseForge 查詢失敗</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1540" />
         <source>联网查询失败</source>
-        <translation type="unfinished" />
+        <translation>聯網查詢失敗</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1548" />
         <source>%1
 
 继续导出的话，查不到来源的文件会直接打进包里。</source>
-        <translation type="unfinished" />
+        <translation>%1
+
+繼續匯出的話，查不到來源的檔案會直接打進包裡。</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsExportPane.qml" line="1570" />
         <source>继续导出</source>
-        <translation type="unfinished" />
+        <translation>繼續匯出</translation>
     </message>
 </context>
 <context>
@@ -8030,220 +8034,220 @@
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="129" />
         <source>配置模式</source>
-        <translation type="unfinished" />
+        <translation>配置模式</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="135" />
         <source>跟随全局设置</source>
-        <translation type="unfinished" />
+        <translation>跟隨全域設定</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="135" />
         <source>独立配置</source>
-        <translation type="unfinished" />
+        <translation>獨立配置</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="144" />
         <source>Java 环境</source>
-        <translation type="unfinished" />
+        <translation>Java 環境</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="148" />
         <source>选择</source>
-        <translation type="unfinished" />
+        <translation>選擇</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="153" />
         <source>自动选择</source>
-        <translation type="unfinished" />
+        <translation>自動選擇</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="153" />
         <source>版本目录内 Java</source>
-        <translation type="unfinished" />
+        <translation>版本目錄內 Java</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="153" />
         <source>手动指定</source>
-        <translation type="unfinished" />
+        <translation>手動指定</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="164" />
         <source>全局 Java</source>
-        <translation type="unfinished" />
+        <translation>全域 Java</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="169" />
         <source>未检测到</source>
-        <translation type="unfinished" />
+        <translation>未檢測到</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="170" />
         <source>%1（Java %2）</source>
-        <translation type="unfinished" />
+        <translation>%1（Java %2）</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="179" />
         <source>建议</source>
-        <translation type="unfinished" />
+        <translation>推薦</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="194" />
         <source>游戏 %1</source>
-        <translation type="unfinished" />
+        <translation>遊戲 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="205" />
         <source>JVM 参数</source>
-        <translation type="unfinished" />
+        <translation>JVM 參數</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="221" />
         <source>留空则使用全局 JVM 参数</source>
-        <translation type="unfinished" />
+        <translation>留空則使用全域 JVM 參數</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="221" />
         <location filename="../ui/pages/VsLaunchPane.qml" line="381" />
         <source>跟随全局设置时不生效</source>
-        <translation type="unfinished" />
+        <translation>跟隨全域設定時不生效</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="235" />
         <source>G1GC 平衡</source>
-        <translation type="unfinished" />
+        <translation>G1GC 平衡</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="241" />
         <source>ZGC 低延迟</source>
-        <translation type="unfinished" />
+        <translation>ZGC 低延遲</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="247" />
         <source>清空</source>
-        <translation type="unfinished" />
+        <translation>清空</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="257" />
         <source>启动行为</source>
-        <translation type="unfinished" />
+        <translation>啟動行為</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="261" />
         <source>GC 策略</source>
-        <translation type="unfinished" />
+        <translation>GC 策略</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="266" />
         <location filename="../ui/pages/VsLaunchPane.qml" line="313" />
         <source>跟随全局</source>
-        <translation type="unfinished" />
+        <translation>跟隨全域</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="266" />
         <source>ZGC 优先</source>
-        <translation type="unfinished" />
+        <translation>ZGC 優先</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="266" />
         <source>仅 G1GC</source>
-        <translation type="unfinished" />
+        <translation>僅 G1GC</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="266" />
         <source>不指定</source>
-        <translation type="unfinished" />
+        <translation>不指定</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="277" />
         <source>全屏启动</source>
-        <translation type="unfinished" />
+        <translation>全屏啟動</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="292" />
         <source>高性能 GPU</source>
-        <translation type="unfinished" />
+        <translation>高效能 GPU</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="307" />
         <source>进程优先级</source>
-        <translation type="unfinished" />
+        <translation>進程優先級</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="313" />
         <source>高</source>
-        <translation type="unfinished" />
+        <translation>高</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="313" />
         <source>正常</source>
-        <translation type="unfinished" />
+        <translation>正常</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="313" />
         <source>低</source>
-        <translation type="unfinished" />
+        <translation>低</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="331" />
         <source>自动进服</source>
-        <translation type="unfinished" />
+        <translation>自動進服</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="337" />
         <source>留空则不自动进服</source>
-        <translation type="unfinished" />
+        <translation>留空則不自動進服</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="347" />
         <source>窗口标题</source>
-        <translation type="unfinished" />
+        <translation>窗口標題</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="354" />
         <source>留空则用游戏默认标题</source>
-        <translation type="unfinished" />
+        <translation>留空則用遊戲預設標題</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="368" />
         <source>游戏参数</source>
-        <translation type="unfinished" />
+        <translation>遊戲參數</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="381" />
         <source>留空则使用全局游戏参数</source>
-        <translation type="unfinished" />
+        <translation>留空則使用全域遊戲參數</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="393" />
         <source>命令</source>
-        <translation type="unfinished" />
+        <translation>命令</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="397" />
         <source>启动前</source>
-        <translation type="unfinished" />
+        <translation>啟動前</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="404" />
         <location filename="../ui/pages/VsLaunchPane.qml" line="424" />
         <source>留空则不执行</source>
-        <translation type="unfinished" />
+        <translation>留空則不執行</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="416" />
         <source>退出后</source>
-        <translation type="unfinished" />
+        <translation>退出後</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="441" />
         <source>已套用预设</source>
-        <translation type="unfinished" />
+        <translation>已套用預設</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsLaunchPane.qml" line="441" />
         <source>已清空 JVM 参数</source>
-        <translation type="unfinished" />
+        <translation>已清空 JVM 參數</translation>
     </message>
 </context>
 <context>
@@ -8251,77 +8255,77 @@
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="69" />
         <source>分配方式</source>
-        <translation type="unfinished" />
+        <translation>分配方式</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="77" />
         <source>跟随全局设置</source>
-        <translation type="unfinished" />
+        <translation>跟隨全域設定</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="78" />
         <source>使用启动器全局内存设置</source>
-        <translation type="unfinished" />
+        <translation>使用啟動器全域記憶體設定</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="85" />
         <source>自动配置</source>
-        <translation type="unfinished" />
+        <translation>自動配置</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="86" />
         <source>启动时按剩余内存动态分配</source>
-        <translation type="unfinished" />
+        <translation>啟動時按剩餘記憶體動態分配</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="87" />
         <source>建议 %1 MB</source>
-        <translation type="unfinished" />
+        <translation>建議 %1 MB</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="93" />
         <source>自定义</source>
-        <translation type="unfinished" />
+        <translation>自訂</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="94" />
         <source>固定分配给这个版本</source>
-        <translation type="unfinished" />
+        <translation>固定分配給這個版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="104" />
         <source>分配内存</source>
-        <translation type="unfinished" />
+        <translation>分配記憶體</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="115" />
         <source>范围 %1 – %2 MB</source>
-        <translation type="unfinished" />
+        <translation>範圍 %1 – %2 MB</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="168" />
         <source>系统内存</source>
-        <translation type="unfinished" />
+        <translation>系統記憶體</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="194" />
         <source>已用 %1 MB · 共 %2 MB</source>
-        <translation type="unfinished" />
+        <translation>已用 %1 MB · 共 %2 MB</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="243" />
         <source>本版本 %1 MB</source>
-        <translation type="unfinished" />
+        <translation>本版本 %1 MB</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="257" />
         <source>其他占用</source>
-        <translation type="unfinished" />
+        <translation>其他佔用</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsMemoryPane.qml" line="267" />
         <source>可用 %1 MB</source>
-        <translation type="unfinished" />
+        <translation>可用 %1 MB</translation>
     </message>
 </context>
 <context>
@@ -8329,92 +8333,92 @@
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="93" />
         <source>搜索 Mod</source>
-        <translation type="unfinished" />
+        <translation>搜尋 Mod</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="98" />
         <source>%1 个 · 启用 %2</source>
-        <translation type="unfinished" />
+        <translation>%1 個 · 啟用 %2</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="108" />
         <source>刷新</source>
-        <translation type="unfinished" />
+        <translation>重新整理</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="111" />
         <source>正在重新扫描 Mod</source>
-        <translation type="unfinished" />
+        <translation>正在重新掃描 Mod</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="119" />
         <source>文件夹</source>
-        <translation type="unfinished" />
+        <translation>資料夾</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="131" />
         <source>全部启用</source>
-        <translation type="unfinished" />
+        <translation>全部啟用</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="138" />
         <source>全部禁用</source>
-        <translation type="unfinished" />
+        <translation>全部停用</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="146" />
         <source>导入</source>
-        <translation type="unfinished" />
+        <translation>匯入</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="302" />
         <source>此版本还没有 Mod</source>
-        <translation type="unfinished" />
+        <translation>此版本還沒有 Mod</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="302" />
         <source>没有匹配的 Mod</source>
-        <translation type="unfinished" />
+        <translation>沒有符合的 Mod</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="314" />
         <source>正在读取 Mod 列表…</source>
-        <translation type="unfinished" />
+        <translation>正在讀取 Mod 列表…</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="329" />
         <source>正在启用 %1 个 Mod…</source>
-        <translation type="unfinished" />
+        <translation>正在啟用 %1 個 Mod…</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="329" />
         <source>正在禁用 %1 个 Mod…</source>
-        <translation type="unfinished" />
+        <translation>正在停用 %1 個 Mod…</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="333" />
         <source>已启用 %1 / %2 个 Mod</source>
-        <translation type="unfinished" />
+        <translation>已啟用 %1 / %2 個 Mod</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="333" />
         <source>已禁用 %1 / %2 个 Mod</source>
-        <translation type="unfinished" />
+        <translation>已停用 %1 / %2 個 Mod</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="340" />
         <source>导入 Mod</source>
-        <translation type="unfinished" />
+        <translation>匯入 Mod</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="347" />
         <source>已导入</source>
-        <translation type="unfinished" />
+        <translation>已匯入</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsModsPane.qml" line="347" />
         <source>导入失败</source>
-        <translation type="unfinished" />
+        <translation>匯入失敗</translation>
     </message>
 </context>
 <context>
@@ -8422,122 +8426,122 @@
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="39" />
         <source>原版</source>
-        <translation type="unfinished" />
+        <translation>原版</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="53" />
         <source>%1 · 跟随全局</source>
-        <translation type="unfinished" />
+        <translation>%1 · 跟隨全域</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="53" />
         <location filename="../ui/pages/VsOverviewPane.qml" line="55" />
         <source>未就绪</source>
-        <translation type="unfinished" />
+        <translation>未就緒</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="54" />
         <source>版本目录内 Java</source>
-        <translation type="unfinished" />
+        <translation>版本目錄內 Java</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="55" />
         <source>%1 · 已指定</source>
-        <translation type="unfinished" />
+        <translation>%1 · 已指定</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="60" />
         <source>%1 MB · 跟随全局</source>
-        <translation type="unfinished" />
+        <translation>%1 MB · 跟隨全域</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="61" />
         <source>%1 MB · 已覆盖</source>
-        <translation type="unfinished" />
+        <translation>%1 MB · 已覆寫</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="114" />
         <source>加载器</source>
-        <translation type="unfinished" />
+        <translation>載入器</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="128" />
         <source>游戏</source>
-        <translation type="unfinished" />
+        <translation>遊戲</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="153" />
         <source>运行</source>
-        <translation type="unfinished" />
+        <translation>執行</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="159" />
         <source>去指定</source>
-        <translation type="unfinished" />
+        <translation>去指定</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="165" />
         <source>内存</source>
-        <translation type="unfinished" />
+        <translation>記憶體</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="167" />
         <source>去设置</source>
-        <translation type="unfinished" />
+        <translation>去設定</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="172" />
         <source>内容</source>
-        <translation type="unfinished" />
+        <translation>內容</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="177" />
         <source>%1 个 · 启用 %2</source>
-        <translation type="unfinished" />
+        <translation>%1 個 · 啟用 %2</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="178" />
         <location filename="../ui/pages/VsOverviewPane.qml" line="186" />
         <location filename="../ui/pages/VsOverviewPane.qml" line="194" />
         <source>管理</source>
-        <translation type="unfinished" />
+        <translation>管理</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="184" />
         <source>资源包</source>
-        <translation type="unfinished" />
+        <translation>資源包</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="185" />
         <location filename="../ui/pages/VsOverviewPane.qml" line="193" />
         <source>%1 个</source>
-        <translation type="unfinished" />
+        <translation>%1 個</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="192" />
         <source>存档</source>
-        <translation type="unfinished" />
+        <translation>存檔</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="200" />
         <source>存储</source>
-        <translation type="unfinished" />
+        <translation>儲存空間</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="204" />
         <source>版本目录</source>
-        <translation type="unfinished" />
+        <translation>版本目錄</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="207" />
         <location filename="../ui/pages/VsOverviewPane.qml" line="216" />
         <source>打开</source>
-        <translation type="unfinished" />
+        <translation>開啟</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsOverviewPane.qml" line="213" />
         <source>游戏目录</source>
-        <translation type="unfinished" />
+        <translation>遊戲目錄</translation>
     </message>
 </context>
 <context>
@@ -8545,99 +8549,100 @@
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="88" />
         <source>搜索资源包</source>
-        <translation type="unfinished" />
+        <translation>搜尋資源包</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="93" />
         <source>%1 个</source>
-        <translation type="unfinished" />
+        <translation>%1 個</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="103" />
         <source>刷新</source>
-        <translation type="unfinished" />
+        <translation>重新整理</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="106" />
         <source>正在重新扫描资源包</source>
-        <translation type="unfinished" />
+        <translation>正在重新掃描資源包</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="114" />
         <source>文件夹</source>
-        <translation type="unfinished" />
+        <translation>資料夾</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="125" />
         <source>导入</source>
-        <translation type="unfinished" />
+        <translation>匯入</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="261" />
         <location filename="../ui/pages/VsPacksPane.qml" line="349" />
         <source>删除</source>
-        <translation type="unfinished" />
+        <translation>刪除</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="280" />
         <source>此版本还没有资源包</source>
-        <translation type="unfinished" />
+        <translation>此版本還沒有資源包</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="280" />
         <source>没有匹配的资源包</source>
-        <translation type="unfinished" />
+        <translation>沒有符合的資源包</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="292" />
         <source>正在读取资源包列表…</source>
-        <translation type="unfinished" />
+        <translation>正在讀取資源包列表…</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="321" />
         <source>删除资源包？</source>
-        <translation type="unfinished" />
+        <translation>刪除資源包？</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="329" />
         <source>%1
 这个操作不能撤销。</source>
-        <translation type="unfinished" />
+        <translation>%1
+這個操作不能撤銷。</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="341" />
         <source>取消</source>
-        <translation type="unfinished" />
+        <translation>取消</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="353" />
         <source>已删除 %1</source>
-        <translation type="unfinished" />
+        <translation>已刪除 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="364" />
         <source>导入资源包</source>
-        <translation type="unfinished" />
+        <translation>匯入資源包</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="366" />
         <source>资源包 (*.zip)</source>
-        <translation type="unfinished" />
+        <translation>資源包 (*.zip)</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="366" />
         <source>所有文件 (*)</source>
-        <translation type="unfinished" />
+        <translation>所有檔案 (*)</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="371" />
         <source>已导入</source>
-        <translation type="unfinished" />
+        <translation>已匯入</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsPacksPane.qml" line="371" />
         <source>导入失败</source>
-        <translation type="unfinished" />
+        <translation>匯入失敗</translation>
     </message>
 </context>
 <context>
@@ -8645,7 +8650,7 @@
     <message>
         <location filename="../ui/pages/VsPlaceholderPane.qml" line="13" />
         <source>%1 · 待施工</source>
-        <translation type="unfinished" />
+        <translation>%1 · 待施工</translation>
     </message>
 </context>
 <context>
@@ -8653,17 +8658,17 @@
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="27" />
         <source>打开失败</source>
-        <translation type="unfinished" />
+        <translation>開啟失敗</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="58" />
         <source>文件夹</source>
-        <translation type="unfinished" />
+        <translation>資料夾</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="67" />
         <source>版本文件夹</source>
-        <translation type="unfinished" />
+        <translation>版本資料夾</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="67" />
@@ -8675,104 +8680,104 @@
         <location filename="../ui/pages/VsQuickPane.qml" line="97" />
         <location filename="../ui/pages/VsQuickPane.qml" line="181" />
         <source>打开</source>
-        <translation type="unfinished" />
+        <translation>開啟</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="68" />
         <source>存档文件夹</source>
-        <translation type="unfinished" />
+        <translation>存檔資料夾</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="69" />
         <source>截图文件夹</source>
-        <translation type="unfinished" />
+        <translation>截圖資料夾</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="70" />
         <source>Mod 文件夹</source>
-        <translation type="unfinished" />
+        <translation>Mod 資料夾</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="78" />
         <location filename="../ui/pages/VsQuickPane.qml" line="106" />
         <source>已打开 %1</source>
-        <translation type="unfinished" />
+        <translation>已開啟 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="86" />
         <source>日志</source>
-        <translation type="unfinished" />
+        <translation>日誌</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="95" />
         <source>logs 日志</source>
-        <translation type="unfinished" />
+        <translation>logs 日誌</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="96" />
         <source>最新启动日志</source>
-        <translation type="unfinished" />
+        <translation>最新啟動日誌</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="97" />
         <source>崩溃日志</source>
-        <translation type="unfinished" />
+        <translation>崩潰日誌</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="97" />
         <source>这个版本还没有崩溃日志</source>
-        <translation type="unfinished" />
+        <translation>這個版本還沒有崩潰日誌</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="114" />
         <source>其他</source>
-        <translation type="unfinished" />
+        <translation>其他</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="123" />
         <source>复制版本路径</source>
-        <translation type="unfinished" />
+        <translation>複製版本路徑</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="123" />
         <source>复制</source>
-        <translation type="unfinished" />
+        <translation>複製</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="124" />
         <location filename="../ui/pages/VsQuickPane.qml" line="158" />
         <source>导出启动脚本</source>
-        <translation type="unfinished" />
+        <translation>匯出啟動腳本</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="124" />
         <source>导出</source>
-        <translation type="unfinished" />
+        <translation>匯出</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="135" />
         <source>已复制版本路径</source>
-        <translation type="unfinished" />
+        <translation>已複製版本路徑</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="135" />
         <source>复制失败：版本不存在</source>
-        <translation type="unfinished" />
+        <translation>複製失敗：版本不存在</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="146" />
         <source>导出失败：请检查 Java 是否就绪</source>
-        <translation type="unfinished" />
+        <translation>匯出失敗：請檢查 Java 是否就緒</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="169" />
         <source>已导出到 %1</source>
-        <translation type="unfinished" />
+        <translation>已匯出到 %1</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsQuickPane.qml" line="169" />
         <source>保存失败，请换一个位置再试</source>
-        <translation type="unfinished" />
+        <translation>儲存失敗，請換一個位置再試</translation>
     </message>
 </context>
 <context>
@@ -8780,69 +8785,70 @@
     <message>
         <location filename="../ui/pages/VsSavesPane.qml" line="98" />
         <source>搜索存档</source>
-        <translation type="unfinished" />
+        <translation>搜尋存檔</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsSavesPane.qml" line="103" />
         <source>%1 个存档</source>
-        <translation type="unfinished" />
+        <translation>%1 個存檔</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsSavesPane.qml" line="113" />
         <source>刷新</source>
-        <translation type="unfinished" />
+        <translation>重新整理</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsSavesPane.qml" line="116" />
         <source>正在重新读取存档</source>
-        <translation type="unfinished" />
+        <translation>正在重新讀取存檔</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsSavesPane.qml" line="124" />
         <source>文件夹</source>
-        <translation type="unfinished" />
+        <translation>資料夾</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsSavesPane.qml" line="246" />
         <location filename="../ui/pages/VsSavesPane.qml" line="334" />
         <source>删除</source>
-        <translation type="unfinished" />
+        <translation>刪除</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsSavesPane.qml" line="265" />
         <source>此版本还没有存档</source>
-        <translation type="unfinished" />
+        <translation>此版本還沒有存檔</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsSavesPane.qml" line="265" />
         <source>没有匹配的存档</source>
-        <translation type="unfinished" />
+        <translation>沒有符合的存檔</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsSavesPane.qml" line="277" />
         <source>正在读取存档列表…</source>
-        <translation type="unfinished" />
+        <translation>正在讀取存檔列表…</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsSavesPane.qml" line="306" />
         <source>删除存档？</source>
-        <translation type="unfinished" />
+        <translation>刪除存檔？</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsSavesPane.qml" line="314" />
         <source>%1
 这个操作不能撤销。</source>
-        <translation type="unfinished" />
+        <translation>%1
+這個操作不能撤銷。</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsSavesPane.qml" line="326" />
         <source>取消</source>
-        <translation type="unfinished" />
+        <translation>取消</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsSavesPane.qml" line="338" />
         <source>已删除存档 %1</source>
-        <translation type="unfinished" />
+        <translation>已刪除存檔 %1</translation>
     </message>
 </context>
 <context>
@@ -8850,170 +8856,170 @@
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="48" />
         <source>校验通过</source>
-        <translation type="unfinished" />
+        <translation>校驗通過</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="48" />
         <location filename="../ui/pages/VsToolsPane.qml" line="55" />
         <source>发现 %1 个文件异常</source>
-        <translation type="unfinished" />
+        <translation>發現 %1 個檔案異常</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="53" />
         <source>正在校验…</source>
-        <translation type="unfinished" />
+        <translation>正在校驗…</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="54" />
         <source>尚未校验此版本</source>
-        <translation type="unfinished" />
+        <translation>尚未校驗此版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="56" />
         <source>未发现异常</source>
-        <translation type="unfinished" />
+        <translation>未發現異常</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="59" />
         <source>正在逐个核对版本文件，可随时取消</source>
-        <translation type="unfinished" />
+        <translation>正在逐個核對版本檔案，可隨時取消</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="60" />
         <source>校验会逐个核对版本文件是否齐全</source>
-        <translation type="unfinished" />
+        <translation>校驗會逐個核對版本檔案是否齊全</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="61" />
         <source>本次扫描 %1 个文件</source>
-        <translation type="unfinished" />
+        <translation>本次掃描 %1 個檔案</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="166" />
         <source>已扫描 %1 / %2 个文件</source>
-        <translation type="unfinished" />
+        <translation>已掃描 %1 / %2 個檔案</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="167" />
         <source>正在统计文件…</source>
-        <translation type="unfinished" />
+        <translation>正在統計檔案…</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="192" />
         <source>重新校验</source>
-        <translation type="unfinished" />
+        <translation>重新校驗</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="209" />
         <source>开始校验版本文件</source>
-        <translation type="unfinished" />
+        <translation>開始校驗版本檔案</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="218" />
         <location filename="../ui/pages/VsToolsPane.qml" line="411" />
         <source>取消</source>
-        <translation type="unfinished" />
+        <translation>取消</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="243" />
         <source>共 %1 项待修复</source>
-        <translation type="unfinished" />
+        <translation>共 %1 項待修復</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="252" />
         <source>修复</source>
-        <translation type="unfinished" />
+        <translation>修復</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="256" />
         <source>已开始修复，进度见「下载进度」</source>
-        <translation type="unfinished" />
+        <translation>已開始修復，進度見「下載進度」</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="265" />
         <source>异常文件</source>
-        <translation type="unfinished" />
+        <translation>異常檔案</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="289" />
         <source>另有 %1 项未列出</source>
-        <translation type="unfinished" />
+        <translation>另有 %1 項未列出</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="299" />
         <source>版本操作</source>
-        <translation type="unfinished" />
+        <translation>版本操作</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="308" />
         <source>打开版本目录</source>
-        <translation type="unfinished" />
+        <translation>開啟版本目錄</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="315" />
         <source>克隆版本</source>
-        <translation type="unfinished" />
+        <translation>複製版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="319" />
         <source>已创建副本</source>
-        <translation type="unfinished" />
+        <translation>已建立副本</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="319" />
         <source>克隆失败</source>
-        <translation type="unfinished" />
+        <translation>複製失敗</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="326" />
         <source>重命名</source>
-        <translation type="unfinished" />
+        <translation>重新命名</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="336" />
         <location filename="../ui/pages/VsToolsPane.qml" line="433" />
         <source>导出用户数据</source>
-        <translation type="unfinished" />
+        <translation>匯出使用者資料</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="360" />
         <source>删除该版本</source>
-        <translation type="unfinished" />
+        <translation>刪除該版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="364" />
         <source>已删除版本</source>
-        <translation type="unfinished" />
+        <translation>已刪除版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="393" />
         <source>重命名版本</source>
-        <translation type="unfinished" />
+        <translation>重新命名版本</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="402" />
         <source>新的版本 ID</source>
-        <translation type="unfinished" />
+        <translation>新的版本 ID</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="418" />
         <source>确认</source>
-        <translation type="unfinished" />
+        <translation>確認</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="424" />
         <source>已重命名</source>
-        <translation type="unfinished" />
+        <translation>已重新命名</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="424" />
         <source>重命名失败</source>
-        <translation type="unfinished" />
+        <translation>重新命名失敗</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="442" />
         <source>已开始导出用户数据</source>
-        <translation type="unfinished" />
+        <translation>已開始匯出使用者資料</translation>
     </message>
 </context>
 </TS>

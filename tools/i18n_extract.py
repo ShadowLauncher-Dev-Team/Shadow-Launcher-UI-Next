@@ -49,7 +49,9 @@ def main():
             for msg in ctx.findall("message"):
                 s = msg.findtext("source") or ""
                 tr = msg.find("translation")
-                d.setdefault(name, {})[s] = ((tr.text or "") if tr is not None else "", tr.get("type", "unfinished") if tr is not None else "unfinished")
+                # 没有 type 属性 = 已完成（Qt 的约定）；"unfinished"/"vanished" 才算未完成
+                flag = tr.get("type", "") if tr is not None else "unfinished"
+                d.setdefault(name, {})[s] = ((tr.text or "") if tr is not None else "", flag)
         return d
     hki, twi = index(hk), index(tw)
 
