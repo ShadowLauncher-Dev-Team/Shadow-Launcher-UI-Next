@@ -160,6 +160,10 @@ public:
     void setJavaAutoInstallRequest(int major) { m_javaAutoInstallMajor = major; }
 
     // ── Crash analysis (public API) ──
+    /// 验收用：直接走一次 abortCheck，验证「检查阶段失败 → 异常分析 → 面板」链路。
+    /// 不装 Java、不跑游戏，生产路径永远不会调它。
+    Q_INVOKABLE void demoPrecheckFail(const QString& reason = {});
+
     Q_INVOKABLE void analyzeCrashNow();          // manual re-analysis (e.g. from dialog "重新分析")
     Q_INVOKABLE QString exportCrashLogs(const QString& destDir = {});  // one-click log export
     Q_INVOKABLE void openPath(const QString& path);  // open file/folder in system explorer
@@ -310,6 +314,9 @@ private:
     QString m_launcherLogPath;     // path of the launcher's own log file
     QString m_crashReportPath;     // path of last analysis report (for export)
     QString m_jvmFullLogPath;      // full JVM output log (all stdout+stderr, per launch)
+    // 预检失败的具体原因（阶段：原因）。分析完成后用它覆盖通用文案，
+    // 否则面板只显示"启动在检查阶段被拦截"，用户仍不知道哪里坏了。
+    QString m_precheckReason;
     bool m_crashAnalysisRunning = false;
 };
 

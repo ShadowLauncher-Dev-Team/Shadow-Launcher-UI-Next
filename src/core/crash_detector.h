@@ -75,9 +75,13 @@ public:
     ///   4. Build suggestions from matched rules
     ///   5. Export collected logs + write report document if analysis is too long
     /// latestOutput: last N lines captured from the game process (optional)
+    /// precheckReason: 启动前检查失败时的「阶段：原因」。
+    ///   预检失败没有崩溃报告可读，结论就是这句话；
+    ///   交给 detector 而不是事后改 map，导出的报告才会写到真正原因。
     CrashReport analyzeCrash(const QString& gameDir,
                              const QStringList& latestOutput = {},
-                             const QString& launcherLogPath = {});
+                             const QString& launcherLogPath = {},
+                             const QString& precheckReason = {});
 
     /// Export all relevant logs (crash reports, hs_err, latest.log, debug.log,
     /// launcher log, JVM process output (full + recent), analysis report) into a zip.

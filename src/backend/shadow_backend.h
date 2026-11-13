@@ -514,6 +514,7 @@ public:
     Q_INVOKABLE bool openLauncherLogsFolder();
     Q_INVOKABLE bool openCrashLog(const QString& versionId = {});
     // ── Crash analysis (forwarded to LaunchBackend) ──
+    Q_INVOKABLE void demoPrecheckFail(const QString& reason = {});
     Q_INVOKABLE void analyzeCrashNow();
     Q_INVOKABLE QString exportCrashLogs(const QString& destDir = {});
     Q_INVOKABLE void openPath(const QString& path);

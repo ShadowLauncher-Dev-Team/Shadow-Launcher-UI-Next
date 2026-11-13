@@ -2552,6 +2552,10 @@ bool ShadowBackend::openCrashLog(const QString& versionId) {
     return false;
 }
 
+void ShadowBackend::demoPrecheckFail(const QString& reason) {
+    if (m_launch) m_launch->demoPrecheckFail(reason);
+}
+
 void ShadowBackend::analyzeCrashNow() {
     if (m_launch) m_launch->analyzeCrashNow();
 }

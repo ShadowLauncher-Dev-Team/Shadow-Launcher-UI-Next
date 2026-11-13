@@ -680,7 +680,7 @@ Item {
                 Text {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - (root.failed ? 300 : 110)
+                    width: parent.width - (root.failed ? 360 : 110)
                     // 失败态只显示导出结果；没有结果就保持空，不塞无关文案
                     text: root.failed
                           ? root.exportHint
@@ -722,6 +722,17 @@ Item {
                         danger: true
                         text: qsTr("重试")
                         onClicked: { if (root.b && root.verName.length > 0) root.b.launch(root.verName, root.b.activeAccountOnline) }
+                    }
+                    // 失败态必须能退出。原来这里只有「导出日志 / 查看日志 / 重试」，
+                    // 而唯一能收起浮层的「取消启动」条件是 !failed —— 恰好把出口关掉了，
+                    // 于是启动失败后浮层没有任何关闭方式，只能杀进程。
+                    // 失败态没有活动进程，cancelLaunch 只做清理与收起，语义安全。
+                    SButton {
+                        kind: 1
+                        radius: 2
+                        height: 32
+                        text: qsTr("关闭")
+                        onClicked: { if (root.b) root.b.cancelLaunch() }
                     }
                 }
 

@@ -586,7 +586,8 @@ CrashReport CrashDetector::scanLatestCrash(const QString& gameDir)
 
 CrashReport CrashDetector::analyzeCrash(const QString& gameDir,
                                         const QStringList& latestOutput,
-                                        const QString& launcherLogPath)
+                                        const QString& launcherLogPath,
+                                        const QString& precheckReason)
 {
     CrashReport r;
     qCInfo(logLaunch) << QStringLiteral("[崩溃分析] 开始完整分析 目录=%1").arg(gameDir);
@@ -625,10 +626,11 @@ CrashReport CrashDetector::analyzeCrash(const QString& gameDir,
                     parsed.type = QStringLiteral("log");
                     parsed.filePath = latestLog.absoluteFilePath();
                     parsed.timestamp = latestLog.lastModified();
-                    // Find last ERROR/FATAL line as reason
+                    // Find last ERROR/FATAL line as reason.
+                    // 原正则 (ERROR|FATAL)\].*? 是惰性量词、又没开 DotMatchesEverything：
+                    // ".*?" 允许零长度，每条匹配只剩 "ERROR]" 这几个字符。
                     static const QRegularExpression errRe(
-                        QStringLiteral(R"((ERROR|FATAL)\].*?)"),
-                        QRegularExpression::MultilineOption);
+                        QStringLiteral(R"((ERROR|FATAL)\][^\n]*)"));
                     QStringList reasons;
                     auto it = errRe.globalMatch(content);
                     while (it.hasNext() && reasons.size() < 5)
@@ -668,10 +670,15 @@ CrashReport CrashDetector::analyzeCrash(const QString& gameDir,
         if (!errLines.isEmpty())
             r.reason = errLines.last();
     } else {
-        r.isValid = false;
-        r.reason = tr("未找到崩溃报告");
-        r.description = tr("未在游戏目录中找到崩溃报告或错误日志，可能是进程被强制结束或崩溃前未写入报告。");
-        return r;
+        // 没有崩溃报告、也没有进程输出。启动前检查失败就是这种情况（Java 缺失、版本文件损坏）：
+        // 游戏根本没进去，所以不可能有 crash-reports。原来这里直接 return，
+        // 导致此类失败拿不到任何结论、也无从导出日志。
+        // 现在继续走规则引擎：启动器日志里的检查结果同样能被匹配到具体建议。
+        r.type = QStringLiteral("precheck");
+        r.reason = precheckReason.isEmpty()
+            ? tr("启动在检查阶段被拦截")
+            : precheckReason;
+        r.description = tr("游戏进程没有启动。以下结论来自启动器日志与启动前检查结果。");
     }
     r.isValid = true;
 
@@ -703,6 +710,14 @@ CrashReport CrashDetector::analyzeCrash(const QString& gameDir,
     r.matchedRules = matchRules(analysisText);
     if (!r.matchedRules.isEmpty())
         r.suggestions = suggestionsForRules(r.matchedRules);
+
+    // 预检失败很少能命中规则：规则库针对的是崩溃特征（OOM、mod 冲突…），
+    // 而“版本 jar 不存在”这类错误本身就是结论。但面板上总得有一句
+    // “下一步该做什么”，否则用户只看到一个红色原因就没下文了。
+    if (r.type == QLatin1String("precheck") && r.suggestions.isEmpty()) {
+        r.suggestions << tr("请先根据上方原因检查对应文件；完整日志可用「导出日志」打包");
+        r.suggestions << tr("若是 Java 相关问题，可前往「设置 → Java」或使用一键安装");
+    }
 
     // ── 4b. 动态 Java 版本建议（适配新版 MC：class file version 直接换算所需 Java）──
     // TOO_OLD_JAVA 捕获 class file version（如 69.0 = Java 25），写死的
@@ -773,6 +788,17 @@ CrashReport CrashDetector::analyzeCrash(const QString& gameDir,
         }
 
         // Write analysis report
+        r.reportFilePath = r.exportDir + QStringLiteral("/analysis-report.md");
+        writeReport(r, r.reportFilePath);
+    } else if (!r.analysisText.isEmpty()) {
+        // 分析文本很短、也没建议/模组（典型：预检失败，只有启动器日志）。
+        // 原实现这时不写任何文件，于是「导出日志」打的 zip 里只有日志、
+        // 没有结论。结论文件必须始终存在；不预拷日志（exportLogs 导出时会打包）。
+        QString base = gameDir + QStringLiteral("/crash-analysis");
+        QDir().mkpath(base);
+        QString ts = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
+        r.exportDir = base + QStringLiteral("/") + ts;
+        QDir().mkpath(r.exportDir);
         r.reportFilePath = r.exportDir + QStringLiteral("/analysis-report.md");
         writeReport(r, r.reportFilePath);
     }
@@ -897,8 +923,9 @@ bool CrashDetector::writeReport(const CrashReport& r, const QString& reportFileP
 
     out << "# Shadow Launcher 崩溃分析报告\n\n";
     out << "- 生成时间: " << QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")) << "\n";
-    out << "- 崩溃类型: " << (r.type == QLatin1String("jvm") ? QStringLiteral("JVM") :
-                              r.type == QLatin1String("minecraft") ? QStringLiteral("Minecraft") :
+    out << "- 类型: " << (r.type == QLatin1String("jvm") ? QStringLiteral("JVM 崩溃") :
+                              r.type == QLatin1String("minecraft") ? QStringLiteral("Minecraft 崩溃") :
+                              r.type == QLatin1String("precheck") ? QStringLiteral("启动前检查未通过") :
                               QStringLiteral("游戏日志")) << "\n";
     out << "- 原因: " << r.reason << "\n";
     out << "- 崩溃报告: " << (r.filePath.isEmpty() ? QStringLiteral("无") : r.filePath) << "\n\n";

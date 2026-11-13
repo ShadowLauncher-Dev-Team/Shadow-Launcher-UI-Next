@@ -151,6 +151,8 @@ void LaunchBackend::launch(const QString& versionId, const QString& username,
     m_launching = true;
     m_launchFailed = false;
     m_launchFailReason.clear();
+    // 新一轮启动必须丢掉上一轮的预检失败原因，否则它会顶掉这次的分析结果。
+    m_precheckReason.clear();
     m_launchFinishedOk = false;
     qCInfo(logUI) << QStringLiteral("启动游戏: ") << versionId << username;
     m_cancelled = false;
@@ -857,6 +859,7 @@ void LaunchBackend::demoLaunch(int mode)
     m_cancelled = false;
     m_launchFailed = false;
     m_launchFailReason.clear();
+    m_precheckReason.clear();
     m_launchFinishedOk = false;
     m_launching = true;
     m_launchProgress = 0;
@@ -1052,27 +1055,15 @@ void LaunchBackend::abortCheck(const QString& phase, const QString& reason)
                         + QDate::currentDate().toString(QStringLiteral("yyyy-MM-dd"))
                         + QStringLiteral(".log");
 
-    // ── 预检失败也弹崩溃诊断（主流启动器/同主流启动器：启动前失败直接弹错误框）──
-    // 此时游戏未启动，无 JVM 输出/崩溃报告可分析，诊断结果 = 失败阶段 + 原因。
-    QVariantMap report;
-    report[QStringLiteral("type")]        = QStringLiteral("precheck");
-    report[QStringLiteral("reason")]      = phase;
-    report[QStringLiteral("description")] = reason;
-    report[QStringLiteral("isValid")]     = true;
-    report[QStringLiteral("suggestions")] = QStringList{
-        tr("请检查上述配置后重试"),
-        tr("如需更换 Java，可前往「设置 → Java」或使用一键安装")
-    };
-    report[QStringLiteral("suspectedMods")] = QStringList{};
-    report[QStringLiteral("timestamp")]   = QDateTime::currentDateTime().toString(Qt::ISODate);
-    {
-        QStringList collected;
-        if (QFileInfo::exists(m_launcherLogPath))
-            collected.append(m_launcherLogPath);
-        report[QStringLiteral("collectedLogs")] = collected;
-    }
-    report[QStringLiteral("jvmOutput")]   = QStringList{};
-    emit crashDetected(report);
+    // ── 预检失败也走同一条异步分析路径（与游戏崩溃一致）──
+    // 不再手揉一份 report 发 legacy crashDetected：那条路与 v2 链路会各产生一份结果，
+    // 两份都往 lastCrash 写就是“两个窗口/两份数据打架”的根源。
+    // 此时游戏未启动，分析源是启动器日志与检查结果（CrashDetector 已有 precheck 分支）。
+    m_precheckReason = phase + QStringLiteral("：") + reason;
+    m_pendingOutput.clear();
+    m_jvmFullLogPath.clear();
+    emit crashAnalysisStarted();
+    QTimer::singleShot(120, this, &LaunchBackend::runCrashAnalysis);
 }
 
 // ── Begin token refresh attempt (with retry support) ──
@@ -2395,14 +2386,17 @@ void LaunchBackend::runCrashAnalysis()
     const QString gameDir = m_versionGameDir.isEmpty() ? m_gameDir : m_versionGameDir;
     const QStringList pendingOutput = m_pendingOutput;
     const QString launcherLogPath = m_launcherLogPath;
+    // 跨线程只读副本：成员可能在分析期间被下一次启动清掉。
+    const QString precheckReason = m_precheckReason;
 
-    QtConcurrent::run([this, gameDir, pendingOutput, launcherLogPath]() {
+    QtConcurrent::run([this, gameDir, pendingOutput, launcherLogPath, precheckReason]() {
         CrashDetector detector;
-        CrashReport cr = detector.analyzeCrash(gameDir, pendingOutput, launcherLogPath);
+        CrashReport cr = detector.analyzeCrash(gameDir, pendingOutput, launcherLogPath, precheckReason);
         const QString reportFilePath = cr.reportFilePath;
         const QVariantMap report = cr.toVariantMap();
 
         QMetaObject::invokeMethod(this, [this, report, reportFilePath]() {
+            // 原因由 detector 直接写入 precheckReason，报告文件与面板因此同源。
             qCDebug(logLaunch) << "[CRASH] analysis ready" << report.value("type").toString()
                                << report.value("reason").toString()
                                << "suggestions=" << report.value("suggestions").toStringList().size();
@@ -2417,6 +2411,20 @@ void LaunchBackend::runCrashAnalysis()
             m_crashAnalysisRunning = false;
         });
     });
+}
+
+void LaunchBackend::demoPrecheckFail(const QString& reason)
+{
+    qCInfo(logLaunch) << "[DEMO] precheck fail (acceptance hook)";
+    // 停掉 demo 状态机，否则它下一拍会把失败态推回成功态。
+    if (m_demoTimer) m_demoTimer->stop();
+    m_cancelled = false;
+    m_launching = true;
+    buildLaunchPipeline();
+    m_checkStep = 1;
+    abortCheck(tr("核心 Jar"), reason.isEmpty()
+        ? tr("未找到版本 jar 文件，且无继承来源")
+        : reason);
 }
 
 void LaunchBackend::analyzeCrashNow()
