@@ -35,6 +35,11 @@
 
 namespace ShadowLauncher {
 
+// ── 功能开关 ──────────────────────────────────────────────
+// 白色配色方案暂时下线（2026-11-13 影：切过去发现大量不适配，先把入口收掉）。
+// 恢复时改 true，并把 SetAppearancePane 里配色方案的 model 加回白色一项 —— 两处一起开。
+static constexpr bool kEnableLightScheme = false;
+
 // ============================================================
 // Constants
 // ============================================================
@@ -233,6 +238,9 @@ void SettingsBackend::loadSettings()
     ensureBgLibrary();
     m_colorScheme = s.value(QStringLiteral("appearance/scheme"), QStringLiteral("dark")).toString();
     if (m_colorScheme != QStringLiteral("light")) m_colorScheme = QStringLiteral("dark");
+    // 白色方案暂时下线（影：切过去发现大量不适配）。旧配置里如果是 light，这里直接归一到 dark，
+    // 否则界面会停在白色但设置页只剩黑色卡，看起来像坏了。
+    if (!kEnableLightScheme) m_colorScheme = QStringLiteral("dark");
 
     // Auto-language mode
     m_autoLangMode = qBound(0, s.value(QStringLiteral("general/autoLangMode"), 1).toInt(), 2);
@@ -1804,8 +1812,10 @@ void SettingsBackend::removeBgImage(const QString& id)
 
 void SettingsBackend::setColorScheme(const QString& scheme)
 {
-    const QString next = (scheme == QStringLiteral("light")) ? QStringLiteral("light")
-                                                            : QStringLiteral("dark");
+    QString next = (scheme == QStringLiteral("light")) ? QStringLiteral("light")
+                                                         : QStringLiteral("dark");
+    // 白色方案暂时下线：即使 QML/外部传了 light 也只落到 dark（单一入口，避免绕过）
+    if (!kEnableLightScheme) next = QStringLiteral("dark");
     if (m_colorScheme == next) return;
     m_colorScheme = next;
     saveSettings();

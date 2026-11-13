@@ -150,15 +150,16 @@ Item {
                 SetStack {
                     width: parent.width
                     label: "主题"
-                    desc: "切换后立即生效。两套方案的所有文字都使用与背景对比度足够的颜色，不会出现文字与背景同色。"
+                    // 白色方案暂时下线（影：切过去发现大量不适配）。恢复时把下面 model 里的白色项
+                    // 加回来，并把 SettingsBackend 的 kEnableLightScheme 改成 true —— 两处一起开。
+                    desc: "当前提供深色主题。所有文字都与背景保持足够对比，不会出现文字与背景同色。"
 
                     Row {
                         spacing: 12
 
                         Repeater {
                             model: [
-                                { id: "dark",  name: "黑色",  bg: "#0d1016", card: "#12151c", fg: "#e8ebf2", fg2: "#98a1ae", line: "#2b3240" },
-                                { id: "light", name: "白色",  bg: "#eef1f6", card: "#ffffff", fg: "#101827", fg2: "#3d4859", line: "#cfd7e3" }
+                                { id: "dark",  name: "黑色",  bg: "#0d1016", card: "#12151c", fg: "#e8ebf2", fg2: "#98a1ae", line: "#2b3240" }
                             ]
 
                             delegate: Item {
