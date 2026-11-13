@@ -218,7 +218,7 @@ Item {
                         spacing: 8
                         Text {
                             text: modelData.displayName || modelData.fileName || ""
-                            color: Theme.accentText
+                            color: Theme.fg
                             font.family: Theme.fontFamily
                             font.pixelSize: 14
                             font.weight: Font.DemiBold
@@ -319,7 +319,7 @@ Item {
             spacing: 12
             Text {
                 text: qsTr("删除资源包？")
-                color: Theme.accentText
+                color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 14
                 font.weight: Font.DemiBold

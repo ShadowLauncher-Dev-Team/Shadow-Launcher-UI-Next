@@ -126,7 +126,7 @@ Item {
                         }
                         Text {
                             text: pane.statusTitle()
-                            color: Theme.accentText
+                            color: Theme.fg
                             font.family: Theme.fontFamily
                             font.pixelSize: 14
                             font.weight: Font.DemiBold
@@ -391,7 +391,7 @@ Item {
             spacing: 12
             Text {
                 text: qsTr("重命名版本")
-                color: Theme.accentText
+                color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
                 font.weight: Font.DemiBold

@@ -174,7 +174,7 @@ Item {
                         anchors.left: parent.left
                         anchors.baseline: parent.verticalCenter
                         text: pane.sysPercent
-                        color: Theme.accentText
+                        color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 26
                         font.weight: Font.DemiBold
@@ -320,7 +320,7 @@ Item {
             anchors.top: parent.top
             anchors.topMargin: 13
             text: opt.title
-            color: opt.active ? Theme.accentText : Theme.fg
+            color: opt.active ? Theme.fg : Theme.fg2
             font.family: Theme.fontFamily
             font.pixelSize: 13
         }

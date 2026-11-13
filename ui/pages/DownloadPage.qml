@@ -1255,7 +1255,7 @@ Item {
                                         anchors.leftMargin: 10
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: parent.ver
-                                        color: Theme.accentText
+                                        color: Theme.fg
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 13
                                     }

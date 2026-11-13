@@ -30,7 +30,7 @@ Item {
         width: parent.width - 40
         text: root.title
         visible: root.title.length > 0
-        color: Theme.accentText
+        color: Theme.fg
         font.family: Theme.fontFamily
         font.pixelSize: 13
         font.weight: Font.DemiBold

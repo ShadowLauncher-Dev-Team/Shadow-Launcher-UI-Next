@@ -243,7 +243,7 @@ Item {
                         spacing: 8
                         Text {
                             text: modelData.modName || modelData.fileName || ""
-                            color: parent.parent.on ? Theme.accentText : Theme.fg2
+                            color: parent.parent.on ? Theme.fg : Theme.fg2
                             font.family: Theme.fontFamily
                             font.pixelSize: 14
                             font.weight: Font.DemiBold

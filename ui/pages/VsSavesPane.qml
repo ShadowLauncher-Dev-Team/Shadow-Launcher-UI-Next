@@ -203,7 +203,7 @@ Item {
                         visible: !hasIcon
                         text: (modelData.name && modelData.name.length > 0)
                               ? modelData.name.charAt(0).toUpperCase() : "?"
-                        color: Theme.accentText
+                        color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 20
                         font.weight: Font.DemiBold
@@ -304,7 +304,7 @@ Item {
             spacing: 12
             Text {
                 text: qsTr("删除存档？")
-                color: Theme.accentText
+                color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 14
                 font.weight: Font.DemiBold

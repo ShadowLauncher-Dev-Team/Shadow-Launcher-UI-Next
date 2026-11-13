@@ -712,7 +712,7 @@ Item {
                 }
                 Text {
                     text: rowItem.o ? rowItem.o.title : ""
-                    color: Theme.accentText
+                    color: Theme.fg
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
@@ -799,7 +799,7 @@ Item {
                 x: 39
                 anchors.verticalCenter: modHead.verticalCenter
                 text: qsTr("模组 (mods/)")
-                color: Theme.accentText
+                color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
@@ -1035,7 +1035,7 @@ Item {
                 x: 39
                 anchors.verticalCenter: grpHead.verticalCenter
                 text: grpItem.o ? grpItem.o.title : grpItem.optId
-                color: Theme.accentText
+                color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
@@ -1220,7 +1220,7 @@ Item {
                 x: 39
                 anchors.verticalCenter: saveHead.verticalCenter
                 text: qsTr("单机游戏存档")
-                color: Theme.accentText
+                color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
@@ -1396,7 +1396,7 @@ Item {
             spacing: 12
             Text {
                 text: qsTr("导出位置")
-                color: Theme.accentText
+                color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 14
                 font.weight: Font.DemiBold
@@ -1538,7 +1538,7 @@ Item {
                 text: pane.lookupPlatform === 0 ? qsTr("Modrinth 查询失败")
                      : pane.lookupPlatform === 1 ? qsTr("CurseForge 查询失败")
                      : qsTr("联网查询失败")
-                color: Theme.accentText
+                color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 14
                 font.weight: Font.DemiBold
