@@ -345,15 +345,22 @@ Item {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         clip: true
-        Rectangle { anchors.fill: parent; color: Theme.bg }
+        // 外观页「只剩预览」时，下面这层启动页必须**原样归位**（不位移、不缩放），
+        // 否则全屏页的 -22px 位移会在右边留下一条 22px 的纯色黑边（用户实测）。
+        readonly property bool previewing: root.prefsOpen && prefsPage.livePreview
+        Rectangle {
+            anchors.fill: parent
+            color: previewing ? "transparent" : Theme.bg
+        }
         Item {
             anchors.fill: parent
             transform: Translate {
-                x: (root.downloadOpen || root.progressOpen || root.fullOpen || root.multiplayerOpen) ? -22 : 0
+                x: ((root.downloadOpen || root.progressOpen || root.fullOpen || root.multiplayerOpen)
+                    && !stageHost.previewing) ? -22 : 0
                 Behavior on x { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
             }
             // 回主页时也带一点"顶回来"的缩放，和全屏页入场保持同一套语言
-            scale: (root.downloadOpen || root.progressOpen || root.fullOpen) ? 0.99 : 1.0
+            scale: ((root.downloadOpen || root.progressOpen || root.fullOpen) && !stageHost.previewing) ? 0.99 : 1.0
             Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
             StagePage {
                 anchors.fill: parent
