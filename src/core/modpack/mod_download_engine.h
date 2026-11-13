@@ -106,6 +106,7 @@ private:
         // 重试（2026-08-12）：每文件独立预算，取代全局轮次闸门——
         // 旧实现 5 轮全局预算会被一波集中失败（网络抖动）耗尽，抖动结束后晚失败的文件零重试
         int retried = 0;             // 补位重试入队次数（至多 kMaxRounds-1 次，含首次共 5 轮）
+    bool isLarge = false;        // 超过 50MB → 走单独通道（不参与小文件并发轮转）
         qint64 failedAtMs = 0;       // 上次失败时刻（重试间隔节流起点）
     };
 
@@ -140,6 +141,11 @@ private:
 
     QList<std::shared_ptr<Item>> m_items;    // 全部条目（含终态）
     QList<std::shared_ptr<Item>> m_pending;  // 当前轮未终态条目
+    // 大文件单独通道（2026-11-14）：超过阈值的文件不与小文件争并发，
+    // 同一时刻只跑 1 个，且它跑的时候普通并发减半给它让带宽。
+    QList<std::shared_ptr<Item>> m_largePending;
+    int m_largeActive = 0;
+    static constexpr qint64 kLargeFileBytes = 50LL * 1024 * 1024;  // 50MB
     int m_active = 0;
     int m_totalFiles = 0;
     int m_completedFiles = 0;

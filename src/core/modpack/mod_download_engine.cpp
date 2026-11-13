@@ -94,7 +94,9 @@ void ModDownloadEngine::start()
         it->slowSwitchCount = 0;
         it->retried = 0;
         it->failedAtMs = 0;
-        m_pending.append(it);
+        it->isLarge = (it->fileSize >= kLargeFileBytes);
+        if (it->isLarge) m_largePending.append(it);
+        else m_pending.append(it);
     }
     m_lastSpeedBytes = m_downloadedBytes;
     m_speedClock.restart();
@@ -103,8 +105,8 @@ void ModDownloadEngine::start()
     m_watchTimer.start();
     emit progressChanged(m_completedFiles, m_totalFiles, m_downloadedBytes, m_totalBytes);
     emit logMessage(engineBanner("jingwei"));
-    emit logMessage(QStringLiteral("[精卫] 模组下载引擎启动 文件数=%1 最大并发=%2")
-                        .arg(m_totalFiles).arg(m_maxThreads));
+    emit logMessage(QStringLiteral("[精卫] 模组下载引擎启动 文件数=%1 最大并发=%2 大文件=%3")
+                        .arg(m_totalFiles).arg(m_maxThreads).arg(m_largePending.size()));
     pump();
 }
 
@@ -131,8 +133,27 @@ void ModDownloadEngine::pump()
 {
     if (m_state != Running) return;
 
-    // 填满并发槽
-    while (m_active < m_maxThreads) {
+    // ── 大文件单独通道（2026-11-14 实测）──
+    // 281MB 的模组与 400 个小文件抢 12 路并发时只分到 143KB/s，
+    // 需要 33 分钟，期间任何停顿都会被换源重来。
+    // 所以大文件不进普通队列：同一时刻只跑 1 个，且它跑时普通并发减半。
+    if (m_largeActive == 0 && !m_largePending.isEmpty()) {
+        auto big = m_largePending.takeFirst();
+        if (big->state == 0) {
+            big->state = 1;
+            m_active++;
+            m_largeActive++;
+            emit logMessage(QStringLiteral("[精卫] [大文件通道] 开始独占 %1（%2 MB），普通并发临时降至 %3")
+                                .arg(big->localName)
+                                .arg(big->fileSize / (1024.0 * 1024.0), 0, 'f', 1)
+                                .arg(qMax(2, m_maxThreads / 2)));
+            launchRequest(big);
+        }
+    }
+
+    // 普通槽位：大文件在跑时让出一半带宽
+    const int normalSlots = (m_largeActive > 0) ? qMax(2, m_maxThreads / 2) : m_maxThreads;
+    while (m_active - m_largeActive < normalSlots) {
         if (m_pending.isEmpty()) {
             // ── 失败文件补位重试（核心调度改进）──
             // 整合包不容放过任何模组：正常队列已空且有并发空槽时，把失败的
@@ -150,10 +171,23 @@ void ModDownloadEngine::pump()
                 if (it->state != 3) continue;
                 if (it->retried >= kMaxRounds - 1) continue;                       // 每文件重试上限
                 if (now - it->failedAtMs < m_retryGapMs * (it->retried + 1)) continue;  // 重试间隔
-                resetForRetry(it);
                 it->retried++;
                 m_failedFiles--;
-                m_pending.append(it);
+                if (it->isLarge) {
+                    // 大文件绝不能走 resetForRetry：它会删掉临时文件、
+                    // resumeFrom 归零，281MB 从零重来。只复位连接态，断点原封保留。
+                    it->state = 0;
+                    it->failCount = 0;
+                    it->fallbackPassDone = false;
+                    it->slowSinceMs = 0;
+                    it->slowSwitchCount = 0;
+                    it->enoughBytes = false;
+                    it->rangeChecked = false;
+                    m_largePending.append(it);
+                } else {
+                    resetForRetry(it);
+                    m_pending.append(it);
+                }
                 requeued++;
             }
             if (requeued == 0) break;   // 无到期可重试文件（间隔中/已达上限），等 50ms 定时器再查
@@ -286,7 +320,12 @@ void ModDownloadEngine::launchRequest(std::shared_ptr<Item> it)
     const qint64 connectAvg = m_connectCount > 0 ? m_connectTotalMs / m_connectCount : 15000;
     // 下限从 15s 提到 30s：整合包里有 281MB 的模组，
     // TCP 一次拖尾就可能超 15 秒，15s 会把正常下载当卡死砍掉。
-    const qint64 timeoutMs = qMin(qMax(connectAvg, qint64(30000)) * (1 + it->failCount), qint64(45000));
+    qint64 timeoutMs = qMin(qMax(connectAvg, qint64(30000)) * (1 + it->failCount), qint64(45000));
+    // 大文件超时单独放宽到 3 分钟：281MB 的传输里一次 TCP 拖尾很常见，
+    // 而它一旦被 abort，前面下的字节虽然留着断点，但每次都重走源轮转
+    // → 实测 6 分钟、十几分钟也下不完。它走的是独占通道，
+    // 不占别人带宽，所以放宽超时不会拖慢其他文件。
+    if (it->isLarge) timeoutMs = qMax(timeoutMs, qint64(180000));
     auto* idle = new QTimer(this);
     idle->setSingleShot(true);
     idle->setInterval(static_cast<int>(timeoutMs));
@@ -395,6 +434,7 @@ void ModDownloadEngine::onReplyFinished(std::shared_ptr<Item> it)
         QFile::remove(it->tmpPath);
         it->tmpPath.clear();
         m_active--;
+        if (it->isLarge) m_largeActive = qMax(0, m_largeActive - 1);
         it->state = 0;
         reply->deleteLater();
         return;
@@ -516,10 +556,11 @@ void ModDownloadEngine::finishItem(std::shared_ptr<Item> it, bool ok, const QStr
     }
     emit fileFinished(it->localPath, ok);
     m_active--;
+    if (it->isLarge) m_largeActive = qMax(0, m_largeActive - 1);
 
     emit progressChanged(m_completedFiles, m_totalFiles, m_downloadedBytes, m_totalBytes);
 
-    if (m_active == 0 && m_pending.isEmpty()) {
+    if (m_active == 0 && m_pending.isEmpty() && m_largePending.isEmpty()) {
         if (m_state == Running) tryStartNextRound();
         else finishAll();
     } else {
@@ -542,10 +583,21 @@ void ModDownloadEngine::tryStartNextRound()
         if (it->retried >= kMaxRounds - 1) continue;
         anyRetryable = true;
         if (now - it->failedAtMs < m_retryGapMs * (it->retried + 1)) continue;
-        resetForRetry(it);
         it->retried++;
         m_failedFiles--;
-        m_pending.append(it);
+        if (it->isLarge) {
+            it->state = 0;
+            it->failCount = 0;
+            it->fallbackPassDone = false;
+            it->slowSinceMs = 0;
+            it->slowSwitchCount = 0;
+            it->enoughBytes = false;
+            it->rangeChecked = false;
+            m_largePending.append(it);
+        } else {
+            resetForRetry(it);
+            m_pending.append(it);
+        }
         requeued++;
     }
     if (requeued == 0) {
@@ -716,7 +768,9 @@ void ModDownloadEngine::watchTick()
         // 「真的慢」与「误判」（外部 curl 测该文件可达 574~1022KB/s，
         // 而网关阈值只有 128KB/s）。不打这个数字就永远是猜。
         const qint64 elapsedMs = qMax<qint64>(1, now - it->launchMs);
-        const qint64 gotBytes = it->received;
+        // 只算**本次连接新收**的字节：received 含 resumeFrom（断点续传的旧字节），
+        // 直接用它除以本次用时会严重虚高（上一版打出的 579KB/s 就是这么来的）。
+        const qint64 gotBytes = qMax<qint64>(0, it->received - it->resumeFrom);
         const qint64 kbps = gotBytes * 1000 / elapsedMs / 1024;
         emit logMessage(QStringLiteral("[精卫] [慢速换源] 文件=%1 第%2次 当前源速度过慢 → 切换（实测 %3KB/s，%4ms 共 %5 字节）")
                             .arg(it->localName).arg(it->slowSwitchCount)
