@@ -611,7 +611,14 @@ QVariantMap SettingsBackend::getMemoryStatus()
         map[QStringLiteral("total")]       = totalMB;
         map[QStringLiteral("available")]   = availMB;
         map[QStringLiteral("percent")]     = static_cast<int>(s.dwMemoryLoad);
-        map[QStringLiteral("recommended")] = qBound(1024, availMB / 2, 8192);
+        // ── 2026-11-14：推荐值改以**总物理内存**为基准──
+        // 原来用 availMB / 2：可用内存是瞬态值（浏览器/游戏自身都占），
+        // 开着别的程序时会把推荐值压到很低；而且开机越久可用越少。
+        // 现在按业界口径（GDLauncher）：取总量的一半，上限放宽到 12288
+        // （ATM10 级大型整合包 8–12GB），并且硬性留出 4GB 给系统。
+        int recommended = qMin(totalMB / 2, 12288);
+        recommended = qMin(recommended, qMax(2048, totalMB - 4096));
+        map[QStringLiteral("recommended")] = qBound(2048, recommended, 32768);
         return map;
     }
 #endif

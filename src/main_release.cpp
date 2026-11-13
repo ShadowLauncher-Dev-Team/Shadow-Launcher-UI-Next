@@ -542,6 +542,16 @@ int main(int argc, char *argv[])
     // 注意：会改写 QSettings（内存 / 限速 / GC / 语言等），调用方跑前必须自行备份。
     if (app.arguments().contains(QStringLiteral("--ui-selftest-settings"))) {
         SettingsBackend* st = backend->settings();
+        // ── 2026-11-14：自测必须还原用户配置 ──
+        // 这套自测直接调真实 setter，而 setter 会立刻 saveSettings() 写进用户 QSettings。
+        // 原来只在末尾打一句「跑完请恢复备份」，实际没人恢复 ——
+        // 实测事故：跑过一次之后，用户的内存设置变成 min=1024 / max=1536，
+        // 并且永久留在注册表里（用户根本没改过）。
+        // 现在开头整体快照，结尾逐键还原并删掉自测新增的键。
+        QSettings selftestSnapshot;
+        QVariantMap selftestSaved;
+        for (const QString& k : selftestSnapshot.allKeys())
+            selftestSaved.insert(k, selftestSnapshot.value(k));
         auto report = [](const QString& name, const QString& expected, const QString& actual) {
             qInfo().noquote() << QStringLiteral("[SELFTEST] %1  期望=%2  实际=%3  %4")
                                  .arg(name, expected, actual,
@@ -675,7 +685,14 @@ int main(int argc, char *argv[])
             st->setLanguageIndex(langBefore);
         }
 
-        qInfo().noquote() << QStringLiteral("[SELFTEST] 结束（本次运行已改写设置，跑完请恢复备份）");
+        // 还原：写回快照里的每个键，并删掉自测新增的键
+        // （如 __selftest__ 版本级优先级）。
+        for (auto it = selftestSaved.constBegin(); it != selftestSaved.constEnd(); ++it)
+            selftestSnapshot.setValue(it.key(), it.value());
+        for (const QString& k : selftestSnapshot.allKeys())
+            if (!selftestSaved.contains(k)) selftestSnapshot.remove(k);
+        selftestSnapshot.sync();
+        qInfo().noquote() << QStringLiteral("[SELFTEST] 结束（已还原用户设置）");
     }
 
     auto argumentValue = [&app](const QString& name) {

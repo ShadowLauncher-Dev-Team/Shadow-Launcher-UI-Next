@@ -23,7 +23,16 @@ Item {
     readonly property int sliderMin: (pane.s && pane.s.minMemoryMB > 0) ? pane.s.minMemoryMB : 512
     readonly property int sliderMax: Math.max(pane.sliderMin + 1024, pane.sysTotal)
     readonly property int globalMB: (pane.s && pane.s.maxMemoryMB > 0) ? pane.s.maxMemoryMB : 2048
-    readonly property int autoMB: pane.mem.recommended ? pane.mem.recommended : 2048
+    // 建议值必须按**这个版本的模组数**算：原来用的是全局 mem.recommended（只看总内存），
+    // 425 模组的整合包和一个空实例显示同一个建议值，用户无从判断。
+    readonly property int autoMB: (pane.b && pane.versionId.length > 0)
+                                   ? pane.b.recommendMemoryForVersion(pane.versionId)
+                                   : (pane.mem.recommended ? pane.mem.recommended : 2048)
+    // 当前实际生效值（自动模式不参与低值判断）
+    readonly property int effectiveMB: pane.mode === 2 ? pane.manualMB : pane.globalMB
+    // 明显低于建议值（80%）才提醒，避免正常差异也弹提示
+    readonly property bool underAllocated: pane.mode !== 1 && pane.autoMB > 0
+                                           && pane.effectiveMB > 0 && pane.effectiveMB < pane.autoMB * 0.8
 
     function reload() {
         if (!pane.s || !pane.b) return
@@ -83,7 +92,7 @@ Item {
                 OptCard {
                     width: parent.width
                     title: qsTr("自动配置")
-                    desc: qsTr("启动时按剩余内存动态分配")
+                    desc: qsTr("按该版本的模组数与物理内存估算，每次启动重算")
                     val: qsTr("建议 %1 MB").arg(pane.autoMB)
                     active: pane.mode === 1
                     onClicked: pane.setMode(1)
@@ -95,6 +104,34 @@ Item {
                     val: pane.manualMB + " MB"
                     active: pane.mode === 2
                     onClicked: pane.setMode(2)
+                }
+            }
+
+            // ── 内存不足提示 ──
+            // 用户知道自己有多少模组，却不知道该分多少内存；
+            // 只给一个滑块等于让他猜。这里把结论直接写出来。
+            Rectangle {
+                width: col.width
+                height: warn.implicitHeight + 20
+                radius: 8
+                color: Theme.bgCard2
+                border.color: Theme.line2
+                border.width: 1
+                visible: pane.underAllocated
+                Text {
+                    id: warn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    wrapMode: Text.WordWrap
+                    text: qsTr("当前 %1 MB 低于该版本建议的 %2 MB。模组较多时内存不足，会在加载世界时卡住或直接崩溃。")
+                            .arg(pane.effectiveMB).arg(pane.autoMB)
+                    color: Theme.dangerText
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                    lineHeight: 1.5
                 }
             }
 

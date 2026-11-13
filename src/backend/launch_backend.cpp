@@ -383,46 +383,64 @@ int LaunchBackend::getAutoMemoryForVersion(const QString& versionId)
     MEMORYSTATUSEX memStatus;
     memStatus.dwLength = sizeof(MEMORYSTATUSEX);
     if (GlobalMemoryStatusEx(&memStatus)) {
-        double availGB = double(memStatus.ullAvailPhys) / (1024.0 * 1024.0 * 1024.0);
+        // ── 2026-11-14：基准从「可用内存」改为「总物理内存」──
+        // 旧实现用 ullAvailPhys：可用内存随时变化，开着浏览器/其他程序时会把结果压到很低，
+        // 同一个版本两次启动可能差出几 GB。总量才是稳定基准。
+        double totalGB = double(memStatus.ullTotalPhys) / (1024.0 * 1024.0 * 1024.0);
 
         double ramMin, t1, t2, t3;
         const bool moddable = versionIsModdable(versionId);
         const bool optifineOnly = !moddable && versionId.contains(QStringLiteral("OptiFine"));
+        int modCount = 0;
         if (moddable) {
-            const int modCount = countModsForVersion(versionId);
-            ramMin = 0.5 + modCount / 150.0;
-            t1     = 1.5 + modCount / 90.0;
-            t2     = 2.7 + modCount / 50.0;
-            t3     = 4.5 + modCount / 25.0;
+            modCount = countModsForVersion(versionId);
+            // 档位按模组数（对齐 GDLauncher 口径：中型 6–8GB、大型 8–12GB）：
+            //   425 个模组 → 最低 2.9 / 舒适 5.0 / 宽裕 9.6 / 上限 14.1 GB
+            // 基础档不能太低：Forge/Fabric 本身（含模组加载器）就要 2–3GB，
+            // 0 模组的加载器实例给 3GB 才能起来。
+            ramMin = 1.0  + modCount / 200.0;
+            t1     = 2.0  + modCount / 120.0;
+            t2     = 3.0  + modCount / 60.0;
+            t3     = 4.0  + modCount / 40.0;
         } else if (optifineOnly) {
-            ramMin = 0.5; t1 = 1.5; t2 = 3.0; t3 = 5.0;
+            ramMin = 1.0; t1 = 2.0; t2 = 4.0; t3 = 6.0;
         } else {
-            ramMin = 0.5; t1 = 1.5; t2 = 2.5; t3 = 4.0;
+            // 原版：GDLauncher 给的参考值就是 4GB
+            ramMin = 1.0; t1 = 2.0; t2 = 4.0; t3 = 5.0;
         }
 
+        // 阶梯预分配：低需求段优先保证，高需求段逐步减配，保护系统余量。
         double ramGive = 0.0;
-        double avail = availGB;
+        double avail = totalGB;
 
         double delta = t1;                                     // 阶段一 0~T1：100%
-        ramGive += qMin(avail, delta); avail -= delta;
+        ramGive += qMin(avail, delta); avail -= qMin(avail, delta);
         if (avail >= 0.1) {                                   // 阶段二 T1~T2：70%
             delta = t2 - t1;
-            ramGive += qMin(avail * 0.7, delta); avail -= delta / 0.7;
+            double use = qMin(avail * 0.7, delta);
+            ramGive += use; avail -= use / 0.7;
         }
         if (avail >= 0.1) {                                   // 阶段三 T2~T3：40%
             delta = t3 - t2;
-            ramGive += qMin(avail * 0.4, delta); avail -= delta / 0.4;
+            double use = qMin(avail * 0.4, delta);
+            ramGive += use; avail -= use / 0.4;
         }
-        if (avail >= 0.1) {                                   // 阶段四 T3~2×T3：15%
+        if (avail >= 0.1) {                                   // 阶段四 T3~上限：15%
             delta = t3;
-            ramGive += qMin(avail * 0.15, delta); avail -= delta / 0.15;
+            double use = qMin(avail * 0.15, delta);
+            ramGive += use; avail -= use / 0.15;
         }
 
+        // 上限三重约束：
+        //   t2       —— 「宽裕」档就够了，再多也不会真正用上；
+        //   total*0.5 —— 业界通用上限（不超过物理内存一半）；
+        //   total-4GB —— 硬性给系统留余量，否则 8GB 机器会被挤死。
+        double cap = qMin(qMin(totalGB * 0.5, totalGB - 4.0), t2);
         ramGive = qMax(ramGive, ramMin);
-        ramGive = qMin(ramGive, t3 * 2.0);
+        ramGive = qMin(ramGive, qMax(ramMin, cap));
 
         int mb = qRound(ramGive * 1024.0);
-        return qBound(512, mb, 16384);
+        return qBound(512, mb, 32768);
     }
 #endif
     return 2048; // fallback: 2GB

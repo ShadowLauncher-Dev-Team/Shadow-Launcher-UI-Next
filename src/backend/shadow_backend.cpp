@@ -1195,6 +1195,16 @@ int ShadowBackend::maxMemoryMb() const {
     return m_settings->maxMemoryMB();
 }
 
+// ── 2026-11-14：按**该版本的模组数**算建议内存──
+// 原来 QML 只有全局 getMemoryStatus().recommended（看总内存），
+// 版本设置页把它当成该版本的建议值显示 —— 一个 425 模组的整合包
+// 和一个空实例显示同一个建议值，用户根本无从判断该给多少。
+int ShadowBackend::recommendMemoryForVersion(const QString& versionId)
+{
+    if (!m_launch) return 2048;
+    return m_launch->getAutoMemoryForVersion(versionId);
+}
+
 
 bool ShadowBackend::isolationEnabled() const {
     // 外部 .minecraft 目录：报告实际解析形态（版本隔离→true，共享/混合→false）

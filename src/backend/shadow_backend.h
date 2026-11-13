@@ -681,6 +681,8 @@ public:
     Q_INVOKABLE void setTheme(const QString& theme);
     Q_INVOKABLE QVariantMap checkAll(const QString& versionId);
     Q_INVOKABLE int getAutoMemory();
+    // 按指定版本的模组数给出建议内存（MB）
+    Q_INVOKABLE int recommendMemoryForVersion(const QString& versionId);
     Q_INVOKABLE void setAutoMemoryEnabled(bool enabled);
 
     // Per-version memory override

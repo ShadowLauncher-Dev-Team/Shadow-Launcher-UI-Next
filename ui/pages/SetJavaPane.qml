@@ -321,7 +321,7 @@ Item {
                 SetRow {
                     width: parent.width
                     label: qsTr("自动分配")
-                    desc: qsTr("按物理内存可用量推荐一个值，不用手动调")
+                    desc: qsTr("按模组数与物理内存估算（建议开；大型整合包手动设定很容易设小）")
                     SSwitch {
                         checked: pane.s ? pane.s.autoMemoryEnabled : true
                         onToggled: (c) => { if (pane.s) pane.s.setAutoMemoryEnabled(c) }
@@ -385,7 +385,7 @@ Item {
                 width: parent.width
                 kind: "info"
                 icon: "info"
-                text: qsTr("自动分配开启时下面的滑块不可调；关掉它才能手动指定上下限。")
+                text: qsTr("自动分配开启时下面的滑块不可调；关掉它才能手动指定上下限。手动值不看模组数，整合包建议用自动。")
             }
         }
     }
