@@ -28,11 +28,16 @@ Item {
     readonly property int autoMB: (pane.b && pane.versionId.length > 0)
                                    ? pane.b.recommendMemoryForVersion(pane.versionId)
                                    : (pane.mem.recommended ? pane.mem.recommended : 2048)
-    // 当前实际生效值（自动模式不参与低值判断）
-    readonly property int effectiveMB: pane.mode === 2 ? pane.manualMB : pane.globalMB
-    // 明显低于建议值（80%）才提醒，避免正常差异也弹提示
-    readonly property bool underAllocated: pane.mode !== 1 && pane.autoMB > 0
-                                           && pane.effectiveMB > 0 && pane.effectiveMB < pane.autoMB * 0.8
+    // ── 2026-11-14：「跟随全局」显示的必须是**启动时真正会用的值** ──
+    // 全局开着自动分配时，启动走的是 getAutoMemoryForVersion（按模组数），
+    // 根本不会用 maxMemoryMB。但界面一直显示后者 ——
+    // 用户看到「跟随全局 2048 MB」且被提醒「低于建议」，以为自动配置也这么低。
+    readonly property bool globalAutoOn: pane.s ? pane.s.autoMemoryEnabled : false
+    readonly property int globalEffectiveMB: pane.globalAutoOn ? pane.autoMB : pane.globalMB
+    readonly property int effectiveMB: pane.mode === 2 ? pane.manualMB : pane.globalEffectiveMB
+    // 只有「自己手动压低」才提醒：自动与跟随-自动 本来就是建议值，不该报警。
+    readonly property bool underAllocated: pane.mode === 2 && pane.autoMB > 0
+                                           && pane.manualMB > 0 && pane.manualMB < pane.autoMB * 0.8
 
     function reload() {
         if (!pane.s || !pane.b) return
@@ -85,7 +90,9 @@ Item {
                     width: parent.width
                     title: qsTr("跟随全局设置")
                     desc: qsTr("使用启动器全局内存设置")
-                    val: pane.globalMB + " MB"
+                    val: pane.globalAutoOn
+                         ? qsTr("%1 MB·按模组自动").arg(pane.globalEffectiveMB)
+                         : qsTr("%1 MB").arg(pane.globalMB)
                     active: pane.mode === 0
                     onClicked: pane.setMode(0)
                 }

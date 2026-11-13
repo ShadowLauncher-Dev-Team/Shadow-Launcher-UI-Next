@@ -398,10 +398,16 @@ int LaunchBackend::getAutoMemoryForVersion(const QString& versionId)
             //   425 个模组 → 最低 2.9 / 舒适 5.0 / 宽裕 9.6 / 上限 14.1 GB
             // 基础档不能太低：Forge/Fabric 本身（含模组加载器）就要 2–3GB，
             // 0 模组的加载器实例给 3GB 才能起来。
-            ramMin = 1.0  + modCount / 200.0;
-            t1     = 2.0  + modCount / 120.0;
-            t2     = 3.0  + modCount / 60.0;
-            t3     = 4.0  + modCount / 40.0;
+            if (modCount == 0) {
+                // 加载器的空实例：Forge/Fabric 核心 + ASM 转换本身就要 2–3GB，
+                // 按 3000MB 给会很紧（进世界就卡），直接用原版档 4GB 起步。
+                ramMin = 1.0; t1 = 2.0; t2 = 4.0; t3 = 5.0;
+            } else {
+                ramMin = 1.0  + modCount / 200.0;
+                t1     = 2.0  + modCount / 120.0;
+                t2     = 3.0  + modCount / 60.0;
+                t3     = 4.0  + modCount / 40.0;
+            }
         } else if (optifineOnly) {
             ramMin = 1.0; t1 = 2.0; t2 = 4.0; t3 = 6.0;
         } else {
