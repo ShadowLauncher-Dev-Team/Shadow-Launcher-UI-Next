@@ -246,6 +246,14 @@ Item {
             root.downloadOpen = false
             sideBar.currentKey = "progress"
         }
+        // --ui-multiplayer：联机页（截图验收用）。没有这个钩子只能靠模拟点击侧栏，
+        // 自动化下点击偶尔被前台窗口截走，验收不稳定。
+        if (Qt.application.arguments.indexOf("--ui-multiplayer") >= 0) {
+            root.multiplayerOpen = true
+            root.downloadOpen = false
+            root.progressOpen = false
+            sideBar.currentKey = "multiplayer"
+        }
     }
 
     Rectangle {
