@@ -95,6 +95,7 @@ Item {
     property int tick: 0   // 每 400ms 自增，驱动卡片绑定重算（不重建 delegate，动画才不会被打断）
     property string remainText: "—"
     property var _doneAt: ({})
+    property var _rowSig: ({})   // iid -> 上次写入的内容签名（内容未变就不 set）
     Timer {
         interval: 400; repeat: true
         // 页面隐藏时停表：没打开过进度页就不该发"安装完成"通知。
@@ -102,6 +103,15 @@ Item {
         running: page.parent !== null && page.parent.visible
         onTriggered: page.recalc()
     }
+    // 行内容签名：只要任一字段变化就必须重写，
+    // 包括 steps（步骤状态变化而数量不变时得通知 delegate）。
+    function rowSignature(it) {
+        return JSON.stringify([
+            it.name, it.phase, it.progress, it.speed, it.eta,
+            it.failed, it.error, it.canCancel, it.canRetry, it.steps
+        ])
+    }
+
     function recalc() {
         if (!b || !b.installCardsModel) return
         var m = b.installCardsModel
@@ -149,8 +159,15 @@ Item {
             }
             if (row < 0) {
                 cardModel.append(item)
-            } else {
+                page._rowSig[item.iid] = page.rowSignature(item)
+            } else if (page._rowSig[item.iid] !== page.rowSignature(item)) {
+                // 内容没变就不要 set。
+                // steps 是数组角色，每次都重建新数组，而 set()
+                // 会通知全部角色 → delegate 重算 steps 相关绑定。
+                // 旧实现每 400ms 无条件 set 一次，日志里积累了 22912 条
+                // 「binding loop detected for property stepDetail」，界面一直在白白重算。
                 cardModel.set(row, item)
+                page._rowSig[item.iid] = page.rowSignature(item)
             }
         }
         for (var d = cardModel.count - 1; d >= 0; --d) {

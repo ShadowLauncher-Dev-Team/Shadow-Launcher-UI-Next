@@ -107,6 +107,11 @@ private:
     QString findFreeVersionName(const QString& base) const;
     void setStep(const QString& name);
     void setProgress(qreal p, const QString& text, const QString& file = {});
+    /// 总进度/文案的**唯一**出口。
+    /// 模组路（queueProgress）与 MC 路（300ms 轮询）以前各自调 setProgress，
+    /// 两个文案交替覆盖同一个副标题 → 界面上一直在闪。现在两路只更新各自分量，
+    /// 文案由这里按“谁还在跑”唯一决定。
+    void recomposeProgress();
     void log(const QString& msg);
     void registerCreatedFile(const QString& path);
     void registerOverwrite(const QString& path);
@@ -139,6 +144,10 @@ private:
     qint64 m_lastBytesMs = 0;
     qint64 m_lastFileProgMs = 0; // fileProgress 回调节流（200ms）
     qreal m_modFrac = 0.0;       // 模组路完成比例（总进度合成用）
+    int m_modDoneCount = 0;      // 模组路已完成数（文案+百分比用）
+    int m_modTotalCount = 0;     // 模组路总数
+    int m_modFailedCount = 0;    // 模组路已失败数
+    qint64 m_modStallSinceMs = 0;  // 模组路连续无速度的起始时刻（悬挂兜底用）
     // ── MC/加载器安装停摆检测（2026-11-05 验收：加载器失败时 installFinished 没来 → 任务永久 busy）──
     qreal m_lastMcProgress = -1.0;
     int   m_mcStallTicks = 0;

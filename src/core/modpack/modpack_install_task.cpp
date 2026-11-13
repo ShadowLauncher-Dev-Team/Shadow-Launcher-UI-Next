@@ -40,6 +40,10 @@ constexpr qreal kParseWeight = 0.05;
 constexpr qreal kExtractWeight = 0.10;
 constexpr qreal kDownloadWeight = 0.55;
 constexpr qreal kMcInstallWeight = 0.25;
+// 模组路悬挂兜底：MC 路已完成后，若模组路连续 2 分钟字节不动、
+// 且 allFinished 迟迟不来，就不能再等下去。实测：单个失败文件在
+// 多源切换 + 重试间隔下能连续折腾六分钟，界面上就是「剩 1 个文件」不动。
+constexpr qint64 kModStallMs = 120000;
 constexpr qreal kFinalizeWeight = 0.05;
 
 } // namespace
@@ -88,12 +92,34 @@ ModpackInstallTask::ModpackInstallTask(QObject* parent)
         // 停流就会滑落归零，再加一层就会让速度出现"突然砍半"的假跳变（用户看到的"速度乱跳"之一）。
         m_modEma = m_downloader ? qMax<qint64>(0, m_downloader->currentSpeedBps()) : 0;
         m_cardSpeed = m_modEma + m_mcSpeed;
+        // ── 模组路悬挂兜底（2026-11-14 实测）──
+        // MC 路已经完成、模组路却迟迟不收口：速度持续为 0 超过阈值就强制收口，
+        // 否则 allFinished 一旦永远不来，任务就永远 busy，用户只能杀进程。
+        // 注意只在 MC 完成后才判：并行期间 MC 路自己的停摆由上面的 30s 检测负责。
+        if (m_mcDone && !m_modsDone) {
+            const qint64 spd = m_downloader ? m_downloader->currentSpeedBps() : 0;
+            const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+            if (spd > 0) {
+                m_modStallSinceMs = 0;
+            } else if (m_modStallSinceMs == 0) {
+                m_modStallSinceMs = nowMs;
+            } else if (nowMs - m_modStallSinceMs > kModStallMs) {
+                m_modStallSinceMs = 0;
+                emit logLine(tr("[追踪] 模组下载 %1 秒无任何进展，按部分失败收口")
+                                 .arg(kModStallMs / 1000));
+                if (m_downloader && m_downloader->isRunning())
+                    m_downloader->cancel();
+                const int total = m_modTotalCount;
+                failPartial(tr("模组下载停滞 %1 秒（%2/%3 已完成），已中止；已完成文件保留")
+                                .arg(kModStallMs / 1000).arg(m_modDoneCount).arg(total));
+                return;
+            }
+        }
+
         // 全量同步 MC 原子步骤（PCL 同款细分：JSON/库/资源/校验/loader 主文件/校验/安装）
         syncMcSteps();
-        // 总进度合成：模组路权重 + MC 路权重（并行两路各自推进）
-        const qreal base = kParseWeight + kExtractWeight + kDownloadWeight * m_modFrac;
-        setProgress(base + kMcInstallWeight * p,
-                    tr("正在安装 Minecraft %1…").arg(m_meta.mcVersion), m_currentFile);
+        // 总进度/文案交给唯一出口（原地写文案会与模组路互相覆盖）
+        recomposeProgress();
     });
     // 下载阶段 500ms 同步模组明细/日志附件（避免高频推送卡模型）
     m_attachSyncTimer = new QTimer(this);
@@ -505,8 +531,10 @@ void ModpackInstallTask::runDownload()
         const int effective = qMax(0, m_meta.files.size() - skipCount);
         if (effective > 0) {
             const qreal frac = total > 0 ? (qreal)received / total : 0.0;
+            // 同样封顶 99：这里用 (doneCount+frac)/effective，
+            // 与队列口径不同，更容易提前四舍五入到 100。
             setCardStep(2, QStringLiteral("active"),
-                        qRound(100.0 * (doneCount + frac) / effective));
+                        qMin(99, qRound(100.0 * (doneCount + frac) / effective)));
         }
         for (int i = 0; i < m_cardMods.size(); ++i) {
             QVariantMap mm = m_cardMods[i].toMap();
@@ -537,22 +565,22 @@ void ModpackInstallTask::runDownload()
                 if (m_cardDone) return;   // 已收尾：进度不再合成/下发，防覆盖绿色完成态
                 if (total <= 0) return;
                 m_modFrac = (qreal)completed / total;
+                m_modDoneCount = completed;
+                m_modTotalCount = total;
+                m_modFailedCount = failed;
                 // 步骤 2 动态文案：模组批量下载，剩余 XX 个文件
                 const int remain = qMax(0, total - completed - failed);
                 const QString stepName = failed > 0
                     ? tr("模组批量下载，剩余 %1 个文件（%2 个失败）").arg(remain).arg(failed)
                     : tr("模组批量下载，剩余 %1 个文件").arg(remain);
                 setCardStepName(2, stepName);
-                const qreal base = kParseWeight + kExtractWeight;
-                const QString text = failed > 0
-                    ? tr("正在下载模组 (%1/%2，%3 个失败)…").arg(completed).arg(total).arg(failed)
-                    : tr("正在下载模组 (%1/%2)…").arg(completed).arg(total);
-                // 并行总进度合成：模组路权重 + MC 路权重（MC 未启动时为 0，不变）
-                const qreal mcFrac = (!m_mcSessionId.isEmpty() && m_vb)
-                    ? m_vb->installProgressOf(m_mcSessionId) : 0.0;
-                setProgress(base + kDownloadWeight * m_modFrac + kMcInstallWeight * mcFrac,
-                            text, m_currentFile);
-                setCardStep(2, QStringLiteral("active"), qRound(100.0 * m_modFrac));
+                // 剩文件时封顶 99：qRound(421/422*100) = 100，于是「剩 1 个」配着 100%
+                // —— 用户看上去就是卡死。剩下的那个完成后自然到 100。
+                const int shownPct = remain > 0 ? qMin(99, qRound(100.0 * m_modFrac))
+                                                : qRound(100.0 * m_modFrac);
+                setCardStep(2, QStringLiteral("active"), shownPct);
+                // 总进度与副标题由唯一出口合成（原地写文案会与 MC 路互相覆盖）
+                recomposeProgress();
             });
     connect(m_downloader, &ModpackDownloader::logLine, this, [this](const QString& msg) {
         emit logLine(msg);
@@ -696,8 +724,9 @@ void ModpackInstallTask::tryCancelFinish()
 void ModpackInstallTask::runMcInstall()
 {
     setStep(tr("安装游戏本体与加载器"));
-    setProgress(kParseWeight + kExtractWeight + kDownloadWeight * m_modFrac + 0.02,
-                tr("正在安装 Minecraft %1…").arg(m_meta.mcVersion));
+    // 不在这里直写文案：并行期间模组路还在下载，直写会让副标题
+    // 短暂变成「正在安装 Minecraft」再被 300ms 后的统一口径改回去。
+    recomposeProgress();
 
     m_installingMc = true;
 
@@ -1366,6 +1395,38 @@ void ModpackInstallTask::setProgress(qreal p, const QString& text, const QString
     if (!file.isNull()) m_currentFile = file;
     emit progressChanged(m_progress, text, m_currentFile);
     syncCard();
+}
+
+void ModpackInstallTask::recomposeProgress()
+{
+    if (m_cardDone) return;
+    const qreal base = kParseWeight + kExtractWeight;
+    const qreal mcFrac = (!m_mcSessionId.isEmpty() && m_vb)
+        ? m_vb->installProgressOf(m_mcSessionId) : 0.0;
+    const qreal p = base + kDownloadWeight * m_modFrac + kMcInstallWeight * mcFrac;
+
+    // 文案只能有一个来源：模组路还在跑就报模组，它结束了才交给 MC。
+    // 以前两路各自 setProgress，300ms 轮询与队列回调交替覆盖，副标题就在
+    // 「正在下载模组」与「正在安装 Minecraft」之间来回闪。
+    QString text;
+    if (!m_modsDone) {
+        const int total = m_modTotalCount;
+        if (total <= 0) {
+            text = tr("正在准备下载文件…");
+        } else if (m_modFailedCount > 0) {
+            text = tr("正在下载模组 (%1/%2，%3 个失败)…")
+                       .arg(m_modDoneCount).arg(total).arg(m_modFailedCount);
+        } else {
+            text = tr("正在下载模组 (%1/%2)…").arg(m_modDoneCount).arg(total);
+        }
+    } else if (!m_mcDone) {
+        text = tr("正在安装 Minecraft %1…").arg(m_meta.mcVersion);
+    } else {
+        text = tr("正在整理文件…");
+    }
+    // 模组路没完成就不能显示 100%（否则「剩 1 个」配着 100% 很像卡死）
+    const qreal capped = (!m_modsDone) ? qMin<qreal>(p, 0.995) : p;
+    setProgress(capped, text, m_currentFile);
 }
 
 void ModpackInstallTask::log(const QString& msg)
