@@ -73,13 +73,13 @@ void UserDataBackend::doExport(const QString& gameDir, const QString& versionId,
         QMetaObject::invokeMethod(this, [this, outputPath, verDir]() {
             m_exporting = false;
             emit exportStateChanged();
-            emit exportFinished(false, outputPath, QStringLiteral("版本目录不存在: %1").arg(verDir));
+            emit exportFinished(false, outputPath, tr("版本目录不存在: %1").arg(verDir));
             emit logMessage("[userdata] Export failed: version directory not found");
         }, Qt::QueuedConnection);
         return;
     }
 
-    emit exportProgress(5, QStringLiteral("准备中..."));
+    emit exportProgress(5, tr("准备中..."));
 
     // Step 1: Create temp directory
     QTemporaryDir tempDir;
@@ -88,12 +88,12 @@ void UserDataBackend::doExport(const QString& gameDir, const QString& versionId,
         QMetaObject::invokeMethod(this, [this, outputPath]() {
             m_exporting = false;
             emit exportStateChanged();
-            emit exportFinished(false, outputPath, QStringLiteral("无法创建临时目录"));
+            emit exportFinished(false, outputPath, tr("无法创建临时目录"));
         }, Qt::QueuedConnection);
         return;
     }
     QString tempPath = tempDir.path();
-    emit exportProgress(10, QStringLiteral("复制数据..."));
+    emit exportProgress(10, tr("复制数据..."));
 
     // Step 2: Copy user data to temp root（直接散开，zip 内不再包 game/ 目录）
     QString tempGame = tempPath;
@@ -152,7 +152,7 @@ void UserDataBackend::doExport(const QString& gameDir, const QString& versionId,
         QMetaObject::invokeMethod(this, [this, outputPath]() {
             m_exporting = false;
             emit exportStateChanged();
-            emit exportFinished(false, outputPath, QStringLiteral("版本目录中未找到可导出的用户数据"));
+            emit exportFinished(false, outputPath, tr("版本目录中未找到可导出的用户数据"));
         }, Qt::QueuedConnection);
         return;
     }
@@ -171,8 +171,8 @@ void UserDataBackend::doExport(const QString& gameDir, const QString& versionId,
     countSize(tempGame);
 
     emit exportProgress(50, totalSize > 0
-        ? QStringLiteral("打包中 (%1 MB)...").arg(totalSize / 1024.0 / 1024.0, 0, 'f', 1)
-        : QStringLiteral("打包中..."));
+        ? tr("打包中 (%1 MB)...").arg(totalSize / 1024.0 / 1024.0, 0, 'f', 1)
+        : tr("打包中..."));
 
     // Step 3: Generate README.txt
     QString versionJsonPath = gameDir + "/versions/" + versionId + "/" + versionId + ".json";
@@ -226,7 +226,7 @@ void UserDataBackend::doExport(const QString& gameDir, const QString& versionId,
         readmeFile.close();
     }
 
-    emit exportProgress(65, QStringLiteral("压缩中..."));
+    emit exportProgress(65, tr("压缩中..."));
 
     // Step 4: Create ZIP
     QZipWriter zip(outputPath);
@@ -235,7 +235,7 @@ void UserDataBackend::doExport(const QString& gameDir, const QString& versionId,
         QMetaObject::invokeMethod(this, [this, outputPath]() {
             m_exporting = false;
             emit exportStateChanged();
-            emit exportFinished(false, outputPath, QStringLiteral("无法创建ZIP文件"));
+            emit exportFinished(false, outputPath, tr("无法创建ZIP文件"));
         }, Qt::QueuedConnection);
         return;
     }
@@ -287,14 +287,14 @@ QVector<ImportItemInfo> UserDataBackend::parseArchiveItems(const QString& archiv
     // Open ZIP
     QZipReader zip(archivePath);
     if (zip.status() != QZipReader::NoError) {
-        errorMsg = QStringLiteral("不是有效的ZIP文件");
+        errorMsg = tr("不是有效的ZIP文件");
         return items;
     }
 
     // Check for README.txt
     QByteArray readmeData = zip.fileData("README.txt");
     if (readmeData.isEmpty()) {
-        errorMsg = QStringLiteral("缺少描述文件 README.txt，无法识别");
+        errorMsg = tr("缺少描述文件 README.txt，无法识别");
         return items;
     }
 
@@ -318,7 +318,7 @@ QVector<ImportItemInfo> UserDataBackend::parseArchiveItems(const QString& archiv
     outLoaderVer = meta.value("loader_version");
 
     if (outVersionId.isEmpty()) {
-        errorMsg = QStringLiteral("描述文件格式无效：缺少 version_id");
+        errorMsg = tr("描述文件格式无效：缺少 version_id");
         return items;
     }
 
@@ -350,7 +350,7 @@ QVector<ImportItemInfo> UserDataBackend::parseArchiveItems(const QString& archiv
             if (knownTops.contains(top)) { hasTop = true; break; }
         }
         if (!hasTop) {
-            errorMsg = QStringLiteral("数据目录结构异常：缺少用户数据目录");
+            errorMsg = tr("数据目录结构异常：缺少用户数据目录");
             return items;
         }
     }

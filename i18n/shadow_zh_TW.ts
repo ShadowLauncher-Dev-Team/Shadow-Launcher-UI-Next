@@ -2673,6 +2673,32 @@
         <translation>離線登入：%1</translation>
     </message>
     <message>
+        <location filename="../src/backend/account_backend.cpp" line="240" />
+        <location filename="../src/backend/account_backend.cpp" line="318" />
+        <source>未登录正版账号</source>
+        <translation>未登入正版帳號</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/account_backend.cpp" line="277" />
+        <source>披风ID未找到</source>
+        <translation>披風 ID 找不到</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/account_backend.cpp" line="324" />
+        <source>皮肤文件不存在</source>
+        <translation>皮膚檔案不存在</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/account_backend.cpp" line="349" />
+        <source>无法读取皮肤文件</source>
+        <translation>無法讀取皮膚檔案</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/account_backend.cpp" line="364" />
+        <source>网络请求失败</source>
+        <translation>網路請求失敗</translation>
+    </message>
+    <message>
         <location filename="../src/backend/account_backend.cpp" line="393" />
         <source>正在刷新皮肤...</source>
         <translation>正在重新整理皮膚...</translation>
@@ -2754,17 +2780,32 @@
         <translation>權杖重新整理暫時失敗（%1），將在下次啟動時重試</translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1880" />
+        <location filename="../src/backend/account_backend.cpp" line="1483" />
+        <source>正版</source>
+        <translation>正版</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/account_backend.cpp" line="1484" />
+        <source>外置</source>
+        <translation>外置</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/account_backend.cpp" line="1485" />
+        <source>离线</source>
+        <translation>離線</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/account_backend.cpp" line="1882" />
         <source>这个正版账号没有可用的登录凭据，请重新登录</source>
         <translation>這個正版帳戶沒有可用的登入憑證，請重新登入</translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1889" />
+        <location filename="../src/backend/account_backend.cpp" line="1891" />
         <source>已切换到 %1</source>
         <translation>已切換到 %1</translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1934" />
+        <location filename="../src/backend/account_backend.cpp" line="1936" />
         <source>已移除账号 %1</source>
         <translation>已移除帳戶 %1</translation>
     </message>
@@ -6462,210 +6503,215 @@
         <translation>%1 天前</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="1677" />
-        <location filename="../src/backend/shadow_backend.cpp" line="1752" />
-        <location filename="../src/backend/shadow_backend.cpp" line="1770" />
+        <location filename="../src/backend/shadow_backend.cpp" line="1379" />
+        <source>%1 月 %2 日</source>
+        <translation>%1 月 %2 日</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/shadow_backend.cpp" line="1684" />
+        <location filename="../src/backend/shadow_backend.cpp" line="1759" />
+        <location filename="../src/backend/shadow_backend.cpp" line="1777" />
         <source>原版</source>
         <translation>原版</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="1850" />
+        <location filename="../src/backend/shadow_backend.cpp" line="1857" />
         <source>已扫描 %1 个已安装版本</source>
         <translation>已掃描 %1 個已安裝版本</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2119" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2126" />
         <source>正在扫描 Java 环境...</source>
         <translation>正在掃描 Java 環境...</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2135" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2142" />
         <source>[JVM] GC参数已更新: %1</source>
         <translation>[JVM] GC 參數已更新：%1</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2146" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2153" />
         <source>[GAME] 游戏附加参数已更新: %1</source>
         <translation>[GAME] 遊戲附加參數已更新：%1</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2157" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2164" />
         <source>[GPU] 高性能显卡模式: %1</source>
         <translation>[GPU] 高效能顯示卡模式：%1</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2333" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2340" />
         <source>用户手动选择 Java 环境...</source>
         <translation>使用者手動選擇 Java 環境...</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2357" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2364" />
         <source>外部 .minecraft 遵循原布局，不可切换版本隔离</source>
         <translation>外部 .minecraft 遵循原佈局，不可切換版本隔離</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2401" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2408" />
         <source>已切换到外部 .minecraft: %1</source>
         <translation>已切換到外部 .minecraft：%1</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2425" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2432" />
         <source>已恢复默认游戏目录: %1</source>
         <translation>已還原預設遊戲目錄：%1</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2450" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2457" />
         <source>选择保存文件夹</source>
         <translation>選擇儲存資料夾</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2479" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2486" />
         <source>已打开游戏目录</source>
         <translation>已開啟遊戲目錄</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2488" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2495" />
         <source>已打开最新日志</source>
         <translation>已開啟最新日誌</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2508" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2515" />
         <source>已打开日志目录</source>
         <translation>已開啟日誌目錄</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2516" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2523" />
         <source>已打开启动器日志目录</source>
         <translation>已開啟啟動器日誌目錄</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2529" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2536" />
         <source>已打开崩溃日志</source>
         <translation>已開啟崩潰日誌</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2541" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2548" />
         <source>已打开崩溃日志 (隔离目录)</source>
         <translation>已開啟崩潰日誌（隔離目錄）</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2608" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2615" />
         <source>正版令牌已过期且无刷新令牌，导出脚本将以离线方式启动（Realms 不可用）</source>
         <translation>正版權杖已過期且無重新整理權杖，匯出腳本將以離線方式啟動（Realms 不可用）</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2631" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2638" />
         <source>正版令牌已过期且刷新失败，导出脚本将以离线方式启动（Realms 不可用）</source>
         <translation>正版權杖已過期且重新整理失敗，匯出腳本將以離線方式啟動（Realms 不可用）</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2686" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2693" />
         <source>已打开存档文件夹</source>
         <translation>已開啟存檔資料夾</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2698" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2705" />
         <source>已打开截图文件夹</source>
         <translation>已開啟截圖資料夾</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2710" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2717" />
         <source>已打开 Mod 文件夹</source>
         <translation>已開啟 Mod 資料夾</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2722" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2729" />
         <source>已打开资源包文件夹</source>
         <translation>已開啟資源包資料夾</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2730" />
+        <location filename="../src/backend/shadow_backend.cpp" line="2737" />
         <source>已打开光影包文件夹</source>
         <translation>已開啟光影包資料夾</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3549" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3556" />
         <source>选择皮肤图片</source>
         <translation>選擇皮膚圖片</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3550" />
-        <location filename="../src/backend/shadow_backend.cpp" line="3668" />
-        <location filename="../src/backend/shadow_backend.cpp" line="3701" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3557" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3675" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3708" />
         <source>PNG 图片 (*.png)</source>
         <translation>PNG 圖片 (*.png)</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3556" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3563" />
         <source>无法读取图片</source>
         <translation>無法讀取圖片</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3563" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3570" />
         <source>皮肤尺寸必须为 64x64 或 64x32，当前为 %1x%2</source>
         <translation>皮膚尺寸必須為 64x64 或 64x32，目前為 %1x%2</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3568" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3575" />
         <source>已选择皮肤: %1 (%2x%3)</source>
         <translation>已選擇皮膚：%1 (%2x%3)</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3575" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3582" />
         <source>账户后端未就绪</source>
         <translation>帳戶後端未就緒</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3604" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3611" />
         <source>离线账号无法更换皮肤（仅正版账号支持上传）</source>
         <translation>離線帳號無法更換皮膚（僅正版帳號支援上傳）</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3615" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3622" />
         <source>未就绪</source>
         <translation>未就緒</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3633" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3640" />
         <source>获取皮肤信息失败: %1</source>
         <translation>取得皮膚資訊失敗：%1</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3650" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3657" />
         <source>未找到活跃皮肤</source>
         <translation>未找到使用中的皮膚</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3661" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3668" />
         <source>皮肤纹理下载失败: %1</source>
         <translation>皮膚紋理下載失敗：%1</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3667" />
-        <location filename="../src/backend/shadow_backend.cpp" line="3700" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3674" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3707" />
         <source>保存皮肤文件</source>
         <translation>儲存皮膚檔案</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3676" />
-        <location filename="../src/backend/shadow_backend.cpp" line="3705" />
-        <location filename="../src/backend/shadow_backend.cpp" line="3716" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3683" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3712" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3723" />
         <source>皮肤已保存到: %1</source>
         <translation>皮膚已儲存到：%1</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3678" />
-        <location filename="../src/backend/shadow_backend.cpp" line="3720" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3685" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3727" />
         <source>保存失败: %1</source>
         <translation>儲存失敗：%1</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3696" />
+        <location filename="../src/backend/shadow_backend.cpp" line="3703" />
         <source>没有可保存的皮肤</source>
         <translation>沒有可儲存的皮膚</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="5068" />
+        <location filename="../src/backend/shadow_backend.cpp" line="5075" />
         <source>自动重启失败，请手动重新打开启动器以完成更新</source>
         <translation>自動重新啟動失敗，請手動重新開啟啟動器以完成更新</translation>
     </message>
@@ -6766,6 +6812,74 @@
         <location filename="../src/core/update_manager.cpp" line="578" />
         <source>更新已就绪，下次启动时自动安装</source>
         <translation>更新已就緒，下次啟動時自動安裝</translation>
+    </message>
+</context>
+<context>
+    <name>ShadowLauncher::UserDataBackend</name>
+    <message>
+        <location filename="../src/backend/userdata_backend.cpp" line="76" />
+        <source>版本目录不存在: %1</source>
+        <translation>版本目錄不存在：%1</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/userdata_backend.cpp" line="82" />
+        <source>准备中...</source>
+        <translation>準備中...</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/userdata_backend.cpp" line="91" />
+        <source>无法创建临时目录</source>
+        <translation>無法建立臨時目錄</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/userdata_backend.cpp" line="96" />
+        <source>复制数据...</source>
+        <translation>複製資料...</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/userdata_backend.cpp" line="155" />
+        <source>版本目录中未找到可导出的用户数据</source>
+        <translation>版本目錄中找不到可匯出的使用者資料</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/userdata_backend.cpp" line="174" />
+        <source>打包中 (%1 MB)...</source>
+        <translation>打包中 (%1 MB)...</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/userdata_backend.cpp" line="175" />
+        <source>打包中...</source>
+        <translation>打包中...</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/userdata_backend.cpp" line="229" />
+        <source>压缩中...</source>
+        <translation>壓縮中...</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/userdata_backend.cpp" line="238" />
+        <source>无法创建ZIP文件</source>
+        <translation>無法建立 ZIP 檔案</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/userdata_backend.cpp" line="290" />
+        <source>不是有效的ZIP文件</source>
+        <translation>不是有效的 ZIP 檔案</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/userdata_backend.cpp" line="297" />
+        <source>缺少描述文件 README.txt，无法识别</source>
+        <translation>缺少描述檔 README.txt，無法識別</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/userdata_backend.cpp" line="321" />
+        <source>描述文件格式无效：缺少 version_id</source>
+        <translation>描述檔格式無效：缺少 version_id</translation>
+    </message>
+    <message>
+        <location filename="../src/backend/userdata_backend.cpp" line="353" />
+        <source>数据目录结构异常：缺少用户数据目录</source>
+        <translation>資料目錄結構異常：缺少使用者資料目錄</translation>
     </message>
 </context>
 <context>

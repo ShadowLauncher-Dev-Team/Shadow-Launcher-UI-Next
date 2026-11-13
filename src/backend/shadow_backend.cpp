@@ -1373,7 +1373,14 @@ QString ShadowBackend::formatLastPlayed(qint64 ms) const
     if (days <= 0) return tr("今天 %1").arg(hm);
     if (days == 1) return tr("昨天 %1").arg(hm);
     if (days < 7) return tr("%1 天前").arg(days);
-    if (t.date().year() == today.year()) return t.toString(QStringLiteral("M 月 d 日"));
+    // 中文习惯「6 月 12 日」，英文习惯「Jun 12」。用译文当探针：
+    // 中文译文里带「月」字，英文译文（"%1"）不带。
+    if (t.date().year() == today.year()) {
+        const QString cn = tr("%1 月 %2 日");
+        if (cn.contains(QStringLiteral("月")))
+            return t.toString(QStringLiteral("M 月 d 日"));
+        return t.toString(QStringLiteral("MMM d"));
+    }
     return t.toString(QStringLiteral("yyyy-MM-dd"));
 }
 

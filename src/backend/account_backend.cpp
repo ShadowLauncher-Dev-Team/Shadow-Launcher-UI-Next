@@ -237,7 +237,7 @@ void AccountBackend::offlineLogin(const QString &username)
 void AccountBackend::selectCape(const QString &alias)
 {
     if (m_msMcToken.isEmpty()) {
-        emit capeChangeFinished(false, QStringLiteral("未登录正版账号"));
+        emit capeChangeFinished(false, tr("未登录正版账号"));
         return;
     }
 
@@ -274,7 +274,7 @@ void AccountBackend::selectCape(const QString &alias)
         }
         if (capeId.isEmpty()) {
             qCWarning(logAccount) << QStringLiteral("披风ID未找到 alias=%1").arg(alias);
-            emit capeChangeFinished(false, QStringLiteral("披风ID未找到"));
+            emit capeChangeFinished(false, tr("披风ID未找到"));
             return;
         }
 
@@ -315,13 +315,13 @@ void AccountBackend::selectCape(const QString &alias)
 void AccountBackend::uploadSkin(const QString &filePath, const QString &variant)
 {
     if (m_msMcToken.isEmpty()) {
-        emit skinUploadFinished(false, QStringLiteral("未登录正版账号"));
+        emit skinUploadFinished(false, tr("未登录正版账号"));
         return;
     }
 
     QFileInfo fi(filePath);
     if (!fi.exists()) {
-        emit skinUploadFinished(false, QStringLiteral("皮肤文件不存在"));
+        emit skinUploadFinished(false, tr("皮肤文件不存在"));
         return;
     }
 
@@ -346,7 +346,7 @@ void AccountBackend::uploadSkin(const QString &filePath, const QString &variant)
     if (!file->open(QIODevice::ReadOnly)) {
         delete multiPart;
         delete file;
-        emit skinUploadFinished(false, QStringLiteral("无法读取皮肤文件"));
+        emit skinUploadFinished(false, tr("无法读取皮肤文件"));
         return;
     }
     filePart.setBodyDevice(file);
@@ -361,7 +361,7 @@ void AccountBackend::uploadSkin(const QString &filePath, const QString &variant)
 
     if (!reply) {
         delete multiPart;
-        emit skinUploadFinished(false, QStringLiteral("网络请求失败"));
+        emit skinUploadFinished(false, tr("网络请求失败"));
         return;
     }
     multiPart->setParent(reply);  // reply owns multiPart
@@ -1476,11 +1476,13 @@ QString AccountBackend::accountsFilePath() const
     return m_dataDir + QStringLiteral("/accounts.json");
 }
 
+// 账号列表里那一行小字（正版 / 外置 / 离线）。以前是裸中文字面量，
+// 所以切到英文后账号列表仍然显示中文 —— 这里必须走 tr()。
 static QString accountTypeText(int mode)
 {
-    if (mode == 0) return QStringLiteral("正版");
-    if (mode == 2) return QStringLiteral("外置");
-    return QStringLiteral("离线");
+    if (mode == 0) return AccountBackend::tr("正版");
+    if (mode == 2) return AccountBackend::tr("外置");
+    return AccountBackend::tr("离线");
 }
 
 QVariantList AccountBackend::accounts() const

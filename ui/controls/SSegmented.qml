@@ -30,6 +30,13 @@ Item {
         return w
     }
 
+    // 实际每段宽度 = max(测量宽度, 容器均分宽度)。
+    // 只取测量值的话：调用方给了固定 width（如账号页的 180）时段落会缩成 60 一排挤在左边，
+    // 右边留一大片空白，选中滑块也跟着错位 —— 那正是"滑块大小异常"。
+    // 容器比文字窄时（英文长标签）才由测量值把容器撑开。
+    readonly property real effSegW: Math.max(segW,
+        (row.width - Math.max(0, items.length - 1) * row.spacing) / Math.max(1, items.length))
+
     Rectangle {
         anchors.fill: parent
         radius: Theme.rSm
@@ -43,7 +50,7 @@ Item {
     // 分项等宽，所以位置可以直接算；width 也加过渡，避免 items 数量变化时硬跳。
     Rectangle {
         id: segPill
-        readonly property real segW: root.segW
+        readonly property real segW: root.effSegW
         x: 2 + root.currentIndex * (segW + row.spacing)
         y: 2
         width: segW
@@ -66,7 +73,7 @@ Item {
         Repeater {
             model: root.items
             delegate: Rectangle {
-                width: root.segW
+                width: root.effSegW
                 height: row.height
                 radius: 6
                 // 选中底色由上面的 segPill 承担；这里不再自己变色，否则滑块滑动时旧项还在亮
