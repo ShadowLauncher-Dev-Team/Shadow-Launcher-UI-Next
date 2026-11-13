@@ -24,7 +24,11 @@ public:
 
     /// 开始获取皮肤：GET {apiRoot}/sessionserver/session/minecraft/profile/{uuid}
     /// 流程如 PCL McSkinGetAddress → McSkinDownload
-    Q_INVOKABLE void fetchSkin(const QString &apiRoot, const QString &uuid);
+    /// allowedSkinDomains：站点 meta.skinDomains。为空表示站点没声明，此时不校验。
+    /// 非空时，profile 里给出的皮肤 URL 主机必须在白名单（或其子域）内，
+    /// 否则不下载、直接用兜底皮肤并记警告 —— 防的是被篡改的 profile 把下载引到任意主机。
+    Q_INVOKABLE void fetchSkin(const QString &apiRoot, const QString &uuid,
+                               const QStringList &allowedSkinDomains = QStringList());
 
     /// 缓存目录（供外部构造头像 URL 使用）
     static QString cacheDir();
@@ -48,6 +52,7 @@ private:
     int m_skinVariant = 0;  // 0=classic/steve, 1=slim/alex
     QNetworkAccessManager *m_nam = nullptr;
     QString m_pendingUuid;   // 下载中暂存 uuid，用于写缓存文件名
+    QStringList m_pendingSkinDomains;  // 本次拉取的域名白名单（随请求走）
     int m_pendingVariant = 0;
 };
 

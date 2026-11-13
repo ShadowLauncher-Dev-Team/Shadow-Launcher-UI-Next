@@ -420,6 +420,9 @@ Item {
         enabled: page.yg !== null
         function onApiRootResolved(resolved) {
             page.apiRootInput = resolved
+            // 拿到真实地址后顺手问一次 meta：站点名和注册链接都在里面，
+            // 不查的话用户看到的只是一个地址，不知道这是哪个站、该去哪注册。
+            if (page.yg) page.yg.fetchMeta(resolved)
             if (page.pendingLogin) {
                 page.pendingLogin = false
                 page.loginNow()
@@ -1804,6 +1807,45 @@ Item {
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap
                     }
+                    // 站点身份与注册入口。
+                    // registerUrl 后端一直有解析并写进 session.json，但 UI 从来没给过出口 ——
+                    // 新用户走到这一步只会看到"要账号密码"，不知道去哪注册。
+                    Row {
+                        spacing: 10
+                        visible: page.yg !== null && page.yg.metaServerName.length > 0
+                        Rectangle {
+                            width: siteDot.width + 16
+                            height: 22
+                            radius: 4
+                            color: Theme.bgInput
+                            border.width: 1
+                            border.color: Theme.line
+                            Text {
+                                id: siteDot
+                                anchors.centerIn: parent
+                                text: page.yg ? page.yg.metaServerName : ""
+                                color: Theme.fg2
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+                        }
+                        Text {
+                            visible: page.yg !== null && page.yg.registerUrl.length > 0
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("还没有账号？去注册")
+                            color: Theme.accentText
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                            TapHandler {
+                                onTapped: {
+                                    if (page.yg && page.yg.registerUrl.length > 0)
+                                        Qt.openUrlExternally(page.yg.registerUrl)
+                                }
+                            }
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        }
+                    }
+
                     SButton {
                         tone: "dark"
                         kind: 0

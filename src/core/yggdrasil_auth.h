@@ -4,6 +4,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QNetworkAccessManager>
@@ -24,8 +25,22 @@ struct YggdrasilProfile {
 struct YggdrasilMeta {
     QString serverName;
     QString registerUrl;
+    /// 允许承载皮肤纹理的域名白名单（meta.skinDomains）。
+    /// 用于校验 profile 里给出的皮肤 URL 是否来自站点自己信任的域名 ——
+    /// 不校验的话，一个被篡改的 profile 可以让启动器去拉任意域名上的图。
+    QStringList skinDomains;
+    /// 站点是否提供签名公钥（signaturePublickey）。
+    /// 目前只记录不校验（校验需要验签 profile，后续再做）；但"有没有"本身
+    /// 对一个站点是否规范是有用的信号。
+    bool hasSignatureKey = false;
 
     [[nodiscard]] bool isValid() const { return !serverName.isEmpty(); }
+    /// 皮肤 URL 是否在被信任的域名下；没声明 skinDomains 时一律放行（保持旧行为）
+    [[nodiscard]] bool skinHostAllowed(const QString &url) const {
+        return skinHostAllowedFor(skinDomains, url);
+    }
+    /// 静态版：域名白名单判断（domains 为空 -> 放行）
+    static bool skinHostAllowedFor(const QStringList &domains, const QString &url);
 };
 
 /// 完整认证 session

@@ -451,7 +451,7 @@ void YggdrasilBackend::fetchSkin()
 {
     if (!m_session.isValid() || m_session.apiRoot.isEmpty() || m_session.uuid.isEmpty())
         return;
-    m_skinFetcher->fetchSkin(m_session.apiRoot, m_session.uuid);
+    m_skinFetcher->fetchSkin(m_session.apiRoot, m_session.uuid, m_meta.skinDomains);
 }
 
 void YggdrasilBackend::preloadProfileSkins()
@@ -485,7 +485,7 @@ void YggdrasilBackend::preloadNextSkin()
         QTimer::singleShot(0, this, &YggdrasilBackend::preloadNextSkin);
         return;
     }
-    m_skinFetcher->fetchSkin(m_session.apiRoot, p.id);
+    m_skinFetcher->fetchSkin(m_session.apiRoot, p.id, m_meta.skinDomains);
 }
 
 QStringList YggdrasilBackend::profileHeadUrls() const

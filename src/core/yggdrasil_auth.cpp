@@ -192,8 +192,43 @@ YggdrasilMeta YggdrasilAuth::parseMeta(const QByteArray &data, QString &errorOut
     QJsonObject root = doc.object();
     QJsonObject metaObj = root.value(QStringLiteral("meta")).toObject();
     meta.serverName = metaObj.value(QStringLiteral("serverName")).toString();
-    meta.registerUrl = metaObj.value(QStringLiteral("registerUrl")).toString();
+    // 注册地址在规范里是 meta.links.register（LittleSkin 实测就是这条路径）。
+    // 旧代码读的是 meta.registerUrl —— 那个字段规范里根本不存在，
+    // 所以这个属性从落地起就一直是空的，只是之前 UI 从没读过它，没人发现。
+    // 两种写法都兼容，优先规范路径。
+    meta.registerUrl = metaObj.value(QStringLiteral("links")).toObject()
+                           .value(QStringLiteral("register")).toString();
+    if (meta.registerUrl.isEmpty())
+        meta.registerUrl = metaObj.value(QStringLiteral("registerUrl")).toString();
+
+    // skinDomains 在规范里是**根级**字段（不在 meta 里）。
+    // 兼容两种写法：先读根级，根级没有再退回 meta 内。
+    QJsonArray domains = root.value(QStringLiteral("skinDomains")).toArray();
+    if (domains.isEmpty())
+        domains = metaObj.value(QStringLiteral("skinDomains")).toArray();
+    for (const auto &d : domains) {
+        const QString s = d.toString().trimmed().toLower();
+        if (!s.isEmpty()) meta.skinDomains.append(s);
+    }
+
+    meta.hasSignatureKey = root.contains(QStringLiteral("signaturePublickey"))
+                           && !root.value(QStringLiteral("signaturePublickey")).toString().isEmpty();
     return meta;
+}
+
+// 判断皮肤 URL 的主机是否在 skinDomains 白名单内。
+// 规则按 authlib-injector 规范：主机名等于域名，或是它的子域（example.com 放行 a.example.com）。
+// 未声明 skinDomains 时返回 true —— 不能因为站点没写就让皮肤全部加载不出来。
+bool YggdrasilMeta::skinHostAllowedFor(const QStringList &domains, const QString &url)
+{
+    if (domains.isEmpty()) return true;
+    const QString host = QUrl(url).host().toLower();
+    if (host.isEmpty()) return false;
+    for (const QString &d : domains) {
+        const QString dd = d.toLower();
+        if (host == dd || host.endsWith(QLatin1Char('.') + dd)) return true;
+    }
+    return false;
 }
 
 YggdrasilSession YggdrasilAuth::parseAuthenticate(const QByteArray &data,

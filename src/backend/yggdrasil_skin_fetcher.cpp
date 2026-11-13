@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 #include "yggdrasil_skin_fetcher.h"
+#include "core/yggdrasil_auth.h"   // YggdrasilMeta::skinHostAllowedFor（皮肤域名白名单）
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -74,7 +75,8 @@ YggdrasilSkinFetcher::YggdrasilSkinFetcher(QObject *parent)
 
 // ── PCL 方案: McSkinGetAddress + McSkinDownload ──
 
-void YggdrasilSkinFetcher::fetchSkin(const QString &apiRoot, const QString &uuid)
+void YggdrasilSkinFetcher::fetchSkin(const QString &apiRoot, const QString &uuid,
+                                      const QStringList &allowedSkinDomains)
 {
     if (apiRoot.isEmpty() || uuid.isEmpty()) {
         m_skinPath.clear();
@@ -88,6 +90,7 @@ void YggdrasilSkinFetcher::fetchSkin(const QString &apiRoot, const QString &uuid
     // (variant 信息在 profile 返回中，所以先不查缓存，等 onProfileReply 里再查): GET {apiRoot}/sessionserver/session/minecraft/profile/{uuid}
     m_pendingUuid = uuid;
     m_pendingVariant = 0;
+    m_pendingSkinDomains = allowedSkinDomains;
 
     // ── 缓存/兜底优先：先给 UI 一个可用头像。这样即使服务器不可达、令牌已失效，
     //    也不会让 MinecraftHead2D 因 skinPath 为空而无限转圈（旧实现只有网络成功才有头像）。
@@ -181,6 +184,17 @@ void YggdrasilSkinFetcher::onProfileReply()
             headPath = cachedPath;  // fallback: 用完整皮肤
         setSkinFromFile(headPath, variant);
         qCDebug(logYggSkin) << "Cache hit (post-parse):" << cachedPath;
+        return;
+    }
+
+    // 下载前先校验主机是否在站点声明的 skinDomains 内。
+    // 站点没声明时 YggdrasilMeta::skinHostAllowedFor 直接放行（保持旧行为），
+    // 只有"声明了白名单却指向别处"才拦 —— 那种情况基本就是 profile 被篡改。
+    if (!YggdrasilMeta::skinHostAllowedFor(m_pendingSkinDomains, skinUrl)) {
+        qCWarning(logYggSkin) << "Skin URL host not in skinDomains, refusing to download:"
+                              << skinUrl << "domains=" << m_pendingSkinDomains;
+        if (m_skinPath.isEmpty()) applyFallbackSkin();
+        emit skinFailed(QStringLiteral("皮肤地址不在该站点声明的域名内，已跳过下载"));
         return;
     }
 

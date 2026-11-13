@@ -27,6 +27,10 @@ class YggdrasilBackend : public QObject {
     Q_PROPERTY(QString clientToken READ clientToken NOTIFY stateChanged)
     Q_PROPERTY(QString metaServerName READ metaServerName NOTIFY metaReady)
     Q_PROPERTY(QString registerUrl READ registerUrl NOTIFY metaReady)
+    /// 站点声明的皮肤域名白名单（meta.skinDomains），空表示站点未声明
+    Q_PROPERTY(QStringList skinDomains READ skinDomains NOTIFY metaReady)
+    /// 站点是否提供签名公钥（规范站点一般都有）
+    Q_PROPERTY(bool hasSignatureKey READ hasSignatureKey NOTIFY metaReady)
     Q_PROPERTY(QVariantList profiles READ profiles NOTIFY profilesChanged)
     Q_PROPERTY(int profileIndex READ profileIndex NOTIFY profilesChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
@@ -57,6 +61,8 @@ public:
     QString clientToken() const { return m_session.clientToken; }
     QString metaServerName() const { return m_meta.serverName; }
     QString registerUrl() const { return m_meta.registerUrl; }
+    QStringList skinDomains() const { return m_meta.skinDomains; }
+    bool hasSignatureKey() const { return m_meta.hasSignatureKey; }
     QVariantList profiles() const;
     int profileIndex() const { return m_session.selectedProfileIndex; }
     QString statusMessage() const { return m_statusMessage; }
