@@ -10,7 +10,7 @@ Item {
 
     Text {
         anchors.centerIn: parent
-        text: pane.title + " · 待施工"
+        text: qsTr("%1 · 待施工").arg(pane.title)
         color: Theme.fg3
         font.family: Theme.fontFamily
         font.pixelSize: 12

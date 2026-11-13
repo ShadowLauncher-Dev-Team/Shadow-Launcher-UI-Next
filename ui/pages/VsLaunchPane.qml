@@ -126,13 +126,13 @@ Item {
             // ── 配置模式（整页只影响 JVM / 游戏参数两项）──
             SRow {
                 width: col.width
-                label: "配置模式"
+                label: qsTr("配置模式")
                 labelWidth: 96
                 SSegmented {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     width: 240
-                    items: ["跟随全局设置", "独立配置"]
+                    items: [qsTr("跟随全局设置"), qsTr("独立配置")]
                     currentIndex: pane.independent ? 1 : 0
                     onActivated: (i) => pane.switchMode(i)
                 }
@@ -141,16 +141,16 @@ Item {
             // ── Java 环境 ──
             SCard {
                 width: col.width
-                title: "Java 环境"
+                title: qsTr("Java 环境")
 
                 SRow {
                     width: parent.width
-                    label: "选择"
+                    label: qsTr("选择")
                     SSelect {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         width: 220
-                        items: ["自动选择", "版本目录内 Java", "手动指定"]
+                        items: [qsTr("自动选择"), qsTr("版本目录内 Java"), qsTr("手动指定")]
                         currentIndex: pane.javaMode
                         onActivated: (i) => {
                             if (!pane.s) return
@@ -161,12 +161,14 @@ Item {
                 }
                 SRow {
                     width: parent.width
-                    label: "全局 Java"
+                    label: qsTr("全局 Java")
                     Text {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        text: (pane.javaVer.length > 0 ? pane.javaVer : "未检测到")
-                              + (pane.javaMajor > 0 ? "（Java " + pane.javaMajor + "）" : "")
+                        text: {
+                            var ver = pane.javaVer.length > 0 ? pane.javaVer : qsTr("未检测到")
+                            return pane.javaMajor > 0 ? qsTr("%1（Java %2）").arg(ver).arg(pane.javaMajor) : ver
+                        }
                         color: pane.javaVer.length > 0 ? Theme.fg : Theme.warn
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -174,7 +176,7 @@ Item {
                 }
                 SRow {
                     width: parent.width
-                    label: "建议"
+                    label: qsTr("建议")
                     divider: false
                     Text {
                         anchors.left: parent.left
@@ -189,7 +191,7 @@ Item {
                         anchors.leftMargin: 88
                         anchors.verticalCenter: parent.verticalCenter
                         visible: pane.mcVer.length > 0
-                        text: "游戏 " + pane.mcVer
+                        text: qsTr("游戏 %1").arg(pane.mcVer)
                         color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -200,7 +202,7 @@ Item {
             // ── JVM 参数 ──
             SCard {
                 width: col.width
-                title: "JVM 参数"
+                title: qsTr("JVM 参数")
                 // 跟随全局时这块什么都不生效，直接收起来，别摆一个灰框。
                 // 收起/展开走高度动画：卡片高度本来就由内容隐式高度决定，clip 住内容就不会漏出来。
                 height: pane.jvmMode === 1 ? implicitHeight : 0
@@ -216,7 +218,7 @@ Item {
                     areaHeight: 92
                     enabled: pane.independent
                     text: pane.jvmArgs
-                    placeholder: pane.independent ? "留空则使用全局 JVM 参数" : "跟随全局设置时不生效"
+                    placeholder: pane.independent ? qsTr("留空则使用全局 JVM 参数") : qsTr("跟随全局设置时不生效")
                     onEdited: (t) => {
                         if (!pane.s || pane.jvmArgs === t) return
                         pane.s.setVersionJvmArgs(pane.versionId, t)
@@ -230,19 +232,19 @@ Item {
                     spacing: 8
                     SButton {
                         kind: 1
-                        text: "G1GC 平衡"
+                        text: qsTr("G1GC 平衡")
                         enabled: pane.independent
                         onClicked: pane.applyPreset("-XX:+UseG1GC -XX:MaxGCPauseMillis=50")
                     }
                     SButton {
                         kind: 1
-                        text: "ZGC 低延迟"
+                        text: qsTr("ZGC 低延迟")
                         enabled: pane.independent
                         onClicked: pane.applyPreset("-XX:+UseZGC -XX:+ZGenerational")
                     }
                     SButton {
                         kind: 1
-                        text: "清空"
+                        text: qsTr("清空")
                         enabled: pane.independent
                         onClicked: pane.applyPreset("")
                     }
@@ -252,16 +254,16 @@ Item {
             // ── 启动行为 ──
             SCard {
                 width: col.width
-                title: "启动行为"
+                title: qsTr("启动行为")
 
                 SRow {
                     width: parent.width
-                    label: "GC 策略"
+                    label: qsTr("GC 策略")
                     SSelect {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         width: 220
-                        items: ["跟随全局", "ZGC 优先", "仅 G1GC", "不指定"]
+                        items: [qsTr("跟随全局"), qsTr("ZGC 优先"), qsTr("仅 G1GC"), qsTr("不指定")]
                         currentIndex: pane.gcMode
                         onActivated: (i) => {
                             if (!pane.s) return
@@ -272,7 +274,7 @@ Item {
                 }
                 SRow {
                     width: parent.width
-                    label: "全屏启动"
+                    label: qsTr("全屏启动")
                     SSwitch {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
@@ -287,7 +289,7 @@ Item {
                 }
                 SRow {
                     width: parent.width
-                    label: "高性能 GPU"
+                    label: qsTr("高性能 GPU")
                     SSwitch {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
@@ -302,13 +304,13 @@ Item {
                 }
                 SRow {
                     width: parent.width
-                    label: "进程优先级"
+                    label: qsTr("进程优先级")
                     SSelect {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         width: 220
                         // 后端语义：mode 0=跟随全局，1=用版本值（见 ShadowBackend::resolvedProcessPriority）
-                        items: ["跟随全局", "高", "正常", "低"]
+                        items: [qsTr("跟随全局"), qsTr("高"), qsTr("正常"), qsTr("低")]
                         currentIndex: pane.priorityMode === 0 ? 0 : 1 + pane.priorityValue
                         onActivated: (i) => {
                             if (!pane.s) return
@@ -326,13 +328,13 @@ Item {
                 }
                 SRow {
                     width: parent.width
-                    label: "自动进服"
+                    label: qsTr("自动进服")
                     SInput {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         width: Math.min(300, parent.width)
                         text: pane.autoJoin
-                        placeholder: "留空则不自动进服"
+                        placeholder: qsTr("留空则不自动进服")
                         onEdited: (t) => {
                             if (!pane.s || pane.autoJoin === t) return
                             pane.s.setVersionAutoJoinServer(pane.versionId, t)
@@ -342,14 +344,14 @@ Item {
                 }
                 SRow {
                     width: parent.width
-                    label: "窗口标题"
+                    label: qsTr("窗口标题")
                     divider: false
                     SInput {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         width: Math.min(300, parent.width)
                         text: pane.winTitle
-                        placeholder: "留空则用游戏默认标题"
+                        placeholder: qsTr("留空则用游戏默认标题")
                         onEdited: (t) => {
                             if (!pane.s || pane.winTitle === t) return
                             pane.s.setVersionWindowTitleMode(pane.versionId, 1)
@@ -363,7 +365,7 @@ Item {
             // ── 游戏参数 ──
             SCard {
                 width: col.width
-                title: "游戏参数"
+                title: qsTr("游戏参数")
                 height: pane.gameMode === 1 ? implicitHeight : 0
                 clip: true
                 visible: height > 1
@@ -376,7 +378,7 @@ Item {
                     areaHeight: 48
                     enabled: pane.independent
                     text: pane.gameArgs
-                    placeholder: pane.independent ? "留空则使用全局游戏参数" : "跟随全局设置时不生效"
+                    placeholder: pane.independent ? qsTr("留空则使用全局游戏参数") : qsTr("跟随全局设置时不生效")
                     onEdited: (t) => {
                         if (!pane.s || pane.gameArgs === t) return
                         pane.s.setVersionGameArgs(pane.versionId, t)
@@ -388,18 +390,18 @@ Item {
             // ── 命令 ──
             SCard {
                 width: col.width
-                title: "命令"
+                title: qsTr("命令")
                 SRow {
                     width: parent.width
                     rowHeight: 76
-                    label: "启动前"
+                    label: qsTr("启动前")
                     STextArea {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         areaHeight: 48
                         text: pane.preCmd
-                        placeholder: "留空则不执行"
+                        placeholder: qsTr("留空则不执行")
                         onEdited: (t) => {
                             if (!pane.s || pane.preCmd === t) return
                             pane.s.setVersionPreLaunchMode(pane.versionId, 1)
@@ -411,7 +413,7 @@ Item {
                 SRow {
                     width: parent.width
                     rowHeight: 76
-                    label: "退出后"
+                    label: qsTr("退出后")
                     divider: false
                     STextArea {
                         anchors.left: parent.left
@@ -419,7 +421,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         areaHeight: 48
                         text: pane.postCmd
-                        placeholder: "留空则不执行"
+                        placeholder: qsTr("留空则不执行")
                         onEdited: (t) => {
                             if (!pane.s || pane.postCmd === t) return
                             pane.s.setVersionPostExitMode(pane.versionId, 1)
@@ -436,6 +438,6 @@ Item {
         if (!pane.s) return
         pane.s.setVersionJvmArgs(pane.versionId, text)
         pane.jvmArgs = text
-        if (pane.toast) pane.toast.show(text.length > 0 ? "已套用预设" : "已清空 JVM 参数")
+        if (pane.toast) pane.toast.show(text.length > 0 ? qsTr("已套用预设") : qsTr("已清空 JVM 参数"))
     }
 }

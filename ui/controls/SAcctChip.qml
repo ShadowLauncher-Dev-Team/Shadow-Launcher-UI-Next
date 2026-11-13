@@ -42,7 +42,7 @@ Item {
             fallbackText: root.name.length > 0 ? root.name : "?"
         }
         Text {
-            text: root.name.length > 0 ? root.name : "登录"
+            text: root.name.length > 0 ? root.name : qsTr("登录")
             color: Theme.fg
             font.family: Theme.fontFamily
             font.pixelSize: 13

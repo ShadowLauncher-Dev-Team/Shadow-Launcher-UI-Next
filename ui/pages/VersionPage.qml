@@ -86,14 +86,14 @@ Item {
     // 数值变化走绑定（infoValue），不重建 delegate —— 之前每次刷新都会整列重建才闪。
     readonly property var infoKeys: ["version", "mc", "loader", "type", "mods", "size", "last", "dir"]
     function infoLabel(key) {
-        if (key === "version") return "版本名"
-        if (key === "mc") return "MC 版本"
-        if (key === "loader") return "加载器"
-        if (key === "type") return "版本类型"
-        if (key === "mods") return "模组"
-        if (key === "size") return "大小"
-        if (key === "last") return "上次游玩"
-        if (key === "dir") return "游戏目录"
+        if (key === "version") return qsTr("版本名")
+        if (key === "mc") return qsTr("MC 版本")
+        if (key === "loader") return qsTr("加载器")
+        if (key === "type") return qsTr("版本类型")
+        if (key === "mods") return qsTr("模组")
+        if (key === "size") return qsTr("大小")
+        if (key === "last") return qsTr("上次游玩")
+        if (key === "dir") return qsTr("游戏目录")
         return key
     }
     function infoValue(key) {
@@ -102,15 +102,15 @@ Item {
         if (key === "version") return s.id || ""
         if (key === "mc") {
             var mc = page.mcOf(s)
-            return mc.length > 0 ? mc : "未识别"
+            return mc.length > 0 ? mc : qsTr("未识别")
         }
         if (key === "loader") return page.loaderOf(s)
-        if (key === "type") return page.typeText(s) + (s.isModpack ? " · 整合包" : "")
-        if (key === "mods") return Number(s.modCount) > 0 ? (s.modCount + " 个") : "无模组"
+        if (key === "type") return s.isModpack ? qsTr("%1 · 整合包").arg(page.typeText(s)) : page.typeText(s)
+        if (key === "mods") return Number(s.modCount) > 0 ? qsTr("%1 个").arg(s.modCount) : qsTr("无模组")
         if (key === "size") return page.sizeText(s.sizeBytes)
         if (key === "last") {
             var lp = page.lastPlayedOf(s)
-            return lp.length > 0 ? lp : "没有记录"
+            return lp.length > 0 ? lp : qsTr("没有记录")
         }
         if (key === "dir") return page.b ? page.b.getVersionGameDir(s.id) : ""
         return ""
@@ -136,7 +136,7 @@ Item {
         var fs = page.folders
         for (var i = 0; i < fs.length; ++i)
             if (fs[i] && fs[i].active) return fs[i].name || fs[i].path
-        return (page.b && page.b.gameDir) ? page.b.gameDir : "游戏文件夹"
+        return (page.b && page.b.gameDir) ? page.b.gameDir : qsTr("游戏文件夹")
     }
     function switchFolder(path, isDefault) {
         if (!page.mcFolder || !page.b) return
@@ -146,10 +146,10 @@ Item {
         var ok = true
         if (isDefault) page.mcFolder.revertToDefault()
         else ok = page.mcFolder.setActiveFolder(path)
-        if (!ok) { page.flash("切换失败：这个文件夹不是有效的游戏目录"); return }
+        if (!ok) { page.flash(qsTr("切换失败：这个文件夹不是有效的游戏目录")); return }
         page.b.refreshVersionDetails()
         page.rev++
-        page.flash(isDefault ? "已切回默认游戏目录" : "已切换游戏文件夹")
+        page.flash(isDefault ? qsTr("已切回默认游戏目录") : qsTr("已切换游戏文件夹"))
     }
     function addFolder() {
         if (!page.mcFolder) return
@@ -159,14 +159,14 @@ Item {
         page.mcFolder.addGameFolder(p, nm)
         page.mcFolder.refreshFolders()
         page.folderMenuOpen = false
-        page.flash("已添加文件夹 " + nm)
+        page.flash(qsTr("已添加文件夹 %1").arg(nm))
     }
     function commit() {
         if (!page.b || !page.sel) return
         if (page.pendingId !== page.currentId) {
             page.b.setSelectedVersion(page.pendingId)
             // 页面随即关闭，Toast 是唯一的"确实换了"的确认
-            page.flash("已切换到 " + page.pendingId)
+            page.flash(qsTr("已切换到 %1").arg(page.pendingId))
         }
         page.close()
     }
@@ -198,15 +198,15 @@ Item {
     function loaderOf(v) {
         if (!v) return ""
         var lt = v.loaderType || ""
-        if (lt.length === 0) return "原版"
+        if (lt.length === 0) return qsTr("原版")
         var lv = v.loaderVersion || ""
         return lv.length > 0 ? (lt + " " + lv) : lt
     }
     function typeText(v) {
         if (!v) return ""
-        if (v.versionType === "snapshot") return "快照版"
-        if (v.versionType === "old") return "旧版"
-        return "正式版"
+        if (v.versionType === "snapshot") return qsTr("快照版")
+        if (v.versionType === "old") return qsTr("旧版")
+        return qsTr("正式版")
     }
     function lastPlayedOf(v) {
         rev
@@ -289,14 +289,14 @@ Item {
             radius: 2
             height: 32
             iconName: "arrow-left"
-            text: "返回"
+            text: qsTr("返回")
             onClicked: page.close()
         }
         Text {
             anchors.left: parent.left
             anchors.leftMargin: page.narrow ? 108 : 120
             anchors.verticalCenter: parent.verticalCenter
-            text: "选择版本"
+            text: qsTr("选择版本")
             color: Theme.fg
             font.family: Theme.fontFamily
             font.pixelSize: 15
@@ -306,7 +306,7 @@ Item {
             anchors.left: parent.left
             anchors.leftMargin: page.narrow ? 182 : 196
             anchors.verticalCenter: parent.verticalCenter
-            text: page.details.length + " 个已安装"
+            text: qsTr("%1 个已安装").arg(page.details.length)
             color: Theme.fg3
             font.family: Theme.fontFamily
             font.pixelSize: 11
@@ -355,12 +355,12 @@ Item {
                 radius: 2
                 height: 32
                 iconName: "refresh-cw"
-                text: "刷新"
+                text: qsTr("刷新")
                 onClicked: {
                     if (!page.b) return
                     page.b.refreshVersionDetails()
                     page.b.refreshVersionList()
-                    page.flash("已刷新版本列表")
+                    page.flash(qsTr("已刷新版本列表"))
                 }
             }
         }
@@ -403,7 +403,7 @@ Item {
                 anchors.leftMargin: page.narrow ? 16 : 20
                 anchors.top: parent.top
                 anchors.topMargin: 14
-                text: "已安装"
+                text: qsTr("已安装")
                 color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
@@ -461,7 +461,7 @@ Item {
                     Text {
                         anchors.fill: parent
                         visible: searchInput.text.length === 0
-                        text: "搜索版本 / 加载器"
+                        text: qsTr("搜索版本 / 加载器")
                         color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -632,8 +632,8 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
                     text: page.details.length === 0
-                          ? "还没有可用的版本\n在「下载」页安装一个版本后回到这里"
-                          : "没有匹配「" + page.query + "」的版本"
+                          ? qsTr("还没有可用的版本\n在「下载」页安装一个版本后回到这里")
+                          : qsTr("没有匹配「%1」的版本").arg(page.query)
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
@@ -833,7 +833,7 @@ Item {
                         radius: 2
                         height: 34
                         iconName: "folder-open"
-                        text: "打开目录"
+                        text: qsTr("打开目录")
                         onClicked: { if (page.b && page.sel) page.b.openVersionDir(page.sel.id) }
                     }
                 }
@@ -845,7 +845,7 @@ Item {
                     kind: 0
                     height: 40
                     iconName: "check"
-                    text: "确定"
+                    text: qsTr("确定")
                     dimmed: !page.sel
                     onClicked: page.commit()
                 }
@@ -934,7 +934,7 @@ Item {
                             anchors.right: parent.right
                             anchors.rightMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "使用中"
+                            text: qsTr("使用中")
                             color: Theme.accent
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -954,7 +954,7 @@ Item {
                         anchors.left: parent.left
                         anchors.leftMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "浏览其他文件夹…"
+                        text: qsTr("浏览其他文件夹…")
                         color: Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 13

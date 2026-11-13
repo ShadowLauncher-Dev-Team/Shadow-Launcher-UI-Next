@@ -29,13 +29,13 @@ Item {
 
             SetGroup {
                 width: parent.width
-                title: "启动器"
+                title: qsTr("启动器")
 
                 SetRow {
                     width: parent.width
                     divider: false
-                    label: "启动器内嵌登录"
-                    desc: "在启动器窗口内完成微软登录，不弹系统浏览器"
+                    label: qsTr("启动器内嵌登录")
+                    desc: qsTr("在启动器窗口内完成微软登录，不弹系统浏览器")
                     SSwitch {
                         checked: pane.s ? pane.s.embeddedLoginEnabled : false
                         onToggled: (c) => { if (pane.s) pane.s.embeddedLoginEnabled = c }

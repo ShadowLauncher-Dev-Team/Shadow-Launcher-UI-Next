@@ -147,8 +147,8 @@ Rectangle {
                 id: dlText
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                text: tile.downloads >= 100000000 ? (tile.downloads / 100000000).toFixed(1) + "亿"
-                    : tile.downloads >= 10000 ? (tile.downloads / 10000).toFixed(0) + "万" : tile.downloads.toString()
+                text: tile.downloads >= 100000000 ? qsTr("%1 亿").arg((tile.downloads / 100000000).toFixed(1))
+                    : tile.downloads >= 10000 ? qsTr("%1 万").arg((tile.downloads / 10000).toFixed(0)) : tile.downloads.toString()
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11

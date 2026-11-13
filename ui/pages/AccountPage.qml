@@ -71,19 +71,19 @@ Item {
             page.loginPanel = false
             page.passwordInput = ""
             if (page.b) page.b.lastLoginMode = 2
-            page.flash("外置账号登录成功")
+            page.flash(qsTr("外置账号登录成功"))
         }
         function onLoginFailed(err) {
             page.profilePickOpen = false
-            page.flash("登录失败：" + (err || "未知错误"))
+            page.flash(qsTr("登录失败：%1").arg(err || qsTr("未知错误")))
         }
         function onShowProfileSelection() {
             page.profilePickOpen = true
-            page.flash("这个账号有多个角色，请选择一个")
+            page.flash(qsTr("这个账号有多个角色，请选择一个"))
         }
         function onMetaFailed(err) {
             // 元数据拉不到不影响登录，只在状态栏提示
-            page.flash("皮肤站元数据获取失败：" + (err || ""))
+            page.flash(qsTr("皮肤站元数据获取失败：%1").arg(err || ""))
         }
     }
 
@@ -92,8 +92,8 @@ Item {
         ignoreUnknownSignals: true
         function onCapeChangeFinished(ok, msg) {
             page.capeBusy = false
-            if (ok) page.flash("披风已切换")
-            else page.flash("切换失败：" + (msg || "未知错误"))
+            if (ok) page.flash(qsTr("披风已切换"))
+            else page.flash(qsTr("切换失败：%1").arg(msg || qsTr("未知错误")))
         }
         function onSkinReady() { page.refreshBusy = false }
         function onCapesReady() { page.refreshBusy = false }
@@ -102,12 +102,12 @@ Item {
         function onRefreshFinished(ok, msg) {
             page.refreshBusy = false
             refreshTimer.stop()
-            page.flash(ok ? "状态已刷新" : ("刷新失败：" + (msg || "未知错误")))
+            page.flash(ok ? qsTr("状态已刷新") : qsTr("刷新失败：%1").arg(msg || qsTr("未知错误")))
         }
         function onSkinUploadFinished(ok, msg) {
             // 不写"正在同步"之类内部说法：对用户来说上传成功就是换好了，
             // 头像重绘是后端自己的事，不该让他等一个看不见的"同步"。
-            page.flash(ok ? "皮肤已更换" : ("上传失败：" + (msg || "未知错误")))
+            page.flash(ok ? qsTr("皮肤已更换") : qsTr("上传失败：%1").arg(msg || qsTr("未知错误")))
         }
     }
 
@@ -227,26 +227,26 @@ Item {
         return b.offlineSkinPath || ""
     }
     readonly property string displayName: {
-        if (!b) return "未登录"
+        if (!b) return qsTr("未登录")
         // 选中哪条就显示哪条的名字
         if (curAcct && curAcct.name) return curAcct.name
         if (b.isOnline && b.username) return b.username
         if (hasExternal && yg && yg.username) return yg.username
         if (b.offlineUsername) return b.offlineUsername
-        return "未登录"
+        return qsTr("未登录")
     }
     readonly property string typeText: {
         // 正在登录（换号）时不显示当前账号类型，避免顶栏写着"已登录"而正文在登录
         if (loginPanel) return ""
         // 以"选中的那条账号"为准，而不是 backend 当前是谁在线。
         // 否则选中外置账号时，会被 backend.isOnline（正版还在线）抢先判成正版。
-        if (curMode === 0) return "Microsoft 正版账户"
-        if (curMode === 2) return page.externalLive ? "外置账户" : "外置账户（需重新登录）"
-        if (curMode === 1) return "离线账户"
-        if (b && b.isOnline) return "Microsoft 正版账户"
-        if (hasExternal) return "外置账户"
-        if (hasOffline) return "离线账户"
-        return "未登录"
+        if (curMode === 0) return qsTr("Microsoft 正版账户")
+        if (curMode === 2) return page.externalLive ? qsTr("外置账户") : qsTr("外置账户（需重新登录）")
+        if (curMode === 1) return qsTr("离线账户")
+        if (b && b.isOnline) return qsTr("Microsoft 正版账户")
+        if (hasExternal) return qsTr("外置账户")
+        if (hasOffline) return qsTr("离线账户")
+        return qsTr("未登录")
     }
 
     // ---- 右侧详情的"显示态" ----
@@ -274,24 +274,24 @@ Item {
         if (!page.b) return null
         var m = page.curMode
         var u = ""
-        var skinText = "未设置"
+        var skinText = qsTr("未设置")
         if (m === 2) {
             // 外置：uuid 取 YggdrasilBackend，皮肤取它的皮肤站贴图
             u = (page.yg && page.yg.uuid) ? page.yg.uuid
               : (page.curAcct && page.curAcct.uuid ? page.curAcct.uuid : "")
             var sf = (page.yg && page.yg.skinFetcher) ? page.yg.skinFetcher : null
             if (page.externalLive) {
-                skinText = (sf && sf.skinPath) ? "已同步（皮肤站）" : "未获取"
+                skinText = (sf && sf.skinPath) ? qsTr("已同步（皮肤站）") : qsTr("未获取")
             } else {
-                skinText = "需重新登录"
+                skinText = qsTr("需重新登录")
             }
         } else if (m === 1) {
             u = page.b.offlineUuid || ""
-            skinText = (page.b.offlineSkinPath || "").length > 0 ? "已同步" : "未设置"
+            skinText = (page.b.offlineSkinPath || "").length > 0 ? qsTr("已同步") : qsTr("未设置")
         } else {
             var online = page.b.isOnline === true
             u = online ? page.b.accountUuid : page.b.offlineUuid
-            skinText = (page.b.skinPath || "").length > 0 ? "已同步" : "未设置"
+            skinText = (page.b.skinPath || "").length > 0 ? qsTr("已同步") : qsTr("未设置")
         }
         return {
             name: page.displayName,
@@ -301,9 +301,9 @@ Item {
             rawHead: page.rawHeadSource,
             uuid: u ? u : "",
             skinText: skinText,
-            tokenText: (m === 0) ? ((page.b.isOnline === true) ? "已获取" : "不需要（离线）")
-                     : (m === 2) ? (page.externalLive ? "已获取（皮肤站）" : "已失效，需重新登录")
-                     : "不需要（离线）"
+            tokenText: (m === 0) ? ((page.b.isOnline === true) ? qsTr("已获取") : qsTr("不需要（离线）"))
+                     : (m === 2) ? (page.externalLive ? qsTr("已获取（皮肤站）") : qsTr("已失效，需重新登录"))
+                     : qsTr("不需要（离线）")
         }
     }
     onLoginPanelChanged: if (!page.loginPanel) page.acctView = page.buildAcctView()
@@ -318,15 +318,15 @@ Item {
     function doOffline() {
         if (!page.b) return
         var n = page.offlineInput.trim()
-        if (n.length === 0) { page.flash("先填一个用户名"); return }
+        if (n.length === 0) { page.flash(qsTr("先填一个用户名")); return }
         page.b.lastLoginMode = 1
         page.b.offlineLogin(n)
-        page.flash("已切换到离线账户 " + n)
+        page.flash(qsTr("已切换到离线账户 %1").arg(n))
     }
     function doExternal() {
         if (!page.yg) return
         if (page.apiRootInput.length === 0 || page.emailInput.length === 0 || page.passwordInput.length === 0) {
-            page.flash("API 地址、账号、密码都要填")
+            page.flash(qsTr("API 地址、账号、密码都要填"))
             return
         }
         // 不能在认证成功之前写 lastLoginMode：
@@ -334,7 +334,7 @@ Item {
         // 失败后又被判过期 —— 用户看到的就是"一点就说过期"的死循环。
         // 改为在 onLoginSuccess 里再落 lastLoginMode。
         page.yg.login(page.apiRootInput.trim(), page.emailInput.trim(), page.passwordInput)
-        page.flash("正在登录外置账户…")
+        page.flash(qsTr("正在登录外置账户…"))
     }
 
     Component.onCompleted: {
@@ -364,8 +364,8 @@ Item {
     Connections {
         target: page.b
         enabled: page.b !== null
-        function onMicrosoftLoginSuccess() { page.loginPanel = false; page.flash("登录成功") }
-        function onMicrosoftLoginFailed(err) { page.flash("登录失败：" + err) }
+        function onMicrosoftLoginSuccess() { page.loginPanel = false; page.flash(qsTr("登录成功")) }
+        function onMicrosoftLoginFailed(err) { page.flash(qsTr("登录失败：%1").arg(err)) }
     }
 
     // ---------- 底色 ----------
@@ -408,7 +408,7 @@ Item {
             radius: 2
             height: 32
             iconName: "arrow-left"
-            text: (page.hasAccount && page.loginPanel) ? "返回账户" : "返回"
+            text: (page.hasAccount && page.loginPanel) ? qsTr("返回账户") : qsTr("返回")
             // 登录期间禁止离开本页：避免登录回调与页面切换互相踩
             dimmed: page.busy
             onClicked: {
@@ -426,7 +426,7 @@ Item {
             anchors.left: backBtn.right
             anchors.leftMargin: 14
             anchors.verticalCenter: parent.verticalCenter
-            text: "账户"
+            text: qsTr("账户")
             color: "#ffffff"
             font.family: Theme.fontFamily
             font.pixelSize: 15
@@ -454,7 +454,7 @@ Item {
                 radius: 2
                 height: 32
                 iconName: "refresh-cw"
-                text: page.refreshBusy ? "刷新中" : "刷新状态"
+                text: page.refreshBusy ? qsTr("刷新中") : qsTr("刷新状态")
                 busy: page.refreshBusy
                 // 以前这里只对「外置登录」调 validateSession()，正版账号什么都不做，
                 // 却照样提示"已刷新" —— 纯假按钮。
@@ -474,13 +474,13 @@ Item {
                         page.yg.validateSession()
                         page.refreshBusy = false
                         refreshTimer.stop()
-                        page.flash("已校验外置登录会话")
+                        page.flash(qsTr("已校验外置登录会话"))
                     } else if (page.hasOffline) {
                         if (page.acct) page.acct.refreshSkin()
                     } else {
                         page.refreshBusy = false
                         refreshTimer.stop()
-                        page.flash("当前还没有账号")
+                        page.flash(qsTr("当前还没有账号"))
                     }
                 }
             }
@@ -529,7 +529,7 @@ Item {
                 anchors.leftMargin: page.narrow ? 16 : 20
                 anchors.top: parent.top
                 anchors.topMargin: 16
-                text: page.browsingAccounts ? "账户" : "登录方式"
+                text: page.browsingAccounts ? qsTr("账户") : qsTr("登录方式")
                 color: "#ffffff"
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
@@ -615,7 +615,7 @@ Item {
                             Text {
                                 width: parent.width
                                 readonly property bool relog: !!acctRow.acct && acctRow.acct.needsRelogin === true
-                                text: relog ? "需重新登录" : (acctRow.acct ? acctRow.acct.typeText : "")
+                                text: relog ? qsTr("需重新登录") : (acctRow.acct ? acctRow.acct.typeText : "")
                                 color: relog ? Theme.warn : (acctRow.cur ? Theme.ok : Theme.imageFgFaint)
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
@@ -672,7 +672,7 @@ Item {
                         SIcon { name: "users"; size: 14; color: Theme.imageFgDim }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "添加账号"
+                            text: qsTr("添加账号")
                             color: "#cbd3de"
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
@@ -690,9 +690,9 @@ Item {
                 // 三个登录方式
                 Repeater {
                     model: [
-                        { t: "正版账户", s: "Microsoft 登录" },
-                        { t: "离线账户", s: "只用用户名" },
-                        { t: "外置登录", s: "皮肤站 / 第三方验证" }
+                        { t: qsTr("正版账户"), s: qsTr("Microsoft 登录") },
+                        { t: qsTr("离线账户"), s: qsTr("只用用户名") },
+                        { t: qsTr("外置登录"), s: qsTr("皮肤站 / 第三方验证") }
                     ]
                     delegate: Item {
                         width: menu.width
@@ -736,7 +736,7 @@ Item {
                     topPadding: 14
                     visible: page.tab === 1 && !page.browsingAccounts && page.b
                              && page.b.offlineUsernames.length > 0
-                    text: "用过的名字"
+                    text: qsTr("用过的名字")
                     color: Theme.imageFgFaint
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -985,7 +985,7 @@ Item {
                     Item {
                         width: parent.width; height: 40
                         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#101319" }
-                        Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "账号类型"; color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
+                        Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: qsTr("账号类型"); color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
                         Text { anchors.left: parent.left; anchors.leftMargin: 104; anchors.verticalCenter: parent.verticalCenter; text: page.acctView ? page.acctView.typeText : ""; color: "#d8dde5"; font.family: Theme.fontFamily; font.pixelSize: 13 }
                     }
                     Item {
@@ -1015,19 +1015,19 @@ Item {
                             height: 26
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "复制"
+                            text: qsTr("复制")
                             visible: uuidValue.value.length > 0
                             onClicked: {
                                 if (!page.b) return
                                 page.b.copyToClipboard(uuidValue.value)
-                                page.flash("已复制 UUID")
+                                page.flash(qsTr("已复制 UUID"))
                             }
                         }
                     }
                     Item {
                         width: parent.width; height: 40
                         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#101319" }
-                        Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "访问令牌"; color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
+                        Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: qsTr("访问令牌"); color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
                         Text {
                             anchors.left: parent.left; anchors.leftMargin: 104; anchors.verticalCenter: parent.verticalCenter
                             text: page.acctView ? (page.acctView.tokenText || "") : ""
@@ -1035,13 +1035,13 @@ Item {
                         }
                         Text {
                             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                            text: (page.curMode === 0 && page.acctView && page.acctView.online) ? "后台自动续期" : ""
+                            text: (page.curMode === 0 && page.acctView && page.acctView.online) ? qsTr("后台自动续期") : ""
                             color: "#79828f"; font.family: Theme.fontFamily; font.pixelSize: 11
                         }
                     }
                     Item {
                         width: parent.width; height: 40
-                        Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "皮肤"; color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
+                        Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: qsTr("皮肤"); color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
                         Text {
                             anchors.left: parent.left; anchors.leftMargin: 104; anchors.verticalCenter: parent.verticalCenter
                             text: page.acctView ? page.acctView.skinText : ""
@@ -1069,7 +1069,7 @@ Item {
                             anchors.left: parent.left
                             anchors.bottom: parent.bottom
                             anchors.bottomMargin: 8
-                            text: "皮肤"
+                            text: qsTr("皮肤")
                             color: "#ffffff"
                             font.family: Theme.fontFamily
                             font.pixelSize: 13
@@ -1084,7 +1084,7 @@ Item {
                         Text {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "模型"
+                            text: qsTr("模型")
                             color: "#6d7684"
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
@@ -1095,7 +1095,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             width: 180
                             itemHeight: 26
-                            items: ["经典", "纤细"]
+                            items: [qsTr("经典"), qsTr("纤细")]
                             currentIndex: page.skinModelShown
                             onActivated: (i) => page.skinModelIndex = i
                         }
@@ -1108,7 +1108,7 @@ Item {
                         Text {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "皮肤文件"
+                            text: qsTr("皮肤文件")
                             color: "#6d7684"
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
@@ -1119,7 +1119,7 @@ Item {
                             anchors.right: pickBtn.left
                             anchors.rightMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
-                            text: page.skinFile.length > 0 ? page.skinFile : "未选择（64x64 或 64x32 PNG）"
+                            text: page.skinFile.length > 0 ? page.skinFile : qsTr("未选择（64x64 或 64x32 PNG）")
                             color: page.skinFile.length > 0 ? "#d8dde5" : "#5d6673"
                             elide: Text.ElideMiddle
                             font.family: Theme.fontFamily
@@ -1133,7 +1133,7 @@ Item {
                             height: 26
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "选择"
+                            text: qsTr("选择")
                             onClicked: { if (page.b) page.b.browseSkin() }
                         }
                     }
@@ -1154,7 +1154,7 @@ Item {
                                 kind: 0
                                 radius: 2
                                 height: 30
-                                text: page.skinBusy ? "上传中" : "应用皮肤"
+                                text: page.skinBusy ? qsTr("上传中") : qsTr("应用皮肤")
                                 busy: page.skinBusy
                                 // 没选文件时按钮必须真的点不动，并且视觉上要看得出来。
                                 // SButton 的 dimmed 本身就带"不可点 + 变灰"语义，
@@ -1163,7 +1163,7 @@ Item {
                                 onClicked: {
                                     if (!page.b) return
                                     page.b.saveWardrobeSettings(page.skinFile, "", page.skinModelShown === 1 ? 2 : 1)
-                                    page.flash(page.hasOnline ? "正在上传皮肤" : "皮肤已保存到本地")
+                                    page.flash(page.hasOnline ? qsTr("正在上传皮肤") : qsTr("皮肤已保存到本地"))
                                 }
                             }
                             SButton {
@@ -1171,7 +1171,7 @@ Item {
                                 kind: 1
                                 radius: 2
                                 height: 30
-                                text: "导出当前皮肤"
+                                text: qsTr("导出当前皮肤")
                                 onClicked: { if (page.b) page.b.saveSkinToFile() }
                             }
                         }
@@ -1186,7 +1186,7 @@ Item {
                             anchors.left: parent.left
                             anchors.bottom: parent.bottom
                             anchors.bottomMargin: 8
-                            text: "披风"
+                            text: qsTr("披风")
                             color: "#ffffff"
                             font.family: Theme.fontFamily
                             font.pixelSize: 13
@@ -1197,13 +1197,13 @@ Item {
                             anchors.left: capeTitle.right
                             anchors.leftMargin: 10
                             anchors.baseline: capeTitle.baseline
-                            text: page.capeBusy ? "正在切换..."
+                            text: page.capeBusy ? qsTr("正在切换...")
                                   : (page.capes.length > 0
-                                     ? "点击切换，蓝框为当前使用"
+                                     ? qsTr("点击切换，蓝框为当前使用")
                                      : (page.capeLoadingVisible
-                                        ? "正在获取…"
+                                        ? qsTr("正在获取…")
                                         : (page.capesAsked
-                                           ? "此账号没有可用披风"
+                                           ? qsTr("此账号没有可用披风")
                                            : "")))
                             color: "#5d6673"
                             font.family: Theme.fontFamily
@@ -1317,7 +1317,7 @@ Item {
                                               : Theme.accent
                                 Text {
                                     anchors.centerIn: parent
-                                    text: offTile.anyActive ? "卸下" : "未穿戴"
+                                    text: offTile.anyActive ? qsTr("卸下") : qsTr("未穿戴")
                                     color: offTile.anyActive ? "#98a1ae" : "#cfe0ff"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 11
@@ -1348,7 +1348,7 @@ Item {
                         radius: 2
                         height: 34
                         iconName: "x"
-                        text: "移除此账号"
+                        text: qsTr("移除此账号")
                         danger: true
                         visible: page.b && page.b.accounts && page.b.accounts.length > 0 && page.b.currentAccount >= 0
                         onClicked: {
@@ -1356,7 +1356,7 @@ Item {
                             var i = page.b.currentAccount
                             if (i < 0) return
                             page.b.removeAccount(i)
-                            page.flash("已移除该账号")
+                            page.flash(qsTr("已移除该账号"))
                         }
                     }
                 }
@@ -1387,14 +1387,14 @@ Item {
                 }
                 Text {
                     width: parent.width
-                    text: "需重新登录"
+                    text: qsTr("需重新登录")
                     color: Theme.warn
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
                 Text {
                     width: parent.width
-                    text: "这个账号的登录凭据已经失效\n（可能过期、或在别处登录过）。重新登录一次即可继续使用。"
+                    text: qsTr("这个账号的登录凭据已经失效\n（可能过期、或在别处登录过）。重新登录一次即可继续使用。")
                     color: Theme.imageFgDim
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
@@ -1410,7 +1410,7 @@ Item {
                         kind: 0
                         radius: 2
                         height: 34
-                        text: "重新登录"
+                        text: qsTr("重新登录")
                         onClicked: {
                             var a = page.reloginAcct
                             if (!a) return
@@ -1425,14 +1425,14 @@ Item {
                         radius: 2
                         height: 34
                         iconName: "x"
-                        text: "移除此账号"
+                        text: qsTr("移除此账号")
                         danger: true
                         onClicked: {
                             var a = page.reloginAcct
                             if (!page.b || !a) return
                             page.b.removeAccount(a.index)
                             page.reloginIdx = -1
-                            page.flash("已移除该账号")
+                            page.flash(qsTr("已移除该账号"))
                         }
                     }
                 }
@@ -1464,7 +1464,7 @@ Item {
                         NumberAnimation { target: tabShift0; property: "y"; from: 8; to: 0; duration: Theme.durBase; easing.type: Theme.easeEnter }
                     }
                     Text {
-                        text: "用 Microsoft 账号登录"
+                        text: qsTr("用 Microsoft 账号登录")
                         color: "#ffffff"
                         font.family: Theme.fontFamily
                         font.pixelSize: 20
@@ -1472,7 +1472,7 @@ Item {
                     }
                     Text {
                         width: parent.width
-                        text: "登录后可在正版服务器上玩，也会同步你的皮肤。"
+                        text: qsTr("登录后可在正版服务器上玩，也会同步你的皮肤。")
                         color: "#9fb4cf"
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -1483,7 +1483,7 @@ Item {
                         kind: 0
                         height: 40
                         iconName: page.busy ? "x" : "globe"
-                        text: page.busy ? "取消登录" : "开始登录"
+                        text: page.busy ? qsTr("取消登录") : qsTr("开始登录")
                         busy: page.busy
                         onClicked: { if (page.busy) page.cancelMicrosoft(); else page.startMicrosoft() }
                     }
@@ -1526,7 +1526,7 @@ Item {
                             spacing: 3
                             Text {
                                 width: parent.width
-                                text: page.busy ? "正在登录 Microsoft 账号" : "登录状态"
+                                text: page.busy ? qsTr("正在登录 Microsoft 账号") : qsTr("登录状态")
                                 color: "#dbe6f5"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
@@ -1562,7 +1562,7 @@ Item {
                         NumberAnimation { target: tabShift1; property: "y"; from: 8; to: 0; duration: Theme.durBase; easing.type: Theme.easeEnter }
                     }
                     Text {
-                        text: "离线账户"
+                        text: qsTr("离线账户")
                         color: "#ffffff"
                         font.family: Theme.fontFamily
                         font.pixelSize: 20
@@ -1570,7 +1570,7 @@ Item {
                     }
                     Text {
                         width: parent.width
-                        text: "只填一个用户名，不需要密码。"
+                        text: qsTr("只填一个用户名，不需要密码。")
                         color: "#9fb4cf"
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -1600,7 +1600,7 @@ Item {
                             Text {
                                 anchors.fill: parent
                                 visible: offlineField.text.length === 0
-                                text: "用户名"
+                                text: qsTr("用户名")
                                 color: Theme.imageFgFaint
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 13
@@ -1613,7 +1613,7 @@ Item {
                         kind: 0
                         height: 40
                         iconName: "play"
-                        text: "使用这个用户名"
+                        text: qsTr("使用这个用户名")
                         dimmed: page.offlineInput.trim().length === 0
                         onClicked: page.doOffline()
                     }
@@ -1634,7 +1634,7 @@ Item {
                         NumberAnimation { target: tabShift2; property: "y"; from: 8; to: 0; duration: Theme.durBase; easing.type: Theme.easeEnter }
                     }
                     Text {
-                        text: "外置登录"
+                        text: qsTr("外置登录")
                         color: "#ffffff"
                         font.family: Theme.fontFamily
                         font.pixelSize: 20
@@ -1642,7 +1642,7 @@ Item {
                     }
                     Text {
                         width: parent.width
-                        text: "填皮肤站的 API 地址与账号（如 LittleSkin）。"
+                        text: qsTr("填皮肤站的 API 地址与账号（如 LittleSkin）。")
                         color: "#9fb4cf"
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -1651,8 +1651,8 @@ Item {
                     Repeater {
                         model: [
                             { ph: "https://littleskin.cn/api/yggdrasil", key: 0 },
-                            { ph: "邮箱", key: 1 },
-                            { ph: "密码", key: 2 }
+                            { ph: qsTr("邮箱"), key: 1 },
+                            { ph: qsTr("密码"), key: 2 }
                         ]
                         delegate: Rectangle {
                             width: page.narrow ? 260 : 320
@@ -1706,7 +1706,7 @@ Item {
                         kind: 0
                         height: 40
                         iconName: "globe"
-                        text: "登录"
+                        text: qsTr("登录")
                         onClicked: page.doExternal()
                     }
 
@@ -1718,7 +1718,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "选择角色"
+                            text: qsTr("选择角色")
                             color: "#ffffff"
                             font.family: Theme.fontFamily
                             font.pixelSize: 13
@@ -1759,7 +1759,7 @@ Item {
                             kind: 1
                             radius: 2
                             height: 30
-                            text: "取消"
+                            text: qsTr("取消")
                             onClicked: {
                                 if (page.yg) page.yg.cancelLogin()
                                 page.profilePickOpen = false

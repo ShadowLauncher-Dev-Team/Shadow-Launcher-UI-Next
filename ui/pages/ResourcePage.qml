@@ -75,7 +75,7 @@ Item {
         var keys = []
         for (var key in set) keys.push(key)
         keys.sort()
-        var out = [{ label: "全部加载器", value: "" }]
+        var out = [{ label: qsTr("全部加载器"), value: "" }]
         for (var n = 0; n < keys.length; ++n)
             out.push({ label: keys[n].charAt(0).toUpperCase() + keys[n].slice(1), value: keys[n] })
         return out
@@ -214,7 +214,7 @@ Item {
             spacing: 8
 
             Repeater {
-                model: [{ t: "全部来源", v: 0 }, { t: "Modrinth", v: 1 }, { t: "CurseForge", v: 2 }]
+                model: [{ t: qsTr("全部来源"), v: 0 }, { t: "Modrinth", v: 1 }, { t: "CurseForge", v: 2 }]
                 delegate: Rectangle {
                     Layout.preferredHeight: 28
                     implicitWidth: srcTxt.implicitWidth + 22
@@ -243,8 +243,8 @@ Item {
             // ── 筛选下拉：选项来自本轮实际返回的数据，不写死 ──
             LoaderDropdown {
                 visible: page.loaderOptions.length > 1
-                label: "加载器"
-                placeholder: "全部加载器"
+                label: qsTr("加载器")
+                placeholder: qsTr("全部加载器")
                 current: page.loader
                 options: page.loaderOptions
                 onPicked: (v) => { page.loader = v; page.doSearch(0) }
@@ -252,19 +252,19 @@ Item {
 
             LoaderDropdown {
                 visible: page.tabIndex === 1
-                label: "环境"
-                placeholder: "全部环境"
+                label: qsTr("环境")
+                placeholder: qsTr("全部环境")
                 current: page.env
-                options: [{ label: "全部环境", value: "" }, { label: "客户端", value: "client" }, { label: "服务端", value: "server" }]
+                options: [{ label: qsTr("全部环境"), value: "" }, { label: qsTr("客户端"), value: "client" }, { label: qsTr("服务端"), value: "server" }]
                 onPicked: (v) => { page.env = v; page.doSearch(0) }
             }
 
             LoaderDropdown {
                 visible: page.tabIndex === 5
-                label: "排序"
-                placeholder: "下载量"
+                label: qsTr("排序")
+                placeholder: qsTr("下载量")
                 current: page.dpSort
-                options: [{ label: "下载量", value: "" }, { label: "最近更新", value: "updated" }, { label: "名称", value: "name" }]
+                options: [{ label: qsTr("下载量"), value: "" }, { label: qsTr("最近更新"), value: "updated" }, { label: qsTr("名称"), value: "name" }]
                 onPicked: (v) => { page.dpSort = v; page.doSearch(0) }
             }
 
@@ -278,7 +278,7 @@ Item {
                 Text {
                     id: resetTxt
                     anchors.centerIn: parent
-                    text: "重置"
+                    text: qsTr("重置")
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -447,7 +447,7 @@ Item {
             visible: listModel.count === 0 && !page.busy
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: page.busy ? "正在加载…" : "没有找到匹配的资源"
+                text: page.busy ? qsTr("正在加载…") : qsTr("没有找到匹配的资源")
                 color: page.busy ? Theme.fg2 : Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 12
@@ -462,7 +462,7 @@ Item {
                 border.color: Theme.line2
                 Text {
                     anchors.centerIn: parent
-                    text: "重新加载"
+                    text: qsTr("重新加载")
                     color: Theme.fg2
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -496,7 +496,7 @@ Item {
                 border.width: 1; border.color: Theme.line2
                 Text {
                     anchors.centerIn: parent
-                    text: "上一页"
+                    text: qsTr("上一页")
                     color: page.pageNo > 0 ? Theme.fg2 : Theme.fg3
                     font.family: Theme.fontFamily; font.pixelSize: 11
                 }
@@ -513,7 +513,7 @@ Item {
                 border.width: 1; border.color: Theme.line2
                 Text {
                     anchors.centerIn: parent
-                    text: "下一页"
+                    text: qsTr("下一页")
                     color: page.hasMore() ? Theme.fg2 : Theme.fg3
                     font.family: Theme.fontFamily; font.pixelSize: 11
                 }

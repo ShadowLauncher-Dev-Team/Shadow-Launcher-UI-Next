@@ -68,14 +68,14 @@ Item {
 
             SetGroup {
                 width: parent.width
-                title: "Java 运行时"
+                title: qsTr("Java 运行时")
 
                 SetRow {
                     width: parent.width
                     minHeight: 62
-                    label: "当前 Java"
+                    label: qsTr("当前 Java")
                     desc: pane.autoMode
-                          ? "自动选择：启动时按版本需要的 Java 主版本匹配"
+                          ? qsTr("自动选择：启动时按版本需要的 Java 主版本匹配")
                           : (pane.s ? pane.s.javaPath : "")
 
                     // 版本徽标：高度对齐右侧 32 高的按钮，圆角 6（与项目里其它 badge 一致）。
@@ -103,9 +103,9 @@ Item {
                                 id: javaTag
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: pane.autoMode
-                                      ? "自动"
+                                      ? qsTr("自动")
                                       : ((pane.s && pane.s.javaReady)
-                                         ? ("Java " + pane.s.javaMajor) : "未就绪")
+                                         ? qsTr("Java %1").arg(pane.s.javaMajor) : qsTr("未就绪"))
                                 color: pane.autoMode ? Theme.fg2
                                                      : ((pane.s && pane.s.javaReady) ? Theme.ok : Theme.warn)
                                 font.family: Theme.fontFamily
@@ -118,7 +118,7 @@ Item {
                         kind: 1
                         radius: 2
                         height: 32
-                        text: "浏览"
+                        text: qsTr("浏览")
                         enabled: !pane.busy
                         onClicked: { if (pane.s) pane.s.browseJava() }
                     }
@@ -127,15 +127,15 @@ Item {
                 SetRow {
                     width: parent.width
                     divider: false
-                    label: "重新扫描"
+                    label: qsTr("重新扫描")
                     desc: pane.busy
-                          ? "正在扫描常见安装目录与 PATH…"
-                          : "扫描常见的 Java 安装位置；扫描不会自动改动你当前的选择"
+                          ? qsTr("正在扫描常见安装目录与 PATH…")
+                          : qsTr("扫描常见的 Java 安装位置；扫描不会自动改动你当前的选择")
                     SButton {
                         kind: 1
                         radius: 2
                         height: 32
-                        text: pane.busy ? "扫描中" : "重新扫描"
+                        text: pane.busy ? qsTr("扫描中") : qsTr("重新扫描")
                         enabled: !pane.busy
                         onClicked: {
                             if (!pane.s) return
@@ -151,7 +151,7 @@ Item {
 
             SetGroup {
                 width: parent.width
-                title: "Java 选择"
+                title: qsTr("Java 选择")
 
                 // 「自动选择」置顶：手动指定过任何一个 Java 之后，
                 // 原来没有任何入口能回到"让启动器自己挑"（影报的第 2 条）。
@@ -190,7 +190,7 @@ Item {
                         anchors.right: parent.right
                         anchors.rightMargin: 18
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "自动选择（推荐）— 按每个版本需要的 Java 主版本匹配"
+                        text: qsTr("自动选择（推荐）— 按每个版本需要的 Java 主版本匹配")
                         elide: Text.ElideRight
                         color: pane.autoMode ? Theme.fg : Theme.fg2
                         font.family: Theme.fontFamily
@@ -298,7 +298,7 @@ Item {
                         anchors.left: parent.left
                         anchors.leftMargin: 18
                         anchors.verticalCenter: parent.verticalCenter
-                        text: pane.busy ? "正在扫描…" : "还没有检测结果，点上面的「重新扫描」"
+                        text: pane.busy ? qsTr("正在扫描…") : qsTr("还没有检测结果，点上面的「重新扫描」")
                         color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -316,12 +316,12 @@ Item {
 
             SetGroup {
                 width: parent.width
-                title: "内存分配"
+                title: qsTr("内存分配")
 
                 SetRow {
                     width: parent.width
-                    label: "自动分配"
-                    desc: "按物理内存可用量推荐一个值，不用手动调"
+                    label: qsTr("自动分配")
+                    desc: qsTr("按物理内存可用量推荐一个值，不用手动调")
                     SSwitch {
                         checked: pane.s ? pane.s.autoMemoryEnabled : true
                         onToggled: (c) => { if (pane.s) pane.s.setAutoMemoryEnabled(c) }
@@ -330,8 +330,8 @@ Item {
 
                 SetRow {
                     width: parent.width
-                    label: "最小内存"
-                    desc: "JVM 起始堆大小（-Xms）"
+                    label: qsTr("最小内存")
+                    desc: qsTr("JVM 起始堆大小（-Xms）")
                     SSlider {
                         width: 240
                         enabled: pane.s ? !pane.s.autoMemoryEnabled : false
@@ -355,11 +355,11 @@ Item {
                 SetRow {
                     width: parent.width
                     divider: false
-                    label: "最大内存"
+                    label: qsTr("最大内存")
                     desc: pane.mem && pane.mem.total
-                          ? ("物理内存 " + pane.mem.total + " MB · 可用 " + pane.mem.available
-                             + " MB · 推荐 " + pane.mem.recommended + " MB")
-                          : "JVM 最大堆大小（-Xmx）"
+                          ? qsTr("物理内存 %1 MB · 可用 %2 MB · 推荐 %3 MB")
+                                .arg(pane.mem.total).arg(pane.mem.available).arg(pane.mem.recommended)
+                          : qsTr("JVM 最大堆大小（-Xmx）")
                     SSlider {
                         width: 240
                         enabled: pane.s ? !pane.s.autoMemoryEnabled : false
@@ -385,7 +385,7 @@ Item {
                 width: parent.width
                 kind: "info"
                 icon: "info"
-                text: "自动分配开启时下面的滑块不可调；关掉它才能手动指定上下限。"
+                text: qsTr("自动分配开启时下面的滑块不可调；关掉它才能手动指定上下限。")
             }
         }
     }

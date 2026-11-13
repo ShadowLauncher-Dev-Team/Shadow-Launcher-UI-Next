@@ -45,20 +45,20 @@ Item {
             pane.resultOk = allPassed
             if (pane.failedFiles.length === 0 && allPassed) pane.failedFiles = []
             if (pane.toast)
-                pane.toast.show(allPassed ? "校验通过" : ("发现 " + pane.failedFiles.length + " 个文件异常"))
+                pane.toast.show(allPassed ? qsTr("校验通过") : qsTr("发现 %1 个文件异常").arg(pane.failedFiles.length))
         }
     }
 
     function statusTitle() {
-        if (pane.verifying) return "正在校验…"
-        if (!pane.hasResult) return "尚未校验此版本"
-        if (pane.failedFiles.length > 0) return "发现 " + pane.failedFiles.length + " 个文件异常"
-        return "未发现异常"
+        if (pane.verifying) return qsTr("正在校验…")
+        if (!pane.hasResult) return qsTr("尚未校验此版本")
+        if (pane.failedFiles.length > 0) return qsTr("发现 %1 个文件异常").arg(pane.failedFiles.length)
+        return qsTr("未发现异常")
     }
     function statusSub() {
-        if (pane.verifying) return "正在逐个核对版本文件，可随时取消"
-        if (!pane.hasResult) return "校验会逐个核对版本文件是否齐全"
-        return "本次扫描 " + pane.totalCount + " 个文件"
+        if (pane.verifying) return qsTr("正在逐个核对版本文件，可随时取消")
+        if (!pane.hasResult) return qsTr("校验会逐个核对版本文件是否齐全")
+        return qsTr("本次扫描 %1 个文件").arg(pane.totalCount)
     }
 
     Flickable {
@@ -163,8 +163,8 @@ Item {
                         }
                         Text {
                             text: pane.totalCount > 0
-                                  ? ("已扫描 " + pane.checkedCount + " / " + pane.totalCount + " 个文件")
-                                  : "正在统计文件…"
+                                  ? qsTr("已扫描 %1 / %2 个文件").arg(pane.checkedCount).arg(pane.totalCount)
+                                  : qsTr("正在统计文件…")
                             color: Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -189,7 +189,7 @@ Item {
                         kind: 1
                         radius: 2
                         iconName: "refresh-cw"
-                        text: "重新校验"
+                        text: qsTr("重新校验")
                         enabled: !pane.verifying
                         // visible 跟着 opacity 走：淡出后彻底不再接收 hover/点击，
                         // 否则隐藏的按钮会把 hover 状态带到下一次出现
@@ -206,7 +206,7 @@ Item {
                             pane.hasResult = false
                             pane.verifyingLocal = true
                             pane.b.verifyVersion(pane.versionId)
-                            if (pane.toast) pane.toast.show("开始校验版本文件", -1, "info", true)
+                            if (pane.toast) pane.toast.show(qsTr("开始校验版本文件"), -1, "info", true)
                         }
                     }
                     SButton {
@@ -215,7 +215,7 @@ Item {
                         kind: 1
                         radius: 2
                         iconName: "x"
-                        text: "取消"
+                        text: qsTr("取消")
                         enabled: pane.verifying
                         visible: opacity > 0
                         opacity: pane.verifying ? 1 : 0
@@ -240,7 +240,7 @@ Item {
                     spacing: 12
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "共 " + pane.failedFiles.length + " 项待修复"
+                        text: qsTr("共 %1 项待修复").arg(pane.failedFiles.length)
                         color: Theme.fg2
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -249,11 +249,11 @@ Item {
                         kind: 0
                         height: 30
                         radius: 2
-                        text: "修复"
+                        text: qsTr("修复")
                         onClicked: {
                             if (!pane.b) return
                             pane.b.repairVersion(pane.versionId)
-                            if (pane.toast) pane.toast.show("已开始修复，进度见「下载进度」")
+                            if (pane.toast) pane.toast.show(qsTr("已开始修复，进度见「下载进度」"))
                         }
                     }
                 }
@@ -262,7 +262,7 @@ Item {
             // ── 异常文件 ──
             SCard {
                 width: col.width
-                title: "异常文件"
+                title: qsTr("异常文件")
                 visible: pane.failedFiles.length > 0
                 Repeater {
                     model: pane.failedFiles.slice(0, 8)
@@ -286,7 +286,7 @@ Item {
                     topPadding: 6
                     bottomPadding: pane.failedFiles.length > 8 ? 10 : 0
                     visible: pane.failedFiles.length > 8
-                    text: "另有 " + (pane.failedFiles.length - 8) + " 项未列出"
+                    text: qsTr("另有 %1 项未列出").arg(pane.failedFiles.length - 8)
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -296,7 +296,7 @@ Item {
             // ── 版本操作 ──
             SCard {
                 width: col.width
-                title: "版本操作"
+                title: qsTr("版本操作")
                 Row {
                     topPadding: 4
                     bottomPadding: 12
@@ -305,25 +305,25 @@ Item {
                         kind: 1
                         height: 32
                         radius: 2
-                        text: "打开版本目录"
+                        text: qsTr("打开版本目录")
                         onClicked: if (pane.b) pane.b.openVersionDir(pane.versionId)
                     }
                     SButton {
                         kind: 1
                         height: 32
                         radius: 2
-                        text: "克隆版本"
+                        text: qsTr("克隆版本")
                         onClicked: {
                             if (!pane.b) return
                             var ok = pane.b.cloneVersion(pane.versionId)
-                            if (pane.toast) pane.toast.show(ok ? "已创建副本" : "克隆失败")
+                            if (pane.toast) pane.toast.show(ok ? qsTr("已创建副本") : qsTr("克隆失败"))
                         }
                     }
                     SButton {
                         kind: 1
                         height: 32
                         radius: 2
-                        text: "重命名"
+                        text: qsTr("重命名")
                         onClicked: {
                             pane.renameText = pane.versionId
                             pane.renaming = true
@@ -333,7 +333,7 @@ Item {
                         kind: 1
                         height: 32
                         radius: 2
-                        text: "导出用户数据"
+                        text: qsTr("导出用户数据")
                         onClicked: saveDialog.open()
                     }
                 }
@@ -357,11 +357,11 @@ Item {
                         danger: true
                         height: 32
                         radius: 2
-                        text: "删除该版本"
+                        text: qsTr("删除该版本")
                         onClicked: {
                             if (!pane.b) return
                             pane.b.deleteVersion(pane.versionId)
-                            if (pane.toast) pane.toast.show("已删除版本")
+                            if (pane.toast) pane.toast.show(qsTr("已删除版本"))
                         }
                     }
                 }
@@ -390,7 +390,7 @@ Item {
             padding: 16
             spacing: 12
             Text {
-                text: "重命名版本"
+                text: qsTr("重命名版本")
                 color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
@@ -399,7 +399,7 @@ Item {
             SInput {
                 width: parent.width - 32
                 text: pane.renameText
-                placeholder: "新的版本 ID"
+                placeholder: qsTr("新的版本 ID")
                 onEdited: (t) => pane.renameText = t
             }
             Row {
@@ -408,20 +408,20 @@ Item {
                     kind: 1
                     height: 30
                     radius: 2
-                    text: "取消"
+                    text: qsTr("取消")
                     onClicked: pane.renaming = false
                 }
                 SButton {
                     kind: 0
                     height: 30
                     radius: 2
-                    text: "确认"
+                    text: qsTr("确认")
                     dimmed: pane.renameText.length === 0
                     onClicked: {
                         if (!pane.b || pane.renameText.length === 0) return
                         var ok = pane.b.renameVersion(pane.versionId, pane.renameText)
                         pane.renaming = false
-                        if (pane.toast) pane.toast.show(ok ? "已重命名" : "重命名失败")
+                        if (pane.toast) pane.toast.show(ok ? qsTr("已重命名") : qsTr("重命名失败"))
                     }
                 }
             }
@@ -430,7 +430,7 @@ Item {
 
     FileDialog {
         id: saveDialog
-        title: "导出用户数据"
+        title: qsTr("导出用户数据")
         fileMode: FileDialog.SaveFile
         nameFilters: ["Zip 压缩包 (*.zip)"]
         defaultSuffix: "zip"
@@ -439,7 +439,7 @@ Item {
             var gameDir = pane.s ? pane.s.getVersionGameDir(pane.versionId) : ""
             pane.b.userDataBackend.exportUserData(gameDir, pane.versionId,
                 String(selectedFile).replace(/^file:\/\//, ""))
-            if (pane.toast) pane.toast.show("已开始导出用户数据")
+            if (pane.toast) pane.toast.show(qsTr("已开始导出用户数据"))
         }
     }
 }

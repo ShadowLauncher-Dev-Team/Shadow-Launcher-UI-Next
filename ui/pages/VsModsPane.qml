@@ -90,12 +90,12 @@ Item {
                 SField {
                     width: 250
                     height: 36
-                    label: "搜索 Mod"
+                    label: qsTr("搜索 Mod")
                     onEdited: (v) => pane.query = v
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: pane.allMods.length + " 个 · 启用 " + pane.enabledCount
+                    text: qsTr("%1 个 · 启用 %2").arg(pane.allMods.length).arg(pane.enabledCount)
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -105,10 +105,10 @@ Item {
                     height: 32
                     radius: 2
                     iconName: "refresh-cw"
-                    text: "刷新"
+                    text: qsTr("刷新")
                     onClicked: {
                         pane.reload(false, true)
-                        if (pane.toast) pane.toast.show("正在重新扫描 Mod", -1, "info", true)
+                        if (pane.toast) pane.toast.show(qsTr("正在重新扫描 Mod"), -1, "info", true)
                     }
                 }
                 SButton {
@@ -116,7 +116,7 @@ Item {
                     height: 32
                     radius: 2
                     iconName: "folder-open"
-                    text: "文件夹"
+                    text: qsTr("文件夹")
                     onClicked: if (pane.b) pane.b.openModsFolder(pane.versionId)
                 }
             }
@@ -128,14 +128,14 @@ Item {
                     kind: 1
                     height: 32
                     radius: 2
-                    text: "全部启用"
+                    text: qsTr("全部启用")
                     onClicked: pane.bulk(true)
                 }
                 SButton {
                     kind: 1
                     height: 32
                     radius: 2
-                    text: "全部禁用"
+                    text: qsTr("全部禁用")
                     onClicked: pane.bulk(false)
                 }
                 SButton {
@@ -143,7 +143,7 @@ Item {
                     height: 32
                     radius: 2
                     iconName: "package-plus"
-                    text: "导入"
+                    text: qsTr("导入")
                     onClicked: importDialog.open()
                 }
             }
@@ -299,7 +299,7 @@ Item {
                     opacity: visible ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
-                    text: pane.allMods.length === 0 ? "此版本还没有 Mod" : "没有匹配的 Mod"
+                    text: pane.allMods.length === 0 ? qsTr("此版本还没有 Mod") : qsTr("没有匹配的 Mod")
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
@@ -311,7 +311,7 @@ Item {
                     opacity: visible ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
-                    text: "正在读取 Mod 列表…"
+                    text: qsTr("正在读取 Mod 列表…")
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
@@ -326,25 +326,25 @@ Item {
         var total = pane.allMods.length
         pane.loading = true
         if (pane.toast)
-            pane.toast.show((enable ? "正在启用 " : "正在禁用 ") + total + " 个 Mod…", -1, "info", true)
+            pane.toast.show((enable ? qsTr("正在启用 %1 个 Mod…") : qsTr("正在禁用 %1 个 Mod…")).arg(total), -1, "info", true)
         Qt.callLater(function() {
             var n = pane.b.setAllModsEnabled(pane.versionId, enable)
             if (pane.toast)
-                pane.toast.show((enable ? "已启用 " : "已禁用 ") + n + " / " + total + " 个 Mod", -1, "info", true)
+                pane.toast.show((enable ? qsTr("已启用 %1 / %2 个 Mod") : qsTr("已禁用 %1 / %2 个 Mod")).arg(n).arg(total), -1, "info", true)
             pane.reload()
         })
     }
 
     FileDialog {
         id: importDialog
-        title: "导入 Mod"
+        title: qsTr("导入 Mod")
         fileMode: FileDialog.OpenFile
         nameFilters: ["Mod 文件 (*.jar)", "所有文件 (*)"]
         onAccepted: {
             if (!pane.b) return
             var p = String(selectedFile).replace(/^file:\/\//, "")
             var ok = pane.b.importMod(p, pane.versionId)
-            if (pane.toast) pane.toast.show(ok ? "已导入" : "导入失败", -1, ok ? "info" : "error", true)
+            if (pane.toast) pane.toast.show(ok ? qsTr("已导入") : qsTr("导入失败"), -1, ok ? "info" : "error", true)
             pane.reload()
         }
     }

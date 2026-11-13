@@ -161,7 +161,9 @@ void SettingsBackend::loadSettings()
     m_maxMemoryMB = qBound(m_minMemoryMB, s.value(QStringLiteral("memory/maxMB"), 2048).toInt(), 32768);
     m_autoMemory = s.value(QStringLiteral("memory/autoMemory"), true).toBool();
     m_embeddedLoginEnabled = s.value(QStringLiteral("general/embeddedLogin"), false).toBool();
-    m_languageIndex = qBound(0, s.value(QStringLiteral("general/languageIndex"), 0).toInt(), 8);
+    // 0=简体 1=繁体(港澳) 2=繁体(台湾)；只有这三项真正有词条。
+    // 旧版本填过 3(English) 之类无效值一律归 0，否则 UI 与后端语义会错位。
+    m_languageIndex = qBound(0, s.value(QStringLiteral("general/languageIndex"), 0).toInt(), 2);
     m_launchLanguageIndex = m_languageIndex;  // snapshot for restart detection
     m_lastLaunchedVersion = s.value(QStringLiteral("general/lastVersion"), QString()).toString();
     m_lastSelectedVersion = s.value(QStringLiteral("general/lastSelectedVersion"), QString()).toString();

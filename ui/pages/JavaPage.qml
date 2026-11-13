@@ -52,13 +52,13 @@ Item {
     readonly property bool zipInstalling: zipBusy && (selVersion.length === 0 || installingMajor === selVersion)
     readonly property bool anyBusy: installingMajor.length > 0 || msiBusy
 
-    readonly property var stepNames: ["Java 版本", "JRE / JDK", "CPU 架构", "操作系统", "分发形式"]
+    readonly property var stepNames: [qsTr("Java 版本"), "JRE / JDK", qsTr("CPU 架构"), qsTr("操作系统"), qsTr("分发形式")]
     readonly property var stepHints: [
-        "选启动器/游戏需要的主版本。拿不准就选 17——覆盖目前绝大多数整合包与 Forge。",
-        "JDK 含 JRE 与编译工具；JRE 只有运行环境。启动器一键安装用 JDK（JRE 缺少 jdk.crypto.ec，部分加载器会崩）。",
-        "绝大多数机器是 x64。32 位系统选 x32；注意 Java 21 及以上没有 32 位版本。",
-        "选择你的操作系统。",
-        "便携版（ZIP）解压后由启动器托管，不写注册表；安装版（MSI）装进系统并写入 PATH / JAVA_HOME。"
+        qsTr("选启动器/游戏需要的主版本。拿不准就选 17——覆盖目前绝大多数整合包与 Forge。"),
+        qsTr("JDK 含 JRE 与编译工具；JRE 只有运行环境。启动器一键安装用 JDK（JRE 缺少 jdk.crypto.ec，部分加载器会崩）。"),
+        qsTr("绝大多数机器是 x64。32 位系统选 x32；注意 Java 21 及以上没有 32 位版本。"),
+        qsTr("选择你的操作系统。"),
+        qsTr("便携版（ZIP）解压后由启动器托管，不写注册表；安装版（MSI）装进系统并写入 PATH / JAVA_HOME。")
     ]
 
     // ── 生命周期 ──
@@ -78,7 +78,7 @@ Item {
         scanning = false
         if (scanToastPending) {
             scanToastPending = false
-            if (toast) toast.show("已重新扫描：" + (localChips().length) + " 个运行时")
+            if (toast) toast.show(qsTr("已重新扫描：%1 个运行时").arg(localChips().length))
         }
     }
 
@@ -148,8 +148,8 @@ Item {
     // ── 传输条（ZIP 安装 / MSI 保存共用一条，永不随换步消失）──
     function transferName() {
         if (anyBusy && transLabel.length > 0) return transLabel
-        if (zipBusy) return "Java " + selVersion + " · 便携版（ZIP）"
-        if (msiBusy) return pendingMsiName.length > 0 ? pendingMsiName : "MSI 安装包"
+        if (zipBusy) return qsTr("Java %1 · 便携版（ZIP）").arg(selVersion)
+        if (msiBusy) return pendingMsiName.length > 0 ? pendingMsiName : qsTr("MSI 安装包")
         return ""
     }
     function transferPct() {
@@ -180,10 +180,8 @@ Item {
         var major = majorOfVersion(selVersion)
         if (major <= 0) return
         installingMajor = selVersion
-        transLabel = "Java " + selVersion + " · "
-                   + (selType.length > 0 ? String(selType).toUpperCase() : "JDK") + " · "
-                   + selArch + " · 便携版（ZIP）"
-        installStatus = "正在下载 Java " + selVersion + "…"
+        transLabel = qsTr("Java %1 · %2 · %3 · 便携版（ZIP）").arg(selVersion).arg(selType.length > 0 ? String(selType).toUpperCase() : "JDK").arg(selArch)
+        installStatus = qsTr("正在下载 Java %1…").arg(selVersion)
         java.installJavaRuntime(major, selType.length > 0 ? selType : "jdk", selArch)
     }
 
@@ -257,16 +255,16 @@ Item {
             page.msiPct = 100
             if (ok) {
                 page.msiSavedPath = path
-                if (page.toast) page.toast.show("已保存到 " + path)
+                if (page.toast) page.toast.show(qsTr("已保存到 %1").arg(path))
             } else {
-                if (page.toast) page.toast.show("下载失败")
+                if (page.toast) page.toast.show(qsTr("下载失败"))
             }
         }
     }
 
     FileDialog {
         id: msiDialog
-        title: "选择 MSI 保存位置"
+        title: qsTr("选择 MSI 保存位置")
         fileMode: FileDialog.SaveFile
         nameFilters: ["Windows 安装包 (*.msi)", "所有文件 (*)"]
         onAccepted: {
@@ -456,7 +454,7 @@ Item {
                     Text {
                         id: cancelText
                         anchors.centerIn: parent
-                        text: "取消"
+                        text: qsTr("取消")
                         color: Theme.fg2
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -587,7 +585,7 @@ Item {
                             Text {
                                 id: editText
                                 anchors.centerIn: parent
-                                text: "修改"
+                                text: qsTr("修改")
                                 color: Theme.accent
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
@@ -635,7 +633,7 @@ Item {
                         Item { width: 1; height: 1 }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "选完上一步后展开"
+                            text: qsTr("选完上一步后展开")
                             color: Theme.line2
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -760,7 +758,7 @@ Item {
                         spacing: 10
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "已选"
+                            text: qsTr("已选")
                             color: Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -793,7 +791,7 @@ Item {
                             Text {
                                 id: reselectText
                                 anchors.centerIn: parent
-                                text: "重新选择"
+                                text: qsTr("重新选择")
                                 color: Theme.accent
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
@@ -832,7 +830,7 @@ Item {
                 Text {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "选择分发形式 · " + page.javaFilesCount() + " 个文件"
+                    text: qsTr("选择分发形式 · %1 个文件").arg(page.javaFilesCount())
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -841,7 +839,7 @@ Item {
                 Text {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "来源 mirrors.tuna.tsinghua.edu.cn"
+                    text: qsTr("来源 mirrors.tuna.tsinghua.edu.cn")
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -964,7 +962,7 @@ Item {
                                 }
                                 Text {
                                     anchors.right: parent.right
-                                    text: "正在保存…"
+                                    text: qsTr("正在保存…")
                                     color: Theme.fg3
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 11
@@ -979,8 +977,8 @@ Item {
                                 width: 104
                                 height: 34
                                 visible: modelData.isZip ? !page.zipInstalling : !page.msiBusy
-                                text: modelData.isZip ? (page.zipInstalled ? "重新安装" : "下载并安装")
-                                                      : "下载"
+                                text: modelData.isZip ? (page.zipInstalled ? qsTr("重新安装") : qsTr("下载并安装"))
+                                                      : qsTr("下载")
                                 enabled: !page.anyBusy
                                 onClicked: {
                                     if (modelData.isZip) page.startZipInstall(modelData.name)
@@ -1056,7 +1054,7 @@ Item {
                     width: parent.width
                     spacing: 8
                     Text {
-                        text: "本机已检测到"
+                        text: qsTr("本机已检测到")
                         color: Theme.accent
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -1090,7 +1088,7 @@ Item {
                         Text {
                             id: rescanText
                             anchors.centerIn: parent
-                            text: page.scanning ? "扫描中…" : "重新扫描"
+                            text: page.scanning ? qsTr("扫描中…") : qsTr("重新扫描")
                             color: page.scanning ? Theme.fg3 : Theme.accent
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -1197,12 +1195,12 @@ Item {
 
     function optionSub(s, v) {
         if (s === 0) {
-            if (String(v) === "8") return "旧版整合包"
-            if (String(v) === "17") return "主流"
+            if (String(v) === "8") return qsTr("旧版整合包")
+            if (String(v) === "17") return qsTr("主流")
             if (String(v) === "21") return "1.20.5+"
-            if (String(v) === "25") return "最新"
+            if (String(v) === "25") return qsTr("最新")
         }
-        if (s === 2 && String(v) === java.cpuArch) return "已识别"
+        if (s === 2 && String(v) === java.cpuArch) return qsTr("已识别")
         return ""
     }
 
@@ -1252,9 +1250,9 @@ Item {
     }
 
     function fileDesc(f) {
-        if (f.ext === "zip") return "便携版（Portable）· 解压后由启动器托管，不写注册表"
-        if (f.ext === "msi") return "安装版（Installer）· 写入系统目录与 PATH / JAVA_HOME，需管理员权限"
-        return "归档包 · 解压后手动指定给启动器"
+        if (f.ext === "zip") return qsTr("便携版（Portable）· 解压后由启动器托管，不写注册表")
+        if (f.ext === "msi") return qsTr("安装版（Installer）· 写入系统目录与 PATH / JAVA_HOME，需管理员权限")
+        return qsTr("归档包 · 解压后手动指定给启动器")
     }
 
     function fmtSize(n) {
@@ -1273,7 +1271,7 @@ Item {
         }
         for (var k = 0; k < cached.length; ++k) {
             var c = cached[k]
-            out.push({ label: String(c.major) + " · 启动器托管" + (c.isJdk ? " JDK" : ""),
+            out.push({ label: qsTr("%1 · 启动器托管%2").arg(String(c.major)).arg(c.isJdk ? " JDK" : ""),
                        warn: !c.complete })
         }
         return out
@@ -1281,7 +1279,7 @@ Item {
 
     function localSummary() {
         var n = detected.length + cached.length
-        if (n === 0) return "未发现可用 Java —— 建议装一个"
-        return n + " 个运行时 · 你可能并不需要下载"
+        if (n === 0) return qsTr("未发现可用 Java —— 建议装一个")
+        return qsTr("%1 个运行时 · 你可能并不需要下载").arg(n)
     }
 }

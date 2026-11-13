@@ -46,11 +46,11 @@ Item {
 
     function crashTypeText() {
         var t = (crash && crash.type) ? String(crash.type) : ""
-        if (t === "precheck") return "启动前检查未通过"
-        if (t === "jvm") return "JVM 崩溃"
-        if (t === "minecraft") return "游戏崩溃"
+        if (t === "precheck") return qsTr("启动前检查未通过")
+        if (t === "jvm") return qsTr("JVM 崩溃")
+        if (t === "minecraft") return qsTr("游戏崩溃")
         if (t.length > 0) return t
-        return root.failReason.length > 0 ? "启动失败" : ""
+        return root.failReason.length > 0 ? qsTr("启动失败") : ""
     }
     function crashReasonText() {
         var r = (crash && crash.reason) ? String(crash.reason) : ""
@@ -63,17 +63,17 @@ Item {
         var parts = []
         for (var i = 0; i < n; ++i) parts.push(String(list[i]))
         var s = parts.join(" · ")
-        if (list.length > n) s += " 等 " + list.length + " 个"
+        if (list.length > n) s += " " + qsTr("等 %1 个").arg(list.length)
         return s
     }
     function crashKvRows() {
         var rows = []
         var t = crashTypeText()
-        if (t.length > 0) rows.push({ k: "类型", v: t })
+        if (t.length > 0) rows.push({ k: qsTr("类型"), v: t })
         var ts = (crash && crash.timestamp) ? String(crash.timestamp) : ""
-        if (ts.length > 0) rows.push({ k: "时间", v: ts.replace("T", " ") })
+        if (ts.length > 0) rows.push({ k: qsTr("时间"), v: ts.replace("T", " ") })
         var m = crashModsText()
-        if (m.length > 0) rows.push({ k: "疑似", v: m })
+        if (m.length > 0) rows.push({ k: qsTr("疑似"), v: m })
         return rows
     }
     function crashSuggestions() {
@@ -94,8 +94,8 @@ Item {
 
     function repairValueText(r) {
         var d = (r.detail === undefined || r.detail === null) ? "" : String(r.detail)
-        if (r.state === 2) return "已就绪"
-        if (r.state === 3) return d.length > 0 ? d : "失败"
+        if (r.state === 2) return qsTr("已就绪")
+        if (r.state === 3) return d.length > 0 ? d : qsTr("失败")
         var pct = Math.round(r.progress)
         return pct + "%" + (d.length > 0 ? " · " + d : "")
     }
@@ -111,10 +111,10 @@ Item {
     z: 200
 
     function statusText(s) {
-        if (s === 2) return "完成"
-        if (s === 1) return "进行中"
-        if (s === 3) return "失败"
-        if (s === 4) return "跳过"
+        if (s === 2) return qsTr("完成")
+        if (s === 1) return qsTr("进行中")
+        if (s === 3) return qsTr("失败")
+        if (s === 4) return qsTr("跳过")
         return ""
     }
     function statusColor(s) {
@@ -220,8 +220,8 @@ Item {
                     Behavior on anchors.leftMargin {
                         NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
                     }
-                    text: root.failed ? ("启动失败 · " + root.verName)
-                                      : ("启动 " + root.verName)
+                    text: root.failed ? qsTr("启动失败 · %1").arg(root.verName)
+                                      : qsTr("启动 %1").arg(root.verName)
                     color: Theme.fg
                     font.family: Theme.fontFamily
                     font.pixelSize: 14
@@ -240,8 +240,8 @@ Item {
                     anchors.right: parent.right
                     anchors.top: parent.top
                     visible: root.failed
-                    text: root.crashAnalyzing ? "正在分析日志…"
-                                               : (root.crashReady ? "崩溃报告已生成" : "")
+                    text: root.crashAnalyzing ? qsTr("正在分析日志…")
+                                               : (root.crashReady ? qsTr("崩溃报告已生成") : "")
                     color: root.crashAnalyzing ? Theme.warn : Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -250,7 +250,7 @@ Item {
                     anchors.right: parent.right
                     anchors.top: parent.top
                     visible: !root.failed
-                    text: "第 " + root.stepNo + " / " + root.stepTotal + " 步"
+                    text: qsTr("第 %1 / %2 步").arg(root.stepNo).arg(root.stepTotal)
                     color: Theme.line3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -274,7 +274,7 @@ Item {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.topMargin: 12
-                    text: "总进度"
+                    text: qsTr("总进度")
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -351,7 +351,7 @@ Item {
                                 anchors.left: parent.left
                                 anchors.leftMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: "准备运行环境"
+                                text: qsTr("准备运行环境")
                                 color: Theme.fg
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
@@ -359,7 +359,7 @@ Item {
                             Text {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: root.repairPendingCount() + " 项待补全"
+                                text: qsTr("%1 项待补全").arg(root.repairPendingCount())
                                 color: Theme.line3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
@@ -432,8 +432,8 @@ Item {
                             height: 18
                             verticalAlignment: Text.AlignVCenter
                             text: root.repairPendingCount() > 0
-                                  ? "下载完成后会自动继续启动"
-                                  : "补全完成，正在继续启动"
+                                  ? qsTr("下载完成后会自动继续启动")
+                                  : qsTr("补全完成，正在继续启动")
                             color: Theme.accentText
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -574,7 +574,7 @@ Item {
                             anchors.right: parent.right
                             anchors.rightMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
-                            text: root.crashAnalyzing ? "正在分析日志，请稍候…" : root.crashReasonText()
+                            text: root.crashAnalyzing ? qsTr("正在分析日志，请稍候…") : root.crashReasonText()
                             color: Theme.dangerText
                             font.family: "Consolas, Menlo, monospace"
                             font.pixelSize: 12
@@ -622,7 +622,7 @@ Item {
                         height: 14
                         visible: root.crashSuggestions().length > 0
                         verticalAlignment: Text.AlignVCenter
-                        text: "建议"
+                        text: qsTr("建议")
                         color: Theme.line3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -674,7 +674,7 @@ Item {
                     // 失败态只显示导出结果；没有结果就保持空，不塞无关文案
                     text: root.failed
                           ? root.exportHint
-                          : (root.done ? "游戏已启动" : "正在按阶段推进，取消后可重新启动")
+                          : (root.done ? qsTr("游戏已启动") : qsTr("正在按阶段推进，取消后可重新启动"))
                     color: root.failed ? Theme.fg3 : Theme.line3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -691,18 +691,18 @@ Item {
                         kind: 1
                         radius: 2
                         height: 32
-                        text: "导出日志"
+                        text: qsTr("导出日志")
                         onClicked: {
                             if (!root.b) return
                             var p = root.b.exportCrashLogs("")
-                            root.exportHint = (p && p.length > 0) ? ("已导出: " + p) : "导出失败，可先查看日志文件夹"
+                            root.exportHint = (p && p.length > 0) ? qsTr("已导出: %1").arg(p) : qsTr("导出失败，可先查看日志文件夹")
                         }
                     }
                     SButton {
                         kind: 1
                         radius: 2
                         height: 32
-                        text: "查看日志"
+                        text: qsTr("查看日志")
                         onClicked: { if (root.b) root.b.openLauncherLogsFolder() }
                     }
                     SButton {
@@ -710,7 +710,7 @@ Item {
                         radius: 2
                         height: 32
                         danger: true
-                        text: "重试"
+                        text: qsTr("重试")
                         onClicked: { if (root.b && root.verName.length > 0) root.b.launch(root.verName, root.b.activeAccountOnline) }
                     }
                 }
@@ -723,7 +723,7 @@ Item {
                     radius: 2
                     height: 32
                     visible: !root.failed && !root.done
-                    text: "取消启动"
+                    text: qsTr("取消启动")
                     onClicked: { if (root.b) root.b.cancelLaunch() }
                 }
             }

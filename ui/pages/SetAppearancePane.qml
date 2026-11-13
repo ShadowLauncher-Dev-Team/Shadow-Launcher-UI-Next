@@ -142,24 +142,24 @@ Item {
             // ── 配色方案 ──────────────────────────────────────
             SetGroup {
                 width: parent.width
-                title: "配色方案"
+                title: qsTr("配色方案")
                 opacity: pane.solo ? 0 : 1
                 Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                 enabled: !pane.solo
 
                 SetStack {
                     width: parent.width
-                    label: "主题"
+                    label: qsTr("主题")
                     // 白色方案暂时下线（影：切过去发现大量不适配）。恢复时把下面 model 里的白色项
                     // 加回来，并把 SettingsBackend 的 kEnableLightScheme 改成 true —— 两处一起开。
-                    desc: "当前提供深色主题。所有文字都与背景保持足够对比，不会出现文字与背景同色。"
+                    desc: qsTr("当前提供深色主题。所有文字都与背景保持足够对比，不会出现文字与背景同色。")
 
                     Row {
                         spacing: 12
 
                         Repeater {
                             model: [
-                                { id: "dark",  name: "黑色",  bg: "#0d1016", card: "#12151c", fg: "#e8ebf2", fg2: "#98a1ae", line: "#2b3240" }
+                                { id: "dark",  name: qsTr("黑色"),  bg: "#0d1016", card: "#12151c", fg: "#e8ebf2", fg2: "#98a1ae", line: "#2b3240" }
                             ]
 
                             delegate: Item {
@@ -211,7 +211,7 @@ Item {
 
                                     Text {
                                         width: parent.width
-                                        text: "正文示例 The quick brown fox"
+                                        text: qsTr("正文示例 The quick brown fox")
                                         color: modelData.fg
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 12
@@ -219,7 +219,7 @@ Item {
                                     }
                                     Text {
                                         width: parent.width
-                                        text: "次要文字 / 说明"
+                                        text: qsTr("次要文字 / 说明")
                                         color: modelData.fg2
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
@@ -252,7 +252,7 @@ Item {
                                     onClicked: {
                                         if (!pane.b) return
                                         pane.b.setColorScheme(modelData.id)
-                                        if (pane.toast) pane.toast.show("已切换到" + modelData.name + "配色", 1800)
+                                        if (pane.toast) pane.toast.show(qsTr("已切换到「%1」配色").arg(modelData.name), 1800)
                                     }
                                 }
                             }
@@ -264,16 +264,16 @@ Item {
             // ── 启动页图片 ────────────────────────────────────
             SetGroup {
                 width: parent.width
-                title: "启动页图片"
+                title: qsTr("启动页图片")
                 bare: pane.solo
 
                 SetStack {
                     width: parent.width
-                    label: "图片来源"
+                    label: qsTr("图片来源")
                     opacity: pane.solo ? 0 : 1
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     enabled: !pane.solo
-                    desc: "启动器自带的默认图永久保留；导入的图片会留在这里，每张各自记住自己的取景，随时切回来。"
+                    desc: qsTr("启动器自带的默认图永久保留；导入的图片会留在这里，每张各自记住自己的取景，随时切回来。")
 
                     // 图库：内置预设 + 每张导入的图 + 「选择本地图片」。
                     // 用 Flow 而不是 Row：导入多张时自动换行，不会把卡片挤到可视区外。
@@ -349,7 +349,7 @@ Item {
                                     onClicked: {
                                         if (!pane.b) return
                                         pane.b.applyBgPreset(modelData.id)
-                                        if (pane.toast) pane.toast.show("已使用「" + modelData.name + "」", 1800)
+                                        if (pane.toast) pane.toast.show(qsTr("已使用「%1」").arg(modelData.name), 1800)
                                     }
                                 }
                             }
@@ -434,7 +434,7 @@ Item {
                                             onClicked: {
                                                 if (!pane.b) return
                                                 pane.b.removeBgImage(modelData.id)
-                                                if (pane.toast) pane.toast.show("已移除「" + modelData.name + "」", 1800)
+                                                if (pane.toast) pane.toast.show(qsTr("已移除「%1」").arg(modelData.name), 1800)
                                             }
                                         }
                                     }
@@ -455,7 +455,7 @@ Item {
                                     onClicked: {
                                         if (!pane.b) return
                                         pane.b.applyBgPreset(modelData.id)
-                                        if (pane.toast) pane.toast.show("已使用「" + modelData.name + "」", 1800)
+                                        if (pane.toast) pane.toast.show(qsTr("已使用「%1」").arg(modelData.name), 1800)
                                     }
                                 }
                             }
@@ -485,7 +485,7 @@ Item {
                                     }
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
-                                        text: "选择本地图片"
+                                        text: qsTr("选择本地图片")
                                         color: Theme.fg2
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
@@ -500,7 +500,7 @@ Item {
                                     if (!pane.b) return
                                     // 每次选择都会**追加**到图库（同内容自动去重），不覆盖已导入的
                                     if (pane.b.chooseBgImage()) {
-                                        if (pane.toast) pane.toast.show("已加入图库并启用", 2000)
+                                        if (pane.toast) pane.toast.show(qsTr("已加入图库并启用"), 2000)
                                     }
                                 }
                             }
@@ -512,8 +512,8 @@ Item {
                     width: parent.width
                     divider: false
                     bare: pane.solo
-                    label: "取景"
-                    desc: "在预览框内拖动调整位置；按住 Ctrl 滚轮或拖动下方滑块缩放。预览框与启动页同比例，框里看到的就是启动页实际显示的范围。"
+                    label: qsTr("取景")
+                    desc: qsTr("在预览框内拖动调整位置；按住 Ctrl 滚轮或拖动下方滑块缩放。预览框与启动页同比例，框里看到的就是启动页实际显示的范围。")
 
                     SBgImage {
                         id: preview
@@ -568,12 +568,12 @@ Item {
                             kind: 1
                             radius: 2
                             height: 30
-                            text: "重置取景"
+                            text: qsTr("重置取景")
                             onClicked: {
                                 if (!pane.b) return
                                 pane.b.resetBgView()
                                 pane.syncFromBackend()
-                                if (pane.toast) pane.toast.show("取景已重置", 1600)
+                                if (pane.toast) pane.toast.show(qsTr("取景已重置"), 1600)
                             }
                         }
 
@@ -581,12 +581,12 @@ Item {
                             kind: 1
                             radius: 2
                             height: 30
-                            text: "恢复默认背景"
+                            text: qsTr("恢复默认背景")
                             onClicked: {
                                 if (!pane.b) return
                                 pane.b.restoreDefaultBg()
                                 pane.syncFromBackend()
-                                if (pane.toast) pane.toast.show("已恢复默认背景", 1800)
+                                if (pane.toast) pane.toast.show(qsTr("已恢复默认背景"), 1800)
                             }
                         }
                     }
@@ -599,7 +599,7 @@ Item {
                 icon: "image"
                 opacity: pane.solo ? 0 : 1
                 Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
-                text: "支持 PNG / JPG / WEBP / BMP。图片会被复制到启动器数据目录，删除或移动原文件不会影响显示。"
+                text: qsTr("支持 PNG / JPG / WEBP / BMP。图片会被复制到启动器数据目录，删除或移动原文件不会影响显示。")
             }
         }
     }

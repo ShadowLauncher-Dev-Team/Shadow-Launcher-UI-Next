@@ -29,15 +29,15 @@ Item {
 
             SetGroup {
                 width: parent.width
-                title: "下载源"
+                title: qsTr("下载源")
 
                 SetRow {
                     width: parent.width
-                    label: "游戏文件下载源"
-                    desc: "影响 MC 本体与资源文件；加载器另有独立策略"
+                    label: qsTr("游戏文件下载源")
+                    desc: qsTr("影响 MC 本体与资源文件；加载器另有独立策略")
                     SSegmented {
                         itemHeight: 28
-                        items: ["镜像优先", "官方优先", "自动切换"]
+                        items: [qsTr("镜像优先"), qsTr("官方优先"), qsTr("自动切换")]
                         currentIndex: pane.s ? pane.s.fileDownloadSource : 1
                         onActivated: (i) => { if (pane.s) pane.s.fileDownloadSource = i }
                     }
@@ -46,11 +46,11 @@ Item {
                 SetRow {
                     width: parent.width
                     divider: false
-                    label: "资源列表源"
-                    desc: "Mod / 光影 / 资源包等的索引与详情"
+                    label: qsTr("资源列表源")
+                    desc: qsTr("Mod / 光影 / 资源包等的索引与详情")
                     SSegmented {
                         itemHeight: 28
-                        items: ["镜像优先", "官方优先", "自动切换"]
+                        items: [qsTr("镜像优先"), qsTr("官方优先"), qsTr("自动切换")]
                         currentIndex: pane.s ? pane.s.listDownloadSource : 1
                         onActivated: (i) => { if (pane.s) pane.s.listDownloadSource = i }
                     }
@@ -59,12 +59,12 @@ Item {
 
             SetGroup {
                 width: parent.width
-                title: "速度与并发"
+                title: qsTr("速度与并发")
 
                 SetRow {
                     width: parent.width
-                    label: "最大并发连接"
-                    desc: "太高会被下载站限流，16 是稳妥值"
+                    label: qsTr("最大并发连接")
+                    desc: qsTr("太高会被下载站限流，16 是稳妥值")
                     SSlider {
                         width: 260
                         from: 1
@@ -88,8 +88,8 @@ Item {
 
                 SetRow {
                     width: parent.width
-                    label: "限速"
-                    desc: "关掉表示不限速，占满带宽"
+                    label: qsTr("限速")
+                    desc: qsTr("关掉表示不限速，占满带宽")
                     SSwitch {
                         checked: pane.s ? pane.s.downloadSpeedLimitMB > 0 : false
                         onToggled: (c) => {
@@ -103,7 +103,7 @@ Item {
                 SetRow {
                     width: parent.width
                     divider: false
-                    label: "速度上限"
+                    label: qsTr("速度上限")
                     desc: "1.0 – 20.0 MB/s"
                     SSlider {
                         width: 260
@@ -120,7 +120,8 @@ Item {
                         width: 62
                         horizontalAlignment: Text.AlignRight
                         text: (pane.s && pane.s.downloadSpeedLimitMB > 0
-                               ? pane.s.downloadSpeedLimitMB.toFixed(1) + " MB/s" : "不限速")
+                               ? pane.s.downloadSpeedLimitMB.toFixed(1) + " MB/s"
+                               : qsTr("不限速"))
                         color: Theme.fg2
                         font.family: Theme.fontFamily
                         font.pixelSize: 12

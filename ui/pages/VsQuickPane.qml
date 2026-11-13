@@ -24,7 +24,7 @@ Item {
     function openDir(fn, okText, failText) {
         if (!pane.b) return
         var ok = pane.b[fn](pane.versionId)
-        if (pane.toast) pane.toast.show(ok ? okText : (failText || "打开失败"), -1, ok ? "info" : "error", true)
+        if (pane.toast) pane.toast.show(ok ? okText : (failText || qsTr("打开失败")), -1, ok ? "info" : "error", true)
     }
     function copyText(t, okText) {
         if (!pane.b) return
@@ -55,7 +55,7 @@ Item {
 
             // ── 文件夹 ──
             Text {
-                text: "文件夹"
+                text: qsTr("文件夹")
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -64,10 +64,10 @@ Item {
             }
             Repeater {
                 model: [
-                    { label: "版本文件夹",   icon: "folder",     fn: "openVersionDir",       tip: "打开" },
-                    { label: "存档文件夹",   icon: "box",        fn: "openSavesFolder",      tip: "打开" },
-                    { label: "截图文件夹",   icon: "camera",     fn: "openScreenshotsFolder", tip: "打开" },
-                    { label: "Mod 文件夹",   icon: "puzzle",     fn: "openModsFolder",       tip: "打开" }
+                    { label: qsTr("版本文件夹"),   icon: "folder",     fn: "openVersionDir",       tip: qsTr("打开") },
+                    { label: qsTr("存档文件夹"),   icon: "box",        fn: "openSavesFolder",      tip: qsTr("打开") },
+                    { label: qsTr("截图文件夹"),   icon: "camera",     fn: "openScreenshotsFolder", tip: qsTr("打开") },
+                    { label: qsTr("Mod 文件夹"),   icon: "puzzle",     fn: "openModsFolder",       tip: qsTr("打开") }
                 ]
                 delegate: QuickTile {
                     width: col.width
@@ -75,7 +75,7 @@ Item {
                     label: modelData.label
                     iconName: modelData.icon
                     tipText: modelData.tip
-                    onActivated: pane.openDir(modelData.fn, "已打开" + modelData.label, modelData.fail)
+                    onActivated: pane.openDir(modelData.fn, qsTr("已打开 %1").arg(modelData.label), modelData.fail)
                 }
             }
 
@@ -83,7 +83,7 @@ Item {
 
             // ── 日志 ──
             Text {
-                text: "日志"
+                text: qsTr("日志")
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -92,9 +92,9 @@ Item {
             }
             Repeater {
                 model: [
-                    { label: "logs 日志",   icon: "folder",     fn: "openLogsFolder",  tip: "打开" },
-                    { label: "最新启动日志", icon: "file-text",  fn: "openLatestLog",   tip: "打开" },
-                    { label: "崩溃日志",     icon: "alert-octagon", fn: "openCrashLog", tip: "打开", fail: "这个版本还没有崩溃日志" }
+                    { label: qsTr("logs 日志"),   icon: "folder",     fn: "openLogsFolder",  tip: qsTr("打开") },
+                    { label: qsTr("最新启动日志"), icon: "file-text",  fn: "openLatestLog",   tip: qsTr("打开") },
+                    { label: qsTr("崩溃日志"),     icon: "alert-octagon", fn: "openCrashLog", tip: qsTr("打开"), fail: qsTr("这个版本还没有崩溃日志") }
                 ]
                 delegate: QuickTile {
                     // 行号接着上一组往下排，整页是一条连续波浪，不按分组重新计时
@@ -103,7 +103,7 @@ Item {
                     label: modelData.label
                     iconName: modelData.icon
                     tipText: modelData.tip
-                    onActivated: pane.openDir(modelData.fn, "已打开" + modelData.label, modelData.fail)
+                    onActivated: pane.openDir(modelData.fn, qsTr("已打开 %1").arg(modelData.label), modelData.fail)
                 }
             }
 
@@ -111,7 +111,7 @@ Item {
 
             // ── 其他 ──
             Text {
-                text: "其他"
+                text: qsTr("其他")
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -120,8 +120,8 @@ Item {
             }
             Repeater {
                 model: [
-                    { label: "复制版本路径", icon: "copy", tip: "复制" },
-                    { label: "导出启动脚本", icon: "terminal", tip: "导出" }
+                    { label: qsTr("复制版本路径"), icon: "copy", tip: qsTr("复制") },
+                    { label: qsTr("导出启动脚本"), icon: "terminal", tip: qsTr("导出") }
                 ]
                 delegate: QuickTile {
                     width: col.width
@@ -132,7 +132,7 @@ Item {
                     onActivated: {
                         if (index === 0) {
                             var p = pane.b ? pane.b.copyVersionPath(pane.versionId) : ""
-                            if (pane.toast) pane.toast.show(p ? "已复制版本路径" : "复制失败：版本不存在")
+                            if (pane.toast) pane.toast.show(p ? qsTr("已复制版本路径") : qsTr("复制失败：版本不存在"))
                         } else {
                             if (!pane.b) return
                             var s = pane.b.settings()
@@ -143,7 +143,7 @@ Item {
                                         s.versionHighPerfGpu(pane.versionId))
                             if (!scriptText || scriptText.length === 0) {
                                 if (pane.toast)
-                                    pane.toast.show("导出失败：请检查 Java 是否就绪", -1, "error", true)
+                                    pane.toast.show(qsTr("导出失败：请检查 Java 是否就绪"), -1, "error", true)
                                 return
                             }
                             pane.pendingExport = scriptText
@@ -155,7 +155,7 @@ Item {
     }
     FileDialog {
         id: exportDialog
-        title: "导出启动脚本"
+        title: qsTr("导出启动脚本")
         fileMode: FileDialog.SaveFile
         nameFilters: ["批处理脚本 (*.bat)"]
         defaultSuffix: "bat"
@@ -166,7 +166,7 @@ Item {
             var ok = pane.b.saveTextFile(target, text)
             pane.pendingExport = null
             if (pane.toast)
-                pane.toast.show(ok ? "已导出到 " + target : "保存失败，请换一个位置再试", -1, ok ? "info" : "error", true)
+                pane.toast.show(ok ? qsTr("已导出到 %1").arg(target) : qsTr("保存失败，请换一个位置再试"), -1, ok ? "info" : "error", true)
         }
         onRejected: pane.pendingExport = null
     }
@@ -178,7 +178,7 @@ Item {
         id: tile
         property string label: ""
         property string iconName: "folder"
-        property string tipText: "打开"
+        property string tipText: qsTr("打开")
         // 全页连续行号（文件夹 0-3 / 日志 4-6 / 其他 7-8），入场按它错峰
         property int order: 0
         signal activated()

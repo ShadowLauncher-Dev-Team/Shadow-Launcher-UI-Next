@@ -20,18 +20,18 @@ Item {
 
     // 左栏行：t = "g" 分组小字 / "i" 分区项
     readonly property var rows: [
-        { t: "i", k: "quick",    label: "快捷入口",   icon: "zap" },
-        { t: "i", k: "overview", label: "概览",       icon: "info" },
-        { t: "g", label: "启动" },
-        { t: "i", k: "launch",   label: "启动配置",   icon: "sliders-horizontal" },
-        { t: "i", k: "memory",   label: "内存设置",   icon: "cpu" },
-        { t: "g", label: "内容" },
-        { t: "i", k: "mods",     label: "Mod 管理",   icon: "puzzle" },
-        { t: "i", k: "packs",    label: "资源包",     icon: "package" },
-        { t: "i", k: "saves",    label: "存档",       icon: "box" },
-        { t: "g", label: "维护" },
-        { t: "i", k: "tools",    label: "工具与维护", icon: "wrench" },
-        { t: "i", k: "export",   label: "导出整合包", icon: "package-plus" }
+        { t: "i", k: "quick",    label: qsTr("快捷入口"),   icon: "zap" },
+        { t: "i", k: "overview", label: qsTr("概览"),       icon: "info" },
+        { t: "g", label: qsTr("启动") },
+        { t: "i", k: "launch",   label: qsTr("启动配置"),   icon: "sliders-horizontal" },
+        { t: "i", k: "memory",   label: qsTr("内存设置"),   icon: "cpu" },
+        { t: "g", label: qsTr("内容") },
+        { t: "i", k: "mods",     label: qsTr("Mod 管理"),   icon: "puzzle" },
+        { t: "i", k: "packs",    label: qsTr("资源包"),     icon: "package" },
+        { t: "i", k: "saves",    label: qsTr("存档"),       icon: "box" },
+        { t: "g", label: qsTr("维护") },
+        { t: "i", k: "tools",    label: qsTr("工具与维护"), icon: "wrench" },
+        { t: "i", k: "export",   label: qsTr("导出整合包"), icon: "package-plus" }
     ]
 
     function paneFor(k) {
@@ -107,7 +107,7 @@ Item {
             radius: 2
             height: 32
             iconName: "arrow-left"
-            text: "返回"
+            text: qsTr("返回")
             onClicked: page.close()
         }
 
@@ -118,7 +118,7 @@ Item {
             spacing: 12
 
             Text {
-                text: "版本设置"
+                text: qsTr("版本设置")
                 color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 15

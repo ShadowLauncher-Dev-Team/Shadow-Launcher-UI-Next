@@ -26,7 +26,7 @@ Item {
     property bool prefsOpen: false
     // 进设置前侧栏选中的是哪一项：退出时要还原回去，
     // 否则侧栏一直停在高亮的「设置」上（影报：从设置页出来，左侧仍显示设置页）。
-    property string prefsPrevLabel: "启动"
+    property string prefsPrevKey: "launch"
     property string settingsVersionId: ""
     property bool accountOpen: false
     // 下载页与版本页/账户页同一套：侧栏宽度收到 0，页面淡入 + 右移 24
@@ -118,8 +118,8 @@ Item {
 
         // 更新下载完成：常驻可点，点了重启并由 SLUpdater 安装
         function onUpdateReadyForRestart(version) {
-            var v = (version && version.length > 0) ? version : "新版本"
-            toastHost.showAction("更新已就绪：" + v + "，点击立即重启安装", function() {
+            var v = (version && version.length > 0) ? version : qsTr("新版本")
+            toastHost.showAction(qsTr("更新已就绪：%1，点击立即重启安装").arg(v), function() {
                 if (root.b) root.b.quitForUpdate()
             }, "success")
         }
@@ -142,8 +142,8 @@ Item {
             for (var k in root._toasted) m2[k] = root._toasted[k]
             m2[downloadId] = true
             root._toasted = m2
-            if (success) toastHost.show((displayName || "文件") + " 下载完成", 2600, "success")
-            else toastHost.show((displayName || "文件") + " 下载失败", 3200, "error")
+            if (success) toastHost.show(qsTr("%1 下载完成").arg(displayName || qsTr("文件")), 2600, "success")
+            else toastHost.show(qsTr("%1 下载失败").arg(displayName || qsTr("文件")), 3200, "error")
         }
         function onModFileDownloadFailed(downloadId, errorDetail, displayName) {
             root._dlPatch(downloadId, { state: "fail", error: errorDetail || "", speed: 0, hideAt: Date.now() + 6000 })
@@ -152,10 +152,10 @@ Item {
             for (var k in root._toasted) m3[k] = root._toasted[k]
             m3[downloadId] = true
             root._toasted = m3
-            toastHost.show((displayName || "文件") + " 下载失败：" + (errorDetail || "未知错误"), 3600, "error")
+            toastHost.show(qsTr("%1 下载失败：%2").arg(displayName || qsTr("文件")).arg(errorDetail || qsTr("未知错误")), 3600, "error")
         }
         function onModFileDownloadCancelled(downloadId, displayName) {
-            root._dlPatch(downloadId, { state: "fail", error: "已取消", speed: 0, hideAt: Date.now() + 3000 })
+            root._dlPatch(downloadId, { state: "fail", error: qsTr("已取消"), speed: 0, hideAt: Date.now() + 3000 })
         }
     }
     // 验收钩子：--update-check 延迟一点再点「检查更新」，等界面挂好、ToastHost 就绪
@@ -228,7 +228,7 @@ Item {
         // --ui-prefs [key]：全局设置页（截图/验收用；key 由 SettingsPage 自己解析 --ui-pane）
         if (Qt.application.arguments.indexOf("--ui-prefs") >= 0) {
             root.prefsOpen = true
-            sideBar.currentLabel = "设置"
+            sideBar.currentKey = "settings"
         }
         if (Qt.application.arguments.indexOf("--ui-account") >= 0) root.accountOpen = true
         // --update-check：启动后自动点一次「检查更新」（验收用，与按钮同一路径）
@@ -239,12 +239,12 @@ Item {
         if (Qt.application.arguments.indexOf("--ui-download") >= 0) {
             root.downloadOpen = true
             root.progressOpen = false
-            sideBar.currentLabel = "下载"
+            sideBar.currentKey = "download"
         }
         if (Qt.application.arguments.indexOf("--ui-progress") >= 0) {
             root.progressOpen = true
             root.downloadOpen = false
-            sideBar.currentLabel = "下载进度"
+            sideBar.currentKey = "progress"
         }
     }
 
@@ -276,43 +276,45 @@ Item {
         narrow: root.narrow
         hostWindow: root.hostWindow
         // 点击侧栏"下载"进下载页；点其它主项离开（侧栏常驻，页面内不需要返回键）
-        onNavActivated: (label) => {
-            if (label === "下载") {
+        onNavActivated: (key) => {
+            // key 是稳定标识（launch/download/multiplayer/settings/progress/help），
+            // 不是显示文案 —— 文案翻译后这些判断不能跟着变。
+            if (key === "download") {
                 // 侧栏「下载」= 下载列表页：从配置态或独立进度页回来都先回到列表
                 downloadPage.resetToList()
                 root.prefsOpen = false
                 root.downloadOpen = true
                 root.progressOpen = false
                 root.multiplayerOpen = false
-            } else if (label === "下载进度") {
+            } else if (key === "progress") {
                 // 侧栏「下载进度」：独立页面，与「下载」互不捆绑
                 root.prefsOpen = false
                 root.progressOpen = true
                 root.downloadOpen = false
                 root.multiplayerOpen = false
-                sideBar.currentLabel = "下载进度"
-            } else if (label === "联机") {
+                sideBar.currentKey = "progress"
+            } else if (key === "multiplayer") {
                 // 联机页：与下载页同级，侧栏常驻
                 root.prefsOpen = false
                 root.downloadOpen = false
                 root.progressOpen = false
                 root.multiplayerOpen = true
-            } else if (label === "设置") {
+            } else if (key === "settings") {
                 // 设置 = 全局默认值（独立全屏页）
-                // 记住进来之前停在哪一项（点「设置」时 currentLabel 已经被 SideBar 改掉了，
+                // 记住进来之前停在哪一项（点「设置」时 currentKey 已经被 SideBar 改掉了，
                 // 所以趁还没改记录原值）
-                root.prefsPrevLabel = sideBar.previousLabel
-                console.info("[ui] 进入设置，记住上一项: " + root.prefsPrevLabel)
+                root.prefsPrevKey = sideBar.previousKey
+                console.info("[ui] 进入设置，记住上一项: " + root.prefsPrevKey)
                 root.downloadOpen = false
                 root.progressOpen = false
                 root.multiplayerOpen = false
                 root.prefsOpen = true
-            } else if (label === "启动") {
+            } else if (key === "launch") {
                 root.downloadOpen = false
                 root.progressOpen = false
                 root.multiplayerOpen = false
                 root.prefsOpen = false
-            } else if (label === "帮助文档") {
+            } else if (key === "help") {
                 // 帮助文档 = 官网上的 VitePress 站点（shadowlauncher.cn/docs），
                 // 不在启动器里另做一份：内容、截图、更新节奏跟官网保持同一份，
                 // 也免得打包体积和「文档与官网不一致」的问题。
@@ -538,15 +540,15 @@ Item {
                 onClose: {
                     root.prefsOpen = false
                     // 还原侧栏选中项，否则退出后仍高亮「设置」
-                    var back = root.prefsPrevLabel
-                    sideBar.currentLabel = back
+                    var back = root.prefsPrevKey
+                    sideBar.currentKey = back
                     // 进设置时把所有页面都关掉了（设置是全屏页，声明顺序上联机/下载宿主在它前面，
                     // 不关就会被压在设置底下继续显示）。所以退出时必须**按还原的侧栏项把页面开回来** ——
                     // 之前只还原了侧栏高亮，于是「联机页进设置再退出」会变成
                     // 侧栏高亮联机、画面却是启动页（影报的正是这个）。
-                    root.multiplayerOpen = (back === "联机")
-                    root.downloadOpen = (back === "下载")
-                    root.progressOpen = (back === "下载进度")
+                    root.multiplayerOpen = (back === "multiplayer")
+                    root.downloadOpen = (back === "download")
+                    root.progressOpen = (back === "progress")
                     console.info("[ui] 退出设置，还原页面: " + back)
                 }
             }
@@ -636,7 +638,7 @@ Item {
             onOpenProgress: {
                 root.progressOpen = true
                 root.downloadOpen = false
-                sideBar.currentLabel = "下载进度"
+                sideBar.currentKey = "progress"
             }
             onOpenResourceDetail: (kind, item) => {
                 resDetail.kind = kind
@@ -726,7 +728,7 @@ Item {
                 // 下载已经在跑，直接把用户送到能看到它的地方
                 root.resDetailOpen = false
                 root.progressOpen = true
-                sideBar.currentLabel = "下载进度"
+                sideBar.currentKey = "progress"
             }
             onBack: root.resDetailOpen = false
         }

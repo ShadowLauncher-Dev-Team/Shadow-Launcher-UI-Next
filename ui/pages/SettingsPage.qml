@@ -19,13 +19,13 @@ Item {
     signal close()
 
     readonly property var rows: [
-        { k: "general",    label: "常规",         icon: "list",     desc: "界面语言与游戏内语言的写入方式。" },
-        { k: "java",       label: "Java 与内存",  icon: "cpu",      desc: "启动游戏用的 Java 运行时，以及所有版本默认分配的堆内存。" },
-        { k: "launch",     label: "启动",         icon: "play",     desc: "所有版本的默认启动参数。单个版本可在版本设置里覆盖这里任意一项。" },
-        { k: "download",   label: "下载",         icon: "download", desc: "版本文件与资源列表的来源、并发与限速。" },
-        { k: "advanced",   label: "高级",         icon: "settings", desc: "实验性开关。" },
-        { k: "appearance", label: "外观",         icon: "palette",  desc: "配色方案与启动页图片。" },
-        { k: "about",      label: "关于",         icon: "info",     desc: "版本信息、许可，以及这个启动器背后的每一个名字。" }
+        { k: "general",    label: qsTr("常规"),         icon: "list",     desc: qsTr("界面语言与游戏内语言的写入方式。") },
+        { k: "java",       label: qsTr("Java 与内存"),  icon: "cpu",      desc: qsTr("启动游戏用的 Java 运行时，以及所有版本默认分配的堆内存。") },
+        { k: "launch",     label: qsTr("启动"),         icon: "play",     desc: qsTr("所有版本的默认启动参数。单个版本可在版本设置里覆盖这里任意一项。") },
+        { k: "download",   label: qsTr("下载"),         icon: "download", desc: qsTr("版本文件与资源列表的来源、并发与限速。") },
+        { k: "advanced",   label: qsTr("高级"),         icon: "settings", desc: qsTr("实验性开关。") },
+        { k: "appearance", label: qsTr("外观"),         icon: "palette",  desc: qsTr("配色方案与启动页图片。") },
+        { k: "about",      label: qsTr("关于"),         icon: "info",     desc: qsTr("版本信息、许可，以及这个启动器背后的每一个名字。") }
     ]
 
     property string currentKey: "general"
@@ -103,7 +103,7 @@ Item {
             radius: 2
             height: 32
             iconName: "arrow-left"
-            text: "返回"
+            text: qsTr("返回")
             onClicked: page.close()
         }
 
@@ -115,7 +115,7 @@ Item {
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "设置"
+                text: qsTr("设置")
                 color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 20
@@ -123,7 +123,7 @@ Item {
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "全局默认值"
+                text: qsTr("全局默认值")
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 12

@@ -6,13 +6,17 @@ import ShadowLauncher.Next
 Item {
     id: root
     property bool narrow: false
-    property string currentLabel: "启动"
-    /// 点击前停在哪一项。currentLabel 会被点击立刻改掉，
+    // ── 选中项用**稳定 key**，不用显示文案 ──
+    // 以前这里直接存中文 label，StageShell 也拿 label 做 `=== "下载"` 判断。
+    // 一旦文案进翻译（界面语言切换），判断值会跟着变成译文，整个路由直接失效。
+    // 所以：key 是逻辑标识（永不翻译），label 才是给人看的（qsTr）。
+    property string currentKey: "launch"
+    /// 点击前停在哪一项。currentKey 会被点击立刻改掉，
     /// 外面需要「回到上一项」时只能靠这个（全局设置页退出还原用）。
-    property string previousLabel: "启动"
+    property string previousKey: "launch"
     property Window hostWindow: null
-    /// 主菜单点击（StageShell 据此切换内容区页面）
-    signal navActivated(string label)
+    /// 主菜单点击（StageShell 据此切换内容区页面）；传的是 key，不是文案
+    signal navActivated(string key)
 
     implicitWidth: narrow ? Theme.sideWNarrow : Theme.sideW
     clip: true
@@ -22,25 +26,26 @@ Item {
     // 现在整块选中态是一个对象，切页时**从旧位置滑到新位置**，方向感直接读出来。
     // 几何由每个 row 自己上报（mapToItem 到本层），因为 ColumnLayout 会重排 y。
     property var _geom: ({})
-    function reportGeom(label, item) {
+    function reportGeom(key, item) {
         var pt = item.mapToItem(root, 0, 0)
         var m = {}
         for (var k in root._geom) m[k] = root._geom[k]
-        m[label] = { y: pt.y, h: item.height }
+        m[key] = { y: pt.y, h: item.height }
         root._geom = m
     }
-    readonly property var selGeom: root._geom[root.currentLabel] || null
+    readonly property var selGeom: root._geom[root.currentKey] || null
     readonly property int rowInset: root.narrow ? 8 : 12
 
+    // key：逻辑标识（路由判断用，永不翻译）；label：显示文案（走翻译）
     readonly property var mainItems: [
-        { ic: "play",        label: "启动",     group: "main" },
-        { ic: "download",    label: "下载",     group: "main" },
-        { ic: "globe",       label: "联机",     group: "main" },
-        { ic: "settings",    label: "设置",     group: "main" }
+        { key: "launch",      ic: "play",     label: qsTr("启动"),     group: "main" },
+        { key: "download",    ic: "download", label: qsTr("下载"),     group: "main" },
+        { key: "multiplayer", ic: "globe",    label: qsTr("联机"),     group: "main" },
+        { key: "settings",    ic: "settings", label: qsTr("设置"),     group: "main" }
     ]
     readonly property var subItems: [
-        { ic: "list",     label: "下载进度", group: "sub" },
-        { ic: "book-open", label: "帮助文档", group: "sub" },
+        { key: "progress", ic: "list",      label: qsTr("下载进度"), group: "sub" },
+        { key: "help",     ic: "book-open", label: qsTr("帮助文档"), group: "sub" },
     ]
 
     Rectangle {
@@ -105,6 +110,7 @@ Item {
 
         Text {
             visible: !root.narrow
+            // 品牌名，不翻译（不加 qsTr 是有意的）
             text: "SHADOW"
             color: Theme.fg
             font.family: Theme.fontFamily
@@ -150,7 +156,7 @@ Item {
             Layout.preferredHeight: 38
             readonly property bool isMain: modelData.group === "main"
             // 子项（下载进度等）也能被高亮：选中态就是"当前导航项"
-            readonly property bool sel: root.currentLabel === modelData.label
+            readonly property bool sel: root.currentKey === modelData.key
 
             // 只画 hover 底色；选中底色由 root 的滑块统一提供
             Rectangle {
@@ -160,7 +166,7 @@ Item {
                 Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
             }
             // 几何上报：ColumnLayout 重排 / 侧栏收窄都会改 y 与高度，跟着更新滑块位置
-            function sync() { root.reportGeom(modelData.label, row) }
+            function sync() { root.reportGeom(modelData.key, row) }
             Component.onCompleted: row.sync()
             onYChanged: row.sync()
             onHeightChanged: row.sync()
@@ -196,10 +202,10 @@ Item {
                     // 主项才改高亮；子项也要发信号，否则「下载进度」这类子项完全点不动
                     // 只对主项记录：子项（下载进度等）不参与"上一项"还原
                     if (row.isMain) {
-                        root.previousLabel = root.currentLabel
-                        root.currentLabel = modelData.label
+                        root.previousKey = root.currentKey
+                        root.currentKey = modelData.key
                     }
-                    root.navActivated(modelData.label)
+                    root.navActivated(modelData.key)
                 }
             }
         }

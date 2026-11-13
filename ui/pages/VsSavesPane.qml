@@ -95,12 +95,12 @@ Item {
                 SField {
                     width: 250
                     height: 36
-                    label: "搜索存档"
+                    label: qsTr("搜索存档")
                     onEdited: (v) => pane.query = v
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: pane.saves.length + " 个存档"
+                    text: qsTr("%1 个存档").arg(pane.saves.length)
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -110,10 +110,10 @@ Item {
                     height: 32
                     radius: 2
                     iconName: "refresh-cw"
-                    text: "刷新"
+                    text: qsTr("刷新")
                     onClicked: {
                         pane.reload(false, true)
-                        if (pane.toast) pane.toast.show("正在重新读取存档", -1, "info", true)
+                        if (pane.toast) pane.toast.show(qsTr("正在重新读取存档"), -1, "info", true)
                     }
                 }
                 SButton {
@@ -121,7 +121,7 @@ Item {
                     height: 32
                     radius: 2
                     iconName: "folder-open"
-                    text: "文件夹"
+                    text: qsTr("文件夹")
                     onClicked: if (pane.b) pane.b.openSavesFolder(pane.versionId)
                 }
             }
@@ -243,7 +243,7 @@ Item {
                     danger: true
                     height: 28
                     radius: 2
-                    text: "删除"
+                    text: qsTr("删除")
                     onClicked: {
                         pane.pendingDelete = modelData.name
                         confirmPop.open()
@@ -262,7 +262,7 @@ Item {
                     opacity: visible ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
-                    text: pane.saves.length === 0 ? "此版本还没有存档" : "没有匹配的存档"
+                    text: pane.saves.length === 0 ? qsTr("此版本还没有存档") : qsTr("没有匹配的存档")
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
@@ -274,7 +274,7 @@ Item {
                     opacity: visible ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
-                    text: "正在读取存档列表…"
+                    text: qsTr("正在读取存档列表…")
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
@@ -303,7 +303,7 @@ Item {
             padding: 18
             spacing: 12
             Text {
-                text: "删除存档？"
+                text: qsTr("删除存档？")
                 color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 14
@@ -311,7 +311,7 @@ Item {
             }
             Text {
                 width: parent.width - 36
-                text: pane.pendingDelete + "\n这个操作不能撤销。"
+                text: qsTr("%1\n这个操作不能撤销。").arg(pane.pendingDelete)
                 color: Theme.fg2
                 wrapMode: Text.Wrap
                 font.family: Theme.fontFamily
@@ -323,7 +323,7 @@ Item {
                     kind: 1
                     height: 32
                     radius: 2
-                    text: "取消"
+                    text: qsTr("取消")
                     onClicked: confirmPop.close()
                 }
                 SButton {
@@ -331,11 +331,11 @@ Item {
                     danger: true
                     height: 32
                     radius: 2
-                    text: "删除"
+                    text: qsTr("删除")
                     onClicked: {
                         if (pane.b) pane.b.deleteSave(pane.pendingDelete, pane.versionId)
                         confirmPop.close()
-                        if (pane.toast) pane.toast.show("已删除存档 " + pane.pendingDelete, -1, "info", true)
+                        if (pane.toast) pane.toast.show(qsTr("已删除存档 %1").arg(pane.pendingDelete), -1, "info", true)
                         pane.pendingDelete = ""
                         // deleteSave 没有完成信号，等文件系统落定再重扫
                         Qt.callLater(function() { pane.reload(true) })

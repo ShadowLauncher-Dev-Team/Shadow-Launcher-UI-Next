@@ -75,46 +75,46 @@ Item {
     readonly property string hostName: {
         for (var i = 0; i < members.length; ++i) {
             if (String(members[i].kind) === "HOST")
-                return String(members[i].name || "房主")
+                return String(members[i].name || qsTr("房主"))
         }
-        return "房主"
+        return qsTr("房主")
     }
 
     readonly property string titleText: {
         if (errorText !== "")
-            return errorHostGone ? "房主已离开" : "出错了"
+            return errorHostGone ? qsTr("房主已离开") : qsTr("出错了")
         switch (st) {
-        case 1: return "正在创建房间…"
-        case 2: return "正在加入联机网络…"
-        case 3: return "正在查找联机中心…"
-        case 4: return "正在连接联机中心…"
-        case 7: return "房间已建好 · 还差游戏里开服"
-        case 8: return "正在验证 MC 连接…"
-        case 5: return role === 1 ? "房间已连通" : ("已加入 · " + page.hostName + " 的房间")
-        case 6: return "房间在线 · " + members.length + "/" + (mp ? mp.maxPlayers : 5)
-        default: return "和朋友一起玩"
+        case 1: return qsTr("正在创建房间…")
+        case 2: return qsTr("正在加入联机网络…")
+        case 3: return qsTr("正在查找联机中心…")
+        case 4: return qsTr("正在连接联机中心…")
+        case 7: return qsTr("房间已建好 · 还差游戏里开服")
+        case 8: return qsTr("正在验证 MC 连接…")
+        case 5: return role === 1 ? qsTr("房间已连通") : qsTr("已加入 · %1 的房间").arg(page.hostName)
+        case 6: return qsTr("房间在线 · %1/%2").arg(members.length).arg(mp ? mp.maxPlayers : 5)
+        default: return qsTr("和朋友一起玩")
         }
     }
 
     readonly property string subText: {
         if (errorText !== "") {
             if (errorHostGone)
-                return "房间已自动退出。可以重新加入，或者自己开一间。"
+                return qsTr("房间已自动退出。可以重新加入，或者自己开一间。")
             if (errorText.indexOf("房间码无效") >= 0)
-                return "少了位数，或者校验位不对。连续 3 次失败会冷却 60 秒。"
+                return qsTr("少了位数，或者校验位不对。连续 3 次失败会冷却 60 秒。")
             return errorText
         }
         switch (st) {
-        case 1: return "生成房间码并启动隧道，通常 2–5 秒。"
-        case 2: return "正在建立到房主的隧道。"
-        case 3: return "房主刚创建房间时可能需要多等几秒。"
-        case 4: return "正在连到房主的联机中心…"
-        case 7: return "请打开游戏，进入单人世界后按 Esc 选「对局域网开放」。开好后会自动识别，不用填端口。"
-                        + (page.mcPort === 0 ? " 现在把码发出去，朋友加进来会直接失败。" : "")
-        case 8: return "最多 8 次尝试；不过也会放行，先进游戏再看。"
-        case 5: return role === 1 ? "朋友现在可以在游戏里进去了。" : "打开 Minecraft 的「多人游戏」，进「局域网世界」即可。"
-        case 6: return "朋友在「多人游戏」的「局域网世界」里能直接看到，无需输入 IP。"
-        default: return "房主在自己游戏里「对局域网开放」，其他人凭房间码加入。不用公网 IP、不用开端口，最多 5 人。"
+        case 1: return qsTr("生成房间码并启动隧道，通常 2–5 秒。")
+        case 2: return qsTr("正在建立到房主的隧道。")
+        case 3: return qsTr("房主刚创建房间时可能需要多等几秒。")
+        case 4: return qsTr("正在连到房主的联机中心…")
+        case 7: return qsTr("请打开游戏，进入单人世界后按 Esc 选「对局域网开放」。开好后会自动识别，不用填端口。")
+                        + (page.mcPort === 0 ? " " + qsTr("现在把码发出去，朋友加进来会直接失败。") : "")
+        case 8: return qsTr("最多 8 次尝试；不过也会放行，先进游戏再看。")
+        case 5: return role === 1 ? qsTr("朋友现在可以在游戏里进去了。") : qsTr("打开 Minecraft 的「多人游戏」，进「局域网世界」即可。")
+        case 6: return qsTr("朋友在「多人游戏」的「局域网世界」里能直接看到，无需输入 IP。")
+        default: return qsTr("房主在自己游戏里「对局域网开放」，其他人凭房间码加入。不用公网 IP、不用开端口，最多 5 人。")
         }
     }
 
@@ -136,7 +136,7 @@ Item {
     }
     function vendorText(p) {
         var v = String((p && p.vendor) ? p.vendor : "").trim()
-        return v.length > 0 ? v : "未知来源"
+        return v.length > 0 ? v : qsTr("未知来源")
     }
     function latencyText(p) {
         var v = Number(p.latency)
@@ -149,10 +149,10 @@ Item {
     }
     function difficultyText(d) {
         switch (d) {
-        case 1: return "直连"
-        case 2: return "简单"
-        case 3: return "中等"
-        case 4: return "困难"
+        case 1: return qsTr("直连")
+        case 2: return qsTr("简单")
+        case 3: return qsTr("中等")
+        case 4: return qsTr("困难")
         default: return ""
         }
     }
@@ -168,7 +168,7 @@ Item {
     function doJoin() {
         var t = joinInput.text.trim()
         if (t.length === 0) {
-            if (page.toast) page.toast.show("先粘贴房间码")
+            if (page.toast) page.toast.show(qsTr("先粘贴房间码"))
             return
         }
         if (page.mp) page.mp.joinRoom(t)
@@ -176,7 +176,7 @@ Item {
     function openRename() {
         if (!page.canRename) {
             // force：用户主动点击的反馈不能被 toast 的 5 秒同文去重吞掉
-            if (page.toast) page.toast.show("房间里不能改名，请先离开房间", undefined, "warning", true)
+            if (page.toast) page.toast.show(qsTr("房间里不能改名，请先离开房间"), undefined, "warning", true)
             return
         }
         page.renameDraft = page.devName
@@ -188,7 +188,7 @@ Item {
         if (!page.mp) return
         if (page.mp.setDeviceName(renameInput.text)) {
             page.renameOpen = false
-            if (page.toast) page.toast.show("已保存", undefined, "success", true)
+            if (page.toast) page.toast.show(qsTr("已保存"), undefined, "success", true)
         }
     }
 
@@ -215,7 +215,7 @@ Item {
             if (page.toast) page.toast.show(msg)
         }
         function onMinecraftPortReady(port) {
-            if (page.toast) page.toast.show("游戏端口已就绪：" + port, undefined, "success", true)
+            if (page.toast) page.toast.show(qsTr("游戏端口已就绪：%1").arg(port), undefined, "success", true)
         }
         function onGuestRejected(reason) {
             // 有人加了但房主没开服：必须让房主看见，否则他以为房间码有问题
@@ -240,7 +240,7 @@ Item {
         anchors.leftMargin: Theme.padL
         anchors.top: parent.top
         anchors.topMargin: 20
-        text: "联机"
+        text: qsTr("联机")
         color: Theme.fg
         font.family: Theme.fontFamily
         font.pixelSize: 19
@@ -451,7 +451,7 @@ Item {
                             Text {
                                 id: roleTxt
                                 anchors.centerIn: parent
-                                text: page.role === 1 ? "房主" : "访客"
+                                text: page.role === 1 ? qsTr("房主") : qsTr("访客")
                                 color: page.role === 1 ? Theme.warn : Theme.ok
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -475,7 +475,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: page.st === 7
-                            text: "2 分钟内没开服会自动关闭"
+                            text: qsTr("2 分钟内没开服会自动关闭")
                             color: Theme.warn
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -501,7 +501,7 @@ Item {
                             id: idLabel
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "这台设备叫"
+                            text: qsTr("这台设备叫")
                             color: Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -531,7 +531,7 @@ Item {
                             id: idEdit
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "修改"
+                            text: qsTr("修改")
                             color: editHover.containsMouse ? Theme.accent : Theme.accentText
                             Behavior on color { ColorAnimation { duration: Theme.durFast } }
                             font.family: Theme.fontFamily
@@ -580,7 +580,7 @@ Item {
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
                                 visible: joinInput.text.length === 0
-                                text: "粘贴房间码  U/0000-0000-0000-0000"
+                                text: qsTr("粘贴房间码") + "  U/0000-0000-0000-0000"
                                 color: Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 13
@@ -591,7 +591,7 @@ Item {
                         width: 78
                         height: 36
                         kind: 1
-                        text: "加入"
+                        text: qsTr("加入")
                         onClicked: page.doJoin()
                     }
                 }
@@ -609,7 +609,7 @@ Item {
                             anchors.left: parent.left
                             anchors.baseline: undefined
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "在房间里"
+                            text: qsTr("在房间里")
                             color: Theme.fg2
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -669,8 +669,8 @@ Item {
                                 anchors.verticalCenter: memberName.verticalCenter
                                 text: {
                                     var k = String(modelData.kind || "")
-                                    var base = (k === "HOST") ? "房主" : "访客"
-                                    if (page.isMe(modelData)) base += " · 这台设备"
+                                    var base = (k === "HOST") ? qsTr("房主") : qsTr("访客")
+                                    if (page.isMe(modelData)) base = qsTr("%1 · 这台设备").arg(base)
                                     return base
                                 }
                                 color: Theme.fg3
@@ -693,7 +693,7 @@ Item {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: page.isMe(modelData) ? "本机" : page.latencyText(modelData)
+                                text: page.isMe(modelData) ? qsTr("本机") : page.latencyText(modelData)
                                 color: page.latencyColor(modelData)
                                 Behavior on color { ColorAnimation { duration: Theme.durBase } }
                                 font.family: Theme.fontFamily
@@ -713,7 +713,7 @@ Item {
                         visible: page.inRoom && !page.isError && page.pendingCount > 0
                         Text {
                             anchors.centerIn: parent
-                            text: page.pendingCount + " 位玩家正在加入…"
+                            text: qsTr("%1 位玩家正在加入…").arg(page.pendingCount)
                             color: Theme.fg2
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -730,7 +730,7 @@ Item {
                         visible: page.members.length < (page.mp ? page.mp.maxPlayers : 5)
                         Text {
                             anchors.centerIn: parent
-                            text: "还有 " + Math.max(0, (page.mp ? page.mp.maxPlayers : 5) - page.members.length - page.pendingCount) + " 个空位"
+                            text: qsTr("还有 %1 个空位").arg(Math.max(0, (page.mp ? page.mp.maxPlayers : 5) - page.members.length - page.pendingCount))
                             color: Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -747,7 +747,7 @@ Item {
                         width: parent.width
                         height: 40
                         visible: page.st === 0 && page.errorText === ""
-                        text: "创建房间"
+                        text: qsTr("创建房间")
                         onClicked: if (page.mp) page.mp.createRoom()
                     }
 
@@ -756,7 +756,7 @@ Item {
                         height: 36
                         kind: 1
                         visible: page.busy || page.st === 8
-                        text: "取消"
+                        text: qsTr("取消")
                         onClicked: if (page.mp) page.mp.leaveRoom()
                     }
 
@@ -767,17 +767,17 @@ Item {
                         kind: 1
                         dimmed: true
                         visible: page.st === 7 && page.role === 1 && page.mcPort === 0
-                        text: "开好服后再复制房间码"
+                        text: qsTr("开好服后再复制房间码")
                     }
 
                     SButton {
                         width: parent.width
                         height: 40
                         visible: (page.st === 6 || page.st === 5 || (page.st === 7 && page.mcPort > 0)) && page.role === 1
-                        text: "复制房间码"
+                        text: qsTr("复制房间码")
                         onClicked: {
                             if (page.mp) page.mp.copyRoomCode()
-                            if (page.toast) page.toast.show("房间码已复制", undefined, "success", true)
+                            if (page.toast) page.toast.show(qsTr("房间码已复制"), undefined, "success", true)
                         }
                     }
 
@@ -786,7 +786,7 @@ Item {
                         height: 36
                         kind: 1
                         visible: (page.st === 7 || page.st === 6 || page.st === 5) && page.role === 1
-                        text: "关闭房间"
+                        text: qsTr("关闭房间")
                         onClicked: if (page.mp) page.mp.leaveRoom()
                     }
 
@@ -795,7 +795,7 @@ Item {
                         height: 40
                         kind: 1
                         visible: page.role === 2 && page.st >= 5
-                        text: "离开房间"
+                        text: qsTr("离开房间")
                         onClicked: if (page.mp) page.mp.leaveRoom()
                     }
 
@@ -804,7 +804,7 @@ Item {
                         height: 40
                         visible: page.errorText !== ""
                         text: (page.errorText.indexOf("房间码无效") >= 0 || page.errorText.indexOf("过于频繁") >= 0)
-                              ? "重新输入" : "知道了"
+                              ? qsTr("重新输入") : qsTr("知道了")
                         onClicked: page.errorText = ""
                     }
                 }
@@ -813,7 +813,7 @@ Item {
                     width: parent.width
                     horizontalAlignment: Text.AlignHCenter
                     visible: page.st === 0 && page.errorText === ""
-                    text: "联机身份跟着「这台设备」走，与 MC 账号无关。"
+                    text: qsTr("联机身份跟着「这台设备」走，与 MC 账号无关。")
                     color: Theme.line3
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
@@ -854,7 +854,7 @@ Item {
                 spacing: 12
 
                 Text {
-                    text: "这台设备的昵称"
+                    text: qsTr("这台设备的昵称")
                     color: Theme.fg
                     font.family: Theme.fontFamily
                     font.pixelSize: 15
@@ -862,7 +862,7 @@ Item {
                 }
                 Text {
                     width: parent.width
-                    text: "别人在成员列表里看到的就是它。只改这块牌子，不改设备、不改 MC 账号。"
+                    text: qsTr("别人在成员列表里看到的就是它。只改这块牌子，不改设备、不改 MC 账号。")
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -898,7 +898,7 @@ Item {
                     Text {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "设备码 " + page.devCode
+                        text: qsTr("设备码 %1").arg(page.devCode)
                         color: Theme.fg2
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -906,7 +906,7 @@ Item {
                     Text {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "固定不变，用于区分同名设备"
+                        text: qsTr("固定不变，用于区分同名设备")
                         color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 10
@@ -915,14 +915,14 @@ Item {
                 SButton {
                     width: parent.width
                     height: 40
-                    text: "保存"
+                    text: qsTr("保存")
                     onClicked: page.saveRename()
                 }
                 SButton {
                     width: parent.width
                     height: 34
                     kind: 1
-                    text: "取消"
+                    text: qsTr("取消")
                     onClicked: page.renameOpen = false
                 }
             }

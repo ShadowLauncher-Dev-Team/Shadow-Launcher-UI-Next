@@ -7,7 +7,7 @@ import ShadowLauncher.Next
 Item {
     id: root
 
-    property string label: "搜索"
+    property string label: qsTr("搜索")
     property alias text: input.text
     property alias input: input
     property bool busy: false

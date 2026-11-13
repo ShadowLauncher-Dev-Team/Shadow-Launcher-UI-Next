@@ -66,7 +66,7 @@ Item {
                 width: col.width
                 spacing: 8
                 Text {
-                    text: "分配方式"
+                    text: qsTr("分配方式")
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -74,24 +74,24 @@ Item {
                 }
                 OptCard {
                     width: parent.width
-                    title: "跟随全局设置"
-                    desc: "使用启动器全局内存设置"
+                    title: qsTr("跟随全局设置")
+                    desc: qsTr("使用启动器全局内存设置")
                     val: pane.globalMB + " MB"
                     active: pane.mode === 0
                     onClicked: pane.setMode(0)
                 }
                 OptCard {
                     width: parent.width
-                    title: "自动配置"
-                    desc: "启动时按剩余内存动态分配"
-                    val: "建议 " + pane.autoMB + " MB"
+                    title: qsTr("自动配置")
+                    desc: qsTr("启动时按剩余内存动态分配")
+                    val: qsTr("建议 %1 MB").arg(pane.autoMB)
                     active: pane.mode === 1
                     onClicked: pane.setMode(1)
                 }
                 OptCard {
                     width: parent.width
-                    title: "自定义"
-                    desc: "固定分配给这个版本"
+                    title: qsTr("自定义")
+                    desc: qsTr("固定分配给这个版本")
                     val: pane.manualMB + " MB"
                     active: pane.mode === 2
                     onClicked: pane.setMode(2)
@@ -101,7 +101,7 @@ Item {
             // ── 分配内存 ──
             SCard {
                 width: col.width
-                title: "分配内存"
+                title: qsTr("分配内存")
                 // 非自定义模式整卡压暗：切换分配方式时跟着 OptCard 一起过渡，不要硬跳
                 opacity: pane.mode === 2 ? 1 : 0.45
                 Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
@@ -112,7 +112,7 @@ Item {
                     Text {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "范围 " + pane.sliderMin + " – " + pane.sliderMax + " MB"
+                        text: qsTr("范围 %1 – %2 MB").arg(pane.sliderMin).arg(pane.sliderMax)
                         color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -165,7 +165,7 @@ Item {
             // ── 系统内存 ──
             SCard {
                 width: col.width
-                title: "系统内存"
+                title: qsTr("系统内存")
                 Item {
                     width: parent.width
                     height: 54
@@ -191,7 +191,7 @@ Item {
                         anchors.left: pctText.right
                         anchors.leftMargin: 34
                         anchors.baseline: pctText.baseline
-                        text: "已用 " + (pane.sysTotal - pane.sysAvail) + " MB · 共 " + pane.sysTotal + " MB"
+                        text: qsTr("已用 %1 MB · 共 %2 MB").arg(pane.sysTotal - pane.sysAvail).arg(pane.sysTotal)
                         color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -240,7 +240,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                             Text {
-                                text: "本版本 " + pane.manualMB + " MB"
+                                text: qsTr("本版本 %1 MB").arg(pane.manualMB)
                                 color: Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
@@ -254,7 +254,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                             Text {
-                                text: "其他占用"
+                                text: qsTr("其他占用")
                                 color: Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
@@ -264,7 +264,7 @@ Item {
                     Text {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "可用 " + pane.sysAvail + " MB"
+                        text: qsTr("可用 %1 MB").arg(pane.sysAvail)
                         color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11

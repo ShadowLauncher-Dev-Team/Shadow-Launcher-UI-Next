@@ -15,17 +15,17 @@ Item {
     // 鸣谢条目：name 有 url 时可点击；badge 非空时显示小徽标
     readonly property var credits: [
         { name: "PCL2", url: "https://github.com/Meloong-Git/PCL", badge: "",
-          desc: "启动器的下载引擎与版本隔离设计参考了它的实现路径。" },
+          desc: qsTr("启动器的下载引擎与版本隔离设计参考了它的实现路径。") },
         { name: "HMCL", url: "https://github.com/HMCL-dev/HMCL", badge: "",
-          desc: "启动参数构建、版本目录识别等实现路径参考了它。" },
+          desc: qsTr("启动参数构建、版本目录识别等实现路径参考了它。") },
         { name: "bangbang93", url: "https://afdian.com/a/bangbang93", badge: "",
-          desc: "提供了镜像源和 Forge 安装工具。" },
+          desc: qsTr("提供了镜像源和 Forge 安装工具。") },
         { name: "z0z0r4", url: "https://www.mcimirror.top/", badge: "",
-          desc: "提供了 MCIM 镜像源，主要用于 Mod 等资源的下载，虽然不大稳定（也可能是我测试太多给我限速了），但好歹不用死守着有时非常逆天的官方源了。" },
+          desc: qsTr("提供了 MCIM 镜像源，主要用于 Mod 等资源的下载，虽然不大稳定（也可能是我测试太多给我限速了），但好歹不用死守着有时非常逆天的官方源了。") },
         { name: "Lucide", url: "https://lucide.dev/", badge: "",
-          desc: "提供了启动器目前所有可见的图标。" },
-        { name: "ChunMoMo", url: "", badge: "内测人员",
-          desc: "直接提供了一台能远程操控的电脑给开发者测试初代联机功能（而且是整整一个下午）。虽然初代联机功能已经废弃，但还是得感谢。" }
+          desc: qsTr("提供了启动器目前所有可见的图标。") },
+        { name: "ChunMoMo", url: "", badge: qsTr("内测人员"),
+          desc: qsTr("直接提供了一台能远程操控的电脑给开发者测试初代联机功能（而且是整整一个下午）。虽然初代联机功能已经废弃，但还是得感谢。") }
     ]
 
     Flickable {
@@ -49,19 +49,19 @@ Item {
             // ── 版本 ──
             SetGroup {
                 width: parent.width
-                title: "版本"
+                title: qsTr("版本")
 
                 SetRow {
                     width: parent.width
                     minHeight: 72
                     label: "Shadow Launcher " + (pane.b ? pane.b.appVersion : "")
-                    desc: "构建 2026-11-10 · Qt 6.8.3 · Windows x64"
+                    desc: qsTr("构建 2026-11-10 · Qt 6.8.3 · Windows x64")
 
                     SButton {
                         kind: 1
                         radius: 2
                         height: 32
-                        text: (pane.b && pane.b.updateChecking) ? "检查中" : "检查更新"
+                        text: (pane.b && pane.b.updateChecking) ? qsTr("检查中") : qsTr("检查更新")
                         enabled: pane.b ? !pane.b.updateChecking : false
                         onClicked: { if (pane.b) pane.b.checkForUpdate() }
                     }
@@ -70,8 +70,8 @@ Item {
                 SetStack {
                     width: parent.width
                     divider: false
-                    label: "版权与许可"
-                    desc: "(C) 2025-2026 影 / Shadow / xiaole1173"
+                    label: qsTr("版权与许可")
+                    desc: qsTr("(C) 2025-2026 影 / Shadow / xiaole1173")
 
                     Row {
                         spacing: 8
@@ -80,21 +80,21 @@ Item {
                             kind: 1
                             radius: 2
                             height: 30
-                            text: "GNU AGPL v3 许可证"
+                            text: qsTr("GNU AGPL v3 许可证")
                             onClicked: Qt.openUrlExternally("https://github.com/xiaole1173/shadow-launcher/blob/master/LICENSE")
                         }
                         SButton {
                             kind: 1
                             radius: 2
                             height: 30
-                            text: "访问项目主页"
+                            text: qsTr("访问项目主页")
                             onClicked: Qt.openUrlExternally("https://github.com/xiaole1173/shadow-launcher")
                         }
                     }
 
                     Text {
                         width: parent.width
-                        text: "非 Minecraft 官方产品。未经 Mojang 或 Microsoft 批准，也不与 Mojang 或 Microsoft 关联。"
+                        text: qsTr("非 Minecraft 官方产品。未经 Mojang 或 Microsoft 批准，也不与 Mojang 或 Microsoft 关联。")
                         color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -107,18 +107,18 @@ Item {
             // ── 工具 ──
             SetGroup {
                 width: parent.width
-                title: "工具"
+                title: qsTr("工具")
 
                 SetRow {
                     width: parent.width
                     divider: false
-                    label: "启动器日志"
-                    desc: "遇到问题时，日志是排查的第一手资料"
+                    label: qsTr("启动器日志")
+                    desc: qsTr("遇到问题时，日志是排查的第一手资料")
                     SButton {
                         kind: 1
                         radius: 2
                         height: 32
-                        text: "打开文件夹"
+                        text: qsTr("打开文件夹")
                         onClicked: { if (pane.b) pane.b.openLauncherLogsFolder() }
                     }
                 }
@@ -127,7 +127,7 @@ Item {
             // ── 鸣谢 ──
             SetGroup {
                 width: parent.width
-                title: "鸣谢"
+                title: qsTr("鸣谢")
 
                 Item {
                     width: col.width
@@ -138,7 +138,7 @@ Item {
                         x: 18
                         y: 14
                         width: parent.width - 36
-                        text: "启动器开发过程中参考了主流 MC 启动器的功能实现路径，在此十分感谢这些项目。若非如此，本启动器可能还在 debug 的水深火热中……（本项目为独立实现，与上述项目无隶属或授权关系。）"
+                        text: qsTr("启动器开发过程中参考了主流 MC 启动器的功能实现路径，在此十分感谢这些项目。若非如此，本启动器可能还在 debug 的水深火热中……（本项目为独立实现，与上述项目无隶属或授权关系。）")
                         color: Theme.fg2
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -240,25 +240,25 @@ Item {
             // ── 内测人员 ──
             SetGroup {
                 width: parent.width
-                title: "内测人员的支持"
+                title: qsTr("内测人员的支持")
 
                 SetStack {
                     width: parent.width
-                    label: "挖 bug 的人"
-                    desc: "这里非常荣幸地宣布：jh_hello、XChenyYa 二人以神奇的 bug 体制挖掘出了启动器的很多莫名其妙的 bug，包括但不限于下载、UI 显示、联机等多个方面。"
+                    label: qsTr("挖 bug 的人")
+                    desc: qsTr("这里非常荣幸地宣布：jh_hello、XChenyYa 二人以神奇的 bug 体制挖掘出了启动器的很多莫名其妙的 bug，包括但不限于下载、UI 显示、联机等多个方面。")
                 }
 
                 SetStack {
                     width: parent.width
-                    label: "联机测试"
-                    desc: "非常感谢 jh_hello、XChenyYa、渡、LUVlhr 等人对联机功能后续测试的全方位支持！"
+                    label: qsTr("联机测试")
+                    desc: qsTr("非常感谢 jh_hello、XChenyYa、渡、LUVlhr 等人对联机功能后续测试的全方位支持！")
                 }
 
                 SetStack {
                     width: parent.width
                     divider: false
-                    label: "以及其他内测小伙伴"
-                    desc: "以及其他参与内测的小伙伴们也十分感谢！"
+                    label: qsTr("以及其他内测小伙伴")
+                    desc: qsTr("以及其他参与内测的小伙伴们也十分感谢！")
                 }
             }
         }

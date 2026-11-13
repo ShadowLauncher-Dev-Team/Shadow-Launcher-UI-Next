@@ -49,9 +49,9 @@ Item {
         var st = (row && row.startedAt) ? Number(row.startedAt) : 0
         if (st <= 0) return ""
         var s = Math.max(0, Math.floor(page.nowSec - st))
-        if (s < 60) return s + " 秒"
-        if (s < 3600) return Math.floor(s / 60) + " 分钟"
-        return Math.floor(s / 3600) + " 小时 " + Math.floor((s % 3600) / 60) + " 分"
+        if (s < 60) return qsTr("%1 秒").arg(s)
+        if (s < 3600) return qsTr("%1 分钟").arg(Math.floor(s / 60))
+        return qsTr("%1 小时 %2 分").arg(Math.floor(s / 3600)).arg(Math.floor((s % 3600) / 60))
     }
     readonly property string statusText: b ? (b.launchStatus || "") : ""
 
@@ -235,9 +235,9 @@ Item {
             dimmed: page.launching || page.ver.length === 0
             // C3：有实例在跑时按钮本身变成"运行中 N"，点它=再开一个，
             // 看/结束具体进程走右边的箭头。
-            text: page.launching ? "取消启动"
-                  : (page.runningList.length > 0 ? ("运行中 " + page.runningList.length)
-                     : (!page.hasAccount ? "先登录" : "启动游戏"))
+            text: page.launching ? qsTr("取消启动")
+                  : (page.runningList.length > 0 ? qsTr("运行中 %1").arg(page.runningList.length)
+                     : (!page.hasAccount ? qsTr("先登录") : qsTr("启动游戏")))
             iconName: page.launching ? "x" : (!page.hasAccount ? "lock" : "play")
             onClicked: {
                 if (!page.b) return
@@ -292,11 +292,11 @@ Item {
                 onClicked: page.procOpen = !page.procOpen
             }
         }
-        SButton { tone: "dark"; kind: 1; text: "版本"; iconName: "list"; onClicked: page.openVersions() }
+        SButton { tone: "dark"; kind: 1; text: qsTr("版本"); iconName: "list"; onClicked: page.openVersions() }
         SButton {
             tone: "dark"
             kind: 1
-            text: "设置"
+            text: qsTr("设置")
             iconName: "settings"
             // 之前这里是 console.info 空实现，点了没反应
             onClicked: page.openSettings(page.b ? page.b.selectedVersion : "")
@@ -384,7 +384,7 @@ Item {
                 leftPadding: 12
                 height: 18
                 verticalAlignment: Text.AlignVCenter
-                text: "正在运行的实例"
+                text: qsTr("正在运行的实例")
                 color: "#4f5866"
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -426,7 +426,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         height: 26
                         kind: 1
-                        text: "结束"
+                        text: qsTr("结束")
                         onClicked: { if (page.b) page.b.killGameByPid(modelData.pid) }
                     }
                 }
@@ -445,7 +445,7 @@ Item {
                     height: 28
                     kind: 1
                     danger: true
-                    text: "全部结束"
+                    text: qsTr("全部结束")
                     onClicked: {
                         page.procOpen = false
                         if (page.b) page.b.killGameProcess()
@@ -467,7 +467,7 @@ Item {
         elide: Text.ElideRight
         textFormat: Text.StyledText
         text: {
-            if (page.verParts[0].length === 0) return "未选择版本"
+            if (page.verParts[0].length === 0) return qsTr("未选择版本")
             if (page.verParts[1].length === 0) return page.verParts[0]
             return page.verParts[0] + " <font color=\"#9fb4cf\">" + page.verParts[1] + "</font>"
         }
@@ -487,10 +487,10 @@ Item {
     // 绝不显示"准备就绪/加载完成"这类状态噪音（README 第 6 条）；失败原因由浮层负责。
     readonly property string lastPlayed: (b && b.lastPlayedLabel) ? b.lastPlayedLabel : ""
     readonly property string kicker: {
-        if (page.launching) return page.statusText.length > 0 ? page.statusText : "正在准备启动"
-        if (page.running) return "游戏运行中"
-        if (!page.hasAccount) return "还没有登录账号"
-        if (page.lastPlayed.length > 0) return "上次游玩 · " + page.lastPlayed
+        if (page.launching) return page.statusText.length > 0 ? page.statusText : qsTr("正在准备启动")
+        if (page.running) return qsTr("游戏运行中")
+        if (!page.hasAccount) return qsTr("还没有登录账号")
+        if (page.lastPlayed.length > 0) return qsTr("上次游玩 · %1").arg(page.lastPlayed)
         return ""
     }
     readonly property bool kickerWarn: !page.hasAccount && !page.launching && !page.running

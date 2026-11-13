@@ -33,20 +33,20 @@ Item {
                 width: parent.width
                 kind: "info"
                 icon: "info"
-                text: "这里改的是全局默认值。某个版本在「版本设置的启动配置」里选了独立配置时，以那个版本自己的值为准。"
+                text: qsTr("这里改的是全局默认值。某个版本在「版本设置的启动配置」里选了独立配置时，以那个版本自己的值为准。")
             }
 
             SetGroup {
                 width: parent.width
-                title: "Java 虚拟机"
+                title: qsTr("Java 虚拟机")
 
                 SetRow {
                     width: parent.width
-                    label: "垃圾回收器"
-                    desc: "自动会按 Java 版本挑最合适的；不确定就留自动"
+                    label: qsTr("垃圾回收器")
+                    desc: qsTr("自动会按 Java 版本挑最合适的；不确定就留自动")
                     SSegmented {
                         itemHeight: 28
-                        items: ["自动", "分代 ZGC", "仅 G1GC", "不指定"]
+                        items: [qsTr("自动"), qsTr("分代 ZGC"), qsTr("仅 G1GC"), qsTr("不指定")]
                         currentIndex: pane.s ? pane.s.gcMode : 0
                         // gcMode 是 Q_PROPERTY 的 WRITE 访问器：QML 只能赋值，不能当方法调
                     onActivated: (i) => { if (pane.s) pane.s.gcMode = i }
@@ -56,11 +56,11 @@ Item {
                 SetRow {
                     width: parent.width
                     divider: false
-                    label: "进程优先级"
-                    desc: "调高会让游戏在抢 CPU 时优先，代价是其它程序变慢"
+                    label: qsTr("进程优先级")
+                    desc: qsTr("调高会让游戏在抢 CPU 时优先，代价是其它程序变慢")
                     SSegmented {
                         itemHeight: 28
-                        items: ["高", "正常", "低"]
+                        items: [qsTr("高"), qsTr("正常"), qsTr("低")]
                         currentIndex: pane.s ? pane.s.processPriority : 1
                         onActivated: (i) => { if (pane.s) pane.s.processPriority = i }
                     }
@@ -69,11 +69,11 @@ Item {
 
             SetGroup {
                 width: parent.width
-                title: "游戏窗口"
+                title: qsTr("游戏窗口")
 
                 SetRow {
                     width: parent.width
-                    label: "全屏启动"
+                    label: qsTr("全屏启动")
                     SSwitch {
                         checked: pane.s ? pane.s.fullscreenEnabled : false
                         onToggled: (c) => { if (pane.s) pane.s.fullscreenEnabled = c }
@@ -82,11 +82,11 @@ Item {
 
                 SetRow {
                     width: parent.width
-                    label: "窗口标题"
-                    desc: "留空则用游戏自己写的标题"
+                    label: qsTr("窗口标题")
+                    desc: qsTr("留空则用游戏自己写的标题")
                     SInput {
                         width: 300
-                        placeholder: "留空则用游戏默认标题"
+                        placeholder: qsTr("留空则用游戏默认标题")
                         text: pane.s ? pane.s.windowTitleOverride : ""
                         onEdited: (v) => { if (pane.s) pane.s.windowTitleOverride = v }
                     }
@@ -95,12 +95,12 @@ Item {
                 SetRow {
                     width: parent.width
                     divider: false
-                    label: "自动进服"
-                    desc: "只接受 host 或 host:port，例如 mc.example.com:25565"
+                    label: qsTr("自动进服")
+                    desc: qsTr("只接受 host 或 host:port，例如 mc.example.com:25565")
                     SInput {
                         id: joinInput
                         width: 300
-                        placeholder: "留空则不自动进服"
+                        placeholder: qsTr("留空则不自动进服")
                         text: pane.s ? pane.s.autoJoinServer : ""
                         onEdited: (v) => {
                             if (!pane.s) return
@@ -109,7 +109,7 @@ Item {
                             // 被拒时把输入框拉回真实值，避免「看着改了其实没存」。
                             if (v !== pane.s.autoJoinServer) {
                                 joinInput.text = pane.s.autoJoinServer
-                                if (pane.toast) pane.toast.show("只接受 host 或 host:port 格式", 2600, "warning")
+                                if (pane.toast) pane.toast.show(qsTr("只接受 host 或 host:port 格式"), 2600, "warning")
                             }
                         }
                     }
@@ -118,17 +118,17 @@ Item {
 
             SetGroup {
                 width: parent.width
-                title: "启动前后命令"
+                title: qsTr("启动前后命令")
 
                 SetStack {
                     width: parent.width
-                    label: "启动前命令"
-                    desc: "在游戏进程启动前执行一次"
+                    label: qsTr("启动前命令")
+                    desc: qsTr("在游戏进程启动前执行一次")
 
                     STextArea {
                         width: parent.width
                         areaHeight: 76
-                        placeholder: "留空则不执行"
+                        placeholder: qsTr("留空则不执行")
                         text: pane.s ? pane.s.preLaunchCommand : ""
                         onEdited: (v) => { if (pane.s) pane.s.preLaunchCommand = v }
                     }
@@ -137,13 +137,13 @@ Item {
                 SetStack {
                     width: parent.width
                     divider: false
-                    label: "退出后命令"
-                    desc: "游戏进程结束后执行一次"
+                    label: qsTr("退出后命令")
+                    desc: qsTr("游戏进程结束后执行一次")
 
                     STextArea {
                         width: parent.width
                         areaHeight: 76
-                        placeholder: "留空则不执行"
+                        placeholder: qsTr("留空则不执行")
                         text: pane.s ? pane.s.postExitCommand : ""
                         onEdited: (v) => { if (pane.s) pane.s.postExitCommand = v }
                     }
@@ -154,7 +154,7 @@ Item {
                 width: parent.width
                 kind: "warn"
                 icon: "alert-triangle"
-                text: "这两条命令会经 cmd.exe 原样执行，只填你自己写的或完全信任的内容。"
+                text: qsTr("这两条命令会经 cmd.exe 原样执行，只填你自己写的或完全信任的内容。")
             }
         }
     }

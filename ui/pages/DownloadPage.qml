@@ -83,7 +83,7 @@ Item {
     property var optifineList: []
     property string expandedLoader: ""
 
-    readonly property var tabs: ["MC 版本", "Mod", "光影", "资源包", "整合包", "数据包", "Java"]
+    readonly property var tabs: [qsTr("MC 版本"), "Mod", qsTr("光影"), qsTr("资源包"), qsTr("整合包"), qsTr("数据包"), "Java"]
 
     // 资源库搜索防抖：不用每敲一个字就发一次请求
     Timer {
@@ -92,10 +92,10 @@ Item {
         onTriggered: if (resourceView) resourceView.doSearch(0)
     }
     readonly property var filters: [
-        { key: 0, label: "正式版" },
-        { key: 1, label: "快照版" },
-        { key: 2, label: "远古版" },
-        { key: 3, label: "愚人节版" }
+        { key: 0, label: qsTr("正式版") },
+        { key: 1, label: qsTr("快照版") },
+        { key: 2, label: qsTr("远古版") },
+        { key: 3, label: qsTr("愚人节版") }
     ]
 
     function countFor(k) {
@@ -126,10 +126,10 @@ Item {
     readonly property var rows: visibleList()
 
     function typeLabel() {
-        if (page.filter === 1) return "快照"
-        if (page.filter === 2) return "旧版"
-        if (page.filter === 3) return "愚人节"
-        return "正式版"
+        if (page.filter === 1) return qsTr("快照")
+        if (page.filter === 2) return qsTr("旧版")
+        if (page.filter === 3) return qsTr("愚人节")
+        return qsTr("正式版")
     }
 
     function typeColor() {
@@ -260,21 +260,31 @@ Item {
     }
 
     // ── 加载器互斥（原 UI 语义）──
+    // 后端与卡片传的是内部 key（forge/neoforge/fabric/optifine），
+    // 提示文案里必须换成给人看的品牌写法，否则译文会变成「与 forge 不兼容」
+    function loaderName(key) {
+        if (key === "forge") return "Forge"
+        if (key === "neoforge") return "NeoForge"
+        if (key === "fabric") return "Fabric"
+        if (key === "optifine") return "OptiFine"
+        return key
+    }
+
     function loaderDisabled(key) {
         if (page.activeLoader.length === 0) return ""
         if (key === page.activeLoader) return ""
-        if (key === "fabric_api") return page.activeLoader === "fabric" ? "" : "仅 Fabric 可用"
+        if (key === "fabric_api") return page.activeLoader === "fabric" ? "" : qsTr("仅 Fabric 可用")
         if (key === "optifine")
             return (page.activeLoader === "fabric" || page.activeLoader === "neoforge")
-                   ? ("与 " + page.activeLoader + " 不兼容") : ""
+                   ? qsTr("与 %1 不兼容").arg(page.loaderName(page.activeLoader)) : ""
         if (page.activeLoader === "optifine" && key !== "fabric_api")
-            return "与 OptiFine 不兼容"
-        return "已选 " + page.activeLoader
+            return qsTr("与 OptiFine 不兼容")
+        return qsTr("已选 %1").arg(page.loaderName(page.activeLoader))
     }
 
     function typeText(t) {
-        if (t === "version" || t === "vanilla") return "原版"
-        if (t === "merged") return "整合安装"
+        if (t === "version" || t === "vanilla") return qsTr("原版")
+        if (t === "merged") return qsTr("整合安装")
         return t
     }
 
@@ -304,7 +314,7 @@ Item {
         } else {
             b.installVersion(page.picked)
         }
-        if (toast) toast.show("已开始安装 " + name, 2600, "info")
+        if (toast) toast.show(qsTr("已开始安装 %1").arg(name), 2600, "info")
         page.openProgress()
     }
 
@@ -362,7 +372,7 @@ Item {
             page.refreshPending = false
             refreshTimer.stop()
             if (page.toast)
-                page.toast.show(ok ? "版本列表刷新成功" : "版本列表刷新失败", 2200, ok ? "info" : "warning")
+                page.toast.show(ok ? qsTr("版本列表刷新成功") : qsTr("版本列表刷新失败"), 2200, ok ? "info" : "warning")
         }
         function onCancelNotification(installId, message) {
             if (page.toast && message && message.length > 0)
@@ -423,7 +433,7 @@ Item {
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: page.mode === 1 ? "安装配置" : "下载"
+                text: page.mode === 1 ? qsTr("安装配置") : qsTr("下载")
                 color: Theme.fg
                 font.family: Theme.fontFamily
                 font.pixelSize: 20
@@ -514,12 +524,12 @@ Item {
                 id: globalSearch
                 width: 220; height: 34
                 anchors.verticalCenter: parent.verticalCenter
-                label: page.tab === 6 ? "Java 无需搜索"
-                     : page.tab === 0 ? "搜索版本号"
-                     : page.tab === 1 ? "搜索 Mod"
-                     : page.tab === 2 ? "搜索光影"
-                     : page.tab === 3 ? "搜索资源包"
-                     : page.tab === 4 ? "搜索整合包" : "搜索数据包"
+                label: page.tab === 6 ? qsTr("Java 无需搜索")
+                     : page.tab === 0 ? qsTr("搜索版本号")
+                     : page.tab === 1 ? qsTr("搜索 Mod")
+                     : page.tab === 2 ? qsTr("搜索光影")
+                     : page.tab === 3 ? qsTr("搜索资源包")
+                     : page.tab === 4 ? qsTr("搜索整合包") : qsTr("搜索数据包")
                 onEdited: (v) => {
                     if (page.tab === 0) page.search = v
                     else if (resourceView) { resourceView.query = v; resourceTimer.restart() }
@@ -703,7 +713,7 @@ Item {
                 anchors.leftMargin: 16
                 anchors.top: parent.top
                 anchors.topMargin: 14
-                text: "最新正式版"
+                text: qsTr("最新正式版")
                 color: Theme.accent
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -727,7 +737,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 6
                 Text {
-                    text: "安装"
+                    text: qsTr("安装")
                     color: Theme.accentText
                     font.family: Theme.fontFamily
                     font.pixelSize: 13
@@ -874,7 +884,7 @@ Item {
             Text {
                 visible: page.rows.length === 0
                 anchors.centerIn: parent
-                text: "没有匹配的版本"
+                text: qsTr("没有匹配的版本")
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
@@ -1012,7 +1022,7 @@ Item {
                         anchors.rightMargin: 16
                         anchors.top: parent.top
                         anchors.topMargin: 18
-                        text: "名称已存在"
+                        text: qsTr("名称已存在")
                         color: Theme.dangerText
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -1021,7 +1031,7 @@ Item {
 
                 // 加载器分段标题
                 Text {
-                    text: "Mod 加载器"
+                    text: qsTr("Mod 加载器")
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
@@ -1111,9 +1121,9 @@ Item {
                                 Text {
                                     visible: !loaderCard.off
                                     text: loaderCard.lkey === "fabric_api"
-                                          ? (page.fabricApiVersion.length > 0 ? page.fabricApiVersion : "可选")
+                                          ? (page.fabricApiVersion.length > 0 ? page.fabricApiVersion : qsTr("可选"))
                                           : (page.activeLoader === loaderCard.lkey && page.selectedVersion.length > 0
-                                             ? page.selectedVersion : "不使用")
+                                             ? page.selectedVersion : qsTr("不使用"))
                                     color: ((page.activeLoader === loaderCard.lkey && loaderCard.lkey !== "fabric_api")
                                             || (loaderCard.lkey === "fabric_api" && page.fabricApiVersion.length > 0))
                                            ? Theme.accentText : Theme.fg3
@@ -1226,7 +1236,7 @@ Item {
                                 width: loaderCard.width - 20
                                 x: 10
                                 height: 28
-                                text: "没有可用版本"
+                                text: qsTr("没有可用版本")
                                 color: Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
@@ -1244,7 +1254,7 @@ Item {
                                     anchors.left: parent.left
                                     anchors.leftMargin: 10
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: "不使用"
+                                    text: qsTr("不使用")
                                     color: Theme.fg3
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 12
@@ -1310,9 +1320,9 @@ Item {
                 Behavior on scale { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easePop } }
                 Text {
                     anchors.centerIn: parent
-                    text: installBtn.ready ? "开始安装"
+                    text: installBtn.ready ? qsTr("开始安装")
                           : (page.activeLoader.length > 0 && page.selectedVersion.length === 0
-                             ? "请选择版本" : "开始安装")
+                             ? qsTr("请选择版本") : qsTr("开始安装"))
                     color: installBtn.ready ? Theme.accentFg : Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 13

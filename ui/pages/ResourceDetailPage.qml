@@ -81,11 +81,11 @@ Item {
         return out
     }
     function dlLine(d) {
-        if (d.state === "done") return "已完成  " + (d.name || "")
-        if (d.state === "fail") return "失败  " + (d.name || "")
+        if (d.state === "done") return qsTr("已完成 %1").arg(d.name || "")
+        if (d.state === "fail") return qsTr("失败 %1").arg(d.name || "")
         var pct = d.total > 0 ? Math.round(d.received / d.total * 100) : 0
         var sp = d.speed > 0 ? (" · " + (d.speed / 1048576).toFixed(1) + " MB/s") : ""
-        return "下载中  " + pct + "%" + sp + "  " + (d.name || "")
+        return qsTr("下载中 %1%2 %3").arg(pct).arg(sp).arg(d.name || "")
     }
 
     readonly property var comboList: {
@@ -268,8 +268,8 @@ Item {
     }
     function fmtDl(n) {
         n = n || 0
-        if (n >= 100000000) return (n / 100000000).toFixed(1) + " 亿"
-        if (n >= 10000) return (n / 10000).toFixed(0) + " 万"
+        if (n >= 100000000) return qsTr("%1 亿").arg((n / 100000000).toFixed(1))
+        if (n >= 10000) return qsTr("%1 万").arg((n / 10000).toFixed(0))
         return String(n)
     }
 
@@ -287,7 +287,7 @@ Item {
         page.batchMode = false
         page.targetDir = ""          // 单文件：仍然走"另存为"
         var v = page.latest
-        if (!v || v.url.length === 0) { page.status = "该组合没有可下载文件"; return }
+        if (!v || v.url.length === 0) { page.status = qsTr("该组合没有可下载文件"); return }
         page.pushJob(v.url, v.filename, v.size, v.sha1, v.version)
     }
 
@@ -324,9 +324,9 @@ Item {
         page.dialogBusy = false
         page.dlQueue = []
         page.pendingJob = null
-        if (page.depsLoading) { page.status = "前置还在解析，请稍候"; return }
+        if (page.depsLoading) { page.status = qsTr("前置还在解析，请稍候"); return }
         var jobs = page.buildJobs()
-        if (jobs.length === 0) { page.status = "该组合没有可下载文件"; return }
+        if (jobs.length === 0) { page.status = qsTr("该组合没有可下载文件"); return }
         if (jobs.length === 1) {
             page.batchMode = false
             page.targetDir = ""
@@ -339,7 +339,7 @@ Item {
         page.planJobs = jobs
         page.planTotal = jobs.length
         var dir = page.b ? page.b.pickFolder(page.lastDir) : ""
-        if (dir.length === 0) { page.planJobs = []; page.status = "已取消"; return }
+        if (dir.length === 0) { page.planJobs = []; page.status = qsTr("已取消"); return }
         page.batchMode = true
         page.targetDir = dir
         page.lastDir = dir
@@ -371,7 +371,7 @@ Item {
         page.batchFilling = false
         page.planJobs = []
         if (page.dlQueue.length > 0) page.nextInQueue()
-        else page.status = missing > 0 ? "有前置缺少下载信息" : "没有可下载的文件"
+        else page.status = missing > 0 ? qsTr("有前置缺少下载信息") : qsTr("没有可下载的文件")
     }
 
     function pushJob(url, filename, size, sha1, label) {
@@ -405,7 +405,7 @@ Item {
 
     function finishBatch() {
         page.batchMode = false
-        page.status = "已提交 " + page.submitted + " 个文件"
+        page.status = qsTr("已提交 %1 个文件").arg(page.submitted)
         if (page.submitted > 0) page.downloadsStarted()
     }
 
@@ -417,7 +417,7 @@ Item {
         page.pendingJob = null
         if (q.length > 0) page.nextInQueue()
         else {
-            page.status = "已提交下载"
+            page.status = qsTr("已提交下载")
             if (page.submitted > 0) page.downloadsStarted()
         }
     }
@@ -427,8 +427,8 @@ Item {
         fileMode: FileDialog.SaveFile
         // 批量时标题要说明"其余文件会存到同一目录"，避免用户以为还要再选 N 次
         title: page.batchMode
-               ? ("选择保存位置（共 " + (page.planTotal) + " 个文件，其余存入同一文件夹）")
-               : "选择保存位置"
+               ? qsTr("选择保存位置（共 %1 个文件，其余存入同一文件夹）").arg(page.planTotal)
+               : qsTr("选择保存位置")
         onAccepted: {
             var j = page.pendingJob
             var p = String(selectedFile)
@@ -442,7 +442,7 @@ Item {
             if (j && page.b) {
                 var dlId = page.b.downloadModFile(j.url, path, j.filename, j.size, j.sha1)
                 if (dlId > 0) { page.myIds = page.myIds.concat([dlId]); page.submitted++ }
-                if (page.toast) page.toast.show("开始下载 " + j.filename, 2400, "info")
+                if (page.toast) page.toast.show(qsTr("开始下载 %1").arg(j.filename), 2400, "info")
             }
             page.popQueue()
         }
@@ -452,7 +452,7 @@ Item {
             page.dlQueue = []
             page.pendingJob = null
             page.dialogBusy = false
-            page.status = "已取消"
+            page.status = qsTr("已取消")
         }
     }
 
@@ -483,7 +483,7 @@ Item {
                 spacing: 6
                 SIcon { name: "arrow-left"; size: 13; color: Theme.fg2; anchors.verticalCenter: parent.verticalCenter }
                 Text {
-                    text: "返回"; color: Theme.fg2
+                    text: qsTr("返回"); color: Theme.fg2
                     font.family: Theme.fontFamily; font.pixelSize: 12
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -547,12 +547,12 @@ Item {
             Column {
                 spacing: 2
                 Text { text: page.fmtDl(page.item.downloads); color: Theme.fg; font.family: Theme.fontFamily; font.pixelSize: 13 }
-                Text { text: "下载量"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 10 }
+                Text { text: qsTr("下载量"); color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 10 }
             }
             Column {
                 spacing: 2
                 Text { text: page.versions.length.toString(); color: Theme.fg; font.family: Theme.fontFamily; font.pixelSize: 13 }
-                Text { text: "版本"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 10 }
+                Text { text: qsTr("版本"); color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 10 }
             }
             Column {
                 spacing: 2
@@ -560,7 +560,7 @@ Item {
                     text: (page.item.dateModified || "").substring(0, 10)
                     color: Theme.fg; font.family: Theme.fontFamily; font.pixelSize: 13
                 }
-                Text { text: "更新"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 10 }
+                Text { text: qsTr("更新"); color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 10 }
             }
         }
     }
@@ -594,13 +594,13 @@ Item {
 
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 16; anchors.top: parent.top; anchors.topMargin: 16
-                    text: "本次安装"; color: Theme.fg
+                    text: qsTr("本次安装"); color: Theme.fg
                     font.family: Theme.fontFamily; font.pixelSize: 13; font.weight: Font.DemiBold
                 }
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 16; anchors.right: parent.right; anchors.rightMargin: 16
                     anchors.top: parent.top; anchors.topMargin: 42
-                    text: page.latest ? (page.latest.filename || "") : "未选择版本"
+                    text: page.latest ? (page.latest.filename || "") : qsTr("未选择版本")
                     color: Theme.fg2; font.family: Theme.fontFamily; font.pixelSize: 12
                     elide: Text.ElideMiddle
                 }
@@ -608,7 +608,7 @@ Item {
                     anchors.left: parent.left; anchors.leftMargin: 16
                     anchors.top: parent.top; anchors.topMargin: 62
                     visible: page.reqCount > 0
-                    text: "+ " + page.reqCount + " 个必需前置"
+                    text: qsTr("+ %1 个必需前置").arg(page.reqCount)
                     color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11
                 }
                 SButton {
@@ -616,7 +616,7 @@ Item {
                     anchors.right: parent.right; anchors.rightMargin: 16
                     anchors.top: parent.top; anchors.topMargin: 88
                     implicitHeight: 38
-                    text: page.reqCount > 0 ? ("下载 " + (page.reqCount + 1) + " 个文件") : "下载"
+                    text: page.reqCount > 0 ? qsTr("下载 %1 个文件").arg(page.reqCount + 1) : qsTr("下载")
                     enabled: page.latest !== null
                     onClicked: page.installAll()
                 }
@@ -625,7 +625,7 @@ Item {
                     anchors.top: parent.top; anchors.topMargin: 136
                     visible: page.myDls.length === 0
                     text: page.status.length > 0 ? page.status
-                          : (page.reqCount > 0 ? "多文件：选一次文件夹，全部存入" : "下载时由你选择保存位置")
+                          : (page.reqCount > 0 ? qsTr("多文件：选一次文件夹，全部存入") : qsTr("下载时由你选择保存位置"))
                     color: Theme.fg3
                     font.family: Theme.fontFamily; font.pixelSize: 10
                     elide: Text.ElideRight
@@ -672,7 +672,7 @@ Item {
                 Text {
                     id: gLabel
                     anchors.left: parent.left; anchors.leftMargin: 18; anchors.top: parent.top; anchors.topMargin: 16
-                    text: "游戏版本"; color: Theme.fg3
+                    text: qsTr("游戏版本"); color: Theme.fg3
                     font.family: Theme.fontFamily; font.pixelSize: 11
                 }
                 Rectangle {
@@ -683,7 +683,7 @@ Item {
                     border.color: gameHover.containsMouse ? Theme.line2 : Theme.line
                     Text {
                         anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
-                        text: page.selGame.length > 0 ? page.selGame : "选择版本"
+                        text: page.selGame.length > 0 ? page.selGame : qsTr("选择版本")
                         color: page.selGame.length > 0 ? Theme.fg : Theme.fg3
                         font.family: Theme.fontFamily; font.pixelSize: 13
                     }
@@ -702,7 +702,7 @@ Item {
                 Text {
                     id: lLabel
                     anchors.left: gameBox.right; anchors.leftMargin: 18; anchors.top: parent.top; anchors.topMargin: 16
-                    text: "加载器"; color: page.selGame.length === 0 ? Theme.fg3 : Theme.fg3
+                    text: qsTr("加载器"); color: page.selGame.length === 0 ? Theme.fg3 : Theme.fg3
                     font.family: Theme.fontFamily; font.pixelSize: 11
                 }
                 Rectangle {
@@ -716,7 +716,7 @@ Item {
                     opacity: page.selGame.length === 0 ? 0.45 : 1
                     Text {
                         anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
-                        text: page.selLoader.length > 0 ? page.capLoader(page.selLoader) : "先选版本"
+                        text: page.selLoader.length > 0 ? page.capLoader(page.selLoader) : qsTr("先选版本")
                         color: page.selLoader.length > 0 ? Theme.fg : Theme.fg3
                         font.family: Theme.fontFamily; font.pixelSize: 13
                     }
@@ -735,9 +735,9 @@ Item {
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 18
                     anchors.bottom: parent.bottom; anchors.bottomMargin: 14
-                    text: page.loadingVersions ? "正在读取版本…"
-                        : (page.selGame.length === 0 ? "选择版本后，加载器只列出该版本实际有文件的项"
-                           : (page.loaderList.length + " 个加载器 · 该组合 " + page.comboList.length + " 个版本"))
+                    text: page.loadingVersions ? qsTr("正在读取版本…")
+                        : (page.selGame.length === 0 ? qsTr("选择版本后，加载器只列出该版本实际有文件的项")
+                           : qsTr("%1 个加载器 · 该组合 %2 个版本").arg(page.loaderList.length).arg(page.comboList.length))
                     color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 10
                 }
             }
@@ -758,12 +758,12 @@ Item {
 
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 18; anchors.top: parent.top; anchors.topMargin: 14
-                    text: "可下载版本"; color: Theme.fg
+                    text: qsTr("可下载版本"); color: Theme.fg
                     font.family: Theme.fontFamily; font.pixelSize: 13; font.weight: Font.DemiBold
                 }
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 98; anchors.top: parent.top; anchors.topMargin: 16
-                    text: page.oldCount > 0 ? ("最新 · 另有 " + page.oldCount + " 个旧版") : "最新"
+                    text: page.oldCount > 0 ? qsTr("最新 · 另有 %1 个旧版").arg(page.oldCount) : qsTr("最新")
                     color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 10
                 }
                 Text {
@@ -780,7 +780,7 @@ Item {
                     anchors.left: parent.left; anchors.leftMargin: 18
                     anchors.top: parent.top; anchors.topMargin: 54
                     anchors.right: dlBtn.left; anchors.rightMargin: 16
-                    text: page.latest ? (page.latest.filename || page.latest.version) : "没有匹配的文件"
+                    text: page.latest ? (page.latest.filename || page.latest.version) : qsTr("没有匹配的文件")
                     color: page.latest ? Theme.fg : Theme.fg3
                     font.family: Theme.fontFamily; font.pixelSize: 12
                     elide: Text.ElideMiddle
@@ -791,7 +791,7 @@ Item {
                     anchors.top: parent.top; anchors.topMargin: 50
                     implicitWidth: 88; implicitHeight: 32
                     radius: Theme.rSm
-                    text: "下载"
+                    text: qsTr("下载")
                     enabled: page.latest !== null
                     onClicked: page.installLatest()
                 }
@@ -814,13 +814,13 @@ Item {
                     Text {
                         anchors.left: parent.left; anchors.leftMargin: 18
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "该组合下还有 " + page.oldCount + " 个旧版本"
+                        text: qsTr("该组合下还有 %1 个旧版本").arg(page.oldCount)
                         color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11
                     }
                     Text {
                         anchors.right: parent.right; anchors.rightMargin: 18
                         anchors.verticalCenter: parent.verticalCenter
-                        text: page.showOld ? "收起" : "展开"
+                        text: page.showOld ? qsTr("收起") : qsTr("展开")
                         color: Theme.fg2; font.family: Theme.fontFamily; font.pixelSize: 11
                     }
                     MouseArea {
@@ -861,7 +861,7 @@ Item {
                             anchors.right: parent.right; anchors.rightMargin: 78
                             anchors.verticalCenter: parent.verticalCenter
                             visible: false
-                            text: "下载"
+                            text: qsTr("下载")
                         }
                     }
                 }
@@ -879,7 +879,7 @@ Item {
 
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 18; anchors.top: parent.top; anchors.topMargin: 14
-                    text: "前置模组"; color: Theme.fg
+                    text: qsTr("前置模组"); color: Theme.fg
                     font.family: Theme.fontFamily; font.pixelSize: 13; font.weight: Font.DemiBold
                 }
                 ListView {
@@ -946,7 +946,7 @@ Item {
                             id: depType
                             anchors.right: parent.right; anchors.rightMargin: 18
                             anchors.verticalCenter: parent.verticalCenter
-                            text: modelData.dependency_type === "required" ? "必需" : "可选"
+                            text: modelData.dependency_type === "required" ? qsTr("必需") : qsTr("可选")
                             color: modelData.dependency_type === "required" ? Theme.warn : Theme.fg3
                             font.family: Theme.fontFamily; font.pixelSize: 10
                         }

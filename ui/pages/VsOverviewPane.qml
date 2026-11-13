@@ -36,7 +36,7 @@ Item {
             return lv.length > 0 ? (detail.loaderType + " " + lv) : detail.loaderType
         }
         if (!detail && pane.dashAt > 0) return pane.versionId.substring(pane.dashAt + 1).split("_").join(" ")
-        return "原版"
+        return qsTr("原版")
     }
     readonly property string mcText: {
         if (detail && (detail.mcVersion || "").length > 0) return detail.mcVersion
@@ -50,15 +50,15 @@ Item {
         if (!pane.s) return "—"
         var mode = pane.s.versionJavaMode(pane.versionId)
         var ver = pane.s.javaVersion || ""
-        if (mode === 0) return (ver.length > 0 ? ver : "未就绪") + " · 跟随全局"
-        if (mode === 1) return "版本目录内 Java"
-        return (ver.length > 0 ? ver : "未就绪") + " · 已指定"
+        if (mode === 0) return qsTr("%1 · 跟随全局").arg(ver.length > 0 ? ver : qsTr("未就绪"))
+        if (mode === 1) return qsTr("版本目录内 Java")
+        return qsTr("%1 · 已指定").arg(ver.length > 0 ? ver : qsTr("未就绪"))
     }
     readonly property string memText: {
         if (!pane.s) return "—"
         var mode = pane.s.versionMemoryMode(pane.versionId)
-        if (mode === 0) return (pane.s.maxMemoryMB || 0) + " MB · 跟随全局"
-        return pane.s.versionMemoryManualMB(pane.versionId) + " MB · 已覆盖"
+        if (mode === 0) return qsTr("%1 MB · 跟随全局").arg(pane.s.maxMemoryMB || 0)
+        return qsTr("%1 MB · 已覆盖").arg(pane.s.versionMemoryManualMB(pane.versionId))
     }
     readonly property int modOn: {
         var n = 0
@@ -111,7 +111,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 22
                     Text {
-                        text: "加载器"
+                        text: qsTr("加载器")
                         color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -125,7 +125,7 @@ Item {
                     }
                     Item { width: 1; height: 1 }
                     Text {
-                        text: "游戏"
+                        text: qsTr("游戏")
                         color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -150,70 +150,70 @@ Item {
             }
 
             // ── 运行 ──
-            KvGroupLabel { text: "运行"; width: col.width }
+            KvGroupLabel { text: qsTr("运行"); width: col.width }
             KvRow {
                 width: col.width
                 order: 0
                 k: "Java"
                 v: pane.javaText
-                a: "去指定"
+                a: qsTr("去指定")
                 onAct: pane.requestPane("launch")
             }
             KvRow {
                 width: col.width
                 order: 1
-                k: "内存"
+                k: qsTr("内存")
                 v: pane.memText
-                a: "去设置"
+                a: qsTr("去设置")
                 onAct: pane.requestPane("memory")
             }
 
             // ── 内容 ──
-            KvGroupLabel { text: "内容"; width: col.width }
+            KvGroupLabel { text: qsTr("内容"); width: col.width }
             KvRow {
                 width: col.width
                 order: 2
                 k: "Mod"
-                v: pane.mods.length + " 个 · 启用 " + pane.modOn
-                a: "管理"
+                v: qsTr("%1 个 · 启用 %2").arg(pane.mods.length).arg(pane.modOn)
+                a: qsTr("管理")
                 onAct: pane.requestPane("mods")
             }
             KvRow {
                 width: col.width
                 order: 3
-                k: "资源包"
-                v: pane.packs.length + " 个"
-                a: "管理"
+                k: qsTr("资源包")
+                v: qsTr("%1 个").arg(pane.packs.length)
+                a: qsTr("管理")
                 onAct: pane.requestPane("packs")
             }
             KvRow {
                 width: col.width
                 order: 4
-                k: "存档"
-                v: pane.saves.length + " 个"
-                a: "管理"
+                k: qsTr("存档")
+                v: qsTr("%1 个").arg(pane.saves.length)
+                a: qsTr("管理")
                 onAct: pane.requestPane("saves")
             }
 
             // ── 存储 ──
             // 占用：后端没有版本目录大小的接口，这一行不做（不写"计算中"糊弄）
-            KvGroupLabel { text: "存储"; width: col.width }
+            KvGroupLabel { text: qsTr("存储"); width: col.width }
             KvRow {
                 width: col.width
                 order: 5
-                k: "版本目录"
+                k: qsTr("版本目录")
                 v: "versions\\" + pane.versionId
                 mono: true
-                a: "打开"
+                a: qsTr("打开")
                 onAct: if (pane.b) pane.b.openVersionDir(pane.versionId)
             }
             KvRow {
                 width: col.width
                 order: 6
-                k: "游戏目录"
+                k: qsTr("游戏目录")
                 v: ".minecraft"
                 mono: true
-                a: "打开"
+                a: qsTr("打开")
                 onAct: if (pane.b) pane.b.openGameDir(pane.versionId)
             }
         }

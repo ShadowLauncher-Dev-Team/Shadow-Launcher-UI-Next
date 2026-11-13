@@ -85,12 +85,12 @@ Item {
                 SField {
                     width: 250
                     height: 36
-                    label: "搜索资源包"
+                    label: qsTr("搜索资源包")
                     onEdited: (v) => pane.query = v
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: pane.allPacks.length + " 个"
+                    text: qsTr("%1 个").arg(pane.allPacks.length)
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -100,10 +100,10 @@ Item {
                     height: 32
                     radius: 2
                     iconName: "refresh-cw"
-                    text: "刷新"
+                    text: qsTr("刷新")
                     onClicked: {
                         pane.reload(false, true)
-                        if (pane.toast) pane.toast.show("正在重新扫描资源包", -1, "info", true)
+                        if (pane.toast) pane.toast.show(qsTr("正在重新扫描资源包"), -1, "info", true)
                     }
                 }
                 SButton {
@@ -111,7 +111,7 @@ Item {
                     height: 32
                     radius: 2
                     iconName: "folder-open"
-                    text: "文件夹"
+                    text: qsTr("文件夹")
                     onClicked: if (pane.b) pane.b.openResourcePacksFolder(pane.versionId)
                 }
             }
@@ -122,7 +122,7 @@ Item {
                 height: 32
                 radius: 2
                 iconName: "package-plus"
-                text: "导入"
+                text: qsTr("导入")
                 onClicked: importDialog.open()
             }
         }
@@ -258,7 +258,7 @@ Item {
                     danger: true
                     height: 28
                     radius: 2
-                    text: "删除"
+                    text: qsTr("删除")
                     onClicked: {
                         pane.pendingDelete = modelData.fileName
                         confirmPop.open()
@@ -277,7 +277,7 @@ Item {
                     opacity: visible ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
-                    text: pane.allPacks.length === 0 ? "此版本还没有资源包" : "没有匹配的资源包"
+                    text: pane.allPacks.length === 0 ? qsTr("此版本还没有资源包") : qsTr("没有匹配的资源包")
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
@@ -289,7 +289,7 @@ Item {
                     opacity: visible ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     horizontalAlignment: Text.AlignHCenter
-                    text: "正在读取资源包列表…"
+                    text: qsTr("正在读取资源包列表…")
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
@@ -318,7 +318,7 @@ Item {
             padding: 18
             spacing: 12
             Text {
-                text: "删除资源包？"
+                text: qsTr("删除资源包？")
                 color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 14
@@ -326,7 +326,7 @@ Item {
             }
             Text {
                 width: parent.width - 36
-                text: pane.pendingDelete + "\n这个操作不能撤销。"
+                text: qsTr("%1\n这个操作不能撤销。").arg(pane.pendingDelete)
                 color: Theme.fg2
                 wrapMode: Text.Wrap
                 font.family: Theme.fontFamily
@@ -338,7 +338,7 @@ Item {
                     kind: 1
                     height: 32
                     radius: 2
-                    text: "取消"
+                    text: qsTr("取消")
                     onClicked: confirmPop.close()
                 }
                 SButton {
@@ -346,11 +346,11 @@ Item {
                     danger: true
                     height: 32
                     radius: 2
-                    text: "删除"
+                    text: qsTr("删除")
                     onClicked: {
                         if (pane.b) pane.b.deleteResourcePack(pane.pendingDelete, pane.versionId)
                         confirmPop.close()
-                        if (pane.toast) pane.toast.show("已删除 " + pane.pendingDelete, -1, "info", true)
+                        if (pane.toast) pane.toast.show(qsTr("已删除 %1").arg(pane.pendingDelete), -1, "info", true)
                         pane.pendingDelete = ""
                         pane.reload()
                     }
@@ -361,14 +361,14 @@ Item {
 
     FileDialog {
         id: importDialog
-        title: "导入资源包"
+        title: qsTr("导入资源包")
         fileMode: FileDialog.OpenFile
-        nameFilters: ["资源包 (*.zip)", "所有文件 (*)"]
+        nameFilters: [qsTr("资源包 (*.zip)"), qsTr("所有文件 (*)")]
         onAccepted: {
             if (!pane.b) return
             var p = String(selectedFile).replace(/^file:\/\//, "")
             var ok = pane.b.importResourcePack(p, pane.versionId)
-            if (pane.toast) pane.toast.show(ok ? "已导入" : "导入失败", -1, ok ? "info" : "error", true)
+            if (pane.toast) pane.toast.show(ok ? qsTr("已导入") : qsTr("导入失败"), -1, ok ? "info" : "error", true)
             pane.reload()
         }
     }

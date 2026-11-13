@@ -12,8 +12,8 @@ Item {
     // 模组/资源「文件下载」：由 StageShell 统一收集，这里只负责显示
     property var fileDl: []
     function dlStateText(d) {
-        if (d.state === "done") return "已完成"
-        if (d.state === "fail") return d.error ? ("失败 · " + d.error) : "失败"
+        if (d.state === "done") return qsTr("已完成")
+        if (d.state === "fail") return d.error ? qsTr("失败 · %1").arg(d.error) : qsTr("失败")
         var pct = d.total > 0 ? Math.round(d.received / d.total * 100) : 0
         return pct + "%" + (d.speed > 0 ? (" · " + (d.speed / 1048576).toFixed(1) + " MB/s") : "")
     }
@@ -39,9 +39,9 @@ Item {
     function fmtEta(sec) {
         sec = Math.round(sec || 0)
         if (sec <= 0) return "—"
-        if (sec < 60) return sec + " 秒"
-        if (sec < 3600) return Math.round(sec / 60) + " 分钟"
-        return Math.floor(sec / 3600) + " 小时 " + Math.round((sec % 3600) / 60) + " 分"
+        if (sec < 60) return qsTr("%1 秒").arg(sec)
+        if (sec < 3600) return qsTr("%1 分钟").arg(Math.round(sec / 60))
+        return qsTr("%1 小时 %2 分").arg(Math.floor(sec / 3600)).arg(Math.round((sec % 3600) / 60))
     }
 
     // steps 可能是数组，也可能被 QML 包装成 ListModel（有 get/length）——两种都兼容
@@ -116,9 +116,9 @@ Item {
                     page._doneAt[r.iid] = Date.now()
                     // 卡片名是文件名（.jar/.zip）时说明这是"下载"任务，措辞跟着变，
                     // 避免同一个动作一处说"下载完成"、一处说"安装完成"
-                    var nm = r.name || "任务"
+                    var nm = r.name || qsTr("任务")
                     var isFile = /\.(jar|zip|mrpack)$/i.test(nm)
-                    if (page.toast) page.toast.show(nm + (isFile ? " 下载完成" : " 安装完成"), 2600, "success")
+                    if (page.toast) page.toast.show(isFile ? qsTr("%1 下载完成").arg(nm) : qsTr("%1 安装完成").arg(nm), 2600, "success")
                     if (page.b.refreshInstalled) page.b.refreshInstalled()
                 }
                 continue
@@ -189,7 +189,7 @@ Item {
             anchors.left: parent.left
             anchors.leftMargin: page.padH
             anchors.verticalCenter: parent.verticalCenter
-            text: "下载进度"
+            text: qsTr("下载进度")
             color: Theme.fg
             font.family: Theme.fontFamily
             font.pixelSize: 20
@@ -229,7 +229,7 @@ Item {
                 anchors.rightMargin: 36
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 4
-                Text { text: "总进度"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                Text { text: qsTr("总进度"); color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
                 Text {
                     width: parent.width
                     text: Math.round(page.totalProgress * 100) + "%"
@@ -275,7 +275,7 @@ Item {
                 Column {
                     width: 150
                     spacing: 4
-                    Text { text: "总速度"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                    Text { text: qsTr("总速度"); color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
                     Text {
                         width: parent.width
                         text: (page.totalSpeed / 1048576).toFixed(1) + " MB/s"
@@ -289,10 +289,10 @@ Item {
                 Column {
                     width: 104
                     spacing: 4
-                    Text { text: "任务"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                    Text { text: qsTr("任务"); color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
                     Text {
                         width: parent.width
-                        text: page.runningCount + " 进行中"
+                        text: qsTr("%1 进行中").arg(page.runningCount)
                         color: Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 18
@@ -303,7 +303,7 @@ Item {
                 Column {
                     width: 132
                     spacing: 4
-                    Text { text: "剩余"; color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                    Text { text: qsTr("剩余"); color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
                     Text {
                         width: parent.width
                         text: page.remainText
@@ -349,7 +349,7 @@ Item {
                             anchors.right: stText.left
                             anchors.rightMargin: 12
                             anchors.verticalCenter: parent.verticalCenter
-                            text: modelData.name || "文件"
+                            text: modelData.name || qsTr("文件")
                             color: Theme.fg2
                             elide: Text.ElideMiddle
                             font.family: Theme.fontFamily; font.pixelSize: 12
@@ -465,7 +465,7 @@ Item {
                             font.weight: Font.DemiBold
                         }
                         Text {
-                            text: tcard.isFailed ? "部分失败" : tcard.ph
+                            text: tcard.isFailed ? qsTr("部分失败") : tcard.ph
                             color: tcard.isFailed ? Theme.dangerText : Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -537,7 +537,7 @@ Item {
                     anchors.rightMargin: 14
                     anchors.top: bar.bottom
                     anchors.topMargin: 8
-                    text: tcard.cardError.length > 0 ? tcard.cardError : "安装失败，可重试"
+                    text: tcard.cardError.length > 0 ? tcard.cardError : qsTr("安装失败，可重试")
                     color: Theme.dangerText
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -612,7 +612,7 @@ Item {
                             Text {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: st === "completed" ? "完成" : (st === "active" ? (stepDetail.length > 0 ? stepDetail : (stepPct + "%")) : "")
+                                text: st === "completed" ? qsTr("完成") : (st === "active" ? (stepDetail.length > 0 ? stepDetail : (stepPct + "%")) : "")
                                 color: st === "active" ? Theme.accentText : Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -651,7 +651,7 @@ Item {
                         width: 84
                         danger: true
                         iconName: "rotate-ccw"
-                        text: "重试"
+                        text: qsTr("重试")
                         onClicked: if (page.b && page.b.retryVersionInstall)
                                        page.b.retryVersionInstall(tcard.cardIid)
                     }
@@ -663,7 +663,7 @@ Item {
                         width: 84
                         danger: true
                         iconName: "x"
-                        text: "取消"
+                        text: qsTr("取消")
                         onClicked: if (page.b && page.b.cancelVersionInstall)
                                        page.b.cancelVersionInstall(tcard.cardIid)
                     }
@@ -674,7 +674,7 @@ Item {
             Text {
                 anchors.centerIn: parent
                 visible: cardModel.count === 0 && page.fileDl.length === 0
-                text: "当前没有下载任务"
+                text: qsTr("当前没有下载任务")
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 13

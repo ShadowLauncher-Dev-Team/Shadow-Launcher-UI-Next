@@ -196,11 +196,11 @@ Item {
     function doExport() {
         if (!pane.ex || pane.exporting) return
         if (pane.packName.length === 0) {
-            if (pane.toast) pane.toast.show("先填整合包名称", -1, "error", true)
+            if (pane.toast) pane.toast.show(qsTr("先填整合包名称"), -1, "error", true)
             return
         }
         if (pane.outPath.length === 0) {
-            if (pane.toast) pane.toast.show("先选择输出位置", -1, "error", true)
+            if (pane.toast) pane.toast.show(qsTr("先选择输出位置"), -1, "error", true)
             return
         }
         if (pane.pathInsideGameDir(pane.outPath)) {
@@ -208,9 +208,9 @@ Item {
             if (dir && dir.length > 0) {
                 pane.outPath = dir + "/" + pane.safeName() + pane.suffix
                 if (pane.toast)
-                    pane.toast.show("输出位置在游戏目录里，已改为 " + dir, -1, "info", true)
+                    pane.toast.show(qsTr("输出位置在游戏目录里，已改为 %1").arg(dir), -1, "info", true)
             } else {
-                if (pane.toast) pane.toast.show("不能导出到游戏目录，请换个位置", -1, "error", true)
+                if (pane.toast) pane.toast.show(qsTr("不能导出到游戏目录，请换个位置"), -1, "error", true)
                 return
             }
         }
@@ -227,7 +227,7 @@ Item {
         pane.failedHint = ""
         pane.exporting = true
         pane.prog = 0
-        pane.statusText = "准备导出…"
+        pane.statusText = qsTr("准备导出…")
         pane.ex.exportVersion(pane.versionId, pane.packName, pane.packVersion,
                               opts, saves, pane.mrOnly, pane.hostedOnly,
                               pane.includeJava, pane.format, pane.outPath)
@@ -251,14 +251,14 @@ Item {
             pane.exporting = false
             pane.prog = ok ? 1 : 0
             if (ok) {
-                pane.statusText = "导出完成"
+                pane.statusText = qsTr("导出完成")
                 if (pane.toast)
-                    pane.toast.show("已导出到 " + path, 4000, "info", true)
+                    pane.toast.show(qsTr("已导出到 %1").arg(path), 4000, "info", true)
             } else {
-                pane.statusText = "导出失败"
+                pane.statusText = qsTr("导出失败")
                 pane.failedHint = err
                 if (pane.toast)
-                    pane.toast.show(err.length > 0 ? err : "导出失败", 5000, "error", true)
+                    pane.toast.show(err.length > 0 ? err : qsTr("导出失败"), 5000, "error", true)
             }
         }
     }
@@ -286,7 +286,7 @@ Item {
                 anchors.left: parent.left
                 anchors.leftMargin: 344
                 anchors.verticalCenter: parent.verticalCenter
-                text: pane.format === 0 ? "引用在线来源，包体最小" : "CurseForge 清单，部分文件只能直接打包"
+                text: pane.format === 0 ? qsTr("引用在线来源，包体最小") : qsTr("CurseForge 清单，部分文件只能直接打包")
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -298,10 +298,10 @@ Item {
                 kind: 1
                 height: 32
                 radius: 2
-                text: "恢复默认"
+                text: qsTr("恢复默认")
                 onClicked: {
                     pane.refresh()
-                    if (pane.toast) pane.toast.show("已恢复默认勾选", -1, "info", true)
+                    if (pane.toast) pane.toast.show(qsTr("已恢复默认勾选"), -1, "info", true)
                 }
             }
             Rectangle {
@@ -329,7 +329,7 @@ Item {
                     y: 14
                     spacing: 10
                     Text {
-                        text: "导出内容"
+                        text: qsTr("导出内容")
                         color: Theme.fg2
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -337,7 +337,7 @@ Item {
                     }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "已选 " + pane.checkedIds.length + " 项"
+                        text: qsTr("已选 %1 项").arg(pane.checkedIds.length)
                         color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -372,14 +372,14 @@ Item {
                         spacing: 6
 
                         // —— 基础 ——
-                        Text { text: "基础"; color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 6 }
+                        Text { text: qsTr("基础"); color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 6 }
                         Repeater {
                             model: ["options", "personal", "optifine", "license"]
                             delegate: parentRow
                         }
 
                         // —— Mod 与配置 ——
-                        Text { text: "Mod 与配置"; color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
+                        Text { text: qsTr("Mod 与配置"); color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
                         Loader {
                             width: treeCol.width
                             sourceComponent: modGroup
@@ -390,7 +390,7 @@ Item {
                         }
 
                         // —— 资源包（带真实子项）——
-                        Text { text: "资源"; color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
+                        Text { text: qsTr("资源"); color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
                         Loader {
                             width: treeCol.width
                             sourceComponent: packGroup
@@ -403,14 +403,14 @@ Item {
                         }
 
                         // —— 存档（带真实子项）——
-                        Text { text: "存档"; color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
+                        Text { text: qsTr("存档"); color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
                         Loader {
                             width: treeCol.width
                             sourceComponent: savesGroup
                         }
 
                         // —— 其他 ——
-                        Text { text: "其他（默认不导出）"; color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
+                        Text { text: qsTr("其他（默认不导出）"); color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 10; topPadding: 10 }
                         Repeater {
                             model: ["screenshots", "schematics", "replay", "servers"]
                             delegate: parentRow
@@ -439,10 +439,10 @@ Item {
 
                     SCard {
                         width: parent.width
-                        title: "打包信息"
+                        title: qsTr("打包信息")
                         SRow {
                             width: parent.width
-                            label: "名称"
+                            label: qsTr("名称")
                             SInput {
                                 anchors.left: parent.left
                                 anchors.right: parent.right
@@ -454,7 +454,7 @@ Item {
                         }
                         SRow {
                             width: parent.width
-                            label: "版本"
+                            label: qsTr("版本")
                             divider: false
                             SInput {
                                 anchors.left: parent.left
@@ -469,10 +469,10 @@ Item {
 
                     SCard {
                         width: parent.width
-                        title: "高级"
+                        title: qsTr("高级")
                         SRow {
                             width: parent.width
-                            label: "仅包内资源"
+                            label: qsTr("仅包内资源")
                             SSwitch {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
@@ -482,7 +482,7 @@ Item {
                         }
                         SRow {
                             width: parent.width
-                            label: "仅 Modrinth"
+                            label: qsTr("仅 Modrinth")
                             SSwitch {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
@@ -492,7 +492,7 @@ Item {
                         }
                         SRow {
                             width: parent.width
-                            label: "打包 Java"
+                            label: qsTr("打包 Java")
                             divider: false
                             SSwitch {
                                 anchors.right: parent.right
@@ -505,11 +505,14 @@ Item {
 
                     Text {
                         width: parent.width
-                        text: (pane.format === 0 ? "Modrinth .mrpack" : "CurseForge .zip")
-                              + "  ·  已选 " + pane.checkedIds.length + " 项"
-                              + (pane.isChecked("saves")
-                                 ? "  ·  存档 " + (pane.checkedSaves.length > 0 ? pane.checkedSaves.length + " 个" : "全部")
-                                 : "")
+                        text: {
+                            var fmt = pane.format === 0 ? "Modrinth .mrpack" : "CurseForge .zip"
+                            var base = qsTr("%1  ·  已选 %2 项").arg(fmt).arg(pane.checkedIds.length)
+                            if (!pane.isChecked("saves")) return base
+                            var saveCount = pane.checkedSaves.length
+                            return qsTr("%1  ·  存档 %2").arg(base)
+                                     .arg(saveCount > 0 ? qsTr("%1 个").arg(saveCount) : qsTr("全部"))
+                        }
                         color: Theme.fg
                         wrapMode: Text.Wrap
                         font.family: Theme.fontFamily
@@ -553,7 +556,7 @@ Item {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             width: parent.width - 46
-                            text: pane.outPath.length > 0 ? pane.outPath : "未选择导出位置"
+                            text: pane.outPath.length > 0 ? pane.outPath : qsTr("未选择导出位置")
                             color: pathHov.hovered ? Theme.fg : Theme.fg3
                             elide: Text.ElideMiddle
                             font.family: "Consolas"
@@ -572,7 +575,7 @@ Item {
                             id: pathChange
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "更改"
+                            text: qsTr("更改")
                             color: Theme.accentText
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -629,13 +632,13 @@ Item {
                         height: 38
                         radius: Theme.rSm
                         kind: pane.exporting ? 1 : 0
-                        text: pane.exporting ? "取消导出" : "开始导出"
+                        text: pane.exporting ? qsTr("取消导出") : qsTr("开始导出")
                         onClicked: {
                             if (!pane.ex) return
                             if (pane.exporting) {
                                 pane.ex.cancel()
                                 pane.exporting = false
-                                pane.statusText = "正在取消…"
+                                pane.statusText = qsTr("正在取消…")
                                 return
                             }
                             pane.doExport()
@@ -716,7 +719,7 @@ Item {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: rowItem.o && rowItem.o.privacy
-                    text: "含个人数据"
+                    text: qsTr("含个人数据")
                     color: Theme.warn
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
@@ -795,7 +798,7 @@ Item {
                 id: modTitle
                 x: 39
                 anchors.verticalCenter: modHead.verticalCenter
-                text: "模组 (mods/)"
+                text: qsTr("模组 (mods/)")
                 color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
@@ -813,7 +816,7 @@ Item {
                 anchors.right: modHead.right
                 anchors.rightMargin: 14
                 anchors.verticalCenter: modHead.verticalCenter
-                text: pane.modExpanded ? "收起" : "挑选"
+                text: pane.modExpanded ? qsTr("收起") : qsTr("挑选")
                 color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -826,7 +829,7 @@ Item {
                 anchors.right: modPick.left
                 anchors.rightMargin: 14
                 anchors.verticalCenter: modHead.verticalCenter
-                text: pane.modList.length + " 个 · 已选 " + pane.modPickedCount()
+                text: qsTr("%1 个 · 已选 %2").arg(pane.modList.length).arg(pane.modPickedCount())
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -853,7 +856,7 @@ Item {
                     anchors.rightMargin: 8
                     anchors.top: parent.top
                     height: 30
-                    label: "搜索模组"
+                    label: qsTr("搜索模组")
                     text: pane.modQuery
                     onEdited: (v) => pane.modQuery = v
                 }
@@ -864,7 +867,7 @@ Item {
                     anchors.leftMargin: 32
                     anchors.top: modSearch.bottom
                     anchors.topMargin: 6
-                    text: "全选"
+                    text: qsTr("全选")
                     color: Theme.accentText
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -876,7 +879,7 @@ Item {
                     anchors.left: allOn.right
                     anchors.leftMargin: 14
                     anchors.top: allOn.top
-                    text: "全不选"
+                    text: qsTr("全不选")
                     color: Theme.accentText
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -1041,7 +1044,7 @@ Item {
                 anchors.right: grpHead.right
                 anchors.rightMargin: 14
                 anchors.verticalCenter: grpHead.verticalCenter
-                text: grpItem.items.length + " 个"
+                text: qsTr("%1 个").arg(grpItem.items.length)
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -1083,7 +1086,7 @@ Item {
                         spacing: 12
                         Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "全选"
+                        text: qsTr("全选")
                         color: Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -1093,7 +1096,7 @@ Item {
                     }
                         Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "全不选"
+                        text: qsTr("全不选")
                         color: Theme.accentText
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
@@ -1103,7 +1106,7 @@ Item {
                     }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: grpItem.items.length === 0 ? "此版本没有内容" : ""
+                            text: grpItem.items.length === 0 ? qsTr("此版本没有内容") : ""
                             color: Theme.line3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -1216,7 +1219,7 @@ Item {
             Text {
                 x: 39
                 anchors.verticalCenter: saveHead.verticalCenter
-                text: "单机游戏存档"
+                text: qsTr("单机游戏存档")
                 color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 13
@@ -1226,7 +1229,7 @@ Item {
                 anchors.right: saveHead.right
                 anchors.rightMargin: 14
                 anchors.verticalCenter: saveHead.verticalCenter
-                text: saveItem.items.length + " 个"
+                text: qsTr("%1 个").arg(saveItem.items.length)
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -1257,7 +1260,7 @@ Item {
                         spacing: 12
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "全选"
+                            text: qsTr("全选")
                             color: Theme.accentText; font.family: Theme.fontFamily; font.pixelSize: 11
                             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                 onClicked: {
@@ -1269,7 +1272,7 @@ Item {
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "全不选"
+                            text: qsTr("全不选")
                             color: Theme.accentText; font.family: Theme.fontFamily; font.pixelSize: 11
                             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                 onClicked: pane.checkedSaves = []
@@ -1278,7 +1281,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: saveItem.items.length === 0
-                            text: "此版本没有存档"
+                            text: qsTr("此版本没有存档")
                             color: Theme.line3; font.family: Theme.fontFamily; font.pixelSize: 11
                         }
                     }
@@ -1354,13 +1357,13 @@ Item {
     // FolderDialog 是 Qt 6 专门选文件夹的类型（FileDialog+Directory 在 Windows 原生后端会退化成保存框）
     FolderDialog {
         id: dirDialog
-        title: "选择导出文件夹"
+        title: qsTr("选择导出文件夹")
         onAccepted: {
             var dir = pane.toLocalPath(selectedFolder)
             dir = dir.replace(/\/+$/, "")
             if (dir.length > 0) {
                 pane.outPath = dir + "/" + pane.safeName() + pane.suffix
-                if (pane.toast) pane.toast.show("导出位置： " + pane.outPath, 3000, "info", true)
+                if (pane.toast) pane.toast.show(qsTr("导出位置： %1").arg(pane.outPath), 3000, "info", true)
             }
         }
     }
@@ -1392,7 +1395,7 @@ Item {
             padding: 18
             spacing: 12
             Text {
-                text: "导出位置"
+                text: qsTr("导出位置")
                 color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 14
@@ -1406,7 +1409,7 @@ Item {
             }
             Text {
                 width: parent.width - 36
-                text: "填完整文件路径（含 " + pane.suffix + "）"
+                text: qsTr("填完整文件路径（含 %1）").arg(pane.suffix)
                 color: Theme.line3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -1435,7 +1438,7 @@ Item {
                     kind: 1
                     height: 32
                     radius: Theme.rSm
-                    text: "选择文件夹…"
+                    text: qsTr("选择文件夹…")
                     onClicked: {
                         pathPop.close()
                         pane.openDirDialog()
@@ -1447,7 +1450,7 @@ Item {
                     kind: 1
                     height: 32
                     radius: Theme.rSm
-                    text: "取消"
+                    text: qsTr("取消")
                     onClicked: pathPop.close()
                 }
                 SButton {
@@ -1457,7 +1460,7 @@ Item {
                     kind: 0
                     height: 32
                     radius: Theme.rSm
-                    text: "确定"
+                    text: qsTr("确定")
                     onClicked: {
                         var v = String(pathInput.text).trim()
                         if (v.length > 0) pane.outPath = v
@@ -1478,9 +1481,9 @@ Item {
         }
         if (home.length === 0) return out
         var cand = [
-            { title: "桌面", dir: home + "/Desktop" },
-            { title: "下载", dir: home + "/Downloads" },
-            { title: "文档", dir: home + "/Documents" }
+            { title: qsTr("桌面"), dir: home + "/Desktop" },
+            { title: qsTr("下载"), dir: home + "/Downloads" },
+            { title: qsTr("文档"), dir: home + "/Documents" }
         ]
         for (var i = 0; i < cand.length; ++i) {
             // QML 不能直接探目录是否存在，交给后端当前默认目录做兜底判断
@@ -1532,9 +1535,9 @@ Item {
             padding: 18
             spacing: 12
             Text {
-                text: pane.lookupPlatform === 0 ? "Modrinth 查询失败"
-                     : pane.lookupPlatform === 1 ? "CurseForge 查询失败"
-                     : "联网查询失败"
+                text: pane.lookupPlatform === 0 ? qsTr("Modrinth 查询失败")
+                     : pane.lookupPlatform === 1 ? qsTr("CurseForge 查询失败")
+                     : qsTr("联网查询失败")
                 color: Theme.accentText
                 font.family: Theme.fontFamily
                 font.pixelSize: 14
@@ -1542,7 +1545,7 @@ Item {
             }
             Text {
                 width: parent.width - 36
-                text: pane.lookupDetail + "\n\n继续导出的话，查不到来源的文件会直接打进包里。"
+                text: qsTr("%1\n\n继续导出的话，查不到来源的文件会直接打进包里。").arg(pane.lookupDetail)
                 color: Theme.fg2
                 wrapMode: Text.Wrap
                 font.family: Theme.fontFamily
@@ -1554,7 +1557,7 @@ Item {
                     kind: 1
                     height: 32
                     radius: 2
-                    text: "取消导出"
+                    text: qsTr("取消导出")
                     onClicked: {
                         lookupPop.close()
                         if (pane.ex) pane.ex.continueAfterLookupFailure(false)
@@ -1564,7 +1567,7 @@ Item {
                     kind: 0
                     height: 32
                     radius: 2
-                    text: "继续导出"
+                    text: qsTr("继续导出")
                     onClicked: {
                         lookupPop.close()
                         if (pane.ex) pane.ex.continueAfterLookupFailure(true)
