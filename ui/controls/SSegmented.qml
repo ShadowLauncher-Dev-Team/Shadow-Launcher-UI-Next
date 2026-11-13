@@ -23,21 +23,28 @@ Item {
         font.family: Theme.fontFamily
         font.pixelSize: 12
     }
-    readonly property real maxTextW: {
+    // 用**函数**量宽度，不用绑定：TextMetrics.text 是读写属性，写在绑定里赋值会把自己
+    // 变成它自己的依赖 → Qt 报 "Binding loop detected for property maxTextW"（实测刷满日志）。
+    // 函数在 items 变化/组件完成时各跑一次就够了。
+    property real maxTextW: 0
+    function measureText() {
         var w = 0
         for (var i = 0; i < items.length; i++) {
             metrics.text = items[i]
             if (metrics.width > w) w = metrics.width
         }
-        return w
+        maxTextW = w
     }
+    onItemsChanged: measureText()
+    Component.onCompleted: measureText()
 
     // 实际每段宽度 = max(测量宽度, 容器均分宽度)。
     // 只取测量值的话：调用方给了固定 width（如账号页的 180）时段落会缩成 60 一排挤在左边，
     // 右边留一大片空白，选中滑块也跟着错位 —— 那正是"滑块大小异常"。
     // 容器比文字窄时（英文长标签）才由测量值把容器撑开。
+    // 注意分母用 root.width 而不是 row.width：row 的宽度又来自每段 width，用它会成环。
     readonly property real effSegW: Math.max(segW,
-        (row.width - Math.max(0, items.length - 1) * row.spacing) / Math.max(1, items.length))
+        (root.width - Math.max(0, items.length - 1) * row.spacing) / Math.max(1, items.length))
 
     Rectangle {
         anchors.fill: parent

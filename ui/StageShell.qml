@@ -254,6 +254,25 @@ Item {
             root.progressOpen = false
             sideBar.currentKey = "multiplayer"
         }
+        // --ui-res-detail：直接打开资源详情页（截图验收用）。
+        // 详情页要经过「下载页 → 选 tab → 等网络列表 → 点卡片」才能进来，
+        // 自动化里任何一步慢了或点偏了就测不到，所以直接塞一份样本 item。
+        if (Qt.application.arguments.indexOf("--ui-res-detail") >= 0) {
+            var sample = {
+                slug: "sodium",
+                title: "Sodium",
+                zh: "钠",
+                desc: "Lightweight and modular API providing common hooks and interoperability measures utilized by mods using the Fabric toolchain.",
+                icon: "",
+                source: "Modrinth",
+                downloads: 292000000,
+                dateModified: "2026-11-11",
+                isModpack: false
+            }
+            resDetail.kind = "mod"
+            resDetail.item = sample
+            root.resDetailOpen = true
+        }
     }
 
     Rectangle {
@@ -369,7 +388,9 @@ Item {
         readonly property bool previewing: root.prefsOpen && prefsPage.livePreview
         Rectangle {
             anchors.fill: parent
-            color: previewing ? "transparent" : Theme.bg
+            // 必须带 stageHost. 前缀：QML 子项**不会**自动继承父项的自定义属性作用域，
+            // 裸写 previewing 会抛 ReferenceError 并且绑定整个失效（底色落回默认白）。
+            color: stageHost.previewing ? "transparent" : Theme.bg
         }
         Item {
             anchors.fill: parent

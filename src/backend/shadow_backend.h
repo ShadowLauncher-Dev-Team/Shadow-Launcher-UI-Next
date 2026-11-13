@@ -612,6 +612,9 @@ public:
     /// 汉化反查：英文名 → 中文名（依赖卡用），转发 resource 层
     Q_INVOKABLE QString resolveModZh(const QString& title) const;
     /// 详情页「转到 XX / 复制链接」统一链接解析（转发 resource 层），返回 { mrUrl, cfUrl, mcmodUrl }
+    /// 2026-11-13：旧 UI（qml/）删除时，这里只留下了注释、声明被一起删了 ——
+    /// QML 调 page.b.resolveProjectLinks(...) 直接是 undefined，三个跳转按钮全空。
+    Q_INVOKABLE QVariantMap resolveProjectLinks(const QString& title, const QString& slug, const QString& kind) const;
 
     // Mod file download
     Q_INVOKABLE int downloadModFile(const QString& url, const QString& savePath, const QString& displayName,

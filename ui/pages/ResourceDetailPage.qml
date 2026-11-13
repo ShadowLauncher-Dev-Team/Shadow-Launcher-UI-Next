@@ -20,11 +20,27 @@ Item {
     signal downloadsStarted()
 
     readonly property string slug: item.slug || ""
+    // 左右边距必须对称：详情页是「左内容 + 右安装栏」两栏，右栏自己就是一块卡片，
+    // 再额外吃 Theme.padR(104) 会让右侧空白比左侧多 40px，整页看着往左偏。
     readonly property int padL: narrow ? 32 : Theme.padL
-    readonly property int padR: narrow ? 32 : Theme.padR
+    readonly property int padR: narrow ? 32 : Theme.padL
+
+    // ── 外部跳转链接（2026-08-23 后端就有 resolveProjectLinks，新 UI 一直没接）──
+    // 纯数字 slug = CurseForge id；否则是 Modrinth slug。后端还会按标题查百科 class 页。
+    readonly property var projectLinks: {
+        if (!page.b || page.slug.length === 0) return ({ mrUrl: "", cfUrl: "", mcmodUrl: "" })
+        return page.b.resolveProjectLinks(page.item.title || "", page.slug, page.kind)
+    }
+    function openExternal(url) {
+        if (url && url.length > 0) Qt.openUrlExternally(url)
+    }
     // 窗口宽度而非自身宽度：侧栏收起/展开时自身宽度会变，用它判断会在动画最后一帧
     // 突然从宽布局切到窄布局（用户看到的「最后一刻震动卡一下」）
     readonly property bool narrow: (Window.window ? Window.window.width : width) < 900
+
+    // 用户在「旧版本」里点中的那一行（空 = 用最新版）。
+    // 没有它，旧版本列表只是「能展开看一眼」的纯展示 —— 点了没反应，也没法下载。
+    property string pickedId: ""
 
     property var versions: []
     property var gameList: []
@@ -100,7 +116,33 @@ Item {
         return out
     }
     readonly property var latest: comboList.length > 0 ? comboList[0] : null
+    // 当前要下载的那一个：在旧版本里选中了就用选中的，否则用最新。
+    // 选中的版本被筛选条件挤掉时自动回落（否则会一直拿着一份已经不在列表里的快照）。
+    readonly property var currentFile: {
+        if (pickedId.length === 0) return latest
+        for (var i = 0; i < comboList.length; ++i)
+            if (comboList[i].id === pickedId) return comboList[i]
+        return latest
+    }
     readonly property int oldCount: comboList.length > 1 ? comboList.length - 1 : 0
+
+    // 「是否选了一个旧版本」：不能只看 pickedId 非空 ——
+    // pickedId 是页面级状态，换资源 / 版本列表还没加载时会残留上一个资源的选择，
+    // 于是新详情页版本还没出来就先显示「已选旧版本」（用户实测复现）。
+    // currentFile 在匹配不到时回落到 latest，所以这里一并排除「回落态」。
+    readonly property bool picksOldVersion: pickedId.length > 0
+                                           && currentFile !== null
+                                           && latest !== null
+                                           && currentFile.id !== latest.id
+
+    // 换资源必须清掉选择：否则旧 id 会带到下一个资源的详情页
+    onSlugChanged: { page.pickedId = ""; page.showOld = false }
+
+    // 换文件时让主卡文字轻闪一下：值本身是瞬间变的，用户很难注意到「我换到另一个版本了」。
+    // 与项目其它「内容更新」同款手法：opacity 变低再回升，一段 durFast 就够，不做花哨的位移动画。
+    property bool fileFlash: false
+    onCurrentFileChanged: { page.fileFlash = true; fileFlashTimer.restart() }
+    Timer { id: fileFlashTimer; interval: Theme.durFast; onTriggered: page.fileFlash = false }
     readonly property int reqCount: {
         var n = 0
         for (var i = 0; i < deps.length; ++i)
@@ -158,6 +200,9 @@ Item {
 
     function applyVersions(s, vers, details) {
         if (s !== page.slug) return
+        // 版本列表被重新拉取（换游戏版本/加载器）时，上一批里选中的 id 可能已不在列表中，
+        // 清空选择，免得「已选旧版本」挂着但实际下的是最新。
+        page.pickedId = ""
         var list = vers || []
         var arr = []
         var gset = {}
@@ -221,7 +266,7 @@ Item {
     function refreshDeps() {
         page.deps = []
         page.depChecked = {}
-        var v = page.latest
+        var v = page.currentFile
         if (!v || !page.b || v.id.length === 0) return
         page.depsLoading = true
         page.b.fetchVersionDependencies(page.slug, v.id)
@@ -234,7 +279,7 @@ Item {
         function onShaderVersionsPartial(s, vers, details) { page.applyVersions(s, vers, details) }
         function onResourcepackVersionsPartial(s, vers, details) { page.applyVersions(s, vers, details) }
         function onVersionDependenciesResolved(versionId, deps) {
-            if (!page.latest || versionId !== page.latest.id) return
+            if (!page.currentFile || versionId !== page.currentFile.id) return
             page.depsLoading = false
             page.deps = deps || []
             var m = {}
@@ -293,7 +338,7 @@ Item {
         page.dlQueue = []
         page.batchMode = false
         page.targetDir = ""          // 单文件：仍然走"另存为"
-        var v = page.latest
+        var v = page.currentFile
         if (!v || v.url.length === 0) { page.status = qsTr("该组合没有可下载文件"); return }
         page.pushJob(v.url, v.filename, v.size, v.sha1, v.version)
     }
@@ -301,7 +346,7 @@ Item {
     // 本次要下载的全部条目（主文件 + 勾选的前置）。url 为空表示元数据还没解析出来。
     function buildJobs() {
         var jobs = []
-        var v = page.latest
+        var v = page.currentFile
         if (v && v.url.length > 0)
             jobs.push({ versionId: "", label: v.version || "",
                         url: v.url, filename: v.filename || "download.jar",
@@ -529,7 +574,10 @@ Item {
             anchors.left: headTitle.right; anchors.leftMargin: 10
             anchors.verticalCenter: headTitle.verticalCenter
             width: srcTxt.implicitWidth + 16; height: 20; radius: 10
-            color: page.item.source === "CurseForge" ? Theme.warn : Theme.bgCard2
+            // 底色用 warnSoft、文字用 warn（墨色）。
+            // 之前底色和文字都取 Theme.warn —— 同色叠加，CF 来源的徽章只剩一个橙色空胶囊，
+            // 文字完全看不见（ResourceTile 上的同名徽章也是这样）。
+            color: page.item.source === "CurseForge" ? Theme.warnSoft : Theme.bgCard2
             Text {
                 id: srcTxt
                 anchors.centerIn: parent
@@ -546,6 +594,75 @@ Item {
             text: page.item.desc || ""
             color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 12
             elide: Text.ElideRight; maximumLineCount: 1
+        }
+
+        // ── 跳转：Modrinth / CurseForge / MC百科 ──
+        // 只画后端真正解析得出的那几项（resolveProjectLinks 返回空串表示该源不可用），
+        // 所以英文界面下也不会出现「点了没反应的按钮」。
+        Row {
+            id: headLinks
+            anchors.left: headIcon.right; anchors.leftMargin: 16
+            anchors.top: headDesc.bottom; anchors.topMargin: 8
+            spacing: 8
+
+            component LinkChip: Rectangle {
+                id: chip
+                property string label: ""
+                property string url: ""
+                property color dot: Theme.ok
+                width: chipRow.implicitWidth + 20; height: 22; radius: 11
+                visible: chip.url.length > 0
+                color: chipHover.containsMouse ? Theme.bgHover : Theme.bgCard2
+                Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                border.width: 1; border.color: chipHover.containsMouse ? Theme.line2 : Theme.line
+                Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                // 点击时轻微压一下：项目里所有可点元素都有这层反馈，chip 是自绘的，要自己补
+                scale: chipHover.pressed ? 0.96 : 1.0
+                Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Theme.easeStandard } }
+                Row {
+                    id: chipRow
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Rectangle {
+                        width: 6; height: 6; radius: 3
+                        color: chip.dot
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                        text: chip.label
+                        color: chipHover.containsMouse ? Theme.fg : Theme.fg2
+                        font.family: Theme.fontFamily; font.pixelSize: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    SIcon {
+                        name: "external-link"; size: 11
+                        color: chipHover.containsMouse ? Theme.fg : Theme.fg3
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+                MouseArea {
+                    id: chipHover
+                    anchors.fill: parent; hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: page.openExternal(chip.url)
+                }
+            }
+
+            LinkChip {
+                label: "Modrinth"
+                url: page.projectLinks.mrUrl || ""
+                dot: Theme.ok
+            }
+            LinkChip {
+                label: "CurseForge"
+                url: page.projectLinks.cfUrl || ""
+                dot: Theme.warn
+            }
+            LinkChip {
+                label: qsTr("MC百科")
+                url: page.projectLinks.mcmodUrl || ""
+                dot: Theme.accentText
+            }
         }
         Row {
             id: headStats
@@ -607,7 +724,7 @@ Item {
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 16; anchors.right: parent.right; anchors.rightMargin: 16
                     anchors.top: parent.top; anchors.topMargin: 42
-                    text: page.latest ? (page.latest.filename || "") : qsTr("未选择版本")
+                    text: page.currentFile ? (page.currentFile.filename || "") : qsTr("未选择版本")
                     color: Theme.fg2; font.family: Theme.fontFamily; font.pixelSize: 12
                     elide: Text.ElideMiddle
                 }
@@ -624,7 +741,7 @@ Item {
                     anchors.top: parent.top; anchors.topMargin: 88
                     implicitHeight: 38
                     text: page.reqCount > 0 ? qsTr("下载 %1 个文件").arg(page.reqCount + 1) : qsTr("下载")
-                    enabled: page.latest !== null
+                    enabled: page.currentFile !== null
                     onClicked: page.installAll()
                 }
                 Text {
@@ -769,14 +886,52 @@ Item {
                     font.family: Theme.fontFamily; font.pixelSize: 13; font.weight: Font.DemiBold
                 }
                 Text {
+                    id: fileTag
                     anchors.left: parent.left; anchors.leftMargin: 98; anchors.top: parent.top; anchors.topMargin: 16
-                    text: page.oldCount > 0 ? qsTr("最新 · 另有 %1 个旧版").arg(page.oldCount) : qsTr("最新")
-                    color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 10
+                    // 选中旧版时必须说清楚「你现在下的不是最新」——否则用户以为自己在下最新
+                    text: page.picksOldVersion
+                          ? qsTr("已选旧版本")
+                          : (page.oldCount > 0 ? qsTr("最新 · 另有 %1 个旧版").arg(page.oldCount) : qsTr("最新"))
+                    color: page.picksOldVersion ? Theme.warn : Theme.fg3
+                    Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                    font.family: Theme.fontFamily; font.pixelSize: 10
+                }
+                // 选错旧版时的退出口（点了就回到最新）
+                Rectangle {
+                    id: backLatest
+                    anchors.left: fileTag.right; anchors.leftMargin: 10
+                    anchors.verticalCenter: fileTag.verticalCenter
+                    width: backLatestTxt.implicitWidth + 14; height: 18; radius: 9
+                    // 用 opacity + 位移做进出，不用 visible 硬切：这一项是「选中旧版后才有」的退出口，
+                    // 直接跳出来会跟主卡文字的闪动打架。enabled 兜住不可见时的点击。
+                    readonly property bool shown: page.picksOldVersion
+                    opacity: shown ? 1 : 0
+                    enabled: shown
+                    scale: shown ? 1 : 0.92
+                    Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter } }
+                    Behavior on scale { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easePop } }
+                    color: latestHover.containsMouse ? Theme.bgHover : Theme.bgCard
+                    Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                    border.width: 1; border.color: Theme.line2
+                    Text {
+                        id: backLatestTxt
+                        anchors.centerIn: parent
+                        text: qsTr("回到最新")
+                        color: Theme.fg2; font.family: Theme.fontFamily; font.pixelSize: 10
+                    }
+                    MouseArea {
+                        id: latestHover
+                        anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: page.pickedId = ""
+                    }
                 }
                 Text {
                     anchors.right: parent.right; anchors.rightMargin: 18; anchors.top: parent.top; anchors.topMargin: 16
-                    text: page.latest ? ((page.latest.date || "") + "   " + page.fmtSize(page.latest.size)) : ""
+                    text: page.currentFile ? ((page.currentFile.date || "") + "   " + page.fmtSize(page.currentFile.size)) : ""
                     color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 10
+                    opacity: page.fileFlash ? 0.35 : 1
+                    Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                 }
                 Rectangle {
                     anchors.left: parent.left; anchors.right: parent.right
@@ -787,10 +942,12 @@ Item {
                     anchors.left: parent.left; anchors.leftMargin: 18
                     anchors.top: parent.top; anchors.topMargin: 54
                     anchors.right: dlBtn.left; anchors.rightMargin: 16
-                    text: page.latest ? (page.latest.filename || page.latest.version) : qsTr("没有匹配的文件")
-                    color: page.latest ? Theme.fg : Theme.fg3
+                    text: page.currentFile ? (page.currentFile.filename || page.currentFile.version) : qsTr("没有匹配的文件")
+                    color: page.currentFile ? Theme.fg : Theme.fg3
                     font.family: Theme.fontFamily; font.pixelSize: 12
                     elide: Text.ElideMiddle
+                    opacity: page.fileFlash ? 0.35 : 1
+                    Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                 }
                 SButton {
                     id: dlBtn
@@ -799,7 +956,7 @@ Item {
                     implicitWidth: 88; implicitHeight: 32
                     radius: Theme.rSm
                     text: qsTr("下载")
-                    enabled: page.latest !== null
+                    enabled: page.currentFile !== null
                     onClicked: page.installLatest()
                 }
             }
@@ -811,6 +968,9 @@ Item {
                 anchors.top: fileCard.bottom; anchors.topMargin: 10
                 visible: page.oldCount > 0
                 height: page.oldCount > 0 ? (oldHead.height + (page.showOld ? Math.min(6, page.oldCount) * 38 : 0)) : 0
+                // 展开/收起做高度过渡，内容跟着淡入 —— 与设置页折叠卡片同一套（durSlow + easeEnter）。
+                // 之前是瞬间撑开，下面的前置卡片会硬跳一下。
+                Behavior on height { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
 
                 Rectangle {
                     id: oldHead
@@ -845,30 +1005,64 @@ Item {
                     height: page.showOld ? Math.min(6, page.oldCount) * 38 : 0
                     visible: page.showOld
                     clip: true
+                    opacity: page.showOld ? 1 : 0
+                    Behavior on height { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     model: page.showOld ? page.comboList.slice(1) : []
                     interactive: false
                     delegate: Item {
+                        id: row   // 下面底色/竖条都要读 row.picked；少了这个 id，绑定求值失败会静默落回白色
                         width: oldList.width; height: 38
+                        // 这一行是否就是当前选中项（选中后上方文件卡/右栏都跟着换）
+                        readonly property bool picked: page.pickedId === modelData.id
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: Theme.rSm
+                            color: row.picked ? Theme.accentSoft
+                                   : (rowHover.containsMouse ? Theme.bgCard2 : "transparent")
+                            // 选中的底色再压一层强调（accentSoft 偏淡，被 hover 的 bgCard2 盖住时读不出选中）
+                            opacity: row.picked ? 1 : 0.92
+                            Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                        }
+                        // 选中标记：左侧 2px 竖条，跟侧栏选中态同一套语言（高度长出来，不是硬切出现）
+                        Rectangle {
+                            anchors.left: parent.left; anchors.leftMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 2; radius: 1
+                            height: row.picked ? 16 : 0
+                            color: Theme.accentText
+                            Behavior on height { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easePop } }
+                        }
                         Text {
+                            id: rowName
                             anchors.left: parent.left; anchors.leftMargin: 18
-                            anchors.right: oldDl.left; anchors.rightMargin: 16
+                            anchors.right: rowDate.left; anchors.rightMargin: 16
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.filename || modelData.version
-                            color: Theme.fg2; font.family: Theme.fontFamily; font.pixelSize: 11
+                            color: row.picked ? Theme.fg : Theme.fg2
+                            Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                            font.family: Theme.fontFamily; font.pixelSize: 11
                             elide: Text.ElideMiddle
                         }
                         Text {
+                            id: rowDate
                             anchors.right: parent.right; anchors.rightMargin: 18
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.date
                             color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 10
                         }
-                        SButton {
-                            id: oldDl
-                            anchors.right: parent.right; anchors.rightMargin: 78
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: false
-                            text: qsTr("下载")
+                        MouseArea {
+                            id: rowHover
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            // 点一次 = 选中并收起旧版列表，回到上方主卡确认再下载。
+                            // （不直接开始下载：这里点错就是下错文件，中间多一步更安全）
+                            onClicked: {
+                                page.pickedId = (page.pickedId === modelData.id) ? "" : modelData.id
+                                if (page.pickedId.length > 0) page.showOld = false
+                            }
                         }
                     }
                 }

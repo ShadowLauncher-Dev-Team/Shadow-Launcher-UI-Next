@@ -3430,6 +3430,11 @@ QString ShadowBackend::resolveModZh(const QString& title) const {
     return m_resource->resolveModZh(title);
 }
 
+QVariantMap ShadowBackend::resolveProjectLinks(const QString& title, const QString& slug, const QString& kind) const {
+    if (!m_resource) return {};
+    return m_resource->resolveProjectLinks(title, slug, kind);
+}
+
 // ── 整合包：双源搜索 / 详情版本 / 下载→自动导入 ──
 void ShadowBackend::searchModpacksEx(const QString& query, const QString& loader,
     const QString& category, const QStringList& gameVersions,
