@@ -652,11 +652,13 @@ Item {
                 id: segPill
                 height: 26
                 radius: 4
-                // 原来用 bgInput(#0f131a) 压在容器 bgCard2(#0b0d12) 上 —— 亮度只差一档，
-                // 深色屏上几乎看不出选中块，读起来像「只有文字变色」。
-                // 现在与顶栏那排 tab 的选中块用同一套（accentSoft 蓝底）：
-                // 两排都是「筛选」，选中态用同一个颜色，用户不用重新学一遍。
-                color: Theme.accentSoft
+                // 选中块用**中性灰**，不用强调蓝：这一排是「版本类型」筛选，和顶栏那排
+                // 一级 tab 不是同一层级；一级 tab 才用 accentSoft，二级筛选用蓝会把两排拉平。
+                // bgHover(#151a23) 压在容器 bgCard2(#0b0d12) 上是 2.9 倍亮度差（原 bgInput 只差 1.9 倍，
+                // 深色屏上几乎看不出选中块），再用 line2 描 1px 边界把轮廓定住。
+                color: Theme.bgHover
+                border.width: 1
+                border.color: Theme.line2
                 readonly property var sel: page.segGeom[page.filter] || null
                 x: segContent.x + (sel ? sel.x : 0)
                 y: segContent.y
