@@ -88,6 +88,9 @@ Item {
         if (!page.b) return
         page.pageNo = (pageNum === undefined) ? 0 : Math.max(0, pageNum)
         page.busy = true
+        // 必须清零：ticks 原来只在 running 由 false 变 true 时归零，而连续搜索/翻页时
+        // busy 一直是 true，计数会跨搜索一路累加 —— 后面某次搜索一上来就撞上限、条立刻关掉。
+        settleTimer.ticks = 0
         page.staggerBudget = Theme.staggerMax
         var q = page.query.trim()
         var off = page.pageNo * page.pageSize
@@ -176,7 +179,13 @@ Item {
                 var st = page.b ? page.b.resourcePoolState(page.kind) : null
                 pending = st ? st.pending : 0
             } catch (e) {}
-            if (pending === 0 || ticks > 30) {
+            // 关条的唯一依据是 pending 归零（后端确定没有在途请求了）。
+            // 上限提到 100 tick（30s）纯粹是防后端彻底卡死的最后保险，必须**大于**
+            // 后端自己的 25s 最终兜底，否则前端会先关条、后端稍后还发一次数据 —— 列表就「蹦」了。
+            if (pending === 0 || ticks > 100) {
+                // 每次搜索只打一行，用来回查「条是什么时候关的、当时还有没有在途请求」
+                console.info("[settle] close ticks=" + ticks + " pool=" + page.pool.length
+                             + " timeout=" + (ticks > 100))
                 ticks = 0
                 page.busy = false
                 running = false

@@ -796,10 +796,21 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
         // 无可发请求（该源已耗尽或不可用）→ 直接发当前池
         emitModPool();
     } else {
-        // 超时兜底：8s 未回 → 发当前池（防无限等待）
+        // 慢源保护分两级，**都不能让前端误以为「加载完了」**：
+        // ① 8s：先把已有数据发出去（用户不用对着空列表干等），但**保留 pending** ——
+        //    慢源确实还在飞，加载条要继续转。
+        // ② 25s：仍未回 → 认定该源失联，才清 pending 结束加载。
+        // 旧实现只有 ①，而且把 pending 清零了：前端轮询看到 0 立刻关条，
+        // 而慢源稍后回包时池子还会再合并重排一次 —— 用户看到的就是
+        // 「加载条先没了，几秒后 CF 资源突然蹦出来」。
         QTimer::singleShot(8000, this, [this, gen]() {
             if (gen != m_modGen) return;
+            if (m_modPending > 0) emitModPool();   // 只发已到的，不动计数
+        });
+        QTimer::singleShot(25000, this, [this, gen]() {
+            if (gen != m_modGen) return;
             if (m_modPending > 0) {
+                emit logMessage(tr("[池子] Mod 有源 25s 未返回，结束等待"));
                 m_modPending = 0;
                 emitModPool();
             }
@@ -1256,9 +1267,15 @@ void ResourceBackend::ensureShaderPool()
     if (m_shaderPending == 0) {
         emitShaderPool();
     } else {
+        // 8s 只发已到的数据、不清计数；25s 才认定失联（理由同 ensureModPool）
         QTimer::singleShot(8000, this, [this, gen]() {
             if (gen != m_shaderGen) return;
+            if (m_shaderPending > 0) emitShaderPool();
+        });
+        QTimer::singleShot(25000, this, [this, gen]() {
+            if (gen != m_shaderGen) return;
             if (m_shaderPending > 0) {
+                emit logMessage(tr("[池子] 光影有源 25s 未返回，结束等待"));
                 m_shaderPending = 0;
                 emitShaderPool();
             }
@@ -1531,9 +1548,15 @@ void ResourceBackend::ensureRpPool()
     if (m_rpPending == 0) {
         emitRpPool();
     } else {
+        // 8s 只发已到的数据、不清计数；25s 才认定失联（理由同 ensureModPool）
         QTimer::singleShot(8000, this, [this, gen]() {
             if (gen != m_rpGen) return;
+            if (m_rpPending > 0) emitRpPool();
+        });
+        QTimer::singleShot(25000, this, [this, gen]() {
+            if (gen != m_rpGen) return;
             if (m_rpPending > 0) {
+                emit logMessage(tr("[池子] 资源包有源 25s 未返回，结束等待"));
                 m_rpPending = 0;
                 emitRpPool();
             }
@@ -1749,9 +1772,15 @@ void ResourceBackend::ensurePackPool()
     if (m_packPending == 0) {
         emitPackPool();
     } else {
+        // 8s 只发已到的数据、不清计数；25s 才认定失联（理由同 ensureModPool）
         QTimer::singleShot(8000, this, [this, gen]() {
             if (gen != m_packGen) return;
+            if (m_packPending > 0) emitPackPool();
+        });
+        QTimer::singleShot(25000, this, [this, gen]() {
+            if (gen != m_packGen) return;
             if (m_packPending > 0) {
+                emit logMessage(tr("[池子] 整合包有源 25s 未返回，结束等待"));
                 m_packPending = 0;
                 emitPackPool();
             }
@@ -2053,9 +2082,15 @@ void ResourceBackend::ensureDpPool()
     if (m_dpPending == 0) {
         emitDpPool();
     } else {
+        // 8s 只发已到的数据、不清计数；25s 才认定失联（理由同 ensureModPool）
         QTimer::singleShot(8000, this, [this, gen]() {
             if (gen != m_dpGen) return;
+            if (m_dpPending > 0) emitDpPool();
+        });
+        QTimer::singleShot(25000, this, [this, gen]() {
+            if (gen != m_dpGen) return;
             if (m_dpPending > 0) {
+                emit logMessage(tr("[池子] 数据包有源 25s 未返回，结束等待"));
                 m_dpPending = 0;
                 emitDpPool();
             }

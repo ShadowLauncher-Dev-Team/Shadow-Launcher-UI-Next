@@ -245,6 +245,10 @@ Item {
             var fi = Qt.application.arguments.indexOf("--ui-dl-filter")
             if (fi >= 0 && fi + 1 < Qt.application.arguments.length)
                 downloadPage.filter = parseInt(Qt.application.arguments[fi + 1], 10) || 0
+            // --ui-dl-tab <N>：直接切到某个资源 tab（1 Mod / 2 光影 / 3 资源包 / 4 整合包 / 5 数据包）
+            var ti = Qt.application.arguments.indexOf("--ui-dl-tab")
+            if (ti >= 0 && ti + 1 < Qt.application.arguments.length)
+                downloadPage.tab = parseInt(Qt.application.arguments[ti + 1], 10) || 0
         }
         if (Qt.application.arguments.indexOf("--ui-progress") >= 0) {
             root.progressOpen = true
