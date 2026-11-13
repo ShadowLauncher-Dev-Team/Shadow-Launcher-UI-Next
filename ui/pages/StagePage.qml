@@ -163,6 +163,20 @@ Item {
         }
     }
 
+    // ---------- 拖动带 ----------
+    // 启动页没有系统标题栏，顶部这条空白区是用户唯一顺手的"抓手"。
+    // 声明在账户胶囊/按钮之前 —— 后声明的控件盖在上面，所以点胶囊照旧点得到，
+    // 只有按在空白处才是拖窗口。
+    MouseArea {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: Theme.topH
+        acceptedButtons: Qt.LeftButton
+        cursorShape: Qt.ArrowCursor
+        onPressed: { if (page.b) page.b.beginWindowMove() }
+    }
+
     // ---------- 顶栏：账户 ----------
     SAcctChip {
         anchors.right: parent.right

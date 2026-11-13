@@ -68,6 +68,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QGuiApplication>
+#include <QCursor>
 #include <QWindow>
 #include <QDir>
 #include <QDirIterator>
@@ -1216,13 +1217,44 @@ void ShadowBackend::beginWindowMove()
 {
     // 主窗口是唯一的 Qt::Window（任务小窗口是 Qt::Tool，弹窗是 Qt::Popup），
     // 用它而不是"第一个可见窗口"，避免拖到别的窗口上去。
+    //
+    // 为什么不用 QWindow::startSystemMove()：它走 WM_SYSCOMMAND(SC_MOVE)，由 Windows
+    // 接管拖动。在部分机器上（实测本机）只会画一条传统拖影白框，窗口不实时跟随，
+    // 手感很差。所以改成自己拖：按下时记住「光标全局坐标 - 窗口位置」的偏移，
+    // 之后每次鼠标移动就用 setPosition(光标 - 偏移)。全局坐标不随窗口移动而变化，
+    // 高 DPI 下也不会累积漂移。
+    QWindow* target = nullptr;
     const auto windows = QGuiApplication::topLevelWindows();
     for (QWindow* w : windows) {
         if (!w || !w->isVisible()) continue;
         if (w->type() != Qt::Window) continue;
-        w->startSystemMove();
-        return;
+        target = w;
+        break;
     }
+    if (!target) return;
+    m_dragWin = target;
+    m_dragOffset = QCursor::pos() - target->position();
+    m_dragging = true;
+    qApp->installEventFilter(this);
+}
+
+bool ShadowBackend::eventFilter(QObject* obj, QEvent* ev)
+{
+    if (!m_dragging) return QObject::eventFilter(obj, ev);
+    switch (ev->type()) {
+    case QEvent::MouseMove:
+        if (m_dragWin) m_dragWin->setPosition(QCursor::pos() - m_dragOffset);
+        break;
+    case QEvent::MouseButtonRelease:
+        m_dragging = false;
+        m_dragWin = nullptr;
+        qApp->removeEventFilter(this);
+        break;
+    default:
+        break;
+    }
+    // 不吞事件：拖动期间其它控件照常收事件（按下才开始的拖，正常也不该有别的交互）
+    return QObject::eventFilter(obj, ev);
 }
 
 void ShadowBackend::setEmbeddedLoginEnabled(bool v) {

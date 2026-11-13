@@ -354,13 +354,17 @@ Item {
         }
         Item {
             anchors.fill: parent
+            // 视差（左移 22 + 缩到 0.99）只在「有全屏页盖着」的时候有意义；
+            // 回来时必须硬切归位（duration 0），否则全屏页瞬间收起后，
+            // 启动页还在慢慢滑回来的那几帧里，右侧会露一条空白（实测 2~3 帧白边）。
+            readonly property bool shifted: (root.downloadOpen || root.progressOpen
+                                             || root.fullOpen || root.multiplayerOpen)
             transform: Translate {
-                x: ((root.downloadOpen || root.progressOpen || root.fullOpen || root.multiplayerOpen)
-                    && !stageHost.previewing) ? -22 : 0
+                x: (shifted && !stageHost.previewing) ? -22 : 0
                 Behavior on x { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
             }
-            // 回主页时也带一点"顶回来"的缩放，和全屏页入场保持同一套语言
-            scale: ((root.downloadOpen || root.progressOpen || root.fullOpen) && !stageHost.previewing) ? 0.99 : 1.0
+            // 回主页时也带一点「顶回来」的缩放，和全屏页入场保持同一套语言
+            scale: (shifted && !stageHost.previewing) ? 0.99 : 1.0
             Behavior on scale { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeEnter } }
             StagePage {
                 anchors.fill: parent

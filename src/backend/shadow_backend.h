@@ -11,8 +11,10 @@
 #include <QEvent>
 #include <QNetworkReply>
 #include <QPointer>
+#include <QPoint>
 
 class QQmlEngine;
+class QWindow;
 
 // Q_PROPERTY(QObject*) getter 需要完整类型（派生→基类指针转换），直接 include
 #include "java_backend.h"
@@ -293,9 +295,11 @@ public:
     bool embeddedLoginEnabled() const;
     Q_INVOKABLE void setEmbeddedLoginEnabled(bool v);
 
-    // 让系统接管一次窗口拖动（无边框窗口没有系统标题栏，必须显式请求）。
-    // 用 QWindow::startSystemMove() 而不是在 QML 里改 window.x/y：后者在高 DPI 下会漂移，
-    // 也拿不到 Windows 的贴边吸附。
+    // 开始拖动主窗口（无边框窗口没有系统标题栏，必须显式请求）。
+    // 实现是「全局光标位移 + QWindow::setPosition」的实时拖动，**不是** startSystemMove()：
+    // startSystemMove 走 WM_SYSCOMMAND(SC_MOVE)，在部分机器上只能画出 Windows 传统拖影框
+    // （界面不跟手、一条白框），实测就是这个表现。
+    // 用 QCursor::pos() 的全局坐标算位移，不做 QML 里的 window.x += 局部增量（那样高 DPI 会漂）。
     Q_INVOKABLE void beginWindowMove();
     // 2026-08-15：实验性 tooltip 开关
 
@@ -979,7 +983,15 @@ public:
     Q_INVOKABLE QString resolveIconUrl(const QString &url);
 
 
+protected:
+    bool eventFilter(QObject* obj, QEvent* ev) override;
+
 private:
+    // 实时窗口拖动（beginWindowMove 之后由事件过滤器接管，松开左键结束）
+    QWindow* m_dragWin = nullptr;
+    QPoint   m_dragOffset;
+    bool     m_dragging = false;
+
     int requiredJavaMajor(const QString& versionId);
     static int inferJavaByMcVersion(const QString& mcVersion);
     QString gameDirForVersion(const QString& versionId) const;
