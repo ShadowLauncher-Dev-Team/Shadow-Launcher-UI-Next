@@ -1517,17 +1517,28 @@ VersionDownloader::collectVerifyItems(const QJsonObject& versionJson,
 
 void VersionDownloader::startAsyncVerify(const QVector<VerifyItem>& items)
 {
-    // Clean up previous worker/thread if any
-    if (m_verifyWorkerObj) {
-        m_verifyWorkerObj->cancel();
-        if (m_verifyThread) {
-            m_verifyThread->quit();
-            m_verifyThread->wait(3000);
-            delete m_verifyThread;
-            m_verifyThread = nullptr;
+    // ── 回收上一个校验线程（2026-11-14 实测修复）──
+    // 旧实现：cancel 后 wait(3000)，**超时也照样 delete m_verifyThread**。
+    // 3665 个文件的校验不可能 3 秒内退出，于是运行中的 QThread 被析构
+    // → Qt 报 "QThread: Destroyed while thread is still running" → 启动器直接卡死。
+    // 实测时间戳：01:17:06.978 第二次收集完成 → 01:17:09.994 就是那个 3 秒。
+    //
+    // 正确做法：不阻塞 UI，也不强删运行中的线程。cancel 后断开信号，
+    // 让它跑完自己 deleteLater（Qt 官方做法）。
+    if (m_verifyThread) {
+        if (m_verifyWorkerObj) m_verifyWorkerObj->cancel();
+        m_verifyThread->quit();
+        m_verifyThread->disconnect();          // 旧 worker 的进度不能再污染新任务
+        if (m_verifyWorkerObj) {
+            m_verifyWorkerObj->disconnect();
+            // worker 位于子线程，只能线程结束后由事件循环删
+            QObject::connect(m_verifyThread, &QThread::finished,
+                             m_verifyWorkerObj, &QObject::deleteLater);
+            m_verifyWorkerObj = nullptr;
         }
-        delete m_verifyWorkerObj;
-        m_verifyWorkerObj = nullptr;
+        QObject::connect(m_verifyThread, &QThread::finished,
+                         m_verifyThread, &QObject::deleteLater);
+        m_verifyThread = nullptr;
     }
 
     m_verifyThread = new QThread(this);

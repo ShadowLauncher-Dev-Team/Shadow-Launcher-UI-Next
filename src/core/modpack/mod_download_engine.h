@@ -157,8 +157,13 @@ private:
     QTimer m_pumpTimer;                      // 50ms 调度
     QTimer m_speedTimer;                     // 100ms 采样
     QTimer m_watchTimer;                     // 500ms 慢速看门狗
-    // 慢速看门狗阈值：每 500ms tick 增量 <64KB（≈128KB/s）且连续 2000ms → 换源
-    static constexpr qint64 kSlowBytesPerTick = 64 * 1024;
+    // 慢速看门狗阈值：每 500ms tick 增量低于阈值且连续 2000ms → 换源。
+    // 2026-11-14 实测修正：64KB/500ms（≈128KB/s）对「12 路并发」太激进——
+    // 实测并发下每个文件只分到 85~164KB/s，于是大批文件被判「慢速」换源，
+    // 而换到 edge 又常年 404（日志 3 个文件实测 404）→ 轮转几轮后判失败。
+    // 而单独下载时它们都能满速——这就是「部分模组失败、单拿出来又能下」的真相。
+    // 降到 16KB/500ms（≈32KB/s）：只有真的基本停止传输才换源。
+    static constexpr qint64 kSlowBytesPerTick = 16 * 1024;
     static constexpr qint64 kSlowTriggerMs = 2000;
     static constexpr double kGlobalSlowGateMbps = 1.0;   // 1MB/s（2026-08-10 二修：0.25→1.0）
     static constexpr int kMaxSlowSwitches = 6;   // 每文件看门狗换源上限（全源慢时停止，宁可慢爬不误判失败）
