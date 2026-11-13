@@ -96,6 +96,7 @@ Item {
     property string remainText: "—"
     property var _doneAt: ({})
     property var _rowSig: ({})   // iid -> 上次写入的内容签名（内容未变就不 set）
+    property var _fadeAt: ({})   // iid -> 失败态首次出现时间（用于延迟自动移除卡片）
     Timer {
         interval: 400; repeat: true
         // 页面隐藏时停表：没打开过进度页就不该发"安装完成"通知。
@@ -135,6 +136,23 @@ Item {
                     if (page.b.refreshInstalled) page.b.refreshInstalled()
                 }
                 continue
+            }
+            // 失败 / 取消的卡片**自动退场**。
+            // 原来这里只移除「成功完成」的卡片（done → continue），
+            // 失败卡片会永久堆在列表里（影报过两次）。
+            // 给 3 秒让用户看清终态，然后调 dismissCard 移除；
+            // 想立刻关的仍有卡片上的「关闭」按钮。
+            var iidKey = String(r.iid)
+            if (r.failed) {
+                if (!page._fadeAt[iidKey]) {
+                    page._fadeAt[iidKey] = Date.now()
+                } else if (Date.now() - page._fadeAt[iidKey] > 3000) {
+                    delete page._fadeAt[iidKey]
+                    if (page.b && page.b.dismissCard) page.b.dismissCard(r.iid)
+                }
+            } else if (page._fadeAt[iidKey]) {
+                // 重试后恢复为进行中：清掉计时，别把它关了
+                delete page._fadeAt[iidKey]
             }
             list.push({
                 iid: r.iid, name: r.name, phase: r.phase,
@@ -417,7 +435,11 @@ Item {
                 Component.onCompleted: cardShown = true
                 // 高度只依赖 stepCount（计数），不依赖 cardSteps 数组，
                 // 否则 height <-> cardSteps 会形成 binding loop，delegate 反复重建、动画被重置。
-                height: 46 + 10 + 3 + 8 + stepCount * 23 + 12 + 32 + 12
+                // 失败态在进度条下方多一行错误文案，步骤列表的 topMargin
+                // 从 8 变成 30（见 stepsCol），但旧公式里还写着 8 → 卡片少算 22px，
+                // 底部按钮行直接压在最后一行步骤上（实测重叠）。
+                // 这里必须跟 stepsCol 用同一个条件。
+                height: 46 + 10 + 3 + (failed ? 30 : 8) + stepCount * 23 + 12 + 32 + 12
                 readonly property int stepCount: page.countSteps(steps)
                 radius: 10
                 color: tcard.isFailed ? Theme.bgCard2 : Theme.bgCard2

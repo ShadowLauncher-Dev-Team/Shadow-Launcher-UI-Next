@@ -33,6 +33,15 @@ Item {
         target: root.dropImporter
         function onBusyChanged() {
             if (!root.dropImporter || !root.dropImporter.busy) return
+            // 必须把所有全屏页都关掉，尤其是版本页。
+            // sideCollapsed = versionsOpen || accountOpen || sideNarrowed，
+            // 版本页开着时侧栏是收起的 → 从版本页导入时
+            // 只设 progressOpen 而不关版本页，就会出现「左侧菜单直接消失、
+            // 进度页又被版本页盖住，用户无法退出」(*实测反馈*)。
+            root.versionsOpen = false
+            root.accountOpen = false
+            root.resDetailOpen = false
+            root.settingsOpen = false
             root.prefsOpen = false
             root.progressOpen = true
             root.downloadOpen = false
