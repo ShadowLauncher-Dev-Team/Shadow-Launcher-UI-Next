@@ -608,3 +608,6 @@
 | | **坑 2：`Component.onCompleted` 里 `page.yg` 还没注入**。钩子喂进去直接 return。改成 `pendingDrop` + Timer 等 backend 挂上。
 | | **顺带改进**：拖入的文本里最常见的其实是**裸域名**（用户从网页复制 `littleskin.cn`），而原正则只认带 scheme 的完整 URL。补了裸域名匹配：先找 `域名/api/yggdrasil`，再退一步找「像域名」的串（含 cn/com/net/org/cc/io/me/top/xyz/dev/in/hk/tw 后缀）。
 | | **真机验收日志**：`[drop] 从文件识别出地址: "littleskin.cn"` → `[ALI] https://littleskin.cn -> https://littleskin.cn/api/yggdrasil`，界面地址栏随之填好并显示站点名与注册链接。 |
+| 2026-11-13 | **拖入改成"全局接收 + 上下文分流"（commit 待提交）**。影指出我理解错了：**拖入不是随便哪都能导**，Mod 必须处于 Mod 管理页才能触发；但**整合包导入应该几乎到处都能用**。重新设计了判据：
+| | **① 全局唯一接收器**：`StageShell` 挂一个 `SDropZone`，页面内原来的三个（账号/版本/资源页）全部移除 —— 多个 DropArea 重叠会抢同一个拖拽事件。**② 按内容判定类型**：新增 `ShadowBackend::classifyDroppedTarget()`，真的用 `QZipReader` 打开压缩包看结构（`modrinth.index.json`/`manifest.json`→整合包，`fabric.mod.json`/`mods.toml`→Mod，`shaders/`→光影，`pack.mcmeta`→资源包，`level.dat`→存档，含 authlib→authlib），只看扩展名必错（`.zip` 有四种可能）。**③ 上下文门禁**：`settingsPane` 由 VersionSettingsPage 同步，Mod 只在 mods 分区、光影只在 shaders、资源包只在 packs、存档只在 saves 才落地，否则提示"请先进入 X 页面"；整合包不受门禁，任何页面都能导。
+| | **④ authlib-injector 拖拽链接**：影拖进来的是 `authlib-injector:yggdrasil-server:https%3A%2F%2Flittleskin.cn%2Fapi%2Fyggdrasil`。这是皮肤站页面上的标准拖拽格式，**不是文件**：QQ 的 DropArea 里它不出现在 `urls`，只在 `text` 里。SDropZone 补了 text 兜底，`parseAuthlibInjectorLink()` 解码后直接填地址。**真机日志**：`[drop] parseLink -> https://littleskin.cn/api/yggdrasil`，界面地址栏与站点名、注册链接全部就位。 |

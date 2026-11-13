@@ -2918,6 +2918,91 @@ void ShadowBackend::deleteResourcePack(const QString& filename, const QString& v
         emit logMessage(QStringLiteral("已删除资源包: ") + filename);
 }
 
+// ══ 全局拖入识别 ══════════════════════════════════════════════
+// 拖进启动器的东西可能是：整合包、Mod、资源包、光影包、存档、authlib-injector，
+// 或者一个 authlib-injector 的拖拽链接。只看扩展名会错（.zip 有四种可能），
+// 所以这里真的打开压缩包看结构。
+QString ShadowBackend::parseAuthlibInjectorLink(const QString &text)
+{
+    static const QString kPrefix = QStringLiteral("authlib-injector:yggdrasil-server:");
+    QString s = text.trimmed();
+    if (!s.startsWith(kPrefix, Qt::CaseInsensitive)) return QString();
+    s = s.mid(kPrefix.length()).trimmed();
+    // 拖拽链接里的地址是百分号编码的（https%3A%2F%2F...）
+    s = QUrl::fromPercentEncoding(s.toUtf8());
+    while (s.endsWith(QLatin1Char('/'))) s.chop(1);
+    return s;
+}
+
+QString ShadowBackend::classifyDroppedTarget(const QString &pathOrUrl)
+{
+    QString s = pathOrUrl.trimmed();
+    if (s.isEmpty()) return QStringLiteral("unknown");
+
+    // 1) authlib-injector 拖拽链接
+    if (!parseAuthlibInjectorLink(s).isEmpty()) return QStringLiteral("authlib-link");
+
+    // 2) 普通 URL（从浏览器拖出来的 http 链接）
+    if (s.startsWith(QStringLiteral("http://"), Qt::CaseInsensitive)
+        || s.startsWith(QStringLiteral("https://"), Qt::CaseInsensitive))
+        return QStringLiteral("url");
+
+    // 3) file:// -> 本地路径
+    QString path = s;
+    if (path.startsWith(QStringLiteral("file:"), Qt::CaseInsensitive))
+        path = QUrl(path).toLocalFile();
+    if (path.isEmpty() || !QFileInfo::exists(path)) return QStringLiteral("unknown");
+
+    const QString suffix = QFileInfo(path).suffix().toLower();
+
+    // 4) .mrpack 一定是整合包，不用打开看
+    if (suffix == QStringLiteral("mrpack")) return QStringLiteral("modpack");
+
+    // 5) 打开压缩包看结构（.jar / .zip）
+    if (suffix == QStringLiteral("jar") || suffix == QStringLiteral("zip")) {
+        QZipReader zip(path);
+        if (zip.status() != QZipReader::NoError) {
+            // 打不开就当未知，别硬猜
+            return QStringLiteral("unknown");
+        }
+        const QList<QZipReader::FileInfo> files = zip.fileInfoList();
+        bool hasModrinth = false, hasCfManifest = false, hasFabricMod = false, hasModsToml = false;
+        bool hasShadersDir = false, hasPackMeta = false, hasLevelDat = false;
+        bool hasAuthlib = false;
+        for (const auto &fi : files) {
+            const QString name = fi.filePath;
+            const QString lower = name.toLower();
+            if (lower == QLatin1String("modrinth.index.json")) hasModrinth = true;
+            else if (lower == QLatin1String("manifest.json")) hasCfManifest = true;
+            else if (lower == QLatin1String("fabric.mod.json")) hasFabricMod = true;
+            else if (lower == QLatin1String("meta-inf/mods.toml")
+                     || lower == QLatin1String("meta-inf/neoforge.mods.toml")) hasModsToml = true;
+            else if (lower == QLatin1String("pack.mcmeta")) hasPackMeta = true;
+            else if (lower == QLatin1String("level.dat")) hasLevelDat = true;
+            else if (lower.startsWith(QLatin1String("authlib-injector"))
+                     || lower.contains(QLatin1String("yggdrasil"))) hasAuthlib = true;
+            else if (lower.startsWith(QLatin1String("shaders/"))) hasShadersDir = true;
+        }
+
+        // 整合包优先判定：它的标志文件最明确，且用户拖错时的代价最大
+        if (hasModrinth) return QStringLiteral("modpack");
+        if (hasCfManifest && suffix == QStringLiteral("zip")) return QStringLiteral("modpack");
+        if (hasAuthlib) return QStringLiteral("authlib");
+        if (hasLevelDat) return QStringLiteral("world");
+        if (hasShadersDir) return QStringLiteral("shaderpack");
+        if (hasFabricMod || hasModsToml) return QStringLiteral("mod");
+        if (hasPackMeta) return QStringLiteral("resourcepack");
+
+        // 有 zip 结构但认不出：仍然按扩展名给一个"较可能"的答案，
+        // 让上层能提示"未知内容"，而不是默默什么都不做
+        return QStringLiteral("unknown");
+    }
+
+    // 6) 其它扩展名：按常识归类
+    if (suffix == QStringLiteral("datapack")) return QStringLiteral("datapack");
+    return QStringLiteral("unknown");
+}
+
 bool ShadowBackend::importMod(const QString& filePath, const QString& versionId)
 {
     if (!m_localMods) return false;

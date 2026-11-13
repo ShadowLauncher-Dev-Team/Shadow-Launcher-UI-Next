@@ -76,6 +76,13 @@ Item {
         }
         onDropped: (drop) => {
             var urls = root.filterUrls(drop.urls)
+            // 自定义 scheme 的拖拽（典型：authlib-injector:yggdrasil-server:https%3A...）
+            // 系统不把它当文件，urls 是空的，内容只在 text 里。
+            // 不读 text 的话表现就是「拖进去了但什么都没发生」。
+            if (urls.length === 0 && drop.text && String(drop.text).length > 0) {
+                var trimmed = String(drop.text).trim()
+                if (trimmed.length > 0) urls = [trimmed]
+            }
             if (urls.length === 0) { drop.accept() }
             root.dropped(urls)
         }

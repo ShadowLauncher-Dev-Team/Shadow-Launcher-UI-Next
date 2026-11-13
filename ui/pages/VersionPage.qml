@@ -1187,17 +1187,9 @@ Item {
         }
     }
 
-    // ---------- 拖入整合包即导入 ----------
-    // SDropZone 的根 Item 常驻可见（自身无绘制内容、不吞鼠标），只有内层遮罩在
-    // DropArea.containsDrag 为真时出现；扩展名过滤 accept 之后仍会在 importModpackPath 里再校验一次。
-    SDropZone {
-        id: packDrop
-        accept: [".zip", ".mrpack"]
-        hintTitle: qsTr("松开以导入整合包")
-        hintBody: qsTr("支持 .zip / .mrpack，一次一个")
-        active: !page.importing
-        onDropped: (urls) => page.handleDrop(urls)
-    }
+    // 拖入整合包由 StageShell 的全局投放区统一接管（见 StageShell.handleGlobalDrop）：
+    // 那里会用后端打开压缩包判断是整合包还是别的，本页不再自己挂 DropArea，
+    // 否则两个投放区会抢同一个拖拽事件。
 
     // ---------- 选择整合包文件 ----------
     // 用 QtQuick.Dialogs（与 VsModsPane「导入 Mod」同一套，走系统原生对话框）；

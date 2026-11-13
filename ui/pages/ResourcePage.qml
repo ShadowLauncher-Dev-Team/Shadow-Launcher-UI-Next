@@ -626,18 +626,10 @@ Item {
         }
     }
 
-    // ── 拖入投放区（只在 Mod / 资源包 / 光影三类生效）──
-    // 单独挂在页面根上：不进 ColumnLayout（不占布局高度），常态不可见，
-    // 只有拖拽经过且 active 时才由 SDropZone 自己显示半透明遮罩与提示。
-    SDropZone {
-        id: dropZone
-        anchors.fill: parent
-        active: page.dropActive
-        accept: page.dropAccept
-        hintTitle: page.dropHintTitle
-        hintBody: page.dropHintBody
-        onDropped: (urls) => page.handleDropped(urls)
-    }
+    // 拖入由 StageShell 的全局投放区统一接管。
+    // 本页保留 dropActive / dropAccept / handleDropped 这套判断，是为了让
+    // "当前分类是什么、目标目录是哪、允许哪些扩展名"这套产品逻辑仍然集中在一处；
+    // 全局入口判定类型后会复用同样的后端导入接口。
 
     // 下拉筛选：触发器 + 挂在触发器上的弹层（不会盖住自己）
     component LoaderDropdown: Rectangle {

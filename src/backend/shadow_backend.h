@@ -738,6 +738,20 @@ public:
     /// 启/禁用光影包（x.zip ↔ x.zip.disabled，游戏只扫 *.zip）
     Q_INVOKABLE bool setShaderPackEnabled(const QString& filename, const QString& versionId = {}, bool enabled = true);
     Q_INVOKABLE bool importMod(const QString& filePath, const QString& versionId = {});
+
+    // ── 全局拖入识别 ────────────────────────────────────────────────
+    // 用户从任何位置把文件/链接拖进启动器，都需要先回答"这是什么"。
+    // 只看扩展名不够：.zip 可能是整合包、资源包、光影包或存档；
+    // .jar 可能是 Mod，也可能是 authlib-injector。
+    // 所以这个函数会真的打开压缩包看结构，返回稳定的类型串：
+    //   "modpack" | "mod" | "resourcepack" | "shaderpack" | "world"
+    //   | "authlib" | "authlib-link" | "url" | "unknown"
+    Q_INVOKABLE QString classifyDroppedTarget(const QString& pathOrUrl);
+
+    /// 解析 authlib-injector 的拖拽链接：
+    ///   authlib-injector:yggdrasil-server:https%3A%2F%2Flittleskin.cn%2Fapi%2Fyggdrasil
+    /// 返回解码后的 API 地址；不是这种链接则返回空串。
+    Q_INVOKABLE QString parseAuthlibInjectorLink(const QString& text);
     Q_INVOKABLE void deleteSave(const QString& saveName, const QString& versionId = {});
     Q_INVOKABLE void migrateVersion(const QString& versionId);
     Q_INVOKABLE void cancelQueuedDownload(const QString& versionId);

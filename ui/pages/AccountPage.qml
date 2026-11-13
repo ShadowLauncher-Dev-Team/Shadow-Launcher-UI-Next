@@ -139,6 +139,17 @@ Item {
 
     // 验收钩子用：待处理的拖入路径（等 backend 就绪后再喂）
     property string pendingDrop: ""
+    // 全局拖入把 authlib-injector 链接里的地址送到这里（StageShell 注入）
+    property string externalApiToApply: ""
+    onExternalApiToApplyChanged: {
+        if (externalApiToApply.length === 0) return
+        tab = 2
+        loginPanel = true
+        apiRootInput = externalApiToApply
+        if (page.yg) {
+            page.yg.fetchMeta(externalApiToApply)
+        }
+    }
     property int tab: 0                      // 0 正版 / 1 离线 / 2 外置
     property bool loginPanel: false          // true = 显示登录表单（切换账号时打开）
     property string offlineInput: ""
@@ -362,6 +373,17 @@ Item {
     function handleDroppedFiles(urls) {
         if (!page.yg || !urls || urls.length === 0) return
         for (var i = 0; i < urls.length; ++i) {
+            // 先看是不是 authlib-injector 的拖拽链接：
+            //   authlib-injector:yggdrasil-server:https%3A%2F%2Flittleskin.cn%2Fapi%2Fyggdrasil
+            // 这个格式在皮肤站页面上可以直接拖进启动器，是最省事的一条路，
+            // 但它不是文件，必须走字符串解析而不是文件读取。
+            var fromLink = String(page.b.parseAuthlibInjectorLink(String(urls[i])))
+            if (fromLink.length > 0) {
+                page.apiRootInput = fromLink
+                page.yg.resolveApiRoot(fromLink)
+                page.flash(qsTr("已从链接识别出 API 地址"))
+                return
+            }
             var kind = String(page.yg.resolveApiFromFile(String(urls[i])))
             if (kind.length === 0) continue
             if (kind === "api") {
@@ -1971,16 +1993,8 @@ Item {
         }
     }
 
-    // ── 拖入识别（只在外置登录 tab 生效）──
-    // 支持两种文件：
-    //   · .txt/.json/.url/.properties 等文本 —— 里面写着 API 地址就直接填上
-    //   · .jar —— authlib-injector 本体；能认出它，若 jar 里带站点域名就顺带填地址
-    SDropZone {
-        anchors.fill: parent
-        active: page.tab === 2 && !page.profilePickOpen
-        accept: [".txt", ".json", ".yml", ".yaml", ".url", ".ini", ".cfg", ".conf", ".properties", ".jar", ".zip"]
-        hintTitle: qsTr("松开以识别外置登录信息")
-        hintBody: qsTr("支持文本（含 API 地址）或 authlib-injector.jar")
-        onDropped: (urls) => page.handleDroppedFiles(urls)
-    }
+    // 拖入由 StageShell 的全局投放区接管：
+    // 它识别到 authlib-injector 链接 / 文本时会把地址送到 externalApiToApply，
+    // 本页据此自动切到外置登录并填好。handleDroppedFiles 保留给验收钩子
+    // （--ui-account-drop）直接调用。
 }

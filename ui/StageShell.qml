@@ -17,6 +17,116 @@ Item {
     // 外观页写 b.colorScheme → 这里同步 Theme.scheme → 全局颜色 binding 立即重算。
     readonly property string colorScheme: (root.b && root.b.colorScheme) ? root.b.colorScheme : "dark"
     onColorSchemeChanged: Theme.scheme = root.colorScheme
+
+    // ══ 全局拖入分发 ══════════════════════════════════════════════
+    // 拖进启动器的东西可能是整合包 / Mod / 资源包 / 光影包 / 存档 / authlib 链接。
+    // 只看扩展名会错（.zip 有四种可能），所以一律交给后端打开压缩包看结构，
+    // 再决定落到哪。版本设置里的 Mod 管理页能接住，靠的就是这个全局入口。
+    readonly property string dropVersionId: (root.b && root.b.selectedVersion) ? root.b.selectedVersion : ""
+    readonly property var dropImporter: (root.b && root.b.modpackImporter) ? root.b.modpackImporter : null
+    // 版本设置页当前所在分区（mods / shaders / packs / saves / ...），由 settingsPage 同步
+    property string settingsPane: ""
+    // 拖入能否落到"当前上下文"：Mod 只在 Mod 管理页、光影只在光影页、资源包只在资源包页
+    function dropContextAccepts(kind) {
+        if (!root.settingsOpen) return false
+        var k = root.settingsPane
+        if (kind === "mod") return k === "mods"
+        if (kind === "shaderpack") return k === "shaders"
+        if (kind === "resourcepack") return k === "packs"
+        if (kind === "world") return k === "saves"
+        return false
+    }
+    function dropContextName(kind) {
+        if (kind === "mod") return qsTr("Mod 管理")
+        if (kind === "shaderpack") return qsTr("光影管理")
+        if (kind === "resourcepack") return qsTr("资源包")
+        if (kind === "world") return qsTr("存档")
+        return ""
+    }
+
+    function localizeDropPath(u) {
+        var s = String(u === undefined || u === null ? "" : u)
+        if (s.indexOf("file:") === 0) {
+            s = s.substring(5)
+            if (s.indexOf("///") === 0) s = s.substring(2)
+            else if (s.indexOf("//") === 0) s = "//" + s.substring(2)
+            if (s.charAt(0) === "/" && s.charAt(2) === ":") s = s.substring(1)
+            try { s = decodeURIComponent(s) } catch (e) { }
+        }
+        return s
+    }
+
+    function handleGlobalDrop(urls) {
+        if (!root.b || !urls) return
+        var doneCount = 0
+        var lastError = ""
+
+        for (var i = 0; i < urls.length; ++i) {
+            var u = String(urls[i])
+            var kind = String(root.b.classifyDroppedTarget(u))
+
+            if (kind === "authlib-link" || kind === "url") {
+                var api = String(root.b.parseAuthlibInjectorLink(u))
+                if (api.length === 0) api = u          // 普通 http 链接：当作 API 地址候选
+                root.pendingAuthlibApi = ""
+                root.pendingAuthlibApi = api
+                root.accountOpen = true
+                doneCount++
+                continue
+            }
+
+            if (kind === "authlib") {
+                root.accountOpen = true
+                toastHost.show(qsTr("已识别 authlib-injector，请填写站点地址（如 littleskin.cn）"), 3600)
+                continue
+            }
+
+            if (kind === "modpack") {
+                if (root.dropImporter) {
+                    root.dropImporter.startImport(root.localizeDropPath(u), "", false, "")
+                    doneCount++
+                } else {
+                    lastError = qsTr("整合包导入器未就绪")
+                }
+                continue
+            }
+
+            // 以下都要落到具体实例上，而且**必须在对应页面**
+            // （在 Mod 管理页拖 .jar 才导入 mods；在别的页面拖 .jar 只提示去哪）
+            if (root.dropVersionId.length === 0) {
+                lastError = qsTr("请先在版本页选择一个实例")
+                continue
+            }
+
+            if (kind === "world") {
+                // 存档导入后端还没实现，明确告诉用户，而不是静默吞掉
+                lastError = qsTr("存档导入暂未支持，请在存档页手动导入")
+                continue
+            }
+
+            if (!root.dropContextAccepts(kind)) {
+                var where = root.dropContextName(kind)
+                lastError = where.length > 0
+                        ? qsTr("要导入%1，请先进入「%1」页面再拖入").arg(where)
+                        : qsTr("无法识别该文件的内容")
+                continue
+            }
+
+            var path = root.localizeDropPath(u)
+            var ok = false
+            if (kind === "mod") ok = root.b.importMod(path, root.dropVersionId)
+            else if (kind === "resourcepack") ok = root.b.importResourcePack(path, root.dropVersionId)
+            else if (kind === "shaderpack") ok = root.b.importShaderPack(path, root.dropVersionId)
+
+            if (ok) { doneCount++ }
+            else lastError = qsTr("导入失败：文件内容不是有效的%1").arg(root.dropContextName(kind))
+        }
+
+        if (doneCount > 0)
+            toastHost.show(qsTr("已导入 %1 个文件").arg(doneCount), 2600, "success")
+        else if (lastError.length > 0)
+            toastHost.show(lastError, 3600, "error")
+    }
     readonly property bool narrow: width < 900
     readonly property int sideW: (narrow ? Theme.sideWNarrow : Theme.sideW)
     property bool versionsOpen: false
@@ -29,6 +139,9 @@ Item {
     property string prefsPrevKey: "launch"
     property string settingsVersionId: ""
     property bool accountOpen: false
+    // 全局拖入：识别到 authlib-injector 链接时暂存，账号页据此自动填地址。
+    // 用属性中转而不是直接调 AccountPage，是因为拖入可能发生在账号页还没被创建的时候。
+    property string pendingAuthlibApi: ""
     // 下载页与版本页/账户页同一套：侧栏宽度收到 0，页面淡入 + 右移 24
     property bool downloadOpen: false
     // 下载进度：独立页面（不再借用 DownloadPage 的 mode=2 视图）
@@ -538,6 +651,9 @@ Item {
                 versionId: root.settingsVersionId
                 toast: toastHost
                 onClose: root.settingsOpen = false
+                // 全局拖入要按"用户当前在看哪个分区"决定文件落到哪，
+                // 所以把当前分区同步回 StageShell。
+                onCurrentKeyChanged: root.settingsPane = currentKey
             }
         }
     }
@@ -633,6 +749,7 @@ Item {
             id: accountPage
             anchors.fill: parent
             toast: toastHost
+            externalApiToApply: root.pendingAuthlibApi
             onClose: root.accountOpen = false
         }
         }
@@ -826,6 +943,20 @@ Item {
     ToastHost {
         id: toastHost
         anchors.fill: parent
+    }
+
+    // 全局拖入：挂在整个窗口上，任何页面拖入都能接住。
+    // 之前只在版本页 / 资源页 / 账号页各挂一个，结果在版本设置的 Mod 管理页拖文件
+    // 什么都接不到（那里没有接收器），用户看到的就是一个"复制"光标。
+    // 类型判定一律交给后端看压缩包结构，页面不再各自猜。
+    SDropZone {
+        anchors.fill: parent
+        z: 800
+        active: true
+        accept: []            // 不过滤扩展名：由 classifyDroppedTarget 按内容判断
+        hintTitle: qsTr("松开以导入")
+        hintBody: qsTr("整合包 / Mod / 资源包 / 光影包 / 存档，或外置登录链接")
+        onDropped: (urls) => root.handleGlobalDrop(urls)
     }
 
     // 窗口按钮：所有页面共用（否则进全屏页就丢最小化/关闭）
