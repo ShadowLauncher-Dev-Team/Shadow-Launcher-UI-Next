@@ -684,6 +684,22 @@ Item {
                         onClicked: if (page.b && page.b.cancelVersionInstall)
                                        page.b.cancelVersionInstall(tcard.cardIid)
                     }
+                    // 失败/取消后的卡片必须能关掉。
+                    // recalc 只移除「成功完成」的卡片（done = !failed && progress>=1），
+                    // 而失败/取消卡片会永久留在列表里；原来又只有
+                    // 「重试」与「取消」两个按钮，于是失败卡片没有任何退场方式。
+                    // 后端本来就有 dismissCard(installId)，只是 UI 从来没接。
+                    SButton {
+                        visible: tcard.isFailed
+                        kind: 1
+                        radius: 2
+                        height: 30
+                        width: 84
+                        iconName: "x"
+                        text: qsTr("关闭")
+                        onClicked: if (page.b && page.b.dismissCard)
+                                       page.b.dismissCard(tcard.cardIid)
+                    }
 
                 }
             }

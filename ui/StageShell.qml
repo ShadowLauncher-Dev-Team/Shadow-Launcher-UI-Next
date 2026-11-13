@@ -24,6 +24,22 @@ Item {
     // 再决定落到哪。版本设置里的 Mod 管理页能接住，靠的就是这个全局入口。
     readonly property string dropVersionId: (root.b && root.b.selectedVersion) ? root.b.selectedVersion : ""
     readonly property var dropImporter: (root.b && root.b.modpackImporter) ? root.b.modpackImporter : null
+
+    // ── 整合包开始导入 → 自动切到下载进度页 ──
+    // 覆盖全部入口：全局拖入、版本页选文件、下载页安装。
+    // 旧行为：拖入只弹一句「已导入 1 个文件」且不跳页（实际只是刚开始导），
+    // 版本页导入后也只弹 toast。用户根本看不到进度。
+    Connections {
+        target: root.dropImporter
+        function onBusyChanged() {
+            if (!root.dropImporter || !root.dropImporter.busy) return
+            root.prefsOpen = false
+            root.progressOpen = true
+            root.downloadOpen = false
+            root.multiplayerOpen = false
+            sideBar.currentKey = "progress"
+        }
+    }
     // 版本设置页当前所在分区（mods / shaders / packs / saves / ...），由 settingsPage 同步
     property string settingsPane: ""
     // 拖入能否落到"当前上下文"：Mod 只在 Mod 管理页、光影只在光影页、资源包只在资源包页
@@ -153,7 +169,10 @@ Item {
             if (kind === "modpack") {
                 if (root.dropImporter) {
                     root.dropImporter.startImport(root.localizeDropPath(u), "", false, "")
-                    doneCount++
+                    // 导入刚开始，必须把用户带到进度页。
+                    // 旧实现只把 doneCount++，最后弹「已导入 N 个文件」
+                    // —— 既不跳页，措辞还像已经导完（实际只是刚开始）。
+                    toastHost.show(qsTr("开始导入整合包：%1").arg(name), 3000, "info")
                 } else {
                     errors.push(qsTr("%1：整合包导入器未就绪").arg(name))
                 }
