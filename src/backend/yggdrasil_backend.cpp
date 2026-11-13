@@ -93,18 +93,19 @@ QString YggdrasilBackend::normalizeApiRoot(const QString &input)
 
 // 拖入识别。注意这里刻意不联网：先只做"这个文件有没有可用信息"的判断，
 // 真正的地址解析（ALI）交给 resolveApiRoot —— 两者职责分开，失败原因也清楚。
-bool YggdrasilBackend::resolveApiFromFile(const QString &filePath, QString *outKind)
+QString YggdrasilBackend::resolveApiFromFile(const QString &filePath)
 {
-    if (outKind) *outKind = QStringLiteral("unknown");
-
     // QML 的 DropArea 给的是 file:// URL（含百分号编码，中文路径必须解开）
     QString path = filePath;
     if (path.startsWith(QStringLiteral("file:"), Qt::CaseInsensitive))
         path = QUrl(path).toLocalFile();
-    if (path.isEmpty()) return false;
+    if (path.isEmpty()) return QString();
 
     QFile f(path);
-    if (!f.open(QIODevice::ReadOnly)) return false;
+    if (!f.open(QIODevice::ReadOnly)) {
+        qCWarning(logYggBackend) << "[drop] 打不开文件:" << path;
+        return QString();
+    }
 
     const QString suffix = QFileInfo(path).suffix().toLower();
     const bool isJar = (suffix == QStringLiteral("jar") || suffix == QStringLiteral("zip"));
@@ -116,17 +117,22 @@ bool YggdrasilBackend::resolveApiFromFile(const QString &filePath, QString *outK
     // jar 是二进制，但 URL 是纯 ASCII，直接按 Latin-1 粗扫不会因为编码失败漏掉
     const QString text = QString::fromLatin1(raw);
 
-    if (isJar) {
-        const bool looksAuthlib = text.contains(QStringLiteral("authlib-injector"), Qt::CaseInsensitive)
-                                  || text.contains(QStringLiteral("yushijinhun"), Qt::CaseInsensitive);
-        if (!looksAuthlib) return false;
-        if (outKind) *outKind = QStringLiteral("authlib");
-    }
+    const bool isAuthlibJar = isJar && (text.contains(QStringLiteral("authlib-injector"), Qt::CaseInsensitive)
+                                        || text.contains(QStringLiteral("yushijinhun"), Qt::CaseInsensitive));
+    if (isJar && !isAuthlibJar) return QString();
 
-    // 找第一个「像 Yggdrasil API 根」的 URL：
-    // 优先带 yggdrasil 的，其次是不含明显资源后缀的站点根
+    // 找第一个「像 Yggdrasil API 根」的地址。
+    // 两种情况都要认：
+    //   ① 完整 URL —— https://littleskin.cn/api/yggdrasil
+    //   ② **裸域名** —— 用户从网页上复制下来的多半就是 littleskin.cn 这种，
+    //      没有 scheme。不认它的话，拖入最常见的输入反而无效。
     static const QRegularExpression urlRe(
         QStringLiteral(R"(https?://[A-Za-z0-9.\-]+(?::\d+)?(?:/[A-Za-z0-9._~%!$&'()*+,;=:@/\-]*)?)"));
+    static const QRegularExpression bareApiRe(
+        QStringLiteral(R"(([A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?)*\.[A-Za-z]{2,})/api/yggdrasil\b)"));
+    static const QRegularExpression bareHostRe(
+        QStringLiteral(R"(\b([A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?)*\.(?:cn|com|net|org|cc|io|me|top|xyz|dev|in|hk|tw))\b)"));
+
     QString best;
     auto it = urlRe.globalMatch(text);
     while (it.hasNext()) {
@@ -137,14 +143,25 @@ bool YggdrasilBackend::resolveApiFromFile(const QString &filePath, QString *outK
             best = u;
     }
 
+    // 没有完整 URL 时，退一步找裸域名
     if (best.isEmpty()) {
-        // jar 认得出来但没有地址：算"识别成功但没有可用地址"，由 UI 提示用户补填
-        return isJar && outKind && *outKind == QStringLiteral("authlib");
+        auto m = bareApiRe.match(text);
+        if (m.hasMatch()) best = m.captured(1);
+    }
+    if (best.isEmpty()) {
+        auto m = bareHostRe.match(text);
+        if (m.hasMatch()) best = m.captured(1);
     }
 
-    if (outKind) *outKind = QStringLiteral("api");
+    if (best.isEmpty()) {
+        // jar 认得出来但没有地址：算"识别成功但没有可用地址"，由 UI 提示用户补填
+        qCInfo(logYggBackend) << "[drop] 认出 authlib-injector 但文件里没有站点地址:" << path;
+        return isAuthlibJar ? QStringLiteral("authlib") : QString();
+    }
+
+    qCInfo(logYggBackend) << "[drop] 从文件识别出地址:" << best << "来处:" << path;
     resolveApiRoot(best);
-    return true;
+    return QStringLiteral("api");
 }
 
 void YggdrasilBackend::resolveApiRoot(const QString &input)

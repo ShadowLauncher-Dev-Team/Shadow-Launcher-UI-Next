@@ -137,6 +137,8 @@ Item {
     readonly property bool externalLive: !!yg && yg.loggedIn === true
         && !(curAcct && curAcct.needsRelogin === true)
 
+    // 验收钩子用：待处理的拖入路径（等 backend 就绪后再喂）
+    property string pendingDrop: ""
     property int tab: 0                      // 0 正版 / 1 离线 / 2 外置
     property bool loginPanel: false          // true = 显示登录表单（切换账号时打开）
     property string offlineInput: ""
@@ -360,9 +362,8 @@ Item {
     function handleDroppedFiles(urls) {
         if (!page.yg || !urls || urls.length === 0) return
         for (var i = 0; i < urls.length; ++i) {
-            var kind = ""
-            var ok = page.yg.resolveApiFromFile(String(urls[i]), kind)
-            if (!ok) continue
+            var kind = String(page.yg.resolveApiFromFile(String(urls[i])))
+            if (kind.length === 0) continue
             if (kind === "api") {
                 page.flash(qsTr("已从文件识别出 API 地址"))
                 return
@@ -396,6 +397,17 @@ Item {
             page.loginPanel = true
         // accounts.json 是异步装载的，这里先试一次；真正生效靠 accRevChanged 里的 syncReloginCard()
         page.syncReloginCard()
+        // --ui-account-drop <path>：把一条本地路径直接喂给拖入处理函数。
+        // 只用于验收「文件 -> 提取 API 地址」这段链路（真正的 DropArea 事件
+        // 无法用脚本可靠模拟，那部分由 SDropZone 的独立探针覆盖）。
+        var di = Qt.application.arguments.indexOf("--ui-account-drop")
+        if (di >= 0 && di + 1 < Qt.application.arguments.length) {
+            page.tab = 2
+            page.loginPanel = true
+            // 不能在这里立刻喂：此时 page.yg 往往还没注入，handleDroppedFiles 会直接 return。
+            // 交给一个短 Timer 等 backend 挂上。
+            page.pendingDrop = Qt.application.arguments[di + 1]
+        }
         // --ui-account-tab N：直接落在某个登录 tab（0 正版 / 1 离线 / 2 外置），截图验收用
         var ti = Qt.application.arguments.indexOf("--ui-account-tab")
         if (ti >= 0 && ti + 1 < Qt.application.arguments.length) {
@@ -415,6 +427,18 @@ Item {
     }
 
     // ALI（API 地址指示）解析结果
+    // 钩子落地：backend 就绪后处理挂起的拖入路径
+    Timer {
+        interval: 700
+        running: page.pendingDrop.length > 0 && page.yg !== null
+        repeat: true
+        onTriggered: {
+            var p2 = page.pendingDrop
+            page.pendingDrop = ""
+            page.handleDroppedFiles([p2])
+        }
+    }
+
     Connections {
         target: page.yg
         enabled: page.yg !== null

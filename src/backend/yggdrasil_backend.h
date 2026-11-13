@@ -83,8 +83,10 @@ public:
     ///   · .jar —— authlib-injector 本体。它内部不含站点 API 地址，
     ///     但如果是某个皮肤站打包的 jar，常量池里通常留着站点域名，能搜到就顺带用上；
     ///     搜不到也不是错误，UI 会提示「已识别 authlib-injector，请填站点地址」。
-    /// outKind 返回识别结果类型：api / authlib / unknown
-    Q_INVOKABLE bool resolveApiFromFile(const QString &filePath, QString *outKind = nullptr);
+    /// 返回识别结果类型："api"（已解析出地址）/ "authlib"（认出是 authlib-injector 但无地址）/ ""（不认识）。
+    /// 注意：不能用 QString* 输出参数 —— QML 调不动 C++ 的指针输出参数（这是 QML 的硬限制，
+    /// 第一次写成 QString* 时 QML 传参直接不生效，表现为"拖入毫无反应"且无任何日志）。
+    Q_INVOKABLE QString resolveApiFromFile(const QString &filePath);
 
     Q_INVOKABLE void fetchMeta(const QString &apiRoot);
     Q_INVOKABLE void login(const QString &apiRoot, const QString &email, const QString &password);
