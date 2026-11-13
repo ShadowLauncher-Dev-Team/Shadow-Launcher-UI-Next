@@ -37,6 +37,47 @@ Item {
         return false
     }
     // 页面名：用于"请先进入「X」页面"
+    // ── 拖入提示只描述"当前页面真的能做什么" ──
+    // 之前这里写死成「整合包 / Mod / 资源包 / 光影包 / 存档，或外置登录链接」，
+    // 等于声称什么都能导 —— 而实际上 Mod 只能在 Mod 管理页、外置登录链接只能在账号页。
+    // 提示必须跟着位置变，否则就是在骗用户往这儿拖。
+    readonly property string dropHintTitle: {
+        if (root.accountOpen) return qsTr("松开以填入外置登录地址")
+        if (root.settingsOpen) {
+            var k = root.settingsPane
+            if (k === "mods") return qsTr("松开以导入 Mod")
+            if (k === "shaders") return qsTr("松开以导入光影包")
+            if (k === "packs") return qsTr("松开以导入资源包")
+            if (k === "saves") return qsTr("松开以导入存档")
+        }
+        return qsTr("松开以导入整合包")
+    }
+    readonly property string dropHintBody: {
+        if (root.accountOpen)
+            return qsTr("支持 authlib-injector 链接，或含 API 地址的文本 / jar")
+        if (root.settingsOpen) {
+            var k = root.settingsPane
+            if (k === "mods") return qsTr("接收 .jar 格式的 Mod；整合包（.zip / .mrpack）在这里也能导")
+            if (k === "shaders") return qsTr("接收 .zip 格式的光影包")
+            if (k === "packs") return qsTr("接收 .zip 格式的资源包")
+            if (k === "saves") return qsTr("本页暂不支持拖动导入存档")
+        }
+        return qsTr("整合包（.zip / .mrpack）在任何页面都能导；Mod / 资源包 / 光影包 / 存档要先进对应页面")
+    }
+    // 拖动过程中同样按位置粗筛：在启动页拖 .jar 就该当场变禁止，而不是等松手才说"去 Mod 管理页"
+    readonly property var dropAcceptExts: {
+        if (root.accountOpen) return [".jar"]
+        if (root.settingsOpen) {
+            var k = root.settingsPane
+            if (k === "mods") return [".jar", ".zip", ".mrpack"]
+            if (k === "shaders") return [".zip", ".mrpack"]
+            if (k === "packs") return [".zip", ".mrpack"]
+            if (k === "saves") return [".zip"]
+        }
+        return [".zip", ".mrpack"]
+    }
+    readonly property string dropRejectBody: qsTr("当前位置不能导入这种文件。整合包可在任何页面拖入；其余内容请先进入对应页面")
+
     function dropContextName(kind) {
         if (kind === "mod") return qsTr("Mod 管理")
         if (kind === "shaderpack") return qsTr("光影管理")
@@ -230,6 +271,9 @@ Item {
         root.fileDl = arr
     }
     // 已结束的下载条目 4s 后从列表里移除：卡片消失，进度页不再挂一条"已完成"
+    // --ui-drop-hint：强制显示拖入遮罩，用来验收"提示文案是否与实际可导内容一致"。
+    // 拖动本身没法脚本模拟，但遮罩上的字可以截出来看。
+    property bool dropHintForceShow: Qt.application.arguments.indexOf("--ui-drop-hint") >= 0
     // --ui-drop-test 用的延后执行（等 backend / Toast 就绪）
     Timer {
         id: dropTestTimer
@@ -1011,11 +1055,15 @@ Item {
         // 所以按扩展名放过候选，真正的类型判定留给松手后的 classifyDroppedTarget。
         // 目的只有一个：拖 .png / .exe 这种明显不可能的东西进来时，当场就告诉用户不行，
         // 而不是挂着「松开以导入」的遮罩骗他松手。
-        accept: [".jar", ".zip", ".mrpack", ".datapack"]
-        hintTitle: qsTr("松开以导入")
-        hintBody: qsTr("整合包 / Mod / 资源包 / 光影包 / 存档，或外置登录链接")
+        //
+        // 粗筛范围和提示文案都由 StageShell 按当前页面算出（dropAcceptExts / dropHint*），
+        // 不再写死一份"什么都能导"的清单 —— 那与 Mod 只能在本页导入的实际规则矛盾。
+        accept: root.dropAcceptExts
+        forceShow: root.dropHintForceShow
+        hintTitle: root.dropHintTitle
+        hintBody: root.dropHintBody
         rejectTitle: qsTr("这里不接受这种文件")
-        rejectBody: qsTr("支持 .jar（Mod）、.zip（资源包 / 光影包 / 整合包）、.mrpack（整合包），以及外置登录链接")
+        rejectBody: root.dropRejectBody
         onDropped: (urls) => root.handleGlobalDrop(urls)
     }
 

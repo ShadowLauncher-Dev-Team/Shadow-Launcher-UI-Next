@@ -29,6 +29,8 @@ Item {
     id: root
 
     property bool active: true
+    // 仅供视觉验收（--ui-drop-hint）：拖动无法脚本模拟，但遮罩长什么样可以。
+    property bool forceShow: false
     // 允许的扩展名（小写，含点）；空数组表示不限制
     property var accept: []
     // 拖入内容是否合法：由外部决定（比如版本页只接受整合包）
@@ -114,7 +116,7 @@ Item {
             // 遮罩只在拖拽经过时出现：
             //   · 不用 root.visible 控制（会让 DropArea 收不到事件）
             //   · 也不用不透明底色（会盖死页面）
-            visible: dropOverlay.containsDrag
+            visible: dropOverlay.containsDrag || root.forceShow
             color: Theme.scrim
             opacity: 0.88
 
@@ -125,7 +127,7 @@ Item {
                 radius: Theme.rMd
                 border.width: 2
                 // 能放：accent；不能放：danger。一眼可辨，不用等松手
-                border.color: root.dropAllowed ? Theme.accent : Theme.danger
+                border.color: (root.dropAllowed || root.forceShow) ? Theme.accent : Theme.danger
                 opacity: 0.55
                 Behavior on border.color {
                     ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
@@ -139,8 +141,8 @@ Item {
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.dropAllowed ? root.hintTitle : root.rejectTitle
-                    color: root.dropAllowed ? Theme.fg : Theme.dangerText
+                    text: (root.dropAllowed || root.forceShow) ? root.hintTitle : root.rejectTitle
+                    color: (root.dropAllowed || root.forceShow) ? Theme.fg : Theme.dangerText
                     font.family: Theme.fontFamily
                     font.pixelSize: 15
                     font.weight: Font.DemiBold
@@ -151,9 +153,9 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
                     // 不可接受时优先说"为什么不接受"
-                    visible: root.dropAllowed ? root.hintBody.length > 0
+                    visible: (root.dropAllowed || root.forceShow) ? root.hintBody.length > 0
                                               : root.rejectBody.length > 0
-                    text: root.dropAllowed ? root.hintBody : root.rejectBody
+                    text: (root.dropAllowed || root.forceShow) ? root.hintBody : root.rejectBody
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
