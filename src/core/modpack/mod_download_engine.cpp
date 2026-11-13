@@ -284,7 +284,9 @@ void ModDownloadEngine::launchRequest(std::shared_ptr<Item> it)
 
     // 动态超时：Min(Max(ConnectAvg,15s)*(1+FailCount),30s)（PCL 同款）
     const qint64 connectAvg = m_connectCount > 0 ? m_connectTotalMs / m_connectCount : 15000;
-    const qint64 timeoutMs = qMin(qMax(connectAvg, qint64(15000)) * (1 + it->failCount), qint64(30000));
+    // 下限从 15s 提到 30s：整合包里有 281MB 的模组，
+    // TCP 一次拖尾就可能超 15 秒，15s 会把正常下载当卡死砍掉。
+    const qint64 timeoutMs = qMin(qMax(connectAvg, qint64(30000)) * (1 + it->failCount), qint64(45000));
     auto* idle = new QTimer(this);
     idle->setSingleShot(true);
     idle->setInterval(static_cast<int>(timeoutMs));
@@ -301,8 +303,12 @@ void ModDownloadEngine::launchRequest(std::shared_ptr<Item> it)
     connect(reply, &QNetworkReply::finished, this,
             [this, it]() { onReplyFinished(it); });
 
+    // URL 里带 %2B（加号转义），而**链式** .arg() 会把上一次插入文本里的 %2
+    // 再当成占位符解析一次，日志于是打印出
+    // reactivemusic-forge-1.3.0%15000b1.20.1.jar 这种根本不存在的 URL（我下载失败就是上当了它）。
+    // 用多参数 arg：一次性替换全部占位符，不会二次解析。
     emit logMessage(QStringLiteral("[精卫] 启动 文件=%1 源=%2 超时=%3ms")
-                        .arg(it->localName, url).arg(timeoutMs));
+                        .arg(it->localName, url, QString::number(timeoutMs)));
 }
 
 void ModDownloadEngine::onReplyProgress(std::shared_ptr<Item> it, qint64 recv, qint64 total)
@@ -315,7 +321,19 @@ void ModDownloadEngine::onReplyProgress(std::shared_ptr<Item> it, qint64 recv, q
     if (delta > 0) {
         it->received = absRecv;
         m_downloadedBytes += delta;
+    } else if (delta < 0) {
+        // 续传/换源后 absRecv 可能回退（服务端返回 200 全量、
+        // 或 resumeFrom 被清零）。旧实现只在 delta>0 时写回，
+        // 于是 received 一旦超前就**永久卡住**：慢速看门狗每次读到
+        // 的 delta 都是 0，把实测 1111KB/s 的文件判成「慢速」反复换源
+        // —— 实测日志铁证。这里强制跟随实际值。
+        it->received = absRecv;
     }
+    // 有字节进展就算活跃：超时计时器原来只在 readyRead 重置，
+    // 而 QNAM 可能先把数据缓冲在内部、只发 downloadProgress。
+    // 实测：281MB 的模组每次都在 15~130 秒后被 idle 超时 abort，
+    // 然后换源重来，永远下不完。
+    if (delta > 0 && it->idleTimer) it->idleTimer->start();
     // 150ms 节流，避免高频跨对象信号
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
     if (now - m_lastProgressEmitMs >= kProgressEmitThrottleMs) {
@@ -636,6 +654,12 @@ void ModDownloadEngine::watchTick()
             continue;
         }
 
+        // received 回退 => 计数器本身被修正过，这一拍不能算「慢」
+        if (it->received < it->lastWatchBytes) {
+            it->lastWatchBytes = it->received;
+            it->slowSinceMs = 0;
+            continue;
+        }
         const qint64 delta = it->received - it->lastWatchBytes;
         it->lastWatchBytes = it->received;
 
@@ -688,8 +712,15 @@ void ModDownloadEngine::watchTick()
         it->slowSwitchCount++;
         it->slowSinceMs = -1;   // 换源中标记：onReplyFinished 到达前不再触发（abort 异步窗口）
         it->lastWatchBytes = it->received;
-        emit logMessage(QStringLiteral("[精卫] [慢速换源] 文件=%1 第%2次 当前源速度过慢 → 切换")
-                            .arg(it->localName).arg(it->slowSwitchCount));
+        // 把实测速率一并打出来：下次看日志就能区分
+        // 「真的慢」与「误判」（外部 curl 测该文件可达 574~1022KB/s，
+        // 而网关阈值只有 128KB/s）。不打这个数字就永远是猜。
+        const qint64 elapsedMs = qMax<qint64>(1, now - it->launchMs);
+        const qint64 gotBytes = it->received;
+        const qint64 kbps = gotBytes * 1000 / elapsedMs / 1024;
+        emit logMessage(QStringLiteral("[精卫] [慢速换源] 文件=%1 第%2次 当前源速度过慢 → 切换（实测 %3KB/s，%4ms 共 %5 字节）")
+                            .arg(it->localName).arg(it->slowSwitchCount)
+                            .arg(kbps).arg(elapsedMs).arg(gotBytes));
         // abort 触发 onReplyFinished(OperationCanceled) → sourceFailed → pickSource 换下一个源
         if (it->reply) it->reply->abort();
     }
