@@ -57,6 +57,9 @@ QtObject {
     readonly property color warn:      dark ? "#f59e0b" : "#b45309"
     readonly property color danger:    "#ef4444"
     readonly property color dangerBot: "#dc2626"
+    // warn 是**墨色**（文字/描边/图标），不能直接当填充色 —— 整条铺 #f59e0b 就是一坨大黄块。
+    // 需要「警示底色」时用 warnSoft（与 dangerSoft 同一套做法：深色方案给低明度底）。
+    readonly property color warnSoft:   dark ? "#2e2410" : "#fdf3e0"
     readonly property color dangerSoft: dark ? "#3a1f23" : "#fde8e8"
     readonly property color dangerText: dark ? "#ff9a94" : "#b91c1c"
 

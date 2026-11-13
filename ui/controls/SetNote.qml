@@ -16,7 +16,9 @@ Item {
 
     readonly property color tone: root.kind === "warn" ? Theme.warn
                                 : (root.kind === "danger" ? Theme.dangerText : Theme.accentText)
-    readonly property color bgColor: root.kind === "warn" ? Theme.warn
+    // warn 用**柔和的底 + 墨色的字/边**。之前底色直接取 Theme.warn（#f59e0b），
+    // 整条铺满就是一坨高饱和黄色块（影报的「雷霆大黄框」）。
+    readonly property color bgColor: root.kind === "warn" ? Theme.warnSoft
                                     : (root.kind === "danger" ? Theme.bgCard2 : Theme.accentSoft)
     readonly property color lineColor: root.kind === "warn" ? Theme.warn
                                       : (root.kind === "danger" ? Theme.dangerSoft : Theme.accentSoft)
