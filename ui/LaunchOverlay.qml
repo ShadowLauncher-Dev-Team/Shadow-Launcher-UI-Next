@@ -123,10 +123,14 @@ Item {
         if (s === 3) return Theme.dangerText
         return Theme.line3
     }
+    // 小方块是**实心色块**，不是文字：要的是饱和的主蓝，不是给文字用的浅蓝。
+    // 原来这里是 #3b82f6（= Theme.accent 本色），黑白配色那次被换成了 accentText，
+    // 方块立刻发白发虚 —— 和进度页 Spinner 是同一个错。
+    // 进行中用 accentTop(#4b8cf7)：原色 #60a5fa 比完成的 #3b82f6 更亮，保持这个关系。
     function nodeColor(s) {
-        if (s === 2) return Theme.accentText
-        if (s === 1) return Theme.accentText
-        if (s === 3) return Theme.dangerText
+        if (s === 2) return Theme.accent
+        if (s === 1) return Theme.accentTop
+        if (s === 3) return Theme.danger
         return Theme.bgHover
     }
     function nodeTextColor(s) {
