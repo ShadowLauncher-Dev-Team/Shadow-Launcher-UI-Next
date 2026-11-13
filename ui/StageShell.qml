@@ -36,12 +36,22 @@ Item {
         if (kind === "world") return k === "saves"
         return false
     }
+    // 页面名：用于"请先进入「X」页面"
     function dropContextName(kind) {
         if (kind === "mod") return qsTr("Mod 管理")
         if (kind === "shaderpack") return qsTr("光影管理")
         if (kind === "resourcepack") return qsTr("资源包")
         if (kind === "world") return qsTr("存档")
         return ""
+    }
+    // 内容名：用于"要导入 X"
+    // 这两个必须分开 —— 之前页面名被当成内容名拼进了同一句，说成"要导入 Mod 管理"。
+    function dropKindName(kind) {
+        if (kind === "mod") return qsTr("Mod")
+        if (kind === "shaderpack") return qsTr("光影包")
+        if (kind === "resourcepack") return qsTr("资源包")
+        if (kind === "world") return qsTr("存档")
+        return qsTr("这个文件")
     }
 
     function localizeDropPath(u) {
@@ -56,14 +66,31 @@ Item {
         return s
     }
 
+    // 从路径里取文件名，用于报错时说清"是哪个文件不行"
+    function dropBaseName(u) {
+        var s = String(u || "")
+        var cut = Math.max(s.lastIndexOf("/"), s.lastIndexOf("\\"))
+        if (cut >= 0) s = s.substring(cut + 1)
+        try { s = decodeURIComponent(s) } catch (e) { }
+        return s
+    }
+
     function handleGlobalDrop(urls) {
         if (!root.b || !urls) return
         var doneCount = 0
-        var lastError = ""
+        var errors = []          // 全部收集起来再决定怎么说，别只留最后一个
 
+        // 类型判定顺序很重要：先回答"这文件我认不认识"，再去谈"该放哪"。
+        // 顺序反过来的话，没选实例时拖一张 .png 会得到"请先选择一个实例" —— 答非所问。
         for (var i = 0; i < urls.length; ++i) {
             var u = String(urls[i])
+            var name = root.dropBaseName(u)
             var kind = String(root.b.classifyDroppedTarget(u))
+
+            if (kind === "unknown" || kind === "datapack") {
+                errors.push(qsTr("%1：认不出这是什么（支持 Mod / 资源包 / 光影包 / 整合包 / 存档）").arg(name))
+                continue
+            }
 
             if (kind === "authlib-link" || kind === "url") {
                 var api = String(root.b.parseAuthlibInjectorLink(u))
@@ -81,34 +108,31 @@ Item {
                 continue
             }
 
+            // 整合包是唯一"几乎到处都能导"的类型，不受页面门禁影响
             if (kind === "modpack") {
                 if (root.dropImporter) {
                     root.dropImporter.startImport(root.localizeDropPath(u), "", false, "")
                     doneCount++
                 } else {
-                    lastError = qsTr("整合包导入器未就绪")
+                    errors.push(qsTr("%1：整合包导入器未就绪").arg(name))
                 }
                 continue
             }
 
-            // 以下都要落到具体实例上，而且**必须在对应页面**
-            // （在 Mod 管理页拖 .jar 才导入 mods；在别的页面拖 .jar 只提示去哪）
-            if (root.dropVersionId.length === 0) {
-                lastError = qsTr("请先在版本页选择一个实例")
+            if (kind === "world") {
+                errors.push(qsTr("%1：存档导入暂未支持，请在存档页手动导入").arg(name))
                 continue
             }
 
-            if (kind === "world") {
-                // 存档导入后端还没实现，明确告诉用户，而不是静默吞掉
-                lastError = qsTr("存档导入暂未支持，请在存档页手动导入")
+            // 以下都落到具体实例上，而且必须在对应页面
+            if (root.dropVersionId.length === 0) {
+                errors.push(qsTr("%1：请先在版本页选择一个实例").arg(name))
                 continue
             }
 
             if (!root.dropContextAccepts(kind)) {
-                var where = root.dropContextName(kind)
-                lastError = where.length > 0
-                        ? qsTr("要导入%1，请先进入「%1」页面再拖入").arg(where)
-                        : qsTr("无法识别该文件的内容")
+                errors.push(qsTr("%1：要导入%2，请先进入「%3」页面")
+                              .arg(name).arg(root.dropKindName(kind)).arg(root.dropContextName(kind)))
                 continue
             }
 
@@ -118,14 +142,21 @@ Item {
             else if (kind === "resourcepack") ok = root.b.importResourcePack(path, root.dropVersionId)
             else if (kind === "shaderpack") ok = root.b.importShaderPack(path, root.dropVersionId)
 
-            if (ok) { doneCount++ }
-            else lastError = qsTr("导入失败：文件内容不是有效的%1").arg(root.dropContextName(kind))
+            if (ok) doneCount++
+            else errors.push(qsTr("%1：导入失败，文件内容不是有效的%2").arg(name).arg(root.dropKindName(kind)))
         }
 
-        if (doneCount > 0)
+        // 汇总：成功就报成功（但失败也要说），全失败就报第一条 + 其余数量
+        if (doneCount > 0 && errors.length === 0) {
             toastHost.show(qsTr("已导入 %1 个文件").arg(doneCount), 2600, "success")
-        else if (lastError.length > 0)
-            toastHost.show(lastError, 3600, "error")
+        } else if (doneCount > 0) {
+            toastHost.show(qsTr("已导入 %1 个，另有 %2 个未导入。%3")
+                           .arg(doneCount).arg(errors.length).arg(errors[0]), 5000, "error")
+        } else if (errors.length === 1) {
+            toastHost.show(errors[0], 4200, "error")
+        } else if (errors.length > 1) {
+            toastHost.show(qsTr("%1（另有 %2 个问题）").arg(errors[0]).arg(errors.length - 1), 5000, "error")
+        }
     }
     readonly property bool narrow: width < 900
     readonly property int sideW: (narrow ? Theme.sideWNarrow : Theme.sideW)
@@ -199,6 +230,15 @@ Item {
         root.fileDl = arr
     }
     // 已结束的下载条目 4s 后从列表里移除：卡片消失，进度页不再挂一条"已完成"
+    // --ui-drop-test 用的延后执行（等 backend / Toast 就绪）
+    Timer {
+        id: dropTestTimer
+        property var testPaths: []
+        // 启动到窗口真正可见要好几秒；太早触发的话提示会在截图之前就超时消失
+        interval: 10000
+        repeat: false
+        onTriggered: root.handleGlobalDrop(dropTestTimer.testPaths)
+    }
     Timer {
         interval: 500
         repeat: true
@@ -344,6 +384,20 @@ Item {
             sideBar.currentKey = "settings"
         }
         if (Qt.application.arguments.indexOf("--ui-account") >= 0) root.accountOpen = true
+        // --ui-drop-test <path>：把一条路径直接喂给全局拖入分发（验收用）。
+        // 真正从资源管理器拖拽无法用脚本模拟，但"给了一个东西之后会不会给出正确反馈"
+        // 这条链路可以这样验，包括拒绝时的提示文案。
+        var dti = Qt.application.arguments.indexOf("--ui-drop-test")
+        if (dti >= 0 && dti + 1 < Qt.application.arguments.length) {
+            var paths = []
+            for (var dk = dti + 1; dk < Qt.application.arguments.length; ++dk) {
+                var av = Qt.application.arguments[dk]
+                if (av.indexOf("--") === 0) break
+                paths.push(av)
+            }
+            dropTestTimer.testPaths = paths
+            dropTestTimer.start()
+        }
         // --update-check：启动后自动点一次「检查更新」（验收用，与按钮同一路径）
         if (Qt.application.arguments.indexOf("--update-check") >= 0) updateCheckTimer.start()
         // --scheme-flip：1.5s 后切换一次配色（验收用：走与外观页卡片完全相同的
@@ -953,9 +1007,15 @@ Item {
         anchors.fill: parent
         z: 800
         active: true
-        accept: []            // 不过滤扩展名：由 classifyDroppedTarget 按内容判断
+        // 这里只做**粗筛**：拖动过程中不可能去开压缩包（每移动一下解一个 zip 会卡死），
+        // 所以按扩展名放过候选，真正的类型判定留给松手后的 classifyDroppedTarget。
+        // 目的只有一个：拖 .png / .exe 这种明显不可能的东西进来时，当场就告诉用户不行，
+        // 而不是挂着「松开以导入」的遮罩骗他松手。
+        accept: [".jar", ".zip", ".mrpack", ".datapack"]
         hintTitle: qsTr("松开以导入")
         hintBody: qsTr("整合包 / Mod / 资源包 / 光影包 / 存档，或外置登录链接")
+        rejectTitle: qsTr("这里不接受这种文件")
+        rejectBody: qsTr("支持 .jar（Mod）、.zip（资源包 / 光影包 / 整合包）、.mrpack（整合包），以及外置登录链接")
         onDropped: (urls) => root.handleGlobalDrop(urls)
     }
 

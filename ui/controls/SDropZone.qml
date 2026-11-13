@@ -33,6 +33,11 @@ Item {
     property var accept: []
     // 拖入内容是否合法：由外部决定（比如版本页只接受整合包）
     property bool showHint: true
+    // 拖动过程中：这一批东西当前是否可接受（决定遮罩颜色和文案）
+    property bool dropAllowed: false
+    // 不可接受时的提示
+    property string rejectTitle: qsTr("这里不接受这种文件")
+    property string rejectBody: ""
     // 提示文案
     property string hintTitle: qsTr("松开以导入")
     property string hintBody: ""
@@ -70,9 +75,26 @@ Item {
         anchors.fill: parent
         enabled: root.active
 
+        // 拖动经过时就要给出"能不能放"的信号。等到松手才说不行，
+        // 等于让用户白拖一次；遮罩还写着「松开以导入」更是误导。
         onEntered: (drag) => {
             var ok = root.filterUrls(drag.urls)
-            if (ok.length === 0) { drag.accept() }  // 不接受，但也不吞掉
+            // 自定义 scheme 的拖拽（authlib-injector:...）urls 为空、内容在 text 里
+            var hasText = drag.hasText && String(drag.text).length > 0
+            root.dropAllowed = (ok.length > 0) || hasText
+            if (!root.dropAllowed) drag.accept(Qt.IgnoreAction)  // 光标变"禁止"
+        }
+        onExited: root.dropAllowed = false
+        onPositionChanged: (drag) => {
+            // 有些来源在 entered 时还没把 text/urls 填好，这里补一次判定
+            if (!root.dropAllowed) {
+                var ok2 = root.filterUrls(drag.urls)
+                var hasText2 = drag.hasText && String(drag.text).length > 0
+                if (ok2.length > 0 || hasText2) {
+                    root.dropAllowed = true
+                    drag.accept()
+                }
+            }
         }
         onDropped: (drop) => {
             var urls = root.filterUrls(drop.urls)
@@ -96,15 +118,18 @@ Item {
             color: Theme.scrim
             opacity: 0.88
 
-            // 虚线框（用 4 段细边框近似，避免依赖 Shape）
             Rectangle {
                 anchors.fill: parent
                 anchors.margins: 10
                 color: "transparent"
                 radius: Theme.rMd
                 border.width: 2
-                border.color: Theme.accent
+                // 能放：accent；不能放：danger。一眼可辨，不用等松手
+                border.color: root.dropAllowed ? Theme.accent : Theme.danger
                 opacity: 0.55
+                Behavior on border.color {
+                    ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                }
             }
 
             Column {
@@ -114,16 +139,21 @@ Item {
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.hintTitle
-                    color: Theme.fg
+                    text: root.dropAllowed ? root.hintTitle : root.rejectTitle
+                    color: root.dropAllowed ? Theme.fg : Theme.dangerText
                     font.family: Theme.fontFamily
                     font.pixelSize: 15
                     font.weight: Font.DemiBold
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    visible: root.hintBody.length > 0
-                    text: root.hintBody
+                    width: Math.min(implicitWidth, parent.parent.width - 80)
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                    // 不可接受时优先说"为什么不接受"
+                    visible: root.dropAllowed ? root.hintBody.length > 0
+                                              : root.rejectBody.length > 0
+                    text: root.dropAllowed ? root.hintBody : root.rejectBody
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
