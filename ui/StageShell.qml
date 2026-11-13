@@ -529,8 +529,16 @@ Item {
                 onClose: {
                     root.prefsOpen = false
                     // 还原侧栏选中项，否则退出后仍高亮「设置」
-                    sideBar.currentLabel = root.prefsPrevLabel
-                    console.info("[ui] 退出设置，侧栏还原为: " + sideBar.currentLabel)
+                    var back = root.prefsPrevLabel
+                    sideBar.currentLabel = back
+                    // 进设置时把所有页面都关掉了（设置是全屏页，声明顺序上联机/下载宿主在它前面，
+                    // 不关就会被压在设置底下继续显示）。所以退出时必须**按还原的侧栏项把页面开回来** ——
+                    // 之前只还原了侧栏高亮，于是「联机页进设置再退出」会变成
+                    // 侧栏高亮联机、画面却是启动页（影报的正是这个）。
+                    root.multiplayerOpen = (back === "联机")
+                    root.downloadOpen = (back === "下载")
+                    root.progressOpen = (back === "下载进度")
+                    console.info("[ui] 退出设置，还原页面: " + back)
                 }
             }
         }
