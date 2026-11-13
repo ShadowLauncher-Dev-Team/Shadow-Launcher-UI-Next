@@ -29,8 +29,14 @@ foreach ($f in $files) {
 
         # 2) emoji / 符号当图标（项目铁律：图标只用 lucide SVG）
         #    只查真正的 QML 代码行：注释里的箭头和符号不是图标，不该被这条规则误伤
+        # 要连**行尾注释**一起剥掉：只判行首 // 会把
+        #   x = y.substring(2)   // ///D:/x -> /D:/x
+        # 这种行尾说明里的箭头误判成图标（2026-11-13 实际发生过，构建被拦）。
+        # 用「空白 + //」定位行尾注释；字符串里的 https:// 前面不是空白，不会被误剥。
+        # 两种注释都要躲开：顶格/缩进的整行注释，以及代码后面的行尾注释
         $isComment = $t.TrimStart().StartsWith('//')
-        if (-not $isComment -and ($t -match '[\uD800-\uDFFF]' -or $t -match '[\u2190-\u21FF\u2600-\u27BF\u2B00-\u2BFF]')) {
+        $code = ($t -replace '\s//.*$', '')
+        if (-not $isComment -and ($code -match '[\uD800-\uDFFF]' -or $code -match '[\u2190-\u21FF\u2600-\u27BF\u2B00-\u2BFF]')) {
             Add-Problem $rel $ln '疑似 emoji/符号做图标，图标须用 qml/icons/lucide 下的 SVG'
         }
 

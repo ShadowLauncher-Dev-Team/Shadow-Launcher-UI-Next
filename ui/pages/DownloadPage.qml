@@ -629,6 +629,9 @@ Item {
             visible: page.tab !== 0 && page.tab !== 6
             tabIndex: page.tab
             toast: page.toast
+            // 拖入导入只在「列表态」接受：安装配置态（mode=1）用户正在选加载器/版本，
+            // 拖文件进来语义不清；MC 版本(0) 与 Java(6) 两个 tab 也一律不接受。
+            dropEnabled: page.mode === 0 && page.tab !== 0 && page.tab !== 6
             onOpenDetail: (kind, item) => page.openResourceDetail(kind, item)
         }
 

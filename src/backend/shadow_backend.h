@@ -481,6 +481,8 @@ public:
     // ── 异步列表加载（模组上百时 parseJar/目录遍历耗时，worker 线程执行不卡 UI）──
     Q_INVOKABLE void listModsAsync(const QString& versionId = {});
     Q_INVOKABLE void listResourcePacksAsync(const QString& versionId = {});
+    /// 光影包列表（2026-11-13）：LocalModManager 扫 shaderpacks/，worker 线程执行
+    Q_INVOKABLE void listShaderPacksAsync(const QString& versionId = {});
     Q_INVOKABLE void listSavesAsync(const QString& versionId = {});
 
     // ── Q_INVOKABLE methods ──
@@ -730,6 +732,11 @@ public:
     Q_INVOKABLE bool saveTextFile(const QString& path, const QString& content);
     Q_INVOKABLE void deleteResourcePack(const QString& filename, const QString& versionId = {});
     Q_INVOKABLE bool importResourcePack(const QString& filePath, const QString& versionId = {});
+    // ── 光影包（shaderpacks/，2026-11-13）──
+    Q_INVOKABLE void deleteShaderPack(const QString& filename, const QString& versionId = {});
+    Q_INVOKABLE bool importShaderPack(const QString& filePath, const QString& versionId = {});
+    /// 启/禁用光影包（x.zip ↔ x.zip.disabled，游戏只扫 *.zip）
+    Q_INVOKABLE bool setShaderPackEnabled(const QString& filename, const QString& versionId = {}, bool enabled = true);
     Q_INVOKABLE bool importMod(const QString& filePath, const QString& versionId = {});
     Q_INVOKABLE void deleteSave(const QString& saveName, const QString& versionId = {});
     Q_INVOKABLE void migrateVersion(const QString& versionId);
@@ -812,6 +819,7 @@ signals:
     // 异步列表加载完成（worker 线程扫描后回主线程发信号）
     void modsListReady(const QString& versionId, const QVariantList& mods);
     void resourcePacksListReady(const QString& versionId, const QVariantList& packs);
+    void shaderPacksListReady(const QString& versionId, const QVariantList& packs);
     void savesListReady(const QString& versionId, const QVariantList& saves);
     void activeVersionNamesChanged();
     void selectedVersionChanged();

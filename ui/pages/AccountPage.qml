@@ -79,6 +79,9 @@ Item {
         }
         function onShowProfileSelection() {
             page.profilePickOpen = true
+            // 后端能按 uuid 拉皮肤并渲染成 128x128 头图（profileHeadUrls），
+            // 不预先拉的话弹窗里只能显示首字母色块，用户分辨不出角色。
+            if (page.yg) page.yg.preloadProfileSkins()
             page.flash(qsTr("这个账号有多个角色，请选择一个"))
         }
         function onMetaFailed(err) {
@@ -323,16 +326,59 @@ Item {
         page.b.offlineLogin(n)
         page.flash(qsTr("已切换到离线账户 %1").arg(n))
     }
+    // 快捷填入：只写域名，真正地址由 ALI 解析（见后端 resolveApiRoot）
+    function fillApiHost(host) {
+        page.apiRootInput = host
+        if (page.yg) page.yg.resolveApiRoot(host)
+    }
+
+    // 登录前先确保地址是完整的 API 根：
+    // 用户可能只写了 littleskin.cn，直接拿去拼 /authserver/authenticate 会 404。
+    property bool pendingLogin: false
     function doExternal() {
         if (!page.yg) return
         if (page.apiRootInput.length === 0 || page.emailInput.length === 0 || page.passwordInput.length === 0) {
-            page.flash(qsTr("API 地址、账号、密码都要填"))
+            page.flash(qsTr("地址、账号、密码都要填"))
             return
         }
+        // 已经是完整 API 根就不折腾；否则先解析一次
+        var raw = page.apiRootInput.trim()
+        if (raw.indexOf("/api/") < 0 && raw.indexOf("yggdrasil") < 0) {
+            page.pendingLogin = true
+            page.yg.resolveApiRoot(raw)
+            return
+        }
+        page.loginNow()
         // 不能在认证成功之前写 lastLoginMode：
         // 一旦写了，下次启动会按"上次是外置"去恢复那条（可能已失效的）会话，
         // 失败后又被判过期 —— 用户看到的就是"一点就说过期"的死循环。
         // 改为在 onLoginSuccess 里再落 lastLoginMode。
+        page.loginNow()
+    }
+
+    // 拖入处理：逐个尝试识别，命中一个就够（不要把多个文件都当 API 地址）
+    function handleDroppedFiles(urls) {
+        if (!page.yg || !urls || urls.length === 0) return
+        for (var i = 0; i < urls.length; ++i) {
+            var kind = ""
+            var ok = page.yg.resolveApiFromFile(String(urls[i]), kind)
+            if (!ok) continue
+            if (kind === "api") {
+                page.flash(qsTr("已从文件识别出 API 地址"))
+                return
+            }
+            if (kind === "authlib") {
+                // 认出了 authlib-injector 但里面没有站点地址：
+                // 启动器本来就会在启动外置账号时自动下载/使用它，所以这里只需要告诉用户下一步
+                page.flash(qsTr("已识别 authlib-injector，请再填站点地址（如 littleskin.cn）"))
+                return
+            }
+        }
+        page.flash(qsTr("没能从这个文件里识别出外置登录信息"))
+    }
+
+    function loginNow() {
+        if (!page.yg) return
         page.yg.login(page.apiRootInput.trim(), page.emailInput.trim(), page.passwordInput)
         page.flash(qsTr("正在登录外置账户…"))
     }
@@ -366,6 +412,23 @@ Item {
         enabled: page.b !== null
         function onMicrosoftLoginSuccess() { page.loginPanel = false; page.flash(qsTr("登录成功")) }
         function onMicrosoftLoginFailed(err) { page.flash(qsTr("登录失败：%1").arg(err)) }
+    }
+
+    // ALI（API 地址指示）解析结果
+    Connections {
+        target: page.yg
+        enabled: page.yg !== null
+        function onApiRootResolved(resolved) {
+            page.apiRootInput = resolved
+            if (page.pendingLogin) {
+                page.pendingLogin = false
+                page.loginNow()
+            }
+        }
+        function onApiRootResolveFailed(error) {
+            page.pendingLogin = false
+            page.flash(error)
+        }
     }
 
     // ---------- 底色 ----------
@@ -1635,22 +1698,62 @@ Item {
                     }
                     Text {
                         text: qsTr("外置登录")
-                        color: "#ffffff"
+                        color: Theme.imageFg
                         font.family: Theme.fontFamily
                         font.pixelSize: 20
                         font.weight: Font.Bold
                     }
                     Text {
                         width: parent.width
-                        text: qsTr("填皮肤站的 API 地址与账号（如 LittleSkin）。")
-                        color: "#9fb4cf"
+                        text: qsTr("填皮肤站的地址与账号。地址可只写域名，登录前会自动识别完整 API 地址。")
+                        color: Theme.fg2
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap
                     }
+                    // 快捷填入：点站点名即可，不必知道完整 API 地址。
+                    // 地址最终由 ALI（X-Authlib-Injector-API-Location）在登录前解析，
+                    // 所以这里只填域名也能用 —— 与 LittleSkin 手册的说法一致。
+                    Row {
+                        spacing: 6
+                        visible: page.tab === 2
+                        Repeater {
+                            model: [
+                                { label: "LittleSkin", host: "littleskin.cn" }
+                            ]
+                            delegate: Rectangle {
+                                width: quickLabel.width + 18
+                                height: 26
+                                radius: Theme.rSm
+                                color: quickHover.hovered ? Theme.bgHover : Theme.bgInput
+                                border.width: 1
+                                border.color: quickHover.hovered ? Theme.line2 : Theme.line
+                                Text {
+                                    id: quickLabel
+                                    anchors.centerIn: parent
+                                    text: modelData.label
+                                    color: Theme.fg2
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 12
+                                }
+                                HoverHandler { id: quickHover }
+                                TapHandler {
+                                    onTapped: page.fillApiHost(modelData.host)
+                                }
+                            }
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("点一下自动填好，也可只输入域名")
+                            color: Theme.fg3
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                        }
+                    }
+
                     Repeater {
                         model: [
-                            { ph: "https://littleskin.cn/api/yggdrasil", key: 0 },
+                            { ph: qsTr("皮肤站地址，如 littleskin.cn"), key: 0 },
                             { ph: qsTr("邮箱"), key: 1 },
                             { ph: qsTr("密码"), key: 2 }
                         ]
@@ -1658,9 +1761,9 @@ Item {
                             width: page.narrow ? 260 : 320
                             height: 40
                             radius: 8
-                            color: "#11141b"
+                            color: Theme.bgInput
                             border.width: 1
-                            border.color: "#1c2029"
+                            border.color: f.activeFocus ? Theme.line2 : Theme.line
                             TextInput {
                                 id: f
                                 anchors.left: parent.left
@@ -1696,7 +1799,7 @@ Item {
                         visible: page.yg !== null && page.yg.statusMessage.length > 0
                         width: parent.width
                         text: page.yg ? page.yg.statusMessage : ""
-                        color: "#bcd0e8"
+                        color: Theme.fg2
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap
@@ -1719,7 +1822,7 @@ Item {
 
                         Text {
                             text: qsTr("选择角色")
-                            color: "#ffffff"
+                            color: Theme.imageFg
                             font.family: Theme.fontFamily
                             font.pixelSize: 13
                             font.weight: Font.DemiBold
@@ -1729,20 +1832,51 @@ Item {
                             model: (page.yg && page.yg.profiles) ? page.yg.profiles : []
                             delegate: Rectangle {
                                 width: parent.width
-                                height: 44
+                                height: 52
                                 radius: 8
-                                color: profHover.hovered ? "#161a22" : "#11141b"
+                                color: profHover.hovered ? Theme.bgHover : Theme.bgInput
                                 border.width: 1
-                                border.color: profHover.hovered ? "#2a3341" : "#1c2029"
+                                border.color: profHover.hovered ? Theme.line2 : Theme.line
 
-                                Text {
+                                // 角色皮肤头像：profileHeadUrls 里是同索引的本地头图，
+                                // 还没拉到就先显示首字母色块（SMinecraftHead 自带这个兜底）
+                                SMinecraftHead {
+                                    id: profHead
                                     anchors.left: parent.left
-                                    anchors.leftMargin: 12
+                                    anchors.leftMargin: 10
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: (modelData && modelData.name) ? modelData.name : ""
-                                    color: Theme.imageFg
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 13
+                                    size: 32
+                                    fallbackText: (modelData && modelData.name) ? modelData.name : "?"
+                                    source: {
+                                        var urls = (page.yg && page.yg.profileHeadUrls) ? page.yg.profileHeadUrls : []
+                                        return (index >= 0 && index < urls.length) ? urls[index] : ""
+                                    }
+                                }
+
+                                Column {
+                                    anchors.left: profHead.right
+                                    anchors.leftMargin: 10
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 10
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 2
+                                    Text {
+                                        width: parent.width
+                                        elide: Text.ElideRight
+                                        text: (modelData && modelData.name) ? modelData.name : ""
+                                        color: Theme.fg
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 13
+                                    }
+                                    Text {
+                                        width: parent.width
+                                        elide: Text.ElideRight
+                                        visible: text.length > 0
+                                        text: (modelData && modelData.id) ? modelData.id : ""
+                                        color: Theme.fg3
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 10
+                                    }
                                 }
                                 HoverHandler { id: profHover }
                                 TapHandler {
@@ -1769,5 +1903,18 @@ Item {
                 }
             }
         }
+    }
+
+    // ── 拖入识别（只在外置登录 tab 生效）──
+    // 支持两种文件：
+    //   · .txt/.json/.url/.properties 等文本 —— 里面写着 API 地址就直接填上
+    //   · .jar —— authlib-injector 本体；能认出它，若 jar 里带站点域名就顺带填地址
+    SDropZone {
+        anchors.fill: parent
+        active: page.tab === 2 && !page.profilePickOpen
+        accept: [".txt", ".json", ".yml", ".yaml", ".url", ".ini", ".cfg", ".conf", ".properties", ".jar", ".zip"]
+        hintTitle: qsTr("松开以识别外置登录信息")
+        hintBody: qsTr("支持文本（含 API 地址）或 authlib-injector.jar")
+        onDropped: (urls) => page.handleDroppedFiles(urls)
     }
 }

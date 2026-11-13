@@ -21,7 +21,36 @@ public class CB {
 "@
 $p = Get-Process ShadowLauncher -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $p) { Write-Output "no proc"; exit 1 }
-$h = $p.MainWindowHandle
+# MainWindowHandle 对 Qt 的无边框窗口经常给 0，拿到的句柄也可能属于被隐藏的
+# 那个窗口（实测 client 0x0 at -32000,-32000，点击全落到屏幕外）。
+# 改成枚举该进程所有顶层窗口，取「可见 + 有非零客户区 + 面积最大」的那个。
+Add-Type @"
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+public class WinFind {
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, IntPtr l);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr h, out RECT r);
+  delegate bool EnumProc(IntPtr h, IntPtr l);
+  public struct RECT { public int L, T, R, B; }
+  public static IntPtr Find(uint target) {
+    IntPtr best = IntPtr.Zero; long bestArea = 0;
+    EnumWindows((h, l) => {
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      if (pid != target || !IsWindowVisible(h)) return true;
+      RECT r; if (!GetClientRect(h, out r)) return true;
+      long w = r.R - r.L, hh = r.B - r.T;
+      if (w > 100 && hh > 100 && w * hh > bestArea) { bestArea = w * hh; best = h; }
+      return true;
+    }, IntPtr.Zero);
+    return best;
+  }
+}
+"@
+$h = [WinFind]::Find([uint32]$p.Id)
+if ($h -eq [IntPtr]::Zero) { Write-Output "no visible window"; exit 1 }
 [void][CB]::SetForegroundWindow($h)
 Start-Sleep -Milliseconds 250
 $r = New-Object CB+RECT

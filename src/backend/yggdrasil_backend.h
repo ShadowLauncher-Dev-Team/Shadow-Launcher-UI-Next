@@ -61,6 +61,25 @@ public:
     int profileIndex() const { return m_session.selectedProfileIndex; }
     QString statusMessage() const { return m_statusMessage; }
 
+    /// ALI（API 地址指示）解析 —— authlib-injector 规范：
+    ///   用户输入可以是简写（如 littleskin.cn），客户端先规范化成 https://littleskin.cn，
+    ///   再 GET 该地址；若响应头带 X-Authlib-Injector-API-Location，
+    ///   则真实 API 根 = 该头（相对路径按当前 URL 解析）；否则输入本身即 API 根。
+    /// 这样「点一下填 littleskin.cn」就能自动变成 https://littleskin.cn/api/yggdrasil，
+    /// 而且对任何启用了 ALI 的皮肤站都通用，不需要为每家写死地址。
+    Q_INVOKABLE void resolveApiRoot(const QString &input);
+    /// 纯函数版（不联网）：只做规范化，输入本身已像 API 根时直接用
+    static QString normalizeApiRoot(const QString &input);
+
+    /// 拖入识别：从一个本地文件里找 API 地址。
+    /// 支持：
+    ///   · 文本类（.txt/.json/.yml/.properties/.url/.ini/.cfg/.conf）—— 搜第一个像 Yggdrasil 的 URL
+    ///   · .jar —— authlib-injector 本体。它内部不含站点 API 地址，
+    ///     但如果是某个皮肤站打包的 jar，常量池里通常留着站点域名，能搜到就顺带用上；
+    ///     搜不到也不是错误，UI 会提示「已识别 authlib-injector，请填站点地址」。
+    /// outKind 返回识别结果类型：api / authlib / unknown
+    Q_INVOKABLE bool resolveApiFromFile(const QString &filePath, QString *outKind = nullptr);
+
     Q_INVOKABLE void fetchMeta(const QString &apiRoot);
     Q_INVOKABLE void login(const QString &apiRoot, const QString &email, const QString &password);
     Q_INVOKABLE void refreshToken();
@@ -107,6 +126,10 @@ public:
     void setAutoJoinServer(bool enabled);
 
 signals:
+    /// ALI 解析成功：resolved 是可直接用于登录的 API 根
+    void apiRootResolved(const QString &resolved);
+    /// ALI 解析失败（网络不通 / 地址无效）
+    void apiRootResolveFailed(const QString &error);
     void metaReady();
     void metaFailed(const QString &error);
     void loginSuccess();
@@ -130,6 +153,7 @@ signals:
     void profileHeadsChanged();
 
 private slots:
+    void onAliResolveReply();
     void onMetaReply();
     void onAuthenticateReply();
     void onRefreshReply();
@@ -148,6 +172,9 @@ private:
     /// 令牌被服务端判定失效：清除本地会话并通知 UI 重新登录
     void clearSessionAfterExpiry();
     bool m_bindingProfile = false;
+    // ALI 解析：记录规范化后的输入，供回包时判断"用户原样输入的地址"与"头指示的地址"
+    QString m_aliInput;
+    QString m_aliFetchedUrl;
     // 登录成功信号要等 bindProfile 完成后再发：
     // authenticate 返回的令牌没绑定角色，此刻若先 emit loginSuccess，
     // 多账号列表就会把「未绑定令牌」存进 accounts.json，

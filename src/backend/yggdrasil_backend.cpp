@@ -72,6 +72,152 @@ void YggdrasilBackend::setStatus(const QString &msg)
     }
 }
 
+// ══ ALI（API 地址指示）══════════════════════════════════════════
+// authlib-injector 规定的服务发现方式，LittleSkin 等皮肤站全站启用：
+//   输入 littleskin.cn -----> GET https://littleskin.cn
+//                     <----- X-Authlib-Injector-API-Location: /api/yggdrasil
+//   => 真实 API 根 https://littleskin.cn/api/yggdrasil
+// 没有这个头的站点，输入本身就被当作 API 根（旧行为不变）。
+QString YggdrasilBackend::normalizeApiRoot(const QString &input)
+{
+    QString s = input.trimmed();
+    if (s.isEmpty()) return QString();
+    // 用户可能粘贴了带 scheme 的完整地址，也可能只输入域名
+    if (!s.contains(QStringLiteral("://")))
+        s.prepend(QStringLiteral("https://"));
+    // 去掉末尾多余的斜杠（ALI 头是相对路径时靠 resolved() 拼接，留着也无害，
+    // 但存进 session.json / 拼 /authserver 时多一个斜杠会变成双斜杠）
+    while (s.endsWith(QLatin1Char('/'))) s.chop(1);
+    return s;
+}
+
+// 拖入识别。注意这里刻意不联网：先只做"这个文件有没有可用信息"的判断，
+// 真正的地址解析（ALI）交给 resolveApiRoot —— 两者职责分开，失败原因也清楚。
+bool YggdrasilBackend::resolveApiFromFile(const QString &filePath, QString *outKind)
+{
+    if (outKind) *outKind = QStringLiteral("unknown");
+
+    // QML 的 DropArea 给的是 file:// URL（含百分号编码，中文路径必须解开）
+    QString path = filePath;
+    if (path.startsWith(QStringLiteral("file:"), Qt::CaseInsensitive))
+        path = QUrl(path).toLocalFile();
+    if (path.isEmpty()) return false;
+
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) return false;
+
+    const QString suffix = QFileInfo(path).suffix().toLower();
+    const bool isJar = (suffix == QStringLiteral("jar") || suffix == QStringLiteral("zip"));
+    // jar 里翻常量池；上限 8MB 足够覆盖 authlib-injector（约 1MB）
+    const qint64 cap = isJar ? 8LL * 1024 * 1024 : 256LL * 1024;
+    QByteArray raw = f.read(cap);
+    f.close();
+
+    // jar 是二进制，但 URL 是纯 ASCII，直接按 Latin-1 粗扫不会因为编码失败漏掉
+    const QString text = QString::fromLatin1(raw);
+
+    if (isJar) {
+        const bool looksAuthlib = text.contains(QStringLiteral("authlib-injector"), Qt::CaseInsensitive)
+                                  || text.contains(QStringLiteral("yushijinhun"), Qt::CaseInsensitive);
+        if (!looksAuthlib) return false;
+        if (outKind) *outKind = QStringLiteral("authlib");
+    }
+
+    // 找第一个「像 Yggdrasil API 根」的 URL：
+    // 优先带 yggdrasil 的，其次是不含明显资源后缀的站点根
+    static const QRegularExpression urlRe(
+        QStringLiteral(R"(https?://[A-Za-z0-9.\-]+(?::\d+)?(?:/[A-Za-z0-9._~%!$&'()*+,;=:@/\-]*)?)"));
+    QString best;
+    auto it = urlRe.globalMatch(text);
+    while (it.hasNext()) {
+        const QString u = it.next().captured(0);
+        if (u.contains(QStringLiteral("yggdrasil"), Qt::CaseInsensitive)) { best = u; break; }
+        if (best.isEmpty() && !u.contains(QStringLiteral(".json"))
+            && !u.contains(QStringLiteral(".png")) && !u.contains(QStringLiteral(".jar")))
+            best = u;
+    }
+
+    if (best.isEmpty()) {
+        // jar 认得出来但没有地址：算"识别成功但没有可用地址"，由 UI 提示用户补填
+        return isJar && outKind && *outKind == QStringLiteral("authlib");
+    }
+
+    if (outKind) *outKind = QStringLiteral("api");
+    resolveApiRoot(best);
+    return true;
+}
+
+void YggdrasilBackend::resolveApiRoot(const QString &input)
+{
+    const QString base = normalizeApiRoot(input);
+    if (base.isEmpty()) {
+        emit apiRootResolveFailed(QStringLiteral("地址不能为空"));
+        return;
+    }
+
+    m_aliInput = base;
+    m_aliFetchedUrl = base;
+
+    // 已经是明显的 API 根（路径里带 yggdrasil / authserver / api 段）就不用再探一次，
+    // 直接当结果——离线站点、内网地址也可以少一次无效请求。
+    const QUrl u(base);
+    const QString path = u.path().toLower();
+    if (path.contains(QStringLiteral("yggdrasil"))
+        || path.contains(QStringLiteral("authserver"))
+        || path.endsWith(QStringLiteral("/api"))) {
+        emit apiRootResolved(base);
+        return;
+    }
+
+    setStatus(QStringLiteral("正在解析认证服务器地址..."));
+
+    QNetworkRequest req{QUrl(base)};
+    // 只要头，不要正文；部分站点会返回整页 HTML，浪费带宽
+    req.setRawHeader("Accept", "application/json");
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                     QNetworkRequest::NoLessSafeRedirectPolicy);
+    req.setTransferTimeout(8000);
+
+    QNetworkReply *reply = m_nam->get(req);
+    connect(reply, &QNetworkReply::finished, this, &YggdrasilBackend::onAliResolveReply);
+}
+
+void YggdrasilBackend::onAliResolveReply()
+{
+    auto *reply = qobject_cast<QNetworkReply *>(sender());
+    if (!reply) return;
+    reply->deleteLater();
+
+    const QByteArray loc = reply->rawHeader("X-Authlib-Injector-API-Location");
+    const auto err = reply->error();
+
+    if (!loc.isEmpty()) {
+        // 头里可能是相对路径（LittleSkin 就是 "/api/yggdrasil"），按请求 URL 解析
+        QUrl resolved = QUrl(m_aliFetchedUrl).resolved(QUrl(QString::fromUtf8(loc).trimmed()));
+        QString out = resolved.toString();
+        while (out.endsWith(QLatin1Char('/'))) out.chop(1);
+        qCInfo(logYggBackend) << QStringLiteral("[ALI] %1 -> %2").arg(m_aliFetchedUrl, out);
+        setStatus(QString());
+        emit apiRootResolved(out);
+        return;
+    }
+
+    // 没有 ALI 头：只要请求本身成功（或重定向成功），就把输入当作 API 根。
+    // 注意 4xx 也可能是"API 根没有根路径资源"，所以这里不看状态码，只看网络层是否通。
+    if (err == QNetworkReply::NoError
+        || err == QNetworkReply::ContentNotFoundError
+        || err == QNetworkReply::ProtocolInvalidOperationError) {
+        qCInfo(logYggBackend) << QStringLiteral("[ALI] %1 无 ALI 头，按原地址使用").arg(m_aliFetchedUrl);
+        setStatus(QString());
+        emit apiRootResolved(m_aliInput);
+        return;
+    }
+
+    setStatus(QString());
+    emit apiRootResolveFailed(QStringLiteral("无法连接到 %1：%2")
+                                  .arg(m_aliFetchedUrl, reply->errorString()));
+}
+
 void YggdrasilBackend::fetchMeta(const QString &apiRoot)
 {
     if (apiRoot.trimmed().isEmpty()) {

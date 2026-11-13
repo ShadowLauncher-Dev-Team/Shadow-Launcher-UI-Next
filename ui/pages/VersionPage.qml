@@ -7,6 +7,7 @@
 // 本页不写死任何版本名，不做动效（等动效系统统一接入）
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import ShadowLauncher.Next
 
 Item {
@@ -26,6 +27,33 @@ Item {
     property string query: ""
     property var toast: null          // StageShell 注入的 ToastHost：反馈统一走 Toast
     property int rev: 0            // 递增以强制重算"上次游玩"等非绑定字段
+
+    // ── 整合包导入 ──
+    // ShadowBackend 以 Q_PROPERTY(QObject* modpackImporter) 暴露 ModpackImporter 实例，
+    // gameDir / VersionBackend / 隔离策略都已由后端注入，这里只负责「选文件 → startImport」。
+    readonly property var importer: (b && b.modpackImporter) ? b.modpackImporter : null
+    readonly property bool importing: page.importer ? page.importer.busy === true : false
+    readonly property real importProgress: {
+        if (!page.importing) return 0
+        var p = Number(page.importer.progress)
+        if (!(p >= 0)) return 0
+        return p > 1 ? 1 : p
+    }
+    readonly property string importStatus: page.importing ? String(page.importer.statusText || "") : ""
+    // 导入成功后要自动选中的版本 id：等 versionDetails 新数据到达再落地，
+    // 否则会被 syncPendingFromList（rows 变化时把不存在的 pendingId 退回第一项）冲掉。
+    property string selectAfterRefresh: ""
+
+    // ── 自动刷新（进入页面拉一次，避免"装完新版本回来还是旧列表"）──
+    // 这个页面实例是常驻的（StageShell 只切宿主 visible），Component.onCompleted 只在启动时跑一次，
+    // 所以真正的刷新时机是「变可见」。用陈旧阈值节流：窗口期内反复进出不再重复请求后端。
+    readonly property int staleMs: 10000
+    property double lastRefreshAt: 0
+    // 后端自己的扫描状态（ShadowBackend::isScanningVersions）：扫描还在飞时不再叠请求，
+    // 否则页面上反复进出会排队打一堆 refreshVersionDetails。
+    readonly property bool scanning: page.b !== null && page.b.isScanningVersions === true
+    // 扫描中没排上的"强制刷新"（装完/导入完必须看到新版本），等扫描结束再补一次
+    property bool forceRefreshPending: false
 
     readonly property bool narrow: width < 900
     readonly property int leftW: narrow ? 268 : 336
@@ -230,6 +258,79 @@ Item {
     // 而且返回启动页后再也看不到"到底刷新了什么"。
     function flash(msg) { if (page.toast) page.toast.show(msg) }
 
+    // ── 刷新：手动 / 自动共用 ──
+    // 自动只扫本地 versions/（远端清单只有手动刷新才需要），并受陈旧阈值 + in-flight 双重节流。
+    // force=true 用于"数据一定变了"的场合（导入完整合包），会绕过陈旧阈值。
+    function refreshLocal(force) {
+        if (!page.b) return false
+        // 上一次扫描还没结束：不并发发起第二次；强制刷新记下来，等扫描完补发
+        if (page.scanning) {
+            if (force) page.forceRefreshPending = true
+            return false
+        }
+        var now = Date.now()
+        if (!force && page.details.length > 0 && (now - page.lastRefreshAt) < page.staleMs) return false
+        page.lastRefreshAt = now
+        page.b.refreshVersionDetails()
+        return true
+    }
+    function refreshAll() {
+        if (!page.b) return false
+        page.lastRefreshAt = Date.now()
+        page.b.refreshVersionList()
+        // 扫描中不叠请求：记下来等本次扫描结束再补一次（否则手动点刷新会"看起来没反应"）
+        if (page.scanning) page.forceRefreshPending = true
+        else page.b.refreshVersionDetails()
+        return true
+    }
+    // 页面被 StageShell 宿主切到可见：补一次数据对齐
+    function onPageShown() {
+        if (!page.b) return
+        page.rev++
+        if (page.mcFolder) page.mcFolder.refreshFolders()
+        page.refreshLocal(false)
+        Qt.callLater(page.syncPendingFromList)
+    }
+
+    // ── 整合包：路径转换 + 导入 ──
+    // url → 本地路径：FileDialog 给的是 file:///D:/a%20b.zip，拖入的 url 也是同一形态。
+    // 注意 decodeURIComponent：中文/空格目录（C:/Users/张三/Downloads）不解码是打不开的。
+    function localPathOf(u) {
+        var s = String(u === undefined || u === null ? "" : u)
+        if (s.length === 0) return ""
+        if (s.indexOf("file:") === 0) s = s.substring(5)
+        if (s.indexOf("///") === 0) s = s.substring(2)                              // ///D:/x → /D:/x
+        else if (s.indexOf("//") === 0) s = "\\\\" + s.substring(2).replace(/\//g, "\\")  // UNC
+        if (s.charAt(0) === "/" && s.charAt(2) === ":") s = s.substring(1)           // /D:/x → D:/x
+        try { s = decodeURIComponent(s) } catch (e) { }
+        return s
+    }
+    function fileNameOf(path) {
+        var s = String(path || "")
+        var i = Math.max(s.lastIndexOf("/"), s.lastIndexOf("\\"))
+        return i >= 0 ? s.substring(i + 1) : s
+    }
+    // 导入入口：按钮（FileDialog）与拖入（SDropZone）共用，扩展名校验也只做一处
+    function importModpackPath(path) {
+        if (!page.importer) { page.flash(qsTr("后端未就绪，无法导入整合包")); return }
+        var p = String(path === undefined || path === null ? "" : path)
+        if (p.length === 0) return
+        var low = p.toLowerCase()
+        if (low.lastIndexOf(".zip") !== low.length - 4 && low.lastIndexOf(".mrpack") !== low.length - 7) {
+            page.flash(qsTr("只支持 .zip / .mrpack 整合包"))
+            return
+        }
+        if (page.importing) { page.flash(qsTr("已有整合包正在导入，请等它完成")); return }
+        page.selectAfterRefresh = ""
+        page.flash(qsTr("开始导入整合包：%1").arg(page.fileNameOf(p)))
+        // 外部导入没有来源图标（空 url → 任务侧用占位图）；版本名留空让任务按包名自动生成
+        page.importer.startImport(p, "", false, "")
+    }
+    function handleDrop(urls) {
+        if (!urls || urls.length === 0) return
+        page.importModpackPath(page.localPathOf(urls[0]))
+    }
+
     // 当前待选版本在列表里的行号（-1 = 不在列表里）。滑动指示条靠它定位。
     function rowIndex(id) {
         if (!id) return -1
@@ -237,18 +338,24 @@ Item {
             if (page.rows[i] && page.rows[i].id === id) return i
         return -1
     }
-    // 进入本页必须主动触发扫描：versionDetails 是异步扫 versions/ 得到的，
-    // 后端不会自己开始扫（旧 UI 也是进版本页时才调 refreshVersionDetails）。
+    // 页面实例是常驻的（StageShell 只切宿主 visible，不销毁本组件），所以 Component.onCompleted
+    // 只在启动时跑一次 —— 之前"扫描只在这里发"就导致装完新版本回来还是旧列表。
+    // 真正该刷新的时机是「变可见」，见下面的 onVisibleChanged；这里只做一次性初始化 + 兜底首屏可见的情况。
     Component.onCompleted: {
         page.rev++
-        if (page.b) page.b.refreshVersionDetails()
-        if (page.mcFolder) page.mcFolder.refreshFolders()
         page.shownId = page.pendingId
+        if (page.mcFolder) page.mcFolder.refreshFolders()
         // 调试/截图用：--ui-folder-menu 直接展开文件夹选择面板
         if (Qt.application.arguments.indexOf("--ui-folder-menu") >= 0)
             page.folderMenuOpen = true
         Qt.callLater(page.syncPendingFromList)
+        if (page.visible) page.onPageShown()
     }
+
+    // 进入版本页（宿主 visible: versionsOpen 由 false → true 时，本项的有效可见性随之变化）
+    // 自动对齐一次数据：版本装完 / 整合包导入完回来，列表不再是旧快照。
+    // 频次由 refreshLocal 的陈旧阈值 + 后端 isScanningVersions 双重节流兜住。
+    onVisibleChanged: if (visible) page.onPageShown()
 
     Connections {
         target: page
@@ -258,8 +365,39 @@ Item {
     Connections {
         target: page.b
         enabled: page.b !== null
-        function onVersionDetailsReady() { page.rev++ }
+        function onVersionDetailsReady() {
+            page.rev++
+            // 导入完成时记下的"待选中版本"等新数据到齐再落地（提前设会被 syncPendingFromList 冲掉）
+            if (page.selectAfterRefresh.length > 0) {
+                var want = page.selectAfterRefresh
+                page.selectAfterRefresh = ""
+                if (page.rowIndex(want) >= 0) page.pendingId = want
+            }
+        }
         function onSelectedVersionChanged() { page.rev++ }
+        // 扫描结束：补发之前因"扫描中"没排上的强制刷新（导入完成那一刻常常正撞上扫描）
+        function onScanningChanged() {
+            if (page.scanning) return
+            if (!page.forceRefreshPending) return
+            page.forceRefreshPending = false
+            page.refreshLocal(true)
+        }
+    }
+
+    // 整合包导入结果：成功就强制刷一次并把新版本选中；失败只提示，不打断当前浏览
+    Connections {
+        target: page.importer
+        enabled: page.importer !== null
+        function onImportFinished(ok, name, info) {
+            if (ok) {
+                page.flash(qsTr("整合包已导入：%1").arg(name))
+                // info 在成功分支是注册后的版本 id（ModpackImporter::resultVersionId 同值）
+                page.selectAfterRefresh = String(info || "")
+                page.refreshLocal(true)
+            } else {
+                page.flash(qsTr("整合包导入失败：%1").arg(info))
+            }
+        }
     }
 
     // ---------- 底色 ----------
@@ -350,18 +488,28 @@ Item {
                 }
             }
 
+            // 导入整合包：外部 .zip / .mrpack 文件，走后端已有的 ModpackImporter 全套流程
+            // （解析清单 → 解压 overrides → 下模组 → 装 MC+加载器 → 注册版本）。
+            SButton {
+                kind: 1
+                radius: 2
+                height: 32
+                iconName: "package-plus"
+                text: qsTr("导入整合包")
+                dimmed: page.importing
+                onClicked: {
+                    if (!page.importer) { page.flash(qsTr("后端未就绪，无法导入整合包")); return }
+                    modpackDialog.open()
+                }
+            }
+
             SButton {
                 kind: 1
                 radius: 2
                 height: 32
                 iconName: "refresh-cw"
                 text: qsTr("刷新")
-                onClicked: {
-                    if (!page.b) return
-                    page.b.refreshVersionDetails()
-                    page.b.refreshVersionList()
-                    page.flash(qsTr("已刷新版本列表"))
-                }
+                onClicked: if (page.refreshAll()) page.flash(qsTr("已刷新版本列表"))
             }
         }
     }
@@ -372,6 +520,76 @@ Item {
         anchors.top: topBar.bottom
         height: 1
         color: Theme.line
+    }
+
+    // ---------- 整合包导入进度（只在导入中出现；盖在列表顶部，不挤压布局）----------
+    // 导入要下模组/装加载器，耗时可能是分钟级；没有反馈的话按钮看起来像没反应。
+    Rectangle {
+        id: importBar
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: topBar.bottom
+        height: 38
+        // 收起时等淡完再隐藏，避免硬切（与文件夹下拉面板同一套做法）
+        visible: page.importing || opacity > 0.01
+        opacity: page.importing ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+        }
+        color: Theme.bgCard2
+        z: 200
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 1
+            color: Theme.line
+        }
+        SIcon {
+            anchors.left: parent.left
+            anchors.leftMargin: page.narrow ? 16 : 20
+            anchors.verticalCenter: parent.verticalCenter
+            name: "package-plus"
+            size: 14
+            color: Theme.accent
+        }
+        Text {
+            anchors.left: parent.left
+            anchors.leftMargin: (page.narrow ? 16 : 20) + 22
+            anchors.right: importCancel.left
+            anchors.rightMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            text: page.importStatus.length > 0 ? page.importStatus : qsTr("正在导入整合包…")
+            color: Theme.fg
+            font.family: Theme.fontFamily
+            font.pixelSize: 12
+            elide: Text.ElideRight
+        }
+        SButton {
+            id: importCancel
+            anchors.right: parent.right
+            anchors.rightMargin: page.narrow ? 16 : 20
+            anchors.verticalCenter: parent.verticalCenter
+            kind: 1
+            radius: 2
+            height: 26
+            text: qsTr("取消")
+            onClicked: if (page.importer) page.importer.cancelImport()
+        }
+        // 细进度条贴底边，不再多占一行高度
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 2
+            color: Theme.bgHover
+            Rectangle {
+                width: parent.width * page.importProgress
+                height: parent.height
+                color: Theme.accent
+            }
+        }
     }
 
     // ---------- 主体 ----------
@@ -967,5 +1185,28 @@ Item {
                 }
             }
         }
+    }
+
+    // ---------- 拖入整合包即导入 ----------
+    // SDropZone 的根 Item 常驻可见（自身无绘制内容、不吞鼠标），只有内层遮罩在
+    // DropArea.containsDrag 为真时出现；扩展名过滤 accept 之后仍会在 importModpackPath 里再校验一次。
+    SDropZone {
+        id: packDrop
+        accept: [".zip", ".mrpack"]
+        hintTitle: qsTr("松开以导入整合包")
+        hintBody: qsTr("支持 .zip / .mrpack，一次一个")
+        active: !page.importing
+        onDropped: (urls) => page.handleDrop(urls)
+    }
+
+    // ---------- 选择整合包文件 ----------
+    // 用 QtQuick.Dialogs（与 VsModsPane「导入 Mod」同一套，走系统原生对话框）；
+    // selectedFile 是 url，交给 localPathOf 转成本地路径（含解码与盘符处理）。
+    FileDialog {
+        id: modpackDialog
+        title: qsTr("选择整合包")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("整合包 (*.zip *.mrpack)"), qsTr("所有文件 (*)")]
+        onAccepted: page.importModpackPath(page.localPathOf(selectedFile))
     }
 }

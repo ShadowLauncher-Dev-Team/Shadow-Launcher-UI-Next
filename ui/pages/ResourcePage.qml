@@ -49,6 +49,97 @@ Item {
 
     signal openDetail(string kind, var item)
 
+    // ══ 拖入导入（2026-11-13 恢复）══
+    // 只在这三类分类里接受拖入：Mod(.jar) / 资源包(.zip) / 光影(.zip)。
+    // MC 版本(0)、整合包(4)、数据包(5) 天然不支持（tabIndex 不在集合里就 active=false）；
+    // DownloadPage 的 Java(6)/MC 版本(0) 也不会命中，见 DownloadPage 里的 dropEnabled。
+    //
+    // 落地目录 = 当前选中实例（backend.selectedVersion）：
+    //   Mod    → importMod(path, versionId)          → mods/
+    //   资源包 → importResourcePack(path, versionId)  → resourcepacks/
+    //   光影   → importShaderPack(path, versionId)    → shaderpacks/（与 VsShadersPane 同一接口）
+    // 接口返回 bool；多个文件一起拖进来时逐个调用，全部处理完再只弹一条汇总 toast。
+    readonly property bool dropKindSupported: tabIndex === 1 || tabIndex === 2 || tabIndex === 3
+    // 扩展名过滤交给 SDropZone（它按 accept 过滤，不合格的根本不会触发 dropped）
+    readonly property var dropAccept: tabIndex === 1 ? [".jar"] : [".zip"]
+    // 宿主可关（DownloadPage 在「安装配置态」里关掉：那时拖文件进来语义不清）
+    property bool dropEnabled: true
+    readonly property bool dropActive: page.dropEnabled && page.dropKindSupported
+    readonly property string dropKindLabel: tabIndex === 1 ? qsTr("Mod")
+                                           : (tabIndex === 2 ? qsTr("光影包") : qsTr("资源包"))
+    readonly property string dropDirName: tabIndex === 1 ? "mods"
+                                        : (tabIndex === 2 ? "shaderpacks" : "resourcepacks")
+    readonly property string dropVersionId: (page.b && page.b.selectedVersion) ? page.b.selectedVersion : ""
+    // 入口是否就绪：光影导入是后端新接口，没编进来时给一句明确提示，而不是静默失败
+    readonly property bool dropBackendReady: {
+        if (!page.b) return false
+        if (tabIndex === 1) return typeof page.b.importMod === "function"
+        if (tabIndex === 3) return typeof page.b.importResourcePack === "function"
+        if (tabIndex === 2) return typeof page.b.importShaderPack === "function"
+        return false
+    }
+    readonly property string dropHintTitle: page.dropVersionId.length > 0
+        ? qsTr("松开以导入%1").arg(page.dropKindLabel)
+        : qsTr("请先选择一个实例")
+    readonly property string dropHintBody: page.dropVersionId.length > 0
+        ? qsTr("导入到实例 %1 的 %2 目录 · 只接受 %3")
+              .arg(page.dropVersionId).arg(page.dropDirName).arg(page.dropAccept.join(" / "))
+        : qsTr("拖入的文件会写进当前选中实例的目录，请先在版本页选择实例")
+
+    // 拖入链接统一转本地路径：资源管理器给的是 file:///D:/x.jar，中文/空格是百分号转义。
+    // 两种形态都要认：file:///D:/x（本地盘）与 file://server/share/x（UNC，去掉协议后要补 //）。
+    function dropLocalPath(u) {
+        var s = String(u)
+        var m = /^file:(\/{2,3})([\s\S]*)$/i.exec(s)
+        if (!m) return s
+        var rest = m[2]
+        if (m[1].length === 2) rest = "//" + rest
+        try { rest = decodeURIComponent(rest) } catch (e) {}
+        return rest
+    }
+
+    function dropImportOne(path) {
+        if (!page.b || path.length === 0) return false
+        var vid = page.dropVersionId
+        try {
+            if (page.tabIndex === 1) return page.b.importMod(path, vid) === true
+            if (page.tabIndex === 3) return page.b.importResourcePack(path, vid) === true
+            if (page.tabIndex === 2) return page.b.importShaderPack(path, vid) === true
+        } catch (e) {
+            console.warn("[drop] import failed: " + e)
+        }
+        return false
+    }
+
+    /** SDropZone.dropped(urls) 的落地处理：多文件全处理，结果合成一条 toast */
+    function handleDropped(urls) {
+        if (!page.dropActive || !urls || urls.length === 0) return
+        var label = page.dropKindLabel
+        if (!page.dropBackendReady) {
+            if (page.toast) page.toast.show(qsTr("当前版本暂不支持导入%1").arg(label), 4200, "warning", true)
+            return
+        }
+        if (page.dropVersionId.length === 0) {
+            if (page.toast) page.toast.show(qsTr("请先在版本页选择一个实例，再拖入文件"), 4200, "warning", true)
+            return
+        }
+        var okCount = 0
+        var failCount = 0
+        for (var i = 0; i < urls.length; ++i) {
+            if (page.dropImportOne(page.dropLocalPath(urls[i]))) okCount++
+            else failCount++
+        }
+        if (!page.toast) return
+        if (okCount > 0 && failCount === 0)
+            page.toast.show(qsTr("已导入 %1 个%2").arg(okCount).arg(label), -1, "info", true)
+        else if (okCount > 0)
+            page.toast.show(qsTr("已导入 %1 个%2，%3 个失败").arg(okCount).arg(label).arg(failCount),
+                            4200, "warning", true)
+        else
+            page.toast.show(qsTr("导入失败：文件内容不是有效的%1").arg(label),
+                            4200, "warning", true)
+    }
+
     // 列数按「侧栏展开时的内容宽度」决定，而不是自身实时宽度。
     // 侧栏收起/展开属于整页切换：若按自身宽度算，1100 窗口下 3 列会在中途跳到 4 列，
     // 卡片瞬间从 278 宽缩到 206 宽（高度不变）——看起来就是"所有卡片一下变长"。
@@ -533,6 +624,19 @@ Item {
                 }
             }
         }
+    }
+
+    // ── 拖入投放区（只在 Mod / 资源包 / 光影三类生效）──
+    // 单独挂在页面根上：不进 ColumnLayout（不占布局高度），常态不可见，
+    // 只有拖拽经过且 active 时才由 SDropZone 自己显示半透明遮罩与提示。
+    SDropZone {
+        id: dropZone
+        anchors.fill: parent
+        active: page.dropActive
+        accept: page.dropAccept
+        hintTitle: page.dropHintTitle
+        hintBody: page.dropHintBody
+        onDropped: (urls) => page.handleDropped(urls)
     }
 
     // 下拉筛选：触发器 + 挂在触发器上的弹层（不会盖住自己）

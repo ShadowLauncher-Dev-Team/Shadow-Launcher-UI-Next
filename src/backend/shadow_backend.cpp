@@ -2771,6 +2771,20 @@ void ShadowBackend::listResourcePacksAsync(const QString& versionId)
     });
 }
 
+// 光影包列表（2026-11-13）：只列目录、不解压 zip，所以同步扫也很快；
+// 仍然走 worker 线程，与 Mod / 资源包三页保持同一套调用形态。
+void ShadowBackend::listShaderPacksAsync(const QString& versionId)
+{
+    if (!m_localMods) return;
+    LocalModManager* lmm = m_localMods;
+    QtConcurrent::run([this, lmm, versionId]() {
+        const QVariantList result = lmm->scanShaderPacks(versionId);
+        QMetaObject::invokeMethod(this, [this, versionId, result]() {
+            emit shaderPacksListReady(versionId, result);
+        }, Qt::QueuedConnection);
+    });
+}
+
 static qint64 computeDirSize(const QString& path)
 {
     qint64 total = 0;
@@ -2914,6 +2928,30 @@ bool ShadowBackend::importResourcePack(const QString& filePath, const QString& v
 {
     if (!m_localMods) return false;
     return m_localMods->importResourcePack(filePath, versionId);
+}
+
+// ── 光影包（2026-11-13）──
+void ShadowBackend::deleteShaderPack(const QString& filename, const QString& versionId)
+{
+    if (!m_localMods) return;
+    if (m_localMods->deleteShaderPack(filename, versionId))
+        emit logMessage(QStringLiteral("已删除光影包: ") + filename);
+}
+
+bool ShadowBackend::importShaderPack(const QString& filePath, const QString& versionId)
+{
+    if (!m_localMods) return false;
+    return m_localMods->importShaderPack(filePath, versionId);
+}
+
+bool ShadowBackend::setShaderPackEnabled(const QString& filename, const QString& versionId, bool enabled)
+{
+    if (!m_localMods) return false;
+    const bool ok = m_localMods->setShaderPackEnabled(filename, versionId, enabled);
+    if (ok)
+        emit logMessage(QStringLiteral("%1 光影包: %2").arg(
+            enabled ? QStringLiteral("已启用") : QStringLiteral("已禁用"), filename));
+    return ok;
 }
 
 bool ShadowBackend::openVersionDir(const QString& versionId) {

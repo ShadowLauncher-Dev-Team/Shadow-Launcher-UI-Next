@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// 版本设置（全屏页）—— 顶栏 + 左栏九项 + 内容区
+// 版本设置（全屏页）—— 顶栏 + 左栏（按版本能力过滤）+ 内容区
 //
 // 承载：StageShell 的全屏页宿主（与版本页/账户页同一套：侧栏收起、页面右滑入、返回回版本列表）
 // 动效：左栏选中胶囊继承主菜单 SideBar（单个 Item 的 y 用 durSlow+easeEnter 滑到新位置）；
@@ -18,8 +18,48 @@ Item {
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     property string currentKey: "quick"
 
-    // 左栏行：t = "g" 分组小字 / "i" 分区项
-    readonly property var rows: [
+    // ── 当前版本能开哪些内容区（2026-11-13）──
+    // 原版没有 mods/、shaderpacks/（游戏根本不会去读），这两个入口以前无条件摆着，
+    // 点进去永远是空列表 —— 那是错的。这里按版本实际能力过滤。
+    // 数据只读自 backend.versionDetails（ShadowBackend::refreshVersionDetails 异步扫 versions/
+    // 的结果，字段 id / loaderType；VsOverviewPane 用的是同一份数据），不改 version_backend。
+    readonly property var versionDetail: {
+        if (!page.b || !page.b.versionDetails) return null
+        var arr = page.b.versionDetails
+        for (var i = 0; i < arr.length; ++i)
+            if (arr[i] && arr[i].id === page.versionId) return arr[i]
+        return null
+    }
+    // 后端给的 loaderType 是展示名：Fabric / Forge / NeoForge / Quilt / OptiFine / LiteLoader；
+    // 原版给的是 tr("原版")——英文界面会被翻成 Vanilla，所以不能拿中文字面量去比。
+    // 这里只认"已知加载器白名单"，不在名单里的一律按原版处理（中/繁/英界面都成立）。
+    readonly property var loaderNames: ["Fabric", "Forge", "NeoForge", "Quilt", "OptiFine", "LiteLoader"]
+    // versionDetails 还没扫到时的兜底：从版本目录名认加载器（1.20.1-Forge_47.2.0）。
+    // 注意 neoforge 必须先于 forge 判断，否则 NeoForge 会被认成 Forge。
+    readonly property string idLoaderHint: {
+        var s = page.versionId.toLowerCase()
+        if (s.indexOf("neoforge") >= 0) return "NeoForge"
+        if (s.indexOf("forge") >= 0) return "Forge"
+        if (s.indexOf("quilt") >= 0) return "Quilt"
+        if (s.indexOf("fabric") >= 0) return "Fabric"
+        if (s.indexOf("optifine") >= 0) return "OptiFine"
+        if (s.indexOf("liteloader") >= 0) return "LiteLoader"
+        return ""
+    }
+    readonly property string loaderKind: {
+        var det = page.versionDetail
+        // 详情扫到了就以它为准：loaderType 不在白名单里 = 原版（后端用 tr("原版")，中英文都对得上）。
+        // 只有详情还没到（versionDetails 为空）才退回版本名线索，避免把有加载器的版本误判成原版。
+        if (det) return page.loaderNames.indexOf(det.loaderType || "") >= 0 ? det.loaderType : ""
+        return page.idLoaderHint
+    }
+    // Mod 只对四个真正的模组加载器开放：OptiFine / LiteLoader 没有 mods/ 语义。
+    readonly property bool supportsMods: ["Fabric", "Forge", "NeoForge", "Quilt"].indexOf(page.loaderKind) >= 0
+    // 光影：四个加载器 + OptiFine（它自带光影支持）。原版没有任何 shader 加载能力，不显示。
+    readonly property bool supportsShaders: ["Fabric", "Forge", "NeoForge", "Quilt", "OptiFine"].indexOf(page.loaderKind) >= 0
+
+    // 左栏行：t = "g" 分组小字 / "i" 分区项（全量，含按能力隐藏的项）
+    readonly property var baseRows: [
         { t: "i", k: "quick",    label: qsTr("快捷入口"),   icon: "zap" },
         { t: "i", k: "overview", label: qsTr("概览"),       icon: "info" },
         { t: "g", label: qsTr("启动") },
@@ -27,12 +67,55 @@ Item {
         { t: "i", k: "memory",   label: qsTr("内存设置"),   icon: "cpu" },
         { t: "g", label: qsTr("内容") },
         { t: "i", k: "mods",     label: qsTr("Mod 管理"),   icon: "puzzle" },
+        { t: "i", k: "shaders",  label: qsTr("光影管理"),   icon: "sparkles" },
         { t: "i", k: "packs",    label: qsTr("资源包"),     icon: "package" },
         { t: "i", k: "saves",    label: qsTr("存档"),       icon: "box" },
         { t: "g", label: qsTr("维护") },
         { t: "i", k: "tools",    label: qsTr("工具与维护"), icon: "wrench" },
         { t: "i", k: "export",   label: qsTr("导出整合包"), icon: "package-plus" }
     ]
+
+    // 实际渲染的左栏：按能力把 mods / shaders 拿掉，其余原样（分组小字保留：
+    // 「内容」下面还有资源包和存档，原版也照常显示）。
+    // navY() 与 selPill 都读 page.rows，所以过滤后选中胶囊的位置自动跟着算对。
+    readonly property var rows: {
+        var out = []
+        for (var i = 0; i < page.baseRows.length; ++i) {
+            var r = page.baseRows[i]
+            if (r.t === "i" && r.k === "mods" && !page.supportsMods) continue
+            if (r.t === "i" && r.k === "shaders" && !page.supportsShaders) continue
+            out.push(r)
+        }
+        return out
+    }
+    // 分区被隐藏（含 --ui-pane 指定了不可用分区、概览页点了 Mod 管理）时，
+    // 不能让内容区停在一个左栏里不存在的 key 上，退回快捷入口。
+    onRowsChanged: page.ensureKeyVisible()
+    function keyVisible(k) {
+        for (var i = 0; i < page.rows.length; ++i)
+            if (page.rows[i].t === "i" && page.rows[i].k === k) return true
+        return false
+    }
+    function ensureKeyVisible() {
+        if (!page.keyVisible(page.currentKey)) page.currentKey = "quick"
+    }
+    // 统一入口：可用就切过去，不可用就说明原因（不静默跳走）。
+    // quiet=true 给 --ui-pane 用：启动时静默失败，等版本详情扫到再补一次（见 pendingPaneKey）。
+    function goTo(k, quiet) {
+        if (page.keyVisible(k)) { page.currentKey = k; return }
+        if (quiet === true) return
+        if (page.toast) page.toast.show(qsTr("这个版本不支持该内容类型（原版没有对应目录）"), -1, "info", true)
+    }
+    // --ui-pane <key> 指定的分区：版本详情可能还没扫到（那时按原版过滤会拒绝），
+    // 先记下来，等 versionDetails 到了再补切一次，截图/验收入口不依赖时序。
+    property string pendingPaneKey: ""
+    onVersionDetailChanged: {
+        if (page.pendingPaneKey.length === 0) return
+        if (page.keyVisible(page.pendingPaneKey)) {
+            page.currentKey = page.pendingPaneKey
+            page.pendingPaneKey = ""
+        }
+    }
 
     function paneFor(k) {
         if (k === "quick") return quickComp
@@ -41,6 +124,7 @@ Item {
         if (k === "memory") return memoryComp
         if (k === "tools") return toolsComp
         if (k === "mods") return modsComp
+        if (k === "shaders") return shadersComp
         if (k === "packs") return packsComp
         if (k === "saves") return savesComp
         if (k === "export") return exportComp
@@ -68,8 +152,14 @@ Item {
     Component.onCompleted: {
         var args = Qt.application.arguments
         var i = args.indexOf("--ui-pane")
-        if (i >= 0 && i + 1 < args.length && args[i + 1].indexOf("--") !== 0)
-            page.currentKey = args[i + 1]
+        if (i >= 0 && i + 1 < args.length && args[i + 1].indexOf("--") !== 0) {
+            page.pendingPaneKey = args[i + 1]
+            page.goTo(page.pendingPaneKey, true)
+        }
+        // 版本详情可能还没扫到（本页比版本页先打开 / 直接 --ui-pane 进来）：
+        // 补一次只读扫描，扫完 versionDetails 一变，左栏按真实加载器自己刷新。
+        // refreshVersionDetails 自身有 m_isScanningVersions 去重，重复调用安全。
+        if (!page.versionDetail && page.b) page.b.refreshVersionDetails()
     }
 
     Rectangle { anchors.fill: parent; color: Theme.bg }
@@ -347,7 +437,9 @@ Item {
         VsOverviewPane {
             versionId: page.versionId
             toast: page.toast
-            onRequestPane: (k) => page.currentKey = k
+            // 概览页的「管理」行是无条件写死的（原版也会画 Mod 行），
+            // 这里统一走 goTo，隐藏分区不切过去，避免内容区停在不存在的 key 上。
+            onRequestPane: (k) => page.goTo(k)
         }
     }
     Component {
@@ -374,6 +466,13 @@ Item {
     Component {
         id: modsComp
         VsModsPane {
+            versionId: page.versionId
+            toast: page.toast
+        }
+    }
+    Component {
+        id: shadersComp
+        VsShadersPane {
             versionId: page.versionId
             toast: page.toast
         }

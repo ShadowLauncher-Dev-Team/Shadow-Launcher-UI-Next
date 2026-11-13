@@ -271,6 +271,8 @@ set_source_files_properties(ui/pages/VsModsPane.qml PROPERTIES QT_RESOURCE_ALIAS
 set_source_files_properties(ui/pages/VsPacksPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsPacksPane.qml)
 set_source_files_properties(ui/pages/VsSavesPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsSavesPane.qml)
 set_source_files_properties(ui/pages/VsExportPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsExportPane.qml)
+set_source_files_properties(ui/pages/VsShadersPane.qml PROPERTIES QT_RESOURCE_ALIAS pages/VsShadersPane.qml)
+set_source_files_properties(ui/controls/SDropZone.qml PROPERTIES QT_RESOURCE_ALIAS controls/SDropZone.qml)
 set_source_files_properties(ui/controls/SetGroup.qml PROPERTIES QT_RESOURCE_ALIAS controls/SetGroup.qml)
 set_source_files_properties(ui/controls/SetRow.qml PROPERTIES QT_RESOURCE_ALIAS controls/SetRow.qml)
 set_source_files_properties(ui/controls/SetStack.qml PROPERTIES QT_RESOURCE_ALIAS controls/SetStack.qml)
@@ -335,6 +337,8 @@ qt_add_qml_module(ShadowLauncher
         ui/pages/VsPacksPane.qml
   ui/pages/VsSavesPane.qml
   ui/pages/VsExportPane.qml
+        ui/pages/VsShadersPane.qml
+        ui/controls/SDropZone.qml
         ui/controls/SetGroup.qml
         ui/controls/SetRow.qml
         ui/controls/SetStack.qml

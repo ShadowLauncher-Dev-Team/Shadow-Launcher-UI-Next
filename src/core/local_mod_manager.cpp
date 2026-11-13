@@ -4,6 +4,7 @@
 #include "utils/logger.h"
 
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
@@ -868,6 +869,209 @@ QVariantMap LocalModManager::rpEntryToMap(const LocalResourcePackEntry& e)
     authorText.replace(byRe, QStringLiteral("\u4F5C\u8005\uFF1A"));
     m[QStringLiteral("authorText")] = authorText;
 
+    return m;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Shader Pack Operations（光影包，2026-11-13）
+//
+//  与资源包的关键差异：
+//   1) 没有 pack.mcmeta / pack.png 这类元数据，所以不解压 zip（光影包常有几十 MB），
+//      名字直接取文件名，图标由 QML 用首字母兜底；
+//   2) 游戏内没有"已启用清单"落盘可读，启用/禁用按 Mod 的约定做文件名后缀：
+//      x.zip ↔ x.zip.disabled。Iris 与 OptiFine 都只扫 *.zip，改名即等于从列表里消失；
+//   3) 解包态光影（shaderpacks/<文件夹>/shaders）只列出、不提供启/禁用：
+//      OptiFine 认目录，把目录改名它照样读得到，给个假开关比不给更糟。
+// ═══════════════════════════════════════════════════════════════
+
+QString LocalModManager::shaderPacksDir(const QString& versionId) const
+{
+    const QString verDir  = m_gameDir + QStringLiteral("/versions/") + versionId;
+    const QString gameDir = verDir + QStringLiteral("/game");
+
+    // 与 modsDir / resourcePacksDir 完全同一套隔离判定，避免光影落进别的目录
+    auto hasContent = [](const QString& p) -> bool {
+        return QDir(p).exists()
+            && !QDir(p).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).isEmpty();
+    };
+
+    if (hasContent(gameDir))
+        return gameDir + QStringLiteral("/shaderpacks");
+
+    if (QFileInfo::exists(verDir + QStringLiteral("/.isolated")))
+        return verDir + QStringLiteral("/shaderpacks");
+
+    const QString scatteredDir = verDir + QStringLiteral("/shaderpacks");
+    if (QDir(scatteredDir).exists())
+        return scatteredDir;
+
+    return m_gameDir + QStringLiteral("/shaderpacks");
+}
+
+QVariantList LocalModManager::scanShaderPacks(const QString& versionId)
+{
+    QVariantList result;
+    QDir dir(shaderPacksDir(versionId));
+    if (!dir.exists()) return result;
+
+    // ── 1) zip 光影包（启用 *.zip / 禁用 *.zip.disabled）──
+    const QFileInfoList files = dir.entryInfoList(
+        {QStringLiteral("*.zip"), QStringLiteral("*.ZIP"),
+         QStringLiteral("*.zip.disabled"), QStringLiteral("*.ZIP.disabled")},
+        QDir::Files, QDir::Name);
+    for (const QFileInfo& fi : files) {
+        const bool isDisabled = fi.fileName().endsWith(QStringLiteral(".disabled"), Qt::CaseInsensitive);
+        LocalShaderPackEntry entry;
+        entry.fileName = fi.fileName();
+        // 显示名：先剥 .disabled，再取不带扩展名的部分（completeBaseName 只剥最后一段）
+        QString baseName = fi.fileName();
+        if (isDisabled) baseName.chop(9);
+        entry.displayName = QFileInfo(baseName).completeBaseName();
+        if (entry.displayName.isEmpty()) entry.displayName = baseName;
+        entry.fileSize = fi.size();
+        entry.fileSizeText = formatFileSize(fi.size());
+        entry.enabled = !isDisabled;
+        entry.isFolder = false;
+        entry.valid = true;
+        result.append(spEntryToMap(entry));
+    }
+
+    // ── 2) 解包态光影（只认含 shaders/ 子目录的文件夹，不把杂物目录当光影）──
+    const QFileInfoList dirs = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    for (const QFileInfo& di : dirs) {
+        if (!QFileInfo::exists(di.absoluteFilePath() + QStringLiteral("/shaders")))
+            continue;
+        LocalShaderPackEntry entry;
+        entry.fileName = di.fileName();
+        entry.displayName = di.fileName();
+        entry.enabled = true;     // 解包态没有可靠的"禁用"手段，恒为已启用
+        entry.isFolder = true;
+        entry.valid = true;
+        qint64 size = 0;
+        QDirIterator it(di.absoluteFilePath(), QDir::Files, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            it.next();
+            size += it.fileInfo().size();
+        }
+        entry.fileSize = size;
+        entry.fileSizeText = formatFileSize(size);
+        result.append(spEntryToMap(entry));
+    }
+
+    return result;
+}
+
+bool LocalModManager::importShaderPack(const QString& filePath, const QString& versionId)
+{
+    QFileInfo fi(filePath);
+    qCInfo(logMgr) << QStringLiteral("[光影包] 开始导入 源=%1 版本=%2").arg(filePath, versionId);
+    if (!fi.exists()) {
+        emit importFinished(fi.fileName(), false, QStringLiteral("文件不存在"));
+        return false;
+    }
+    // 只收 zip：Iris / OptiFine 的光影包都是 zip，rar/7z 游戏本身也读不了
+    if (!fi.fileName().endsWith(QStringLiteral(".zip"), Qt::CaseInsensitive)) {
+        emit importFinished(fi.fileName(), false, QStringLiteral("光影包必须是 .zip 文件"));
+        return false;
+    }
+
+    const QString dstDir = shaderPacksDir(versionId);
+    QDir().mkpath(dstDir);
+    QString dstPath = dstDir + QStringLiteral("/") + fi.fileName();
+
+    // 重名自动加序号，不覆盖用户已有光影
+    if (QFile::exists(dstPath)) {
+        const QString base = fi.completeBaseName();
+        int c = 1;
+        while (QFile::exists(dstDir + QStringLiteral("/") + base + QStringLiteral(" (%1).zip").arg(c)))
+            c++;
+        dstPath = dstDir + QStringLiteral("/") + base + QStringLiteral(" (%1).zip").arg(c);
+    }
+
+    if (QFile::copy(filePath, dstPath)) {
+        const QString name = QFileInfo(dstPath).fileName();
+        qCInfo(logMgr) << QStringLiteral("[光影包] 导入成功 文件=%1 目标=%2").arg(name, dstPath);
+        emit modsChanged(versionId);
+        emit importFinished(name, true, QString());
+        return true;
+    }
+    emit importFinished(fi.fileName(), false, QStringLiteral("复制文件失败"));
+    return false;
+}
+
+bool LocalModManager::deleteShaderPack(const QString& fileName, const QString& versionId)
+{
+    if (fileName.isEmpty()) return false;
+    const QString path = shaderPacksDir(versionId) + QStringLiteral("/") + fileName;
+    // 解包态是文件夹：删除要走 removeRecursively
+    if (QFileInfo(path).isDir()) {
+        if (QDir(path).removeRecursively()) {
+            qCInfo(logMgr) << QStringLiteral("[光影包] 删除文件夹成功: %1").arg(fileName);
+            emit modsChanged(versionId);
+            return true;
+        }
+        qCWarning(logMgr) << QStringLiteral("[光影包] 删除文件夹失败: %1").arg(fileName);
+        return false;
+    }
+    if (!QFile::exists(path)) return false;
+    if (QFile::remove(path)) {
+        qCInfo(logMgr) << QStringLiteral("[光影包] 删除成功 文件=%1").arg(fileName);
+        emit modsChanged(versionId);
+        return true;
+    }
+    return false;
+}
+
+bool LocalModManager::setShaderPackEnabled(const QString& fileName, const QString& versionId, bool enabled)
+{
+    if (fileName.isEmpty()) return false;
+    const QString path = shaderPacksDir(versionId) + QStringLiteral("/") + fileName;
+
+    // 解包态光影不提供启/禁用（改名对 OptiFine 无效，见本节头注释）
+    if (QFileInfo(path).isDir()) {
+        qCWarning(logMgr) << QStringLiteral("[光影包] 解包态不支持启禁用: %1").arg(fileName);
+        return false;
+    }
+    if (!QFile::exists(path)) {
+        qCWarning(logMgr) << QStringLiteral("[光影包] 启禁用失败 文件不存在: %1").arg(fileName);
+        return false;
+    }
+
+    const bool isDisabled = path.endsWith(QStringLiteral(".disabled"), Qt::CaseInsensitive);
+    if (enabled == !isDisabled) return true;   // 已是目标状态
+
+    QString newPath;
+    if (enabled) {
+        newPath = path.left(path.size() - 9);   // 剥 ".disabled"
+    } else {
+        newPath = path + QStringLiteral(".disabled");
+    }
+    if (QFile::exists(newPath) || QFileInfo(newPath).isDir()) {
+        qCWarning(logMgr) << QStringLiteral("[光影包] 启禁用失败 目标已存在: %1").arg(newPath);
+        return false;
+    }
+    if (QFile::rename(path, newPath)) {
+        qCInfo(logMgr) << QStringLiteral("[光影包] %1 成功 → %2")
+            .arg(enabled ? QStringLiteral("启用") : QStringLiteral("禁用"), newPath);
+        emit modsChanged(versionId);
+        return true;
+    }
+    return false;
+}
+
+QVariantMap LocalModManager::spEntryToMap(const LocalShaderPackEntry& e)
+{
+    QVariantMap m;
+    m[QStringLiteral("displayName")] = e.displayName;
+    m[QStringLiteral("fileName")]    = e.fileName;
+    m[QStringLiteral("description")] = e.description;
+    m[QStringLiteral("iconPath")]    = e.iconPath.isEmpty()
+        ? QString() : QUrl::fromLocalFile(e.iconPath).toString();
+    m[QStringLiteral("fileSize")]    = e.fileSize;
+    m[QStringLiteral("fileSizeText")]= e.fileSizeText;
+    m[QStringLiteral("enabled")]     = e.enabled;
+    m[QStringLiteral("isFolder")]    = e.isFolder;
+    m[QStringLiteral("valid")]       = e.valid;
     return m;
 }
 
