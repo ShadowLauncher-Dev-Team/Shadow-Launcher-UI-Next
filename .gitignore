@@ -108,3 +108,4 @@ shot-*.png
 .cm*.txt
 design/res-ui/*/_*.html
 design/res-ui/*/_check.js
+i18n/_work/
