@@ -109,3 +109,4 @@ shot-*.png
 design/res-ui/*/_*.html
 design/res-ui/*/_check.js
 i18n/_work/
+i18n/_oldui_backup/
