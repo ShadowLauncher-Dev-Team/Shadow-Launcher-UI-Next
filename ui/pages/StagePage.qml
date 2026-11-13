@@ -68,8 +68,17 @@ Item {
         return [ver.substring(0, i), ver.substring(i + 1).split("_").join(" ")]
     }
 
+    // 从全屏页回来时被 StageShell 调用：先归零，再由定时器拉回 1（让 binding 真的从 0 起跑）
+    function playEnter() {
+        if (page.firstIn) { page.firstIn = false; page.enterT = 1.0; return }
+        enterAnim.stop()
+        page.enterT = 0.0
+        enterAnim.start()
+    }
+
     Component.onCompleted: {
         console.info("[ui] StagePage size", width, "x", height, "narrow=", narrow)
+        page.playEnter()
         page.refreshRunningList()
         if (page.demoMode && page.b)
             page.b.demoLaunch((page.demoFail ? 1 : 0) + (page.demoOnline ? 2 : 0))
@@ -193,6 +202,10 @@ Item {
         rawSkinSource: page.b ? (page.b.activeAccountSkin || "") : ""
         skinSource: page.b ? (page.b.activeAccountAvatar || "") : ""
         onClicked: page.openAccount()
+        // 入场第一拍：从上方 8px 落回 + 淡入
+        readonly property real _t: page.seg(0.00, 0.45)
+        opacity: _t
+        transform: Translate { y: -8 * (1 - page.seg(0.00, 0.45)) }
     }
 
     // 窗口按钮由 StageShell 统一挂在最上层（版本页 / 账户页这类全屏页也要能用）
@@ -205,11 +218,17 @@ Item {
         anchors.leftMargin: page.padL
         anchors.bottomMargin: page.narrow ? 34 : Theme.padB
         spacing: 10
+        // 入场第三拍：从下方 14px 浮回
+        opacity: page.seg(0.42, 1.00)
+        transform: Translate { y: 14 * (1 - page.seg(0.42, 1.00)) }
 
         SButton {
             tone: "dark"
             id: launchBtn
             kind: 0
+            // 悬停时主按钮轻轻上浮一点：静止时页面只剩这张图，动效靠这几个交互件承担
+            y: launchBtn.hovered ? -1 : 0
+            Behavior on y { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
             busy: page.launching
             // 未登录：灰态但可点（点了去登录），不是 dimmed（dimmed 是不可点）
             muted: !page.hasAccount && !page.launching
@@ -276,12 +295,41 @@ Item {
         SButton { tone: "dark"; kind: 1; text: "版本"; iconName: "list"; onClicked: page.openVersions() }
         SButton {
             tone: "dark"
-        kind: 1
-        text: "设置"
-        iconName: "settings"
-        // 之前这里是 console.info 空实现，点了没反应
-        onClicked: page.openSettings(page.b ? page.b.selectedVersion : "")
+            kind: 1
+            text: "设置"
+            iconName: "settings"
+            // 之前这里是 console.info 空实现，点了没反应
+            onClicked: page.openSettings(page.b ? page.b.selectedVersion : "")
+        }
     }
+
+    // ---------- 入场编排（启动页的"动态"） ----------
+    // 整页位移/缩放动画会在窗口边缘留缝（那几帧露的是窗口外，看起来像白边），已经废弃 ——
+    // 所以动效改由页内组件承担：回来时按「账号胶囊 → 版本标题 → 操作按钮」的顺序错峰浮入，
+    // 层次分明又不留任何几何缝隙（只动内部元素，不动页面本体）。
+    // 入场进度 0→1。**必须用显式 NumberAnimation 驱动**，不能靠 `bool + Behavior`：
+    // bool 在回页那一帧被翻转时，Behavior 常常等不到一次可见的中间值，
+    // 于是组件直接跳到终态 —— 用户看到的就是「没有任何动画」。
+    property real enterT: 1.0
+    // 首次进入直接到位（不该有"开屏先等动画"的观感）
+    property bool firstIn: true
+
+    // 错峰：把统一的 0→1 切成若干时间段，各组件取自己那一段（一个动画管三拍）
+    function seg(from, to) {
+        var t = (page.enterT - from) / (to - from)
+        return t < 0 ? 0 : (t > 1 ? 1 : t)
+    }
+
+    NumberAnimation {
+        id: enterAnim
+        target: page
+        property: "enterT"
+        from: 0
+        to: 1
+        // 用 durPage：OutQuint 前段太猛，160ms 就跑完 95%，肉眼几乎看不出；
+        // durPage(320) + OutCubic 让每一拍都留得住眼睛。
+        duration: Theme.durPage
+        easing.type: Theme.easeStandard
     }
 
     // ---------- C3：运行中进程面板 ----------
@@ -424,6 +472,9 @@ Item {
             return page.verParts[0] + " <font color=\"#9fb4cf\">" + page.verParts[1] + "</font>"
         }
         color: "#ffffff"
+        // 入场第二拍：从下方 18px 浮回
+        opacity: page.seg(0.20, 0.72)
+        transform: Translate { y: 18 * (1 - page.seg(0.20, 0.72)) }
         font.family: Theme.fontFamily
         font.pixelSize: page.narrow ? 34 : 58
         font.weight: Font.Bold
@@ -451,6 +502,8 @@ Item {
         anchors.bottomMargin: 15
         spacing: 9
         visible: page.kicker.length > 0
+        opacity: page.seg(0.12, 0.62)
+        transform: Translate { y: 10 * (1 - page.seg(0.12, 0.62)) }
 
         Rectangle {
             anchors.verticalCenter: parent.verticalCenter

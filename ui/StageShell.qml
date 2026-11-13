@@ -354,20 +354,24 @@ Item {
         }
         Item {
             anchors.fill: parent
-            // 回主页的过渡：**只做透明度**，不做位移/缩放。
-            // 位移(-22)和缩放(0.99)会让页面在回到一半时四周各留一条 1~22px 的缝，
-            // 那几帧里缝里露出的是窗口外的东西 —— 用户看到的就是「一圈白边」。
-            // 透明度过渡没有几何缝隙，观感一样是「从暗处浮回启动页」。
+            // 历史教训（都别再走回去）：
+            //   · 位移(-22)/缩放(0.99) 会在页面四周留 1~22px 的缝，缝里露窗口外 → 「一圈白边」；
+            //   · 整页 opacity 动画会变成一块只在切回时出现的「阴影」，切出时没有，很突兀。
+            // 所以页面本体彻底不做动画，动感全部交给页内组件（StagePage.playEnter）。
             readonly property bool shifted: (root.downloadOpen || root.progressOpen
                                              || root.fullOpen || root.multiplayerOpen)
-            opacity: (shifted && !stageHost.previewing) ? 0.55 : 1.0
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: shifted ? Theme.durPage * 0.5 : Theme.durPage
-                    easing.type: Theme.easeEnter
-                }
+            // 页面本体**不做任何透明度/几何动画**：
+            //   · 几何（位移/缩放）会在边缘留缝，缝里露的是窗口外 → 白边；
+            //   · 整页透明度会变成一块突然出现又消失的「阴影」，切出时没有、切回时有，很突兀。
+            // 回启动页的动感全部交给页内组件（StagePage.playEnter）。
+            opacity: 1.0
+
+            // 全屏页全部关掉的那一刻，让启动页里的组件重放入场
+            onShiftedChanged: {
+                if (!shifted) stagePage.playEnter()
             }
             StagePage {
+                id: stagePage
                 anchors.fill: parent
                 enabled: !root.fullOpen && !root.downloadOpen && !root.progressOpen && !root.multiplayerOpen
                 hostWindow: root.hostWindow
