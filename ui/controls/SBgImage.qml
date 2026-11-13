@@ -58,10 +58,17 @@ Item {
     }
 
     // ── 交互：拖动平移 + 滚轮缩放 ──
+    // 正在拖动（供外层 Flickable 判断是否让路：拖图时页面绝不能被带着滚）
+    readonly property bool dragActive: dragArea.pressed
+
     MouseArea {
         id: dragArea
         anchors.fill: parent
         enabled: root.interactive
+        // ── 关键：阻止父级 Flickable 抢走拖拽 ──
+        // 没有这行时，鼠标拖到图片/取景框边缘后再继续拖，Flickable 会把这次拖动
+        // 判成「翻页手势」并抢走 grab，表现就是整个设置页跟着上下滚动（用户实测）。
+        preventStealing: root.interactive
         cursorShape: root.interactive ? (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
                                       : Qt.ArrowCursor
         property real lastX: 0
@@ -99,7 +106,11 @@ Item {
         onWheel: (event) => {
             const step = event.angleDelta.y > 0 ? 1.1 : (1 / 1.1)
             const next = Math.max(1.0, Math.min(root.maxZoom, root.zoom * step))
-            if (Math.abs(next - root.zoom) < 0.001) return
+            if (Math.abs(next - root.zoom) < 0.001) {
+                // 已经到缩放极限：不吞滚轮，让页面正常滚动（否则在预览上滚不动页面）
+                event.accepted = false
+                return
+            }
             root.zoom = next
             root.viewChanged(next, root.cropX, root.cropY)
         }
