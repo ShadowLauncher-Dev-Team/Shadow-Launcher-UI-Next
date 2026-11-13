@@ -11,9 +11,11 @@ Item {
     property var toast: null
     // 子页自学自报忙碌（Java 扫描等），转给壳的顶部光条
     property bool busy: false
-    // 子页要求「半透明实时预览」（外观页拖取景时）：壳据此把整页淡下去，
-    // 让背后的启动页透出来，用户看到的就是最终效果。
+    // 子页要求「实时预览」（外观页拖取景时）：壳把自身除内容区以外的部分全部隐藏
+    // （底色/顶栏/左栏/页标题），内容区里的其它卡片由外观页自己淡出，
+    // 只留取景预览 —— 这样背后是**完整无遮挡**的启动页，不会两层叠在一起。
     property bool livePreview: false
+    readonly property real chromeOpacity: livePreview ? 0 : 1
     signal close()
 
     readonly property var rows: [
@@ -58,7 +60,12 @@ Item {
         }
     }
 
-    Rectangle { anchors.fill: parent; color: Theme.bg }
+    Rectangle {
+        anchors.fill: parent
+        color: Theme.bg
+        opacity: page.chromeOpacity
+        Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+    }
 
     // ---------- 顶栏 ----------
     Item {
@@ -67,6 +74,9 @@ Item {
         anchors.right: parent.right
         anchors.top: parent.top
         height: 56
+        opacity: page.chromeOpacity
+        enabled: !page.livePreview
+        Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
 
         // 空白处拖动窗口（无边框窗口没有系统标题栏，必须显式请求系统接管移动）。
         // 放在子项最前面：后面的按钮都盖在它上面，只有空白区能走到这里。
@@ -129,6 +139,9 @@ Item {
         anchors.bottom: parent.bottom
         width: Theme.sideW
         color: Theme.sidebar
+        opacity: page.chromeOpacity
+        enabled: !page.livePreview
+        Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
 
         Rectangle {
             anchors.right: parent.right
@@ -252,6 +265,8 @@ Item {
             anchors.rightMargin: 40
             anchors.topMargin: 24
             spacing: 6
+            opacity: page.chromeOpacity
+            Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
 
             Text {
                 text: page.rowOf(page.currentKey).label

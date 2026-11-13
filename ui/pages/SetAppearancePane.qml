@@ -41,6 +41,9 @@ Item {
 
     // 「实时预览」：拖动/缩放的这段时间里，把设置页淡下去，让背后的启动页直接透出来。
     readonly property bool livePreview: previewHold.running || (preview && preview.dragActive)
+    // 「只剩预览」：拖动/缩放期间，设置页里除预览图以外的内容全部淡出（背景/标题/左栏/卡片/说明/滑条），
+    // 让启动页整页透出来。之前是把整页压到 0.22 透明度 —— 两层叠在一起很别扭（用户实测）。
+    readonly property bool solo: livePreview
 
     function syncFromBackend() {
         if (!pane.b) return
@@ -54,8 +57,12 @@ Item {
     Connections {
         target: pane.b
         ignoreUnknownSignals: true
-        // 后端改图/恢复默认时把本地取景拉回来（避免预览停在旧图的缩放上）
-        function onCustomBgChanged() { pane.syncFromBackend() }
+        // 后端改图/恢复默认时把本地取景拉回来（避免预览停在旧图的缩放上）。
+        // 但拖动中我们自己正在写后端，那次信号不能反过来覆盖本地值（会抖）。
+        function onCustomBgChanged() {
+            if (preview && preview.dragActive) return
+            pane.syncFromBackend()
+        }
     }
 
     Timer {
@@ -63,11 +70,31 @@ Item {
         interval: 900
     }
 
+    // 取景写后端：**节流**（不是防抖）。
+    // 之前是 applyTimer.restart()：拖动中每次 mousemove 都把 150ms 定时器重置，
+    // 于是整个拖动期间一次都不写 —— 启动页要等松手才动（用户实测）。现在：
+    //   · 距上次写入 ≥ 80ms 就立即写（拖动中约 12fps，启动页跟手）
+    //   · 不足 80ms 的零碎变更由定时器兜底，保证最后一次一定落盘
+    property real _lastPushMs: 0
+
+    function pushView() {
+        if (!pane.b) return
+        const now = Date.now()
+        if (now - pane._lastPushMs >= 80) {
+            pane._lastPushMs = now
+            pane.b.setBgZoom(pane.viewZoom)
+            pane.b.updateCrop(pane.viewCx, pane.viewCy)
+        } else {
+            applyTimer.restart()
+        }
+    }
+
     Timer {
         id: applyTimer
-        interval: 150
+        interval: 80
         onTriggered: {
             if (!pane.b) return
+            pane._lastPushMs = Date.now()
             pane.b.setBgZoom(pane.viewZoom)
             pane.b.updateCrop(pane.viewCx, pane.viewCy)
         }
@@ -95,6 +122,9 @@ Item {
             SetGroup {
                 width: parent.width
                 title: "配色方案"
+                opacity: pane.solo ? 0 : 1
+                Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+                enabled: !pane.solo
 
                 SetStack {
                     width: parent.width
@@ -213,10 +243,14 @@ Item {
             SetGroup {
                 width: parent.width
                 title: "启动页图片"
+                bare: pane.solo
 
                 SetStack {
                     width: parent.width
                     label: "图片来源"
+                    opacity: pane.solo ? 0 : 1
+                    Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+                    enabled: !pane.solo
                     desc: "启动器自带的默认图永久保留，随时可恢复；也可以选择本地图片。"
 
                     Row {
@@ -342,6 +376,7 @@ Item {
                 SetStack {
                     width: parent.width
                     divider: false
+                    bare: pane.solo
                     label: "取景"
                     desc: "在预览框内拖动调整位置；按住 Ctrl 滚轮或拖动下方滑块缩放。预览框与启动页同比例，框里看到的就是启动页实际显示的范围。"
 
@@ -361,14 +396,17 @@ Item {
                             pane.viewZoom = z
                             pane.viewCx = cx
                             pane.viewCy = cy
-                            applyTimer.restart()
-                            previewHold.restart()   // 拖动/滚轮期间与之后 0.9s 保持半透明实时预览
+                            pane.pushView()
+                            previewHold.restart()   // 拖动/滚轮期间与之后 0.9s 保持"只剩预览"的模式
                         }
                     }
 
                     Row {
                         width: parent.width
                         spacing: 14
+                        opacity: pane.solo ? 0 : 1
+                        enabled: !pane.solo
+                        Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
 
                         SSlider {
                             id: zoomSlider
@@ -379,7 +417,7 @@ Item {
                             value: Math.round(pane.viewZoom * 100)
                             onMoved: (v) => {
                                 pane.viewZoom = v / 100.0
-                                applyTimer.restart()
+                                pane.pushView()
                                 previewHold.restart()
                             }
                         }
@@ -425,6 +463,8 @@ Item {
                 width: parent.width
                 kind: "info"
                 icon: "image"
+                opacity: pane.solo ? 0 : 1
+                Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                 text: "支持 PNG / JPG / WEBP / BMP。图片会被复制到启动器数据目录，删除或移动原文件不会影响显示。"
             }
         }

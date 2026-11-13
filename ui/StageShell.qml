@@ -478,15 +478,14 @@ Item {
         anchors.fill: parent
         visible: root.prefsOpen
         clip: true
-        // ── 外观页「实时预览」──────────────────────────────────
-        // 拖取景 / 调缩放时把整页淡到 0.22，背后的启动页直接透出来 ——
-        // 用户改的是「启动页长什么样」，就必须在启动页本身上看到结果。
-        // 松手 0.9s 后自动恢复（子页的 livePreview 由外观页驱动）。
-        opacity: (root.prefsOpen && prefsPage.livePreview) ? 0.22 : 1.0
-        Behavior on opacity {
-            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard }
+        // 外观页「实时预览」：隐藏工作交给页面自己做（SettingsPage.chromeOpacity + 外观页 solo），
+        // 这里保持不透明 —— 整页压透明度会让两层文字叠在一起，读不清也难看。
+        // 但**这层宿主底色也必须一起让开**，否则设置页透明后露出来的是这层纯色（实测黑屏）。
+        Rectangle {
+            anchors.fill: parent
+            color: (root.prefsOpen && prefsPage.livePreview) ? "transparent" : Theme.bg
+            Behavior on color { ColorAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
         }
-        Rectangle { anchors.fill: parent; color: Theme.bg }
         Item {
             id: prefsSurface
             anchors.fill: parent

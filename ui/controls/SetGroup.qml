@@ -7,6 +7,9 @@ Item {
     id: root
     property string title: ""
     property bool danger: false
+    // bare=true：去掉卡片底色/描边与分组标题，只留内容 ——
+    // 外观页「实时预览」时用，让取景预览直接浮在启动页上（其它分组已淡出）。
+    property bool bare: false
     default property alias content: body.data
 
     implicitHeight: head.height + card.height
@@ -15,14 +18,14 @@ Item {
         id: head
         width: parent.width
         // 空标题时不留空隙，否则每个分组顶部都会多出 20 多像素的空白
-        height: root.title.length > 0 ? titleText.implicitHeight + 10 : 0
+        height: (root.title.length > 0 && !root.bare) ? titleText.implicitHeight + 10 : 0
 
         Text {
             id: titleText
             x: 2
             width: parent.width - 4
             text: root.title
-            visible: root.title.length > 0
+            visible: root.title.length > 0 && !root.bare
             color: root.danger ? Theme.dangerText : Theme.fg3
             font.family: Theme.fontFamily
             font.pixelSize: 11
@@ -36,8 +39,8 @@ Item {
         width: parent.width
         height: body.implicitHeight
         radius: Theme.rMd
-        color: Theme.bgCard2
-        border.width: 1
+        color: root.bare ? "transparent" : Theme.bgCard2
+        border.width: root.bare ? 0 : 1
         border.color: root.danger ? Theme.bgHover : Theme.line
         clip: true
 

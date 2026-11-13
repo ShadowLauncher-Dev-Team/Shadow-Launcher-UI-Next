@@ -9,12 +9,15 @@ Item {
     property string label: ""
     property string desc: ""
     property bool divider: true
+    // bare=true：不画标题/说明（外观页「只剩预览」模式用），只保留控件本身
+    property bool bare: false
     default property alias content: slot.data
 
     // 没有控件时不能再加 10 的间距和 28 的上下留白，否则只有标题+说明的行
     // 会在下方空出一大块（影报的「每个框下方都存在较多空白」）。
     readonly property bool _hasSlot: slot.children.length > 0
-    implicitHeight: labBox.implicitHeight + (_hasSlot ? 10 + slot.implicitHeight : 0) + 28
+    readonly property real _labH: root.bare ? 0 : labBox.implicitHeight
+    implicitHeight: _labH + (_hasSlot ? (root.bare ? 0 : 10) + slot.implicitHeight : 0) + (root.bare ? 16 : 28)
 
     Column {
         id: labBox
@@ -25,6 +28,7 @@ Item {
         anchors.top: parent.top
         anchors.topMargin: 14
         spacing: 3
+        visible: !root.bare
 
         Text {
             width: parent.width
