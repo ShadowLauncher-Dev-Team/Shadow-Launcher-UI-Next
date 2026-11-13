@@ -258,20 +258,25 @@ Item {
         // 详情页要经过「下载页 → 选 tab → 等网络列表 → 点卡片」才能进来，
         // 自动化里任何一步慢了或点偏了就测不到，所以直接塞一份样本 item。
         if (Qt.application.arguments.indexOf("--ui-res-detail") >= 0) {
-            // 用 fabric-api：它单个组合下就有 40+ 个历史版本，正好覆盖「旧版本列表需要滚动」这条路径。
+            // iris：前置 sodium 在 Modrinth 侧给的元数据不全（url/filename 都空、只有 version_id），
+            // 会走「异步解析前置文件」这条路径 —— 也就是之前静默丢前置的那条。
             var sample = {
-                slug: "fabric-api",
-                title: "Fabric API",
+                slug: "iris",
+                title: "Iris Shaders",
                 zh: "",
-                desc: "Lightweight and modular API providing common hooks and interoperability measures utilized by mods using the Fabric toolchain.",
+                desc: "A modern shaders mod for Minecraft intended to be compatible with existing OptiFine shader packs.",
                 icon: "",
                 source: "Modrinth",
-                downloads: 292000000,
+                downloads: 120000000,
                 dateModified: "2026-11-11",
                 isModpack: false
             }
             resDetail.kind = "mod"
             resDetail.item = sample
+            // --ui-batch-dl <dir>：自动批量下载到该目录（跳过原生选择文件夹对话框）
+            var bi = Qt.application.arguments.indexOf("--ui-batch-dl")
+            if (bi >= 0 && bi + 1 < Qt.application.arguments.length)
+                resDetail.autoTargetDir = Qt.application.arguments[bi + 1]
             root.resDetailOpen = true
         }
     }

@@ -67,6 +67,8 @@ Item {
     property bool dialogBusy: false
     property var planJobs: []
     property var pendingDeps: ({})
+    // 前置拿不到下载信息时不能静默丢 —— 这里是「这次实际被跳过」的清单，提交完要报给用户。
+    property var missedDeps: []
     // 入场：三段错峰浮现（选择器 → 文件卡 → 右栏），每段间隔 staggerStep。
     // 之前用一个 bool 在 visible 变化的同一帧里翻 true/false：组件先被打回 0 再抬起来，
     // 视觉上就是"整页抖一下"。现在用递增的段号，只往上走，不会来回翻。
@@ -293,13 +295,28 @@ Item {
             for (var k in page.fileCache) m[k] = page.fileCache[k]
             m[versionId] = file || ({})
             page.fileCache = m
-            // 有等待中的前置就入队（这是"模组 + 前置一起下载"真正被触发的地方）
-            var pend = page.pendingDeps[versionId]
-            if (pend && file && file.url) {
-                var rest = {}
-                for (var k2 in page.pendingDeps) if (k2 !== versionId) rest[k2] = page.pendingDeps[k2]
-                page.pendingDeps = rest
-                page.pushJob(file.url, file.filename || pend.filename, file.size || 0, file.sha1 || "", pend.label)
+            // 同一个 version_id 可能对应多个排队项（复合 key 以 versionId# 开头），全部取出
+            var waiting = []
+            var rest = {}
+            for (var k2 in page.pendingDeps) {
+                if (k2.indexOf(versionId + "#") === 0) waiting.push(page.pendingDeps[k2])
+                else rest[k2] = page.pendingDeps[k2]
+            }
+            if (waiting.length === 0) return
+            page.pendingDeps = rest
+            if (file && file.url) {
+                for (var w = 0; w < waiting.length; ++w) {
+                    var pend = waiting[w]
+                    page.pushJob(file.url, file.filename || pend.filename,
+                                 file.size || 0, file.sha1 || "", pend.label)
+                }
+            } else {
+                // 关键修复：拿不到下载地址时**必须说出来**。
+                // 以前这里什么都不做，前置就这么静默消失了 —— 用户看到「进度跑完了，目录里少一个」。
+                for (var w2 = 0; w2 < waiting.length; ++w2) {
+                    page.missedDeps = page.missedDeps.concat([waiting[w2].label || waiting[w2].filename || ""])
+                }
+                page.reportMissedDeps()
             }
         }
     }
@@ -344,12 +361,23 @@ Item {
     }
 
     // 本次要下载的全部条目（主文件 + 勾选的前置）。url 为空表示元数据还没解析出来。
+    // 后端偶尔给不出 filename（前置按 game_versions + loaders 反查失败时就是这样）。
+    // 以前直接退到 "download.jar"，多个前置全部同名 → 后一个覆盖前一个，
+    // 用户看到的就是「进度跑完了，目录里只剩一个文件」。改成用 slug/project_id + 版本号拼稳定名。
+    function depFallbackName(d) {
+        var base = (d.slug && d.slug.length > 0) ? d.slug
+                 : ((d.project_id && d.project_id.length > 0) ? d.project_id : "dependency")
+        base = String(base).replace(/[\/:*?"<>|\s]+/g, "_")
+        var ver = String(d.version_number || "").replace(/[\/:*?"<>|\s]+/g, "_")
+        return ver.length > 0 ? (base + "-" + ver + ".jar") : (base + ".jar")
+    }
+
     function buildJobs() {
         var jobs = []
         var v = page.currentFile
         if (v && v.url.length > 0)
             jobs.push({ versionId: "", label: v.version || "",
-                        url: v.url, filename: v.filename || "download.jar",
+                        url: v.url, filename: v.filename || page.depFallbackName({ slug: page.slug, version_number: v.version }),
                         size: v.size || 0, sha1: v.sha1 || "" })
         for (var i = 0; i < page.deps.length; ++i) {
             var d = page.deps[i]
@@ -362,7 +390,10 @@ Item {
                 versionId: d.version_id || "",
                 label: d.version_number || d.project_id || "",
                 url: (cached && cached.url) ? cached.url : (d.url || ""),
-                filename: (cached && cached.filename) ? cached.filename : (d.filename || ""),
+                // 兜底名必须唯一：以前这里是空串，pushJob 再退成 download.jar，多前置互相覆盖
+                filename: (cached && cached.filename) ? cached.filename
+                          : ((d.filename && d.filename.length > 0) ? d.filename : page.depFallbackName(d)),
+                depId: d.project_id || "",
                 size: cached ? (cached.size || 0) : (d.size || 0),
                 sha1: cached ? (cached.sha1 || "") : (d.sha1 || "")
             })
@@ -372,6 +403,7 @@ Item {
 
     function installAll() {
         page.submitted = 0
+        page.missedDeps = []
         // 复位上一次可能残留的对话框占用与队列（强行关闭对话框时回调可能不触发）
         page.dialogBusy = false
         page.dlQueue = []
@@ -390,7 +422,9 @@ Item {
         // 选完目录后所有文件按各自文件名写进去，不再逐个弹框。
         page.planJobs = jobs
         page.planTotal = jobs.length
-        var dir = page.b ? page.b.pickFolder(page.lastDir) : ""
+        var dir = page.autoTargetDir.length > 0
+                  ? page.autoTargetDir
+                  : (page.b ? page.b.pickFolder(page.lastDir) : "")
         if (dir.length === 0) { page.planJobs = []; page.status = qsTr("已取消"); return }
         page.batchMode = true
         page.targetDir = dir
@@ -410,20 +444,26 @@ Item {
             if (j.url.length > 0) {
                 page.pushJob(j.url, j.filename, j.size, j.sha1, j.label)
             } else if (j.versionId.length > 0) {
-                // 前置文件元数据未解析 → 先取，回来再入队
+                // 前置文件元数据未解析 → 先取，回来再入队。
+                // key 必须带 project_id：只拿 version_id 当 key 时，两个前置
+                // 若拿到同一个/空的 version_id，后者会把前者覆盖掉（=前置只剩一个）。
                 var m = {}
                 for (var k in page.pendingDeps) m[k] = page.pendingDeps[k]
-                m[j.versionId] = j
+                m[j.versionId + "#" + (j.depId || j.label || "")] = j
                 page.pendingDeps = m
                 page.b.fetchVersionFile(j.versionId)
             } else {
+                // 没有 url 也没有 version_id：后端连文件名都没反查出来。
+                // 以前只是 missing++，而且只要队列里还有主文件就完全不给提示 —— 用户以为全都下了。
+                page.missedDeps = page.missedDeps.concat([j.label || j.filename || ""])
                 missing++
             }
         }
         page.batchFilling = false
         page.planJobs = []
         if (page.dlQueue.length > 0) page.nextInQueue()
-        else page.status = missing > 0 ? qsTr("有前置缺少下载信息") : qsTr("没有可下载的文件")
+        else if (missing > 0) page.reportMissedDeps()
+        else page.status = qsTr("没有可下载的文件")
     }
 
     function pushJob(url, filename, size, sha1, label) {
@@ -455,13 +495,29 @@ Item {
         saveDialog.open()
     }
 
+    // 把「有前置没下成」明确告诉用户：列出名字，而不是只显示「已提交 1 个文件」。
+    function reportMissedDeps() {
+        if (page.missedDeps.length === 0) return
+        var names = page.missedDeps.slice(0, 3).join("、")
+        if (page.missedDeps.length > 3) names += qsTr(" 等 %1 个").arg(page.missedDeps.length)
+        var msg = qsTr("%1 个前置没有可用的下载信息，已跳过：%2").arg(page.missedDeps.length).arg(names)
+        console.info("[batch] MISSED-DEPS " + page.missedDeps.length + " -> " + names)
+        page.status = msg
+        if (page.toast) page.toast.show(msg, 5200, "warning")
+    }
+
     function finishBatch() {
         page.batchMode = false
         page.status = qsTr("已提交 %1 个文件").arg(page.submitted)
+        // 有跳过的前置时，状态栏必须说清楚，否则「已提交 1 个文件」会让人以为全都下了
+        page.reportMissedDeps()
         if (page.submitted > 0) page.downloadsStarted()
     }
 
     property string lastDir: ""
+    // 验收用：给定时 installAll 不弹原生「选择文件夹」，直接下到这里。
+    // 原生 QFileDialog 自动化点不动，Batch 下载（模组 + 前置）此前一直没法端到端回归。
+    property string autoTargetDir: ""
     function popQueue() {
         page.dialogBusy = false
         var q = page.dlQueue.slice(1)
