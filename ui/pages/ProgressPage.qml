@@ -279,7 +279,7 @@ Item {
                     Text {
                         width: parent.width
                         text: (page.totalSpeed / 1048576).toFixed(1) + " MB/s"
-                        color: Theme.accentText
+                        color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 18
                         font.weight: Font.DemiBold
@@ -293,7 +293,7 @@ Item {
                     Text {
                         width: parent.width
                         text: qsTr("%1 进行中").arg(page.runningCount)
-                        color: Theme.accentText
+                        color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 18
                         font.weight: Font.DemiBold
@@ -307,7 +307,7 @@ Item {
                     Text {
                         width: parent.width
                         text: page.remainText
-                        color: Theme.accentText
+                        color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 18
                         font.weight: Font.DemiBold
@@ -596,7 +596,7 @@ Item {
                                     width: 16
                                     height: 16
                                     running: visible
-                                    color: Theme.accentText
+                                    color: Theme.accent
                                     trackColor: Theme.bgHover
                                 }
                             }
