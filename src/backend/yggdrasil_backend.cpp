@@ -782,7 +782,11 @@ void YggdrasilBackend::onMetaReply()
     }
 
     m_meta = meta;
-    setStatus(QStringLiteral("已连接: ") + meta.serverName);
+    // 解析成功不写常驻提示。站点名已经由 metaServerName 暴露给 UI，
+    // 而 statusMessage 这一行只该交代"正在做什么"或"哪里失败了"。
+    // 之前这里写死「已连接: xxx」且之后从不清理，看起来像登录已经完成，
+    // 其实只是读到了 meta —— 用户点一下就会莫名其妙多出一句"已连接"。
+    setStatus(QString());
     emit metaReady();
 }
 

@@ -139,6 +139,9 @@ Item {
 
     // 验收钩子用：待处理的拖入路径（等 backend 就绪后再喂）
     property string pendingDrop: ""
+    // --ui-account-addr <host>：直接走一次 fillApiHost，等价于点上方快捷钮。
+    // 用来验收"点完之后页面长什么样" —— 真实点击没法脚本模拟，但入口是同一函数。
+    property string pendingAddr: ""
     // 全局拖入把 authlib-injector 链接里的地址送到这里（StageShell 注入）
     property string externalApiToApply: ""
     onExternalApiToApplyChanged: {
@@ -411,10 +414,10 @@ Item {
             page.tab = page.b.lastLoginMode
             if (page.offlineInput.length === 0) page.offlineInput = page.b.offlineUsername || ""
         }
-        if (page.yg) {
-            page.apiRootInput = page.yg.apiRoot || ""
-            if (page.yg.apiRoot) page.yg.fetchMeta(page.yg.apiRoot)
-        }
+        // 这里曾经把上次用过的 apiRoot 回填进输入框并立刻 fetchMeta。
+        // 但这是一个"还没登录"的表单：预填一个地址会让人以为已经配好了，
+        // 而 store 里的地址只说明"上次试过"，不代表现在有效。
+        // 重启后应当是干净的空白表单，地址由用户点快捷钮或粘贴后当场解析。
         if (Qt.application.arguments.indexOf("--ui-account-login") >= 0)
             page.loginPanel = true
         // accounts.json 是异步装载的，这里先试一次；真正生效靠 accRevChanged 里的 syncReloginCard()
@@ -431,6 +434,12 @@ Item {
             page.pendingDrop = Qt.application.arguments[di + 1]
         }
         // --ui-account-tab N：直接落在某个登录 tab（0 正版 / 1 离线 / 2 外置），截图验收用
+        var ai = Qt.application.arguments.indexOf("--ui-account-addr")
+        if (ai >= 0 && ai + 1 < Qt.application.arguments.length) {
+            page.tab = 2
+            page.loginPanel = true
+            page.pendingAddr = Qt.application.arguments[ai + 1]
+        }
         var ti = Qt.application.arguments.indexOf("--ui-account-tab")
         if (ti >= 0 && ti + 1 < Qt.application.arguments.length) {
             var tv = parseInt(Qt.application.arguments[ti + 1], 10)
@@ -458,6 +467,17 @@ Item {
             var p2 = page.pendingDrop
             page.pendingDrop = ""
             page.handleDroppedFiles([p2])
+        }
+    }
+
+    Timer {
+        interval: 700
+        running: page.pendingAddr.length > 0 && page.yg !== null
+        repeat: true
+        onTriggered: {
+            var h = page.pendingAddr
+            page.pendingAddr = ""
+            page.fillApiHost(h)
         }
     }
 
@@ -1798,6 +1818,24 @@ Item {
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
+                        // 注册入口就放在站点名旁边：知道是哪个站、想注册，两步是连着的。
+                        // 之前它在下面另起一行，还配了一个和上面一模一样的站点胶囊，
+                        // 看起来像界面把同一句话说两遍。registerUrl 来自 meta，没解析出来就不显示。
+                        Text {
+                            visible: page.yg !== null && page.yg.registerUrl.length > 0
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("· 还没有账号？去注册")
+                            color: Theme.accentText
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                            TapHandler {
+                                onTapped: {
+                                    if (page.yg && page.yg.registerUrl.length > 0)
+                                        Qt.openUrlExternally(page.yg.registerUrl)
+                                }
+                            }
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        }
                     }
 
                     Repeater {
@@ -1853,45 +1891,6 @@ Item {
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap
                     }
-                    // 站点身份与注册入口。
-                    // registerUrl 后端一直有解析并写进 session.json，但 UI 从来没给过出口 ——
-                    // 新用户走到这一步只会看到"要账号密码"，不知道去哪注册。
-                    Row {
-                        spacing: 10
-                        visible: page.yg !== null && page.yg.metaServerName.length > 0
-                        Rectangle {
-                            width: siteDot.width + 16
-                            height: 22
-                            radius: 4
-                            color: Theme.bgInput
-                            border.width: 1
-                            border.color: Theme.line
-                            Text {
-                                id: siteDot
-                                anchors.centerIn: parent
-                                text: page.yg ? page.yg.metaServerName : ""
-                                color: Theme.fg2
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
-                            }
-                        }
-                        Text {
-                            visible: page.yg !== null && page.yg.registerUrl.length > 0
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: qsTr("还没有账号？去注册")
-                            color: Theme.accentText
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 12
-                            TapHandler {
-                                onTapped: {
-                                    if (page.yg && page.yg.registerUrl.length > 0)
-                                        Qt.openUrlExternally(page.yg.registerUrl)
-                                }
-                            }
-                            HoverHandler { cursorShape: Qt.PointingHandCursor }
-                        }
-                    }
-
                     SButton {
                         tone: "dark"
                         kind: 0
