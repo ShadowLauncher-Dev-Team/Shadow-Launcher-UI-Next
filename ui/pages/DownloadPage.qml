@@ -147,17 +147,20 @@ Item {
     property int filterShown: 0
     readonly property var rows: visibleList(page.filterShown)
 
+    // 这两个是「列表行上那枚类型标签」，必须跟正在渲染的那批数据（filterShown）走，
+    // 不能跟点击意图（filter）走 —— 否则淡出那 120ms 里会出现
+    // 「26.3 正式版」配着橙色「快照」标签的错位画面。
     function typeLabel() {
-        if (page.filter === 1) return qsTr("快照")
-        if (page.filter === 2) return qsTr("旧版")
-        if (page.filter === 3) return qsTr("愚人节")
+        if (page.filterShown === 1) return qsTr("快照")
+        if (page.filterShown === 2) return qsTr("旧版")
+        if (page.filterShown === 3) return qsTr("愚人节")
         return qsTr("正式版")
     }
 
     function typeColor() {
-        if (page.filter === 1) return Theme.warn
-        if (page.filter === 2) return Theme.fg2
-        if (page.filter === 3) return Theme.warn
+        if (page.filterShown === 1) return Theme.warn
+        if (page.filterShown === 2) return Theme.fg2
+        if (page.filterShown === 3) return Theme.warn
         return Theme.ok
     }
 
@@ -720,14 +723,42 @@ Item {
         }
 
         // 最新正式版高亮卡
-        Rectangle {
-            id: latestCard
-            visible: page.tab === 0 && page.filter === 0 && page.search.length === 0 && page.releaseV.length > 0
+        // 这块之前用 visible 控制，而 visible 绑的是 page.filter —— 点「快照版」那一帧它就消失、
+        // 列表 anchors 立刻上移 88px，可列表内容还在淡出（换数据要等 durFast）。
+        // 看到的顺序就是：卡片瞬间没了 → 旧列表闪一下 → 才换成新列表。
+        // 现在整块收起交给高度动画：卡片与列表同时淡出，列表在新位置淡入，是一次过渡而不是三次。
+        Item {
+            id: latestSlot
+            // 卡片该不该出现：只看「正式版 + 无搜索 + 已拿到列表」。
+            // 这是唯一真相，卡片自己的透明度和这个槽的高度都从它算。
+            // 用 filterShown 而不是 filter：filter 在点击那一帧就变了，而列表还要淡出
+            // 120ms 才换数据。若此时就让卡片开始收缩，列表会在淡出过程中被往上推，
+            // 旧数据在移动里被看见 —— 就是"切出正式版时闪一下"。
+            // 绑 filterShown 后，淡出期间卡片与槽高度都不动，等 swapTimer 换数据时
+            // 才一起收起，于是只有一次连贯的「卡片收上去 + 新列表淡入」。
+            readonly property bool cardShown: page.filterShown === 0
+                                              && page.search.length === 0
+                                              && page.releaseV.length > 0
+            visible: page.tab === 0
             anchors.top: filterRow.bottom
-            anchors.topMargin: 16
             anchors.left: parent.left
             anchors.right: parent.right
+            // 72 的卡 + 16 的间距；收起时两者一起归零，列表才不会留一条空档
+            height: cardShown ? 88 : 0
+            clip: true
+            Behavior on height { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+
+        Rectangle {
+            id: latestCard
+            width: parent.width
+            // 槽高度 88 = 顶部 16 间距 + 卡高 72；这 16 由卡片自己的 y 让出来，
+            // 列表再各自留 16，于是上下间距对称。漏了这句会变成「卡贴着筛选栏、
+            // 卡下方却空 32」——卡片位置看起来就像被顶到了上面。
+            y: 16
             height: 72
+            opacity: latestSlot.cardShown ? 1 : 0
+            enabled: latestSlot.cardShown
+            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
             radius: 10
             color: Theme.bgCard2
             border.color: Theme.line2
@@ -801,6 +832,7 @@ Item {
                 maxRadius: 160
             }
         }
+        }
 
         // 版本类型切换：淡出 → 换数据 → 淡入 + 自下而上轻推。
         // 「换数据」刻意用 Timer 而不是 SequentialAnimation 里的 ScriptAction：
@@ -832,7 +864,7 @@ Item {
             id: vlist
             visible: page.tab === 0
             transform: Translate { id: listShift; y: 0 }
-            anchors.top: latestCard.visible ? latestCard.bottom : filterRow.bottom
+            anchors.top: latestSlot.bottom
             anchors.topMargin: 16
             anchors.left: parent.left
             anchors.right: parent.right
