@@ -83,7 +83,18 @@ Item {
     property var optifineList: []
     property string expandedLoader: ""
 
-    readonly property var tabs: [qsTr("MC 版本"), "Mod", qsTr("光影"), qsTr("资源包"), qsTr("整合包"), qsTr("数据包"), "Java"]
+    // 英文比中文长得多（"Resource packs" / "Data packs"），7 个 tab 并排会把右边的搜索框和刷新按钮挤出屏幕。
+    // 所以标签按语言收缩：中文维持原样，英文用短形式。探针就是译文本身，不必额外传语言。
+    readonly property bool compactTabs: qsTr("%1 万").indexOf("万") < 0
+    readonly property var tabs: [
+        qsTr("MC 版本"),
+        "Mod",
+        qsTr("光影"),
+        compactTabs ? qsTr("资源包（短）") : qsTr("资源包"),
+        compactTabs ? qsTr("整合包（短）") : qsTr("整合包"),
+        compactTabs ? qsTr("数据包（短）") : qsTr("数据包"),
+        "Java"
+    ]
 
     // 资源库搜索防抖：不用每敲一个字就发一次请求
     Timer {

@@ -565,6 +565,7 @@ qt_add_translations(ShadowLauncher
         i18n/shadow_zh_CN.ts
         i18n/shadow_zh_HK.ts
         i18n/shadow_zh_TW.ts
+        i18n/shadow_en.ts
     SOURCES
         ${I18N_QML_SOURCES}
         ${I18N_CPP_SOURCES}

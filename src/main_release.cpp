@@ -503,9 +503,10 @@ int main(int argc, char *argv[])
 
     // ── Load saved language ──
     QSettings settings;
-    QString lang = settings.value("general/languageIndex", 0).toInt() == 1 ? "zh_HK"
-                 : settings.value("general/languageIndex", 0).toInt() == 2 ? "zh_TW"
-                 : "zh_CN";
+    // 0=简体 1=繁体(港澳) 2=繁体(台湾) 3=English   顺序必须与设置页下拉一致
+    static const char* kLangCodes[] = { "zh_CN", "zh_HK", "zh_TW", "en" };
+    const int langIdx = qBound(0, settings.value("general/languageIndex", 0).toInt(), 3);
+    QString lang = QString::fromLatin1(kLangCodes[langIdx]);
     auto* translator = new QTranslator(&app);
     if (lang != QStringLiteral("zh_CN") && translator->load(QStringLiteral(":/i18n/shadow_%1").arg(lang))) {
         app.installTranslator(translator);

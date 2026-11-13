@@ -266,8 +266,15 @@ Item {
         if (n >= 1024) return (n / 1024).toFixed(0) + " KB"
         return n + " B"
     }
+    // 下载量缩写：中文习惯「亿 / 万」，英文没有这两个量级，改用 SI 后缀（120M / 12K）。
+    // 探针就是译文本身：中文里「%1 万」含「万」，英文里不含，据此选单位，不必额外传语言。
     function fmtDl(n) {
         n = n || 0
+        if (qsTr("%1 万").indexOf("万") < 0) {
+            if (n >= 1000000) return qsTr("%1M").arg((n / 1000000).toFixed(1))
+            if (n >= 1000) return qsTr("%1K").arg((n / 1000).toFixed(0))
+            return String(n)
+        }
         if (n >= 100000000) return qsTr("%1 亿").arg((n / 100000000).toFixed(1))
         if (n >= 10000) return qsTr("%1 万").arg((n / 10000).toFixed(0))
         return String(n)

@@ -161,9 +161,9 @@ void SettingsBackend::loadSettings()
     m_maxMemoryMB = qBound(m_minMemoryMB, s.value(QStringLiteral("memory/maxMB"), 2048).toInt(), 32768);
     m_autoMemory = s.value(QStringLiteral("memory/autoMemory"), true).toBool();
     m_embeddedLoginEnabled = s.value(QStringLiteral("general/embeddedLogin"), false).toBool();
-    // 0=简体 1=繁体(港澳) 2=繁体(台湾)；只有这三项真正有词条。
-    // 旧版本填过 3(English) 之类无效值一律归 0，否则 UI 与后端语义会错位。
-    m_languageIndex = qBound(0, s.value(QStringLiteral("general/languageIndex"), 0).toInt(), 2);
+    // 0=简体 1=繁体(港澳) 2=繁体(台湾) 3=English；这四项都有词条。
+    // 越界值一律归 0，否则 UI 下拉与后端语义会错位。
+    m_languageIndex = qBound(0, s.value(QStringLiteral("general/languageIndex"), 0).toInt(), 3);
     m_launchLanguageIndex = m_languageIndex;  // snapshot for restart detection
     m_lastLaunchedVersion = s.value(QStringLiteral("general/lastVersion"), QString()).toString();
     m_lastSelectedVersion = s.value(QStringLiteral("general/lastSelectedVersion"), QString()).toString();
@@ -1409,7 +1409,7 @@ void SettingsBackend::setAutoLangMode(int mode)
 
 void SettingsBackend::setLanguageIndex(int idx)
 {
-    if (idx < 0 || idx > 2) return;
+    if (idx < 0 || idx > 3) return;
     if (idx == m_languageIndex) return;
     m_languageIndex = idx;
     saveSettings();
@@ -1635,6 +1635,11 @@ void SettingsBackend::ensureBgLibrary()
         def.builtin = true;
         m_bgImages.prepend(def);
     }
+    // 内置图的名字是**展示文案**，不能沿用上次存进 JSON 的旧语言版本。
+    // 切了界面语言再启动时，这里强制用当前语言重算一次（用户图的名字是文件名，不动）。
+    m_bgImages[0].builtin = true;
+    m_bgImages[0].name = tr("极光（默认）");
+
     if (m_activeBgId.isEmpty() || indexOfBg(m_activeBgId) < 0)
         m_activeBgId = m_bgImages.first().id;
 }

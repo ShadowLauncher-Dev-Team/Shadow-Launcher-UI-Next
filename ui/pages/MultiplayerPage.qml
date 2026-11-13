@@ -96,11 +96,15 @@ Item {
         }
     }
 
+    /// 后端错误码（稳定标识，不翻译）。以前这里用中文串 indexOf 判断，
+    /// 文案一旦进翻译就全废 —— 现在只看 code，文案只负责显示。
+    readonly property string errorCode: (page.mp && page.errorText !== "") ? String(page.mp.lastErrorCode || "") : ""
+
     readonly property string subText: {
         if (errorText !== "") {
             if (errorHostGone)
                 return qsTr("房间已自动退出。可以重新加入，或者自己开一间。")
-            if (errorText.indexOf("房间码无效") >= 0)
+            if (errorCode === "code_invalid")
                 return qsTr("少了位数，或者校验位不对。连续 3 次失败会冷却 60 秒。")
             return errorText
         }
@@ -209,7 +213,8 @@ Item {
         target: page.mp
         ignoreUnknownSignals: true
         function onErrorOccurred(msg) {
-            page.errorHostGone = String(msg).indexOf("房主已离开") >= 0
+            // 靠后端给的 code 判断，不再解析中文文案
+            page.errorHostGone = String(page.mp.lastErrorCode) === "host_gone"
             page.errorText = String(msg)
             errorTimer.restart()
             if (page.toast) page.toast.show(msg)
@@ -803,7 +808,7 @@ Item {
                         width: parent.width
                         height: 40
                         visible: page.errorText !== ""
-                        text: (page.errorText.indexOf("房间码无效") >= 0 || page.errorText.indexOf("过于频繁") >= 0)
+                        text: (page.errorCode === "code_invalid" || page.errorCode === "too_frequent")
                               ? qsTr("重新输入") : qsTr("知道了")
                         onClicked: page.errorText = ""
                     }

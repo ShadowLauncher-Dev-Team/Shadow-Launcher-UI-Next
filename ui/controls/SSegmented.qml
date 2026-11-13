@@ -11,7 +11,24 @@ Item {
     signal activated(int index)
 
     implicitHeight: itemHeight + 4
-    implicitWidth: row.implicitWidth + 4
+    // 每项等宽，宽度由**最长那条文案**决定 —— 不能只看 60px 下限。
+    // 之前英文 "System language" 比 60px 宽，文字溢出到隔壁项上，三项叠在卡片外。
+    readonly property real segW: Math.max(60, maxTextW + 12)
+    implicitWidth: segW * Math.max(1, items.length) + Math.max(0, items.length - 1) * 2 + 4
+
+    TextMetrics {
+        id: metrics
+        font.family: Theme.fontFamily
+        font.pixelSize: 12
+    }
+    readonly property real maxTextW: {
+        var w = 0
+        for (var i = 0; i < items.length; i++) {
+            metrics.text = items[i]
+            if (metrics.width > w) w = metrics.width
+        }
+        return w
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -26,8 +43,7 @@ Item {
     // 分项等宽，所以位置可以直接算；width 也加过渡，避免 items 数量变化时硬跳。
     Rectangle {
         id: segPill
-        readonly property real segW: Math.max(60,
-            (row.width - (root.items.length - 1) * row.spacing) / Math.max(1, root.items.length))
+        readonly property real segW: root.segW
         x: 2 + root.currentIndex * (segW + row.spacing)
         y: 2
         width: segW
@@ -50,7 +66,7 @@ Item {
         Repeater {
             model: root.items
             delegate: Rectangle {
-                width: Math.max(60, (row.width - (root.items.length - 1) * 2) / Math.max(1, root.items.length))
+                width: root.segW
                 height: row.height
                 radius: 6
                 // 选中底色由上面的 segPill 承担；这里不再自己变色，否则滑块滑动时旧项还在亮

@@ -470,205 +470,225 @@
 <context>
     <name>DownloadPage</name>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="86"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="88"/>
+        <source>%1 万</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/DownloadPage.qml" line="90"/>
         <source>MC 版本</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="86"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="92"/>
         <source>光影</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="86"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="93"/>
         <source>资源包</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="86"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="93"/>
+        <source>资源包（短）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/DownloadPage.qml" line="94"/>
         <source>整合包</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="86"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="94"/>
+        <source>整合包（短）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/DownloadPage.qml" line="95"/>
         <source>数据包</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="95"/>
-        <location filename="../ui/pages/DownloadPage.qml" line="132"/>
+        <source>数据包（短）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/DownloadPage.qml" line="106"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="143"/>
         <source>正式版</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="96"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="107"/>
         <source>快照版</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="97"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="108"/>
         <source>远古版</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="98"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="109"/>
         <source>愚人节版</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="129"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="140"/>
         <source>快照</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="130"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="141"/>
         <source>旧版</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="131"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="142"/>
         <source>愚人节</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="276"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="287"/>
         <source>仅 Fabric 可用</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="279"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="290"/>
         <source>与 %1 不兼容</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="281"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="292"/>
         <source>与 OptiFine 不兼容</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="282"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="293"/>
         <source>已选 %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="286"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="297"/>
         <source>原版</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="287"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="298"/>
         <source>整合安装</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="317"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="328"/>
         <source>已开始安装 %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="375"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="386"/>
         <source>版本列表刷新成功</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="375"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="386"/>
         <source>版本列表刷新失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="436"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="447"/>
         <source>安装配置</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="436"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="447"/>
         <source>下载</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="527"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="538"/>
         <source>Java 无需搜索</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="528"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="539"/>
         <source>搜索版本号</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="529"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="540"/>
         <source>搜索 Mod</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="530"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="541"/>
         <source>搜索光影</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="531"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="542"/>
         <source>搜索资源包</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="532"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="543"/>
         <source>搜索整合包</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="532"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="543"/>
         <source>搜索数据包</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="716"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="727"/>
         <source>最新正式版</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="740"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="751"/>
         <source>安装</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="887"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="898"/>
         <source>没有匹配的版本</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="1025"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="1036"/>
         <source>名称已存在</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="1034"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="1045"/>
         <source>Mod 加载器</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="1124"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="1135"/>
         <source>可选</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="1126"/>
-        <location filename="../ui/pages/DownloadPage.qml" line="1257"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="1137"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="1268"/>
         <source>不使用</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="1239"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="1250"/>
         <source>没有可用版本</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="1323"/>
-        <location filename="../ui/pages/DownloadPage.qml" line="1325"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="1334"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="1336"/>
         <source>开始安装</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="1325"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="1336"/>
         <source>请选择版本</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1055,8 +1075,8 @@
     <message>
         <location filename="../ui/pages/MultiplayerPage.qml" line="78"/>
         <location filename="../ui/pages/MultiplayerPage.qml" line="80"/>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="454"/>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="672"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="459"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="677"/>
         <source>房主</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1121,249 +1141,249 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="102"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="106"/>
         <source>房间已自动退出。可以重新加入，或者自己开一间。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="104"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="108"/>
         <source>少了位数，或者校验位不对。连续 3 次失败会冷却 60 秒。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="108"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="112"/>
         <source>生成房间码并启动隧道，通常 2–5 秒。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="109"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="113"/>
         <source>正在建立到房主的隧道。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="110"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="114"/>
         <source>房主刚创建房间时可能需要多等几秒。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="111"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="115"/>
         <source>正在连到房主的联机中心…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="112"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="116"/>
         <source>请打开游戏，进入单人世界后按 Esc 选「对局域网开放」。开好后会自动识别，不用填端口。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="113"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="117"/>
         <source>现在把码发出去，朋友加进来会直接失败。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="114"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="118"/>
         <source>最多 8 次尝试；不过也会放行，先进游戏再看。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="115"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="119"/>
         <source>朋友现在可以在游戏里进去了。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="115"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="119"/>
         <source>打开 Minecraft 的「多人游戏」，进「局域网世界」即可。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="116"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="120"/>
         <source>朋友在「多人游戏」的「局域网世界」里能直接看到，无需输入 IP。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="117"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="121"/>
         <source>房主在自己游戏里「对局域网开放」，其他人凭房间码加入。不用公网 IP、不用开端口，最多 5 人。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="139"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="143"/>
         <source>未知来源</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="152"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="156"/>
         <source>直连</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="153"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="157"/>
         <source>简单</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="154"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="158"/>
         <source>中等</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="155"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="159"/>
         <source>困难</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="171"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="175"/>
         <source>先粘贴房间码</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="179"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="183"/>
         <source>房间里不能改名，请先离开房间</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="191"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="195"/>
         <source>已保存</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="218"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="223"/>
         <source>游戏端口已就绪：%1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="243"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="248"/>
         <source>联机</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="454"/>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="672"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="459"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="677"/>
         <source>访客</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="478"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="483"/>
         <source>2 分钟内没开服会自动关闭</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="504"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="509"/>
         <source>这台设备叫</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="534"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="539"/>
         <source>修改</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="583"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="588"/>
         <source>粘贴房间码</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="594"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="599"/>
         <source>加入</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="612"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="617"/>
         <source>在房间里</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="673"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="678"/>
         <source>%1 · 这台设备</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="696"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="701"/>
         <source>本机</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="716"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="721"/>
         <source>%1 位玩家正在加入…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="733"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="738"/>
         <source>还有 %1 个空位</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="750"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="755"/>
         <source>创建房间</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="759"/>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="925"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="764"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="930"/>
         <source>取消</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="770"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="775"/>
         <source>开好服后再复制房间码</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="777"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="782"/>
         <source>复制房间码</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="780"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="785"/>
         <source>房间码已复制</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="789"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="794"/>
         <source>关闭房间</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="798"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="803"/>
         <source>离开房间</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="807"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="812"/>
         <source>重新输入</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="807"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="812"/>
         <source>知道了</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="816"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="821"/>
         <source>联机身份跟着「这台设备」走，与 MC 账号无关。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="857"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="862"/>
         <source>这台设备的昵称</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="865"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="870"/>
         <source>别人在成员列表里看到的就是它。只改这块牌子，不改设备、不改 MC 账号。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="901"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="906"/>
         <source>设备码 %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="909"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="914"/>
         <source>固定不变，用于区分同名设备</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="918"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="923"/>
         <source>保存</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1495,206 +1515,217 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="271"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="278"/>
         <source>%1 亿</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="272"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="273"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="279"/>
         <source>%1 万</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="290"/>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="329"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="274"/>
+        <source>%1M</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="275"/>
+        <source>%1K</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="297"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="336"/>
         <source>该组合没有可下载文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="327"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="334"/>
         <source>前置还在解析，请稍候</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="342"/>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="455"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="349"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="462"/>
         <source>已取消</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="374"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="381"/>
         <source>有前置缺少下载信息</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="374"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="381"/>
         <source>没有可下载的文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="408"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="415"/>
         <source>已提交 %1 个文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="420"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="427"/>
         <source>已提交下载</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="430"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="437"/>
         <source>选择保存位置（共 %1 个文件，其余存入同一文件夹）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="431"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="438"/>
         <source>选择保存位置</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="445"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="452"/>
         <source>开始下载 %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="486"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="493"/>
         <source>返回</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="550"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="557"/>
         <source>下载量</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="555"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="562"/>
         <source>版本</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="563"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="570"/>
         <source>更新</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="597"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="604"/>
         <source>本次安装</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="603"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="610"/>
         <source>未选择版本</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="611"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="618"/>
         <source>+ %1 个必需前置</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="619"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="626"/>
         <source>下载 %1 个文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="619"/>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="794"/>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="864"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="626"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="801"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="871"/>
         <source>下载</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="628"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="635"/>
         <source>多文件：选一次文件夹，全部存入</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="628"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="635"/>
         <source>下载时由你选择保存位置</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="675"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="682"/>
         <source>游戏版本</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="686"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="693"/>
         <source>选择版本</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="705"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="712"/>
         <source>加载器</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="719"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="726"/>
         <source>先选版本</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="738"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="745"/>
         <source>正在读取版本…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="739"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="746"/>
         <source>选择版本后，加载器只列出该版本实际有文件的项</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="740"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="747"/>
         <source>%1 个加载器 · 该组合 %2 个版本</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="761"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="768"/>
         <source>可下载版本</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="766"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="773"/>
         <source>最新 · 另有 %1 个旧版</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="766"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="773"/>
         <source>最新</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="783"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="790"/>
         <source>没有匹配的文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="817"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="824"/>
         <source>该组合下还有 %1 个旧版本</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="823"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="830"/>
         <source>收起</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="823"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="830"/>
         <source>展开</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="882"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="889"/>
         <source>前置模组</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="949"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="956"/>
         <source>必需</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="949"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="956"/>
         <source>可选</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1793,12 +1824,23 @@
 <context>
     <name>ResourceTile</name>
     <message>
-        <location filename="../ui/controls/ResourceTile.qml" line="150"/>
+        <location filename="../ui/controls/ResourceTile.qml" line="25"/>
+        <source>%1M</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/controls/ResourceTile.qml" line="26"/>
+        <source>%1K</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/controls/ResourceTile.qml" line="29"/>
         <source>%1 亿</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/controls/ResourceTile.qml" line="151"/>
+        <location filename="../ui/controls/ResourceTile.qml" line="24"/>
+        <location filename="../ui/controls/ResourceTile.qml" line="30"/>
         <source>%1 万</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2193,52 +2235,57 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetGeneralPane.qml" line="43"/>
+        <location filename="../ui/pages/SetGeneralPane.qml" line="45"/>
         <source>简体中文</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetGeneralPane.qml" line="43"/>
-        <source>繁體中文</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ui/pages/SetGeneralPane.qml" line="43"/>
+        <location filename="../ui/pages/SetGeneralPane.qml" line="45"/>
         <source>English</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetGeneralPane.qml" line="52"/>
+        <location filename="../ui/pages/SetGeneralPane.qml" line="45"/>
+        <source>繁體中文（香港／澳門）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/SetGeneralPane.qml" line="45"/>
+        <source>繁體中文（台灣）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/SetGeneralPane.qml" line="54"/>
         <source>游戏内语言</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetGeneralPane.qml" line="53"/>
+        <location filename="../ui/pages/SetGeneralPane.qml" line="55"/>
         <source>启动游戏时把语言写进 options.txt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetGeneralPane.qml" line="56"/>
+        <location filename="../ui/pages/SetGeneralPane.qml" line="58"/>
         <source>不写入</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetGeneralPane.qml" line="56"/>
+        <location filename="../ui/pages/SetGeneralPane.qml" line="58"/>
         <source>系统语言</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetGeneralPane.qml" line="56"/>
+        <location filename="../ui/pages/SetGeneralPane.qml" line="58"/>
         <source>按地区</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetGeneralPane.qml" line="68"/>
+        <location filename="../ui/pages/SetGeneralPane.qml" line="70"/>
         <source>界面语言已修改，重启启动器后生效。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetGeneralPane.qml" line="69"/>
+        <location filename="../ui/pages/SetGeneralPane.qml" line="71"/>
         <source>「系统语言」按 Windows 的语言设置；「按地区」按网络所在地判断，适合系统语言与实际习惯不一致时。</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5663,6 +5710,85 @@
     </message>
 </context>
 <context>
+    <name>ShadowLauncher::MultiplayerManager</name>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="159"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="194"/>
+        <source>请先退出当前房间</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="202"/>
+        <source>操作过于频繁，请稍后再试</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="205"/>
+        <source>房间码无效，请检查后重试</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="376"/>
+        <source>房间里不能改名，请先离开房间</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="381"/>
+        <source>昵称不能为空</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="571"/>
+        <source>无法启动联机服务: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="608"/>
+        <source>MC服务器启动超时，联机会话结束</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="658"/>
+        <source>房间已满（%1/%1）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="884"/>
+        <source>无法创建联机隧道端口</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="910"/>
+        <source>未找到联机中心，请确认房主已创建房间</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="916"/>
+        <source>房间已空闲超时，自动关闭</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="985"/>
+        <source>重连失败：无法创建联机隧道</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="1019"/>
+        <source>网络错误: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="1064"/>
+        <source>联机服务器尚未就绪，请稍后再试</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="1800"/>
+        <source>MC服务器连接已断开，联机会话结束</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>ShadowLauncher::ResourceBackend</name>
     <message>
         <location filename="../src/backend/resource_backend.cpp" line="273"/>
@@ -6110,128 +6236,129 @@
 <context>
     <name>ShadowLauncher::SettingsBackend</name>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="333"/>
+        <location filename="../src/backend/settings_backend.cpp" line="335"/>
         <source>Java 已配置: %1 (版本 %2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="341"/>
+        <location filename="../src/backend/settings_backend.cpp" line="343"/>
         <source>正在后台自动检测 Java...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="354"/>
+        <location filename="../src/backend/settings_backend.cpp" line="356"/>
         <source>[失败] 路径不存在: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="359"/>
+        <location filename="../src/backend/settings_backend.cpp" line="361"/>
         <source>[失败] 无法获取 Java 版本: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="373"/>
+        <location filename="../src/backend/settings_backend.cpp" line="375"/>
         <source>[完成] Java 已设置: %1 (版本 %2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="392"/>
+        <location filename="../src/backend/settings_backend.cpp" line="394"/>
         <source>Java 扫描已在进行中...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="396"/>
+        <location filename="../src/backend/settings_backend.cpp" line="398"/>
         <source>正在后台扫描 Java 安装...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="425"/>
+        <location filename="../src/backend/settings_backend.cpp" line="427"/>
         <source>找到 %1 个 Java 安装，最新: Java %2 (优先 Java 21)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="433"/>
+        <location filename="../src/backend/settings_backend.cpp" line="435"/>
         <source>[警告] 未在系统中找到 Java 安装</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="462"/>
+        <location filename="../src/backend/settings_backend.cpp" line="464"/>
         <source>[失败] Java 索引无效: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="471"/>
+        <location filename="../src/backend/settings_backend.cpp" line="473"/>
         <source>[完成] 已切换 Java %1: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="491"/>
+        <location filename="../src/backend/settings_backend.cpp" line="493"/>
         <source>[完成] 已选择 Java %1: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="497"/>
+        <location filename="../src/backend/settings_backend.cpp" line="499"/>
         <source>[警告] 未找到合适的 Java，请手动指定</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="513"/>
+        <location filename="../src/backend/settings_backend.cpp" line="515"/>
         <source>[完成] 已改为自动选择 Java（启动时按版本需求匹配）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="530"/>
+        <location filename="../src/backend/settings_backend.cpp" line="532"/>
         <source>Java 列表为空，正在后台重新扫描...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="584"/>
+        <location filename="../src/backend/settings_backend.cpp" line="586"/>
         <source>选择 Java 可执行文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="586"/>
+        <location filename="../src/backend/settings_backend.cpp" line="588"/>
         <source>Java 可执行文件 (java.exe javaw.exe);;所有文件 (*.*)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1015"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1017"/>
         <source>游戏目录已设置: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1023"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1025"/>
         <source>版本隔离已开启 — 各版本拥有独立的存档/截图/配置</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1024"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1026"/>
         <source>版本隔离已关闭 — 所有版本共享游戏目录</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1032"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1034"/>
         <source>版本 %1 已迁移到隔离模式</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1034"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1036"/>
         <source>版本 %1 迁移失败：未找到版本 JSON</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1631"/>
-        <location filename="../src/backend/settings_backend.cpp" line="1647"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1633"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1641"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1654"/>
         <source>极光（默认）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1768"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1775"/>
         <source>选择启动页背景图片</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1769"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1776"/>
         <source>图片 (*.png *.jpg *.jpeg *.webp *.bmp)</source>
         <translation type="unfinished"></translation>
     </message>

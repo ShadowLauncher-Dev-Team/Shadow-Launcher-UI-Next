@@ -42,8 +42,7 @@ Item {
                         // 语言名一律用**该语言自己的写法**，不随界面语言变化（这是通例）
                         // 繁体分港澳与台湾两套：用词不同（網絡/網路、帳戶/帳號、按/依…），
                         // 不能只给一个「繁體中文」再靠系统区域猜。
-                        // English 暂时不列：en.ts 还没做，列出来选了也没效果。
-                        items: [qsTr("简体中文"), qsTr("繁體中文（香港／澳門）"), qsTr("繁體中文（台灣）")]
+                        items: [qsTr("简体中文"), qsTr("繁體中文（香港／澳門）"), qsTr("繁體中文（台灣）"), qsTr("English")]
                         currentIndex: pane.s ? pane.s.languageIndex : 0
                         onActivated: (i) => { if (pane.s) pane.s.setLanguageIndex(i) }
                     }

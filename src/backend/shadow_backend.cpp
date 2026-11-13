@@ -1010,7 +1010,7 @@ ShadowBackend::ShadowBackend(QObject* parent)
     TempTracker::cleanupOrphans();
 
     // Sync m_currentLang from saved settings (prevents switchLanguage early-return bug)
-    const QStringList codes = { QStringLiteral("zh_CN"), QStringLiteral("zh_HK"), QStringLiteral("zh_TW") };
+    const QStringList codes = { QStringLiteral("zh_CN"), QStringLiteral("zh_HK"), QStringLiteral("zh_TW"), QStringLiteral("en") };
     int savedIdx = m_settings->languageIndex();
     if (savedIdx >= 0 && savedIdx < codes.size()) {
         m_currentLang = codes[savedIdx];

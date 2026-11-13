@@ -46,7 +46,7 @@ MultiplayerManager::MultiplayerManager(QObject* parent)
 {
     connect(m_guard, &ConnectionGuard::blocked, this, [this](const QString& ip, const QString& reason) {
         qCWarning(logNet) << QStringLiteral("[联机] 连接被阻断 ip=%1 原因=%2").arg(ip, reason);
-        emit errorOccurred(reason);
+        emitError(QStringLiteral("blocked"), reason);
     });
 
     QByteArray machineSeed = QSysInfo::machineUniqueId();
@@ -156,7 +156,7 @@ MultiplayerManager::~MultiplayerManager()
 void MultiplayerManager::createRoom()
 {
     if (m_state != Idle) {
-        emit errorOccurred(QStringLiteral("请先退出当前房间"));
+        emitError(QStringLiteral("already_in_room"), tr("请先退出当前房间"));
         return;
     }
 
@@ -191,7 +191,7 @@ void MultiplayerManager::createRoom()
 void MultiplayerManager::joinRoom(const QString& code)
 {
     if (m_state != Idle) {
-        emit errorOccurred(QStringLiteral("请先退出当前房间"));
+        emitError(QStringLiteral("already_in_room"), tr("请先退出当前房间"));
         return;
     }
 
@@ -199,10 +199,10 @@ void MultiplayerManager::joinRoom(const QString& code)
     if (!parts) {
         // Track failed join attempts (brute-force protection)
         if (m_guard && !m_guard->allowJoinRoom(m_machineId)) {
-            emit errorOccurred(QStringLiteral("操作过于频繁，请稍后再试"));
+            emitError(QStringLiteral("too_frequent"), tr("操作过于频繁，请稍后再试"));
             return;
         }
-        emit errorOccurred(QStringLiteral("房间码无效，请检查后重试"));
+        emitError(QStringLiteral("code_invalid"), tr("房间码无效，请检查后重试"));
         return;
     }
 
@@ -312,13 +312,22 @@ void MultiplayerManager::stopEasyTierNow()
         m_easyTier->stop();
 }
 
+void MultiplayerManager::emitError(const QString& code, const QString& msg)
+{
+    if (m_lastErrorCode != code) {
+        m_lastErrorCode = code;
+        emit lastErrorCodeChanged();
+    }
+    emit errorOccurred(msg);
+}
+
 void MultiplayerManager::handleHostLost(const QString& msg)
 {
     if (m_state == Idle)
         return;
     qCWarning(logNet) << QStringLiteral("[联机] 房主已离开: %1").arg(msg);
     // errorOccurred() → MultiplayerPage shows the toast + resets _backendReady.
-    emit errorOccurred(msg);
+    emitError(QStringLiteral("host_gone"), msg);
     // Full teardown: timers, room code, players, FakeServer, easytier, socket.
     leaveRoom();
 }
@@ -364,12 +373,12 @@ bool MultiplayerManager::setDeviceName(const QString& name)
 {
     // 房间里不允许改名：state 必须 Idle 且没有角色
     if (m_role != None || state() != Idle) {
-        emit errorOccurred(QStringLiteral("房间里不能改名，请先离开房间"));
+        emitError(QStringLiteral("cannot_rename"), tr("房间里不能改名，请先离开房间"));
         return false;
     }
     QString s = sanitizeDeviceName(name);
     if (s.isEmpty()) {
-        emit errorOccurred(QStringLiteral("昵称不能为空"));
+        emitError(QStringLiteral("empty_name"), tr("昵称不能为空"));
         return false;
     }
     if (s == m_deviceName) return true;
@@ -542,7 +551,7 @@ void MultiplayerManager::onEasyTierError(const QString& msg)
     if (m_discoverTimeoutTimer)
         m_discoverTimeoutTimer->stop();
     setState(Error, msg);
-    emit errorOccurred(msg);
+    emitError(QStringLiteral("network"), msg);
 }
 
 // ─────────────────────────────────────────
@@ -559,7 +568,7 @@ void MultiplayerManager::startHostServer()
     // and a 127.0.0.1-only bind rejects it (guest sees 10060/10054 timeouts).
     // Terracotta's ScaffoldingServer binds Ipv4Addr::UNSPECIFIED for the same reason.
     if (!m_server->listen(QHostAddress::Any, m_centerPort)) {
-        emit errorOccurred(QStringLiteral("无法启动联机服务: %1").arg(m_server->errorString()));
+        emitError(QStringLiteral("server_start"), tr("无法启动联机服务: %1").arg(m_server->errorString()));
         return;
     }
 
@@ -596,7 +605,7 @@ void MultiplayerManager::startHostServer()
     connect(m_mcPresenceTimeoutTimer, &QTimer::timeout, this, [this]() {
         if (m_state == WaitingForMcServer) {
             qCWarning(logNet) << QStringLiteral("[联机] MC服务器启动超时 %1秒 自动关闭").arg(kMcPresenceTimeoutMs / 1000);
-            emit errorOccurred(QStringLiteral("MC服务器启动超时，联机会话结束"));
+            emitError(QStringLiteral("mc_timeout"), tr("MC服务器启动超时，联机会话结束"));
             leaveRoom();
         }
     });
@@ -646,7 +655,7 @@ void MultiplayerManager::onNewConnection()
             sock->write(packet);
             sock->disconnectFromHost();
             sock->deleteLater();
-            emit errorOccurred(QStringLiteral("房间已满（%1/%1）").arg(kMaxPlayers));
+            emitError(QStringLiteral("room_full"), tr("房间已满（%1/%1）").arg(kMaxPlayers));
             continue;
         }
 
@@ -872,7 +881,7 @@ void MultiplayerManager::onPeerListReady()
             quint16 localPort = PortRequest::requestFree(21234);
             if (!m_easyTier->addPortForward(QStringLiteral("0.0.0.0"), localPort,
                                             ipv4, port, QStringLiteral("tcp"))) {
-                emit errorOccurred(QStringLiteral("无法创建联机隧道端口"));
+                emitError(QStringLiteral("tunnel"), tr("无法创建联机隧道端口"));
                 return;
             }
 
@@ -898,13 +907,13 @@ void MultiplayerManager::onDiscoverTimeout()
     m_centerPort = 0;
     m_roomCode.clear();
     emit roomCodeChanged();
-    emit errorOccurred(QStringLiteral("未找到联机中心，请确认房主已创建房间"));
+    emitError(QStringLiteral("center_not_found"), tr("未找到联机中心，请确认房主已创建房间"));
 }
 
 void MultiplayerManager::onIdleTimeout()
 {
     qCInfo(logNet) << QStringLiteral("[联机] 房间空闲超时 5分钟无宾客 关闭");
-    emit errorOccurred(QStringLiteral("房间已空闲超时，自动关闭"));
+    emitError(QStringLiteral("idle_timeout"), tr("房间已空闲超时，自动关闭"));
     leaveRoom();
 }
 
@@ -973,7 +982,7 @@ void MultiplayerManager::onSocketDisconnected()
                         .arg(localPort).arg(m_centerIp).arg(m_centerPort);
                     connectToCenter(QStringLiteral("127.0.0.1"), localPort);
                 } else {
-                    emit errorOccurred(QStringLiteral("重连失败：无法创建联机隧道"));
+                    emitError(QStringLiteral("reconnect"), tr("重连失败：无法创建联机隧道"));
                 }
             }
         });
@@ -1007,7 +1016,7 @@ void MultiplayerManager::onSocketError(QAbstractSocket::SocketError err)
         handleHostLost(QStringLiteral("房主已离开，房间已自动退出"));
         return;
     }
-    emit errorOccurred(QStringLiteral("网络错误: %1").arg(
+    emitError(QStringLiteral("network"), tr("网络错误: %1").arg(
         m_socket ? m_socket->errorString() : QStringLiteral("unknown")));
 }
 
@@ -1052,7 +1061,7 @@ void MultiplayerManager::handleGuestResponse(quint8 status, const QByteArray& bo
         qCWarning(logNet) << QStringLiteral("[联机] 请求 %1 失败 status=%2").arg(expect).arg(status);
         if (expect == Scaffolding::kServerPort) {
             // Terracotta: fail(32) = MC server not started yet
-            emit errorOccurred(QStringLiteral("联机服务器尚未就绪，请稍后再试"));
+            emitError(QStringLiteral("not_ready"), tr("联机服务器尚未就绪，请稍后再试"));
             leaveRoom();
         }
         return;
@@ -1788,7 +1797,7 @@ void MultiplayerManager::handleHealthCheckFailure()
         qCWarning(logNet) << QStringLiteral("[联机] MC服务器已断开，终止联机会话 port=%1").arg(m_mcPort);
         m_mcHealthTimer->stop();
         m_mcHealthFailures = 0;
-        emit errorOccurred(QStringLiteral("MC服务器连接已断开，联机会话结束"));
+        emitError(QStringLiteral("mc_disconnected"), tr("MC服务器连接已断开，联机会话结束"));
         leaveRoom();
     }
 }

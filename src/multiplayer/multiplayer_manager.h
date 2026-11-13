@@ -84,6 +84,7 @@ public:
     QString deviceCode() const { return m_deviceCode; }
     // 房间里不允许改名：只有 Idle 且未入房时才能改
     bool canRename() const { return m_role == None && static_cast<State>(m_state.load()) == Idle; }
+    QString lastErrorCode() const { return m_lastErrorCode; }
     int connectionDifficulty() const { return static_cast<int>(m_connectionDifficulty); }
     QString mcServerName() const { return m_mcServerName; }
     int mcServerPort() const { return static_cast<int>(m_mcPort); }
@@ -108,6 +109,7 @@ public:
     Q_PROPERTY(QString deviceName READ deviceName NOTIFY deviceNameChanged)
     Q_PROPERTY(QString deviceCode READ deviceCode NOTIFY deviceCodeChanged)
     Q_PROPERTY(bool canRename READ canRename NOTIFY canRenameChanged)
+    Q_PROPERTY(QString lastErrorCode READ lastErrorCode NOTIFY lastErrorCodeChanged)
 
     // Force recalculation of connection difficulty (host: queries EasyTier for local NAT)
     Q_INVOKABLE void requestDifficultyUpdate();
@@ -127,7 +129,10 @@ signals:
     // 访客来要 MC 端口但我们还没开服（回了 status 32）。Terracotta 访客收到 32 会直接放弃并断开，
     // 所以房主必须被提示"有人加了但你没开服"，而不是只写一行日志。
     void guestRejected(const QString& reason);
+    // 错误文案会翻译，所以 QML 不能拿中文串做 indexOf 分支 —— 用 lastErrorCode。
+    // code 是稳定标识（code_invalid / too_frequent / host_gone / ...），永不本地化。
     void errorOccurred(const QString& msg);
+    void lastErrorCodeChanged();
     void playerNameChanged();
     void canRenameChanged();
     void deviceNameChanged();
@@ -212,6 +217,10 @@ private:
 
     // Guest: host left the room (socket drop or heartbeat timeout) — toast + full teardown
     void handleHostLost(const QString& msg);
+
+    // 统一错误出口：同时给出稳定 code（给 QML 做分支）与人话文案（给用户看）
+    void emitError(const QString& code, const QString& msg);
+    QString m_lastErrorCode;
 
     // MC LAN scanner for host MC auto-detection (Terracotta-aligned: detect real MC server port)
     McScanner* m_hostMcScanner = nullptr;

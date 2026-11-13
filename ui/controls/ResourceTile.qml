@@ -17,6 +17,19 @@ Rectangle {
     signal clicked()
 
     property bool hovered: false
+
+    // 下载量缩写：中文用「亿 / 万」，英文没有这两个量级 → SI 后缀（120M / 12K）。
+    // 探针就是译文本身：中文里「%1 万」含「万」，英文里不含。
+    function fmtDl(n) {
+        if (qsTr("%1 万").indexOf("万") < 0) {
+            if (n >= 1000000) return qsTr("%1M").arg((n / 1000000).toFixed(1))
+            if (n >= 1000) return qsTr("%1K").arg((n / 1000).toFixed(0))
+            return n.toString()
+        }
+        if (n >= 100000000) return qsTr("%1 亿").arg((n / 100000000).toFixed(1))
+        if (n >= 10000) return qsTr("%1 万").arg((n / 10000).toFixed(0))
+        return n.toString()
+    }
     // 页面统一推进的高光相位（用于 hover 时扫一道光）
     property real shimmerPhase: 0
     property bool pressed: false
@@ -147,8 +160,7 @@ Rectangle {
                 id: dlText
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                text: tile.downloads >= 100000000 ? qsTr("%1 亿").arg((tile.downloads / 100000000).toFixed(1))
-                    : tile.downloads >= 10000 ? qsTr("%1 万").arg((tile.downloads / 10000).toFixed(0)) : tile.downloads.toString()
+                text: tile.fmtDl(tile.downloads)
                 color: Theme.fg3
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
