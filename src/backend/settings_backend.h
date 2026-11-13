@@ -2,6 +2,7 @@
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 #pragma once
 #include <QObject>
+#include <QSettings>
 #include <QString>
 #include <QStringList>
 #include <QVariantList>
@@ -189,38 +190,61 @@ public:
     void setPostExitCommand(const QString& v) { m_postExitCommand = v; saveSettings(); emit launchDetailChanged(); }
 
     // Custom background
-    QString customBgPath() const { return m_customBgPath; }
-    void setCustomBgPath(const QString& path) { m_customBgPath = path; saveSettings(); emit customBgChanged(); }
+    QString customBgPath() const { return activeBgPath(); }
+    // 兼容旧接口：把某个本地路径直接当成「一张新导入的图」加进图库并激活
+    void setCustomBgPath(const QString& path) { importBgFile(path); }
     qreal sidebarOpacity() const { return m_sidebarOpacity; }
     void setSidebarOpacity(qreal v) { m_sidebarOpacity = qBound(0.0, v, 1.0); saveSettings(); emit customBgChanged(); }
     qreal contentOpacity() const { return m_contentOpacity; }
     void setContentOpacity(qreal v) { m_contentOpacity = qBound(0.0, v, 1.0); saveSettings(); emit customBgChanged(); }
     qreal backgroundBlur() const { return m_backgroundBlur; }
     void setBackgroundBlur(qreal v) { m_backgroundBlur = qBound(0.0, v, 1.0); saveSettings(); emit customBgChanged(); }
-    qreal cropX() const { return m_cropX; }
-    void setCropX(qreal v) { m_cropX = qBound(0.0, v, 1.0); saveSettings(); emit customBgChanged(); }
+    qreal cropX() const { return activeBg().cropX; }
+    void setCropX(qreal v) { setActiveView(activeBg().zoom, qBound(0.0, v, 1.0), activeBg().cropY); }
     Q_INVOKABLE void updateCrop(qreal x, qreal y) {
-        m_cropX = qBound(0.0, x, 1.0);
-        m_cropY = qBound(0.0, y, 1.0);
-        saveSettings();
-        emit customBgChanged();
+        setActiveView(activeBg().zoom, qBound(0.0, x, 1.0), qBound(0.0, y, 1.0));
     }
-    qreal cropY() const { return m_cropY; }
-    void setCropY(qreal v) { m_cropY = qBound(0.0, v, 1.0); saveSettings(); emit customBgChanged(); }
+    qreal cropY() const { return activeBg().cropY; }
+    void setCropY(qreal v) { setActiveView(activeBg().zoom, activeBg().cropX, qBound(0.0, v, 1.0)); }
 
     // ── 启动页背景（外观页）──────────────────────────────────
-    qreal bgZoom() const { return m_bgZoom; }
-    void setBgZoom(qreal v) { m_bgZoom = qBound(1.0, v, 4.0); saveSettings(); emit customBgChanged(); }
-    /// 内置预设列表（默认极光 + 后续追加的预设图）；id/name/source/builtin/thumb
+    qreal bgZoom() const { return activeBg().zoom; }
+    void setBgZoom(qreal v) { setActiveView(qBound(1.0, v, 4.0), activeBg().cropX, activeBg().cropY); }
+
+    // ── 背景图库 ────────────────────────────────────────────
+    // 每张图（内置 / 每张导入的）各自保存 path + zoom + cropX + cropY。
+    // 切换只是改 active，谁也不清空谁 —— 「切回默认后再切回来」图和取景都还在。
+    struct BgImage {
+        QString id;      // 内置用固定 id；导入的用 "u:<sha1>"
+        QString name;    // 展示名（导入的是文件名）
+        QString path;    // 本地绝对路径；内置为空（走 qrc）
+        QString source;  // 可直接喂给 Image 的 URL（qrc:/ 或 file:///）
+        bool builtin = false;
+        qreal zoom = 1.0;
+        qreal cropX = 0.5;
+        qreal cropY = 0.5;
+    };
+    /// 图库列表（内置在前，导入的按加入顺序）；每项带 active 标记
     Q_INVOKABLE QVariantList bgPresets() const;
-    /// 选中内置预设（传空字符串或未知 id → 回落到默认极光）
+    /// 切换当前使用的图（未知 id → 回落到默认极光）
     Q_INVOKABLE void applyBgPreset(const QString& presetId);
-    /// 选择本地图片作为背景（打开文件选择框）；返回是否选定了文件
+    /// 选择本地图片：复制进数据目录、追加到图库并激活；返回是否成功
     Q_INVOKABLE bool chooseBgImage();
-    /// 恢复默认背景：清空自定义路径 + 视图复位
+    /// 恢复默认背景（= 切回内置极光，**不删任何已导入的图**）
     Q_INVOKABLE void restoreDefaultBg();
-    /// 只把取景复位（缩放 1.0、居中），不换图
+    /// 只把当前图的取景复位（缩放 1.0、居中），不换图
     Q_INVOKABLE void resetBgView();
+    /// 从图库移除一张导入的图（删数据目录副本）；内置图不可删
+    Q_INVOKABLE void removeBgImage(const QString& id);
+    /// 导入一张本地图片进图库并激活；返回新条目 id（空 = 失败）。
+    /// 会复制到 setBgStorageDir() 指定的目录，原图后续被移动/删除都不影响。
+    QString importBgFile(const QString& path);
+    /// 指定导入图片的存放目录（由 ShadowBackend 注入 dataDir/custom_bg）
+    void setBgStorageDir(const QString& dir) { m_bgStorageDir = dir; }
+    /// 当前图的本地路径（内置返回空）
+    QString activeBgPath() const { return activeBg().path; }
+    /// 当前图的显示 URL（内置返回 qrc，导入返回 file:///）
+    QString activeBgSource() const { return activeBg().source; }
 
     // ── 配色方案 ─────────────────────────────────────────────
     QString colorScheme() const { return m_colorScheme; }
@@ -318,13 +342,20 @@ private:
     VersionIsolation* m_isolation = nullptr;
 
     // Custom background
-    QString m_customBgPath;
+    QVector<BgImage> m_bgImages;      // 图库（第 0 项永远是内置默认图）
+    QString m_activeBgId;             // 当前使用哪一项
+    QString m_bgStorageDir;           // 导入图的存放目录（空 = 相对 exe 的 data/custom_bg）
     qreal m_sidebarOpacity = 0.90;
     qreal m_contentOpacity = 0.70;
     qreal m_backgroundBlur = 0.0;
-    qreal m_cropX = 0.5;
-    qreal m_cropY = 0.5;
-    qreal m_bgZoom = 1.0;
+
+    // ── 图库内部 ──
+    void ensureBgLibrary();                       // 首次访问时初始化 + 迁移旧 customBg/path
+    int indexOfBg(const QString& id) const;
+    BgImage activeBg() const;                     // 空图库时返回内置默认值（不会崩）
+    void setActiveView(qreal zoom, qreal cx, qreal cy);
+    void saveBgLibrary();
+    void saveBgLibraryTo(QSettings& s);
     QString m_colorScheme = QStringLiteral("dark");
 
     // Download settings

@@ -182,6 +182,9 @@ ShadowBackend::ShadowBackend(QObject* parent)
     m_yggdrasil = new YggdrasilBackend(this);
     bp("YggdrasilBackend");
     m_settings = new SettingsBackend(this);
+    // 背景图库把导入的图复制到这里：与原图解耦，用户移动/删除原文件都不影响启动页。
+    // 目录唯一来源 = AppBackend::dataDir()，不再各自拼 "../data"。
+    m_settings->setBgStorageDir(m_app->dataDir() + QStringLiteral("/custom_bg"));
     bp("SettingsBackend");
     m_check = new CheckBackend(this);
     bp("CheckBackend");
@@ -1265,28 +1268,19 @@ void ShadowBackend::setEmbeddedLoginEnabled(bool v) {
 
 
 // ── Custom background ──
-QString ShadowBackend::customBgPath() const { return m_settings->customBgPath(); }
-void ShadowBackend::setCustomBgPath(const QString& url) {
-    // On clear, delete the cached copy
-    // 只删我们自己复制到 dataDir/custom_bg 下的缓存副本。
-    // 早期实现会把自定义路径直接当缓存删——若拷贝失败退回的是用户原图路径，
-    // 一次「恢复默认」就会把用户的图片删掉。
-    if (url.isEmpty() && !m_settings->customBgPath().isEmpty() && m_app) {
-        const QString oldPath = QUrl(m_settings->customBgPath()).toLocalFile();
-        const QDir bgDir(m_app->dataDir() + QStringLiteral("/custom_bg"));
-        const QString canonicalOld = QFileInfo(oldPath).canonicalFilePath();
-        const QString canonicalDir = QFileInfo(bgDir.absolutePath()).canonicalFilePath();
-        if (!canonicalOld.isEmpty() && !canonicalDir.isEmpty()
-            && canonicalOld.startsWith(canonicalDir) && QFile::exists(canonicalOld)) {
-            QFile::remove(canonicalOld);
-        }
-    }
-    m_settings->setCustomBgPath(url);
+// 图库模型（2026-11-13 重做）：每张图各自保存 path + zoom/crop，切换只改 active。
+// 所以这里**不再有「清空即删图」**的语义 —— 以前 setCustomBgPath("") 会顺手删缓存副本，
+// 那正是「切回默认后自定义图就丢了」的元凶之一。
+QString ShadowBackend::customBgPath() const { return m_settings->activeBgPath(); }
+void ShadowBackend::setCustomBgPath(const QString& path) {
+    // 空值 = 什么都不做（「恢复默认」走 restoreDefaultBg，只是切 active，不删任何图）
+    if (path.isEmpty()) return;
+    m_settings->importBgFile(path);
 }
 
 QString ShadowBackend::customBgUrl() const {
-    const QString p = m_settings->customBgPath();
-    return p.isEmpty() ? QString() : QUrl::fromLocalFile(p).toString();
+    // 当前使用的那张图的显示 URL：内置 → qrc，导入 → file:///
+    return m_settings->activeBgSource();
 }
 qreal ShadowBackend::sidebarOpacity() const { return m_settings->sidebarOpacity(); }
 void ShadowBackend::setSidebarOpacity(qreal v) { m_settings->setSidebarOpacity(v); }
@@ -1318,31 +1312,16 @@ QString ShadowBackend::colorScheme() const { return m_settings->colorScheme(); }
 void ShadowBackend::setColorScheme(const QString& scheme) { m_settings->setColorScheme(scheme); }
 
 QString ShadowBackend::pickBackgroundImage() {
-    QString path = QFileDialog::getOpenFileName(nullptr,
+    const QString path = QFileDialog::getOpenFileName(nullptr,
         QString::fromUtf8("选择背景图片"), QString(),
         QString::fromUtf8("图片文件 (*.png *.jpg *.jpeg *.bmp *.webp);;所有文件 (*)"));
     if (path.isEmpty()) return QString();
 
-    // Copy to app data directory so the file doesn't go missing
-    QDir bgDir(m_app->dataDir() + "/custom_bg");
-    if (!bgDir.exists()) bgDir.mkpath(".");
-    // Remove old backgrounds
-    for (const QString& old : bgDir.entryList(QDir::Files)) {
-        QFile::remove(bgDir.filePath(old));
-    }
-    QFileInfo fi(path);
-    QString ext = fi.suffix().isEmpty() ? QStringLiteral("png") : fi.suffix();
-    QString destPath = bgDir.filePath(QStringLiteral("bg.") + ext);
-    if (!QFile::copy(path, destPath)) {
-        // Fallback: use original path
-        qWarning() << "[pickBackgroundImage] failed to copy" << path << "to" << destPath;
-        // 存纯路径（settings 里统一是本地路径，不是 URL）——
-        // 之前这里存 file:///…，而 StagePage 又拼一次 "file:///" → 双层前缀图裂。
-        m_settings->setCustomBgPath(path);
-        return path;
-    }
-    m_settings->setCustomBgPath(destPath);
-    return destPath;
+    // 复制与登记都交给图库（按内容 sha1 去重，同一张图重复选不会占两份），
+    // 这里**不再清空目录** —— 旧实现每换一次图就把之前所有图删掉，是丢图的主因。
+    const QString id = m_settings->importBgFile(path);
+    if (id.isEmpty()) return QString();
+    return m_settings->activeBgPath();
 }
 
 QVariantList ShadowBackend::availableJavaList() const {

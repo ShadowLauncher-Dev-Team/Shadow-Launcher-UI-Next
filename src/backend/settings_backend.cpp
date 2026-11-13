@@ -15,6 +15,10 @@
 #include <QSettings>
 #include <QUrl>
 #include <QCoreApplication>
+#include <QCryptographicHash>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QThread>
 #include <future>
 #include <mutex>
@@ -158,13 +162,75 @@ void SettingsBackend::loadSettings()
     m_lastSelectedVersion = s.value(QStringLiteral("general/lastSelectedVersion"), QString()).toString();
 
     // Custom background
-    m_customBgPath = s.value(QStringLiteral("customBg/path"), QString()).toString();
     m_sidebarOpacity = qBound(0.0, s.value(QStringLiteral("customBg/sidebarOpacity"), 0.90).toDouble(), 1.0);
     m_contentOpacity = qBound(0.0, s.value(QStringLiteral("customBg/contentOpacity"), 0.70).toDouble(), 1.0);
     m_backgroundBlur = qBound(0.0, s.value(QStringLiteral("customBg/blur"), 0.0).toDouble(), 1.0);
-    m_cropX = qBound(0.0, s.value(QStringLiteral("customBg/cropX"), 0.5).toDouble(), 1.0);
-    m_cropY = qBound(0.0, s.value(QStringLiteral("customBg/cropY"), 0.5).toDouble(), 1.0);
-    m_bgZoom = qBound(1.0, s.value(QStringLiteral("customBg/zoom"), 1.0).toDouble(), 4.0);
+
+    // ── 背景图库 ──
+    // 结构变了：以前是「一个路径 + 一套取景」，切回默认就把路径清了（图就丢了）。
+    // 现在是图库：每张图各自带 path + zoom/cropX/cropY，切换只改 active。
+    m_bgImages.clear();
+    m_activeBgId.clear();
+    {
+        const QByteArray raw = s.value(QStringLiteral("customBg/library")).toString().toUtf8();
+        if (!raw.isEmpty()) {
+            const QJsonDocument doc = QJsonDocument::fromJson(raw);
+            for (const QJsonValue& v : doc.array()) {
+                const QJsonObject o = v.toObject();
+                BgImage img;
+                img.id      = o.value(QStringLiteral("id")).toString();
+                img.name    = o.value(QStringLiteral("name")).toString();
+                img.path    = o.value(QStringLiteral("path")).toString();
+                img.builtin = o.value(QStringLiteral("builtin")).toBool();
+                img.zoom    = qBound(1.0, o.value(QStringLiteral("zoom")).toDouble(1.0), 4.0);
+                img.cropX   = qBound(0.0, o.value(QStringLiteral("cropX")).toDouble(0.5), 1.0);
+                img.cropY   = qBound(0.0, o.value(QStringLiteral("cropY")).toDouble(0.5), 1.0);
+                if (img.id.isEmpty()) continue;
+                img.source = img.builtin
+                        ? QStringLiteral("qrc:/ui/stage-aurora.jpg")
+                        : QUrl::fromLocalFile(img.path).toString();
+                // 文件已不在（用户手动删了数据目录）就跳过，别留一条裂图
+                if (!img.builtin && !QFile::exists(img.path)) continue;
+                m_bgImages.append(img);
+            }
+        }
+        m_activeBgId = s.value(QStringLiteral("customBg/active"), QString()).toString();
+
+        // 旧版本迁移：customBg/path 还是唯一真源时留下的值 → 变成图库里的一张。
+        // id 必须用**文件内容**的 sha1（与 importBgFile 同一套规则），否则同一个文件会以
+        // 「按路径算的 id」和「按内容算的 id」各存一份，图库里凭空多出一张重复图。
+        // 迁完就把旧 key 清掉，避免每次启动都重算一遍 sha1。
+        const QString legacyPath = s.value(QStringLiteral("customBg/path"), QString()).toString();
+        if (!legacyPath.isEmpty()) {
+            s.remove(QStringLiteral("customBg/path"));
+            s.remove(QStringLiteral("customBg/cropX"));
+            s.remove(QStringLiteral("customBg/cropY"));
+            s.remove(QStringLiteral("customBg/zoom"));
+        }
+        if (!legacyPath.isEmpty() && QFile::exists(legacyPath)) {
+            QByteArray legacyDigest;
+            {
+                QFile lf(legacyPath);
+                if (lf.open(QIODevice::ReadOnly)) {
+                    QCryptographicHash h(QCryptographicHash::Sha1);
+                    h.addData(&lf);
+                    legacyDigest = h.result();
+                }
+            }
+            BgImage img;
+            img.id      = QStringLiteral("u:") + QString::fromLatin1(legacyDigest.toHex());
+            img.name    = QFileInfo(legacyPath).fileName();
+            img.path    = legacyPath;
+            img.source  = QUrl::fromLocalFile(legacyPath).toString();
+            img.zoom    = qBound(1.0, s.value(QStringLiteral("customBg/zoom"), 1.0).toDouble(), 4.0);
+            img.cropX   = qBound(0.0, s.value(QStringLiteral("customBg/cropX"), 0.5).toDouble(), 1.0);
+            img.cropY   = qBound(0.0, s.value(QStringLiteral("customBg/cropY"), 0.5).toDouble(), 1.0);
+            const int dup = indexOfBg(img.id);
+            if (dup < 0) m_bgImages.append(img);
+            if (m_activeBgId.isEmpty()) m_activeBgId = img.id;
+        }
+    }
+    ensureBgLibrary();
     m_colorScheme = s.value(QStringLiteral("appearance/scheme"), QStringLiteral("dark")).toString();
     if (m_colorScheme != QStringLiteral("light")) m_colorScheme = QStringLiteral("dark");
 
@@ -218,13 +284,12 @@ void SettingsBackend::saveSettings()
     s.setValue(QStringLiteral("general/lastSelectedVersion"), m_lastSelectedVersion);
 
     // Custom background
-    s.setValue(QStringLiteral("customBg/path"), m_customBgPath);
+    // 图库整体序列化（每项含自己的 zoom/crop）；旧的单值 key 不再写，
+    // 但读的时候还认一次（迁移），所以老用户升级后自定义图不会丢。
+    saveBgLibraryTo(s);
     s.setValue(QStringLiteral("customBg/sidebarOpacity"), m_sidebarOpacity);
     s.setValue(QStringLiteral("customBg/contentOpacity"), m_contentOpacity);
     s.setValue(QStringLiteral("customBg/blur"), m_backgroundBlur);
-    s.setValue(QStringLiteral("customBg/cropX"), m_cropX);
-    s.setValue(QStringLiteral("customBg/cropY"), m_cropY);
-    s.setValue(QStringLiteral("customBg/zoom"), m_bgZoom);
     s.setValue(QStringLiteral("appearance/scheme"), m_colorScheme);
 
     // Auto-language mode
@@ -1479,51 +1544,214 @@ void SettingsBackend::saveJavaList(const QVector<JavaInfo>& list)
 }
 
 // ============================================================
-// 外观页：启动页背景 + 配色方案（2026-11-13）
+// 外观页：启动页背景图库 + 配色方案（2026-11-13）
 // ============================================================
 // 设计要点：
-//   • 内置预设（默认极光）不落到磁盘，靠 qrc 资源提供；customBgPath 为空即"用内置"，
-//     所以「恢复默认」= 清空路径 + 复位取景，永远不会丢图，随时能回来。
-//   • 取景 = 缩放倍率(bgZoom 1..4) + 中心点(cropX/cropY 0..1)。渲染侧按
-//     cover 尺寸 × zoom 画图，再把中心点对齐到框内，两处（启动页/外观页预览）共用同一个
-//     公式，避免"预览和实际不一样"。
-//   • 预留扩展：bgPresets() 返回列表，后续加预设图只往这里追加一项（id/name/source/
-//     builtin），UI 自动多出一张卡，不需要改页面结构。
+//   • **图库模型**：内置默认图 + 每一张用户导入的图，各存一份 path 与取景
+//     （zoom / cropX / cropY）。切换只是改 active，谁也不清空谁 ——
+//     「导入一张新图 → 切回默认 → 再切回来」，图和取景都还在。
+//     旧实现是「一个路径 + 一套取景」，切回默认就 clear() 掉路径，图就"丢"了（影报的 bug）。
+//   • 导入的图复制进数据目录（custom_bg/bg_<sha1>.<ext>），原图被移动/删除也不影响。
+//   • 内置图走 qrc，不占磁盘；customBg/path 等旧 key 只读一次做迁移。
+//   • 取景公式在渲染侧（SBgImage）统一：cover × zoom，再把 crop 中心对齐到框内，
+//     启动页与外观页预览共用，避免"预览和实际不一样"。
+namespace {
+constexpr const char* kDefaultBgId = "aurora";
+} // namespace
+
+void SettingsBackend::saveBgLibraryTo(QSettings& s)
+{
+    QJsonArray arr;
+    for (const BgImage& img : m_bgImages) {
+        // 内置图不写 path（永远走 qrc），导入图必须带 path
+        if (!img.builtin && !QFile::exists(img.path)) continue;
+        QJsonObject o;
+        o.insert(QStringLiteral("id"), img.id);
+        o.insert(QStringLiteral("name"), img.name);
+        o.insert(QStringLiteral("path"), img.builtin ? QString() : img.path);
+        o.insert(QStringLiteral("builtin"), img.builtin);
+        o.insert(QStringLiteral("zoom"), img.zoom);
+        o.insert(QStringLiteral("cropX"), img.cropX);
+        o.insert(QStringLiteral("cropY"), img.cropY);
+        arr.append(o);
+    }
+    s.setValue(QStringLiteral("customBg/library"),
+               QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Compact)));
+    s.setValue(QStringLiteral("customBg/active"), m_activeBgId);
+}
+
+void SettingsBackend::saveBgLibrary()
+{
+    QSettings s(QCoreApplication::organizationName(),
+                QCoreApplication::applicationName());
+    saveBgLibraryTo(s);
+}
+
+int SettingsBackend::indexOfBg(const QString& id) const
+{
+    for (int i = 0; i < m_bgImages.size(); ++i)
+        if (m_bgImages.at(i).id == id) return i;
+    return -1;
+}
+
+void SettingsBackend::ensureBgLibrary()
+{
+    // 去重：同一个文件只保留一条。
+    // 旧数据迁移用的 id 是「路径 sha1」，而 importBgFile 用的是「内容 sha1」，
+    // 两者对同一张图会算出不同 id → 图库里会凭空多出一张一模一样的卡片（实测出现过）。
+    // 这里按绝对路径归并，优先保留当前正在用的那一条。
+    {
+        QHash<QString, int> firstByPath;
+        for (int i = 0; i < m_bgImages.size(); ) {
+            if (m_bgImages.at(i).builtin) { ++i; continue; }
+            const QString key = QFileInfo(m_bgImages.at(i).path).absoluteFilePath();
+            if (!firstByPath.contains(key)) { firstByPath.insert(key, i); ++i; continue; }
+            const int prev = firstByPath.value(key);
+            if (m_bgImages.at(i).id == m_activeBgId) {
+                m_bgImages.removeAt(prev);
+                firstByPath[key] = i - 1;
+            } else {
+                m_bgImages.removeAt(i);
+            }
+        }
+    }
+
+    // 内置默认图永远在第 0 位：即使配置被写坏 / 全删了，也一定有一张能用的图
+    if (m_bgImages.isEmpty() || !m_bgImages.first().builtin) {
+        BgImage def;
+        def.id      = QString::fromLatin1(kDefaultBgId);
+        def.name    = tr("极光（默认）");
+        def.source  = QStringLiteral("qrc:/ui/stage-aurora.jpg");
+        def.builtin = true;
+        m_bgImages.prepend(def);
+    }
+    if (m_activeBgId.isEmpty() || indexOfBg(m_activeBgId) < 0)
+        m_activeBgId = m_bgImages.first().id;
+}
+
+SettingsBackend::BgImage SettingsBackend::activeBg() const
+{
+    const int i = indexOfBg(m_activeBgId);
+    if (i >= 0) return m_bgImages.at(i);
+    // 兜底：空图库也给一张内置默认（调用方拿到的永远是合法值，不会出现 zoom=0 之类的死状态）
+    BgImage def;
+    def.id      = QString::fromLatin1(kDefaultBgId);
+    def.name    = tr("极光（默认）");
+    def.source  = QStringLiteral("qrc:/ui/stage-aurora.jpg");
+    def.builtin = true;
+    return def;
+}
+
+void SettingsBackend::setActiveView(qreal zoom, qreal cx, qreal cy)
+{
+    const int i = indexOfBg(m_activeBgId);
+    if (i < 0) return;
+    BgImage& img = m_bgImages[i];
+    img.zoom  = qBound(1.0, zoom, 4.0);
+    img.cropX = qBound(0.0, cx, 1.0);
+    img.cropY = qBound(0.0, cy, 1.0);
+    saveBgLibrary();
+    emit customBgChanged();
+}
+
+QString SettingsBackend::importBgFile(const QString& path)
+{
+    ensureBgLibrary();
+    if (path.isEmpty()) return QString();
+
+    const QFileInfo fi(path);
+    if (!fi.exists() || !fi.isFile()) {
+        qCWarning(logUI) << QStringLiteral("[外观] 背景图不存在: %1").arg(path);
+        return QString();
+    }
+
+    // 已经导入过同一张图（按内容 sha1 判定）就直接激活它，不重复占磁盘
+    QByteArray digest;
+    {
+        QFile f(path);
+        if (f.open(QIODevice::ReadOnly)) {
+            QCryptographicHash h(QCryptographicHash::Sha1);
+            h.addData(&f);
+            digest = h.result();
+        }
+    }
+    const QString id = QStringLiteral("u:") + QString::fromLatin1(digest.toHex());
+    const int dup = indexOfBg(id);
+    if (dup >= 0) {
+        m_activeBgId = id;
+        saveBgLibrary();
+        emit customBgChanged();
+        qCInfo(logUI) << QStringLiteral("[外观] 复用已导入的背景: %1").arg(path);
+        return id;
+    }
+
+    // 复制进数据目录，原图被移动/删除都不影响显示
+    QString ext = fi.suffix().isEmpty() ? QStringLiteral("png") : fi.suffix().toLower();
+    const QString destDir = m_bgStorageDir.isEmpty()
+            ? (QCoreApplication::applicationDirPath() + QStringLiteral("/../data/custom_bg"))
+            : m_bgStorageDir;
+    QDir().mkpath(destDir);
+    const QString dest = destDir + QStringLiteral("/bg_")
+                         + (digest.isEmpty() ? QStringLiteral("x") : QString::fromLatin1(digest.toHex()))
+                         + QStringLiteral(".") + ext;
+
+    QString stored = path;
+    if (QFile::exists(dest) || QFile::copy(path, dest)) {
+        stored = dest;
+    } else {
+        // 复制失败就退回原路径：图还能显示，只是原图被移走会裂
+        qCWarning(logUI) << QStringLiteral("[外观] 背景图复制失败，使用原路径: %1").arg(path);
+    }
+
+    BgImage img;
+    img.id      = id;
+    img.name    = fi.fileName();
+    img.path    = stored;
+    img.source  = QUrl::fromLocalFile(stored).toString();
+    img.zoom    = 1.0;   // 新图默认 100%，不影响其它图已经调好的取景
+    img.cropX   = 0.5;
+    img.cropY   = 0.5;
+    m_bgImages.append(img);
+    m_activeBgId = id;
+    saveBgLibrary();
+    emit customBgChanged();
+    qCInfo(logUI) << QStringLiteral("[外观] 导入背景: %1 -> %2").arg(path, stored);
+    return id;
+}
 
 QVariantList SettingsBackend::bgPresets() const
 {
-    // builtin=true：随程序打包（qrc），不占用户磁盘，不可删除
-    return {
-        QVariantMap{
-            { QStringLiteral("id"),       QStringLiteral("aurora") },
-            { QStringLiteral("name"),     tr("极光（默认）") },
-            { QStringLiteral("source"),   QStringLiteral("qrc:/ui/stage-aurora.jpg") },
-            { QStringLiteral("builtin"),  true }
-        }
-        // 后续预设图示例（等素材到位再打开）：
-        // { id: "night-city", name: "夜色城市", source: "qrc:/ui/bg/night-city.jpg", builtin: true }
-    };
+    const_cast<SettingsBackend*>(this)->ensureBgLibrary();
+    QVariantList out;
+    for (const BgImage& img : m_bgImages) {
+        out.append(QVariantMap{
+            { QStringLiteral("id"),      img.id },
+            { QStringLiteral("name"),    img.name },
+            { QStringLiteral("source"),  img.source },
+            { QStringLiteral("builtin"), img.builtin },
+            { QStringLiteral("active"),  img.id == m_activeBgId },
+            { QStringLiteral("zoom"),    img.zoom },
+            { QStringLiteral("cropX"),   img.cropX },
+            { QStringLiteral("cropY"),   img.cropY }
+        });
+    }
+    return out;
 }
 
 void SettingsBackend::applyBgPreset(const QString& presetId)
 {
-    const QVariantList presets = bgPresets();
-    for (const QVariant& v : presets) {
-        const QVariantMap m = v.toMap();
-        if (m.value(QStringLiteral("id")).toString() == presetId) {
-            // 内置图不写路径（空 = 用内置），顺便复位取景，避免带着上一张图的缩放
-            m_customBgPath.clear();
-            m_bgZoom = 1.0;
-            m_cropX = 0.5;
-            m_cropY = 0.5;
-            saveSettings();
-            emit customBgChanged();
-            qCInfo(logUI) << QStringLiteral("[外观] 使用内置背景: %1").arg(presetId);
-            return;
-        }
+    ensureBgLibrary();
+    QString id = presetId;
+    if (id.isEmpty() || indexOfBg(id) < 0) {
+        qCWarning(logUI) << QStringLiteral("[外观] 未知背景 id: %1，回落到默认").arg(presetId);
+        id = m_bgImages.first().id;
     }
-    qCWarning(logUI) << QStringLiteral("[外观] 未知的内置背景 id: %1，回落到默认").arg(presetId);
-    restoreDefaultBg();
+    if (m_activeBgId == id) return;   // 已经是它：不动取景，也不惊动 UI
+    // **只改 active**：不碰任何一张图的 path / 取景，所以切走再切回来还是原样
+    m_activeBgId = id;
+    saveBgLibrary();
+    emit customBgChanged();
+    qCInfo(logUI) << QStringLiteral("[外观] 切换背景 -> %1").arg(id);
 }
 
 bool SettingsBackend::chooseBgImage()
@@ -1532,35 +1760,46 @@ bool SettingsBackend::chooseBgImage()
         nullptr, tr("选择启动页背景图片"), QString(),
         tr("图片 (*.png *.jpg *.jpeg *.webp *.bmp)"));
     if (file.isEmpty()) return false;
-
-    m_customBgPath = file;
-    m_bgZoom = 1.0;      // 换图后取景复位：新图还没调过，沿用旧缩放会莫名其妙地裁掉一圈
-    m_cropX = 0.5;
-    m_cropY = 0.5;
-    saveSettings();
-    emit customBgChanged();
-    qCInfo(logUI) << QStringLiteral("[外观] 自定义背景: %1").arg(file);
-    return true;
+    return !importBgFile(file).isEmpty();
 }
 
 void SettingsBackend::restoreDefaultBg()
 {
-    m_customBgPath.clear();
-    m_bgZoom = 1.0;
-    m_cropX = 0.5;
-    m_cropY = 0.5;
-    saveSettings();
-    emit customBgChanged();
-    qCInfo(logUI) << QStringLiteral("[外观] 已恢复默认背景（内置极光）");
+    ensureBgLibrary();
+    // 只切回默认图，**不删任何导入的图**（它们的 path/取景都还留在图库里）
+    applyBgPreset(m_bgImages.first().id);
 }
 
 void SettingsBackend::resetBgView()
 {
-    m_bgZoom = 1.0;
-    m_cropX = 0.5;
-    m_cropY = 0.5;
-    saveSettings();
+    // 只复位「当前这张图」的取景，其它图的取景不动
+    setActiveView(1.0, 0.5, 0.5);
+}
+
+void SettingsBackend::removeBgImage(const QString& id)
+{
+    ensureBgLibrary();
+    const int i = indexOfBg(id);
+    if (i < 0 || m_bgImages.at(i).builtin) return;   // 内置图不可删
+
+    const BgImage img = m_bgImages.at(i);
+    m_bgImages.removeAt(i);
+
+    // 只删我们自己复制进数据目录的副本，绝不碰用户原图
+    const QString dirPath = m_bgStorageDir.isEmpty()
+            ? (QCoreApplication::applicationDirPath() + QStringLiteral("/../data/custom_bg"))
+            : m_bgStorageDir;
+    const QString dirCanonical = QFileInfo(dirPath).canonicalFilePath();
+    const QString fileCanonical = QFileInfo(img.path).canonicalFilePath();
+    if (!fileCanonical.isEmpty() && !dirCanonical.isEmpty()
+        && fileCanonical.startsWith(dirCanonical)) {
+        QFile::remove(fileCanonical);
+    }
+
+    if (m_activeBgId == id) m_activeBgId = m_bgImages.first().id;
+    saveBgLibrary();
     emit customBgChanged();
+    qCInfo(logUI) << QStringLiteral("[外观] 移除背景: %1").arg(id);
 }
 
 void SettingsBackend::setColorScheme(const QString& scheme)

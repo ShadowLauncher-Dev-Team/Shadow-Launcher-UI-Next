@@ -17,8 +17,28 @@ Item {
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     readonly property string scheme: (pane.b && pane.b.colorScheme) ? pane.b.colorScheme : "dark"
-    readonly property var presets: (pane.b && pane.b.bgPresets) ? pane.b.bgPresets() : []
-    readonly property bool usingCustom: (pane.b && pane.b.customBgUrl) ? pane.b.customBgUrl.length > 0 : false
+    // 图库变化计数：bgPresets() 是普通函数调用（没有 NOTIFY 属性），
+    // 不靠这个计数的话，切换背景后卡片的选中态不会刷新。
+    property int bgRev: 0
+    readonly property var presets: {
+        pane.bgRev   // 建立依赖（读一下即可）
+        return (pane.b && pane.b.bgPresets) ? pane.b.bgPresets() : []
+    }
+    // 内置预设 / 用户导入的分开渲染（导入的排在后面，且可以有多张）
+    readonly property var builtinPresets: pane._pick(true)
+    readonly property var userPresets: pane._pick(false)
+    function _pick(builtin) {
+        var out = []
+        for (var i = 0; i < pane.presets.length; i++)
+            if (!!pane.presets[i].builtin === builtin) out.push(pane.presets[i])
+        return out
+    }
+    // 当前用的是哪张（内置 = 没在用自定义图）
+    readonly property bool usingCustom: {
+        for (var i = 0; i < pane.presets.length; i++)
+            if (pane.presets[i].active) return !pane.presets[i].builtin
+        return false
+    }
 
     // 取景本地态：拖动/滚轮时先改本地，节流后再写后端，
     // 否则每移动一像素都落一次 QSettings 并触发全局 customBgChanged。
@@ -60,6 +80,7 @@ Item {
         // 后端改图/恢复默认时把本地取景拉回来（避免预览停在旧图的缩放上）。
         // 但拖动中我们自己正在写后端，那次信号不能反过来覆盖本地值（会抖）。
         function onCustomBgChanged() {
+            pane.bgRev++
             if (preview && preview.dragActive) return
             pane.syncFromBackend()
         }
@@ -251,20 +272,22 @@ Item {
                     opacity: pane.solo ? 0 : 1
                     Behavior on opacity { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
                     enabled: !pane.solo
-                    desc: "启动器自带的默认图永久保留，随时可恢复；也可以选择本地图片。"
+                    desc: "启动器自带的默认图永久保留；导入的图片会留在这里，每张各自记住自己的取景，随时切回来。"
 
-                    Row {
+                    // 图库：内置预设 + 每张导入的图 + 「选择本地图片」。
+                    // 用 Flow 而不是 Row：导入多张时自动换行，不会把卡片挤到可视区外。
+                    Flow {
+                        width: parent.width
                         spacing: 12
 
                         // 内置预设（后续新增预设会自动多出卡片）
                         Repeater {
-                            model: pane.presets
+                            model: pane.builtinPresets
 
                             delegate: Item {
                                 width: 176
                                 height: 104
-                                readonly property bool selected: !pane.usingCustom
-                                    && modelData.builtin === true
+                                readonly property bool selected: modelData.active === true
 
                                 Rectangle {
                                     anchors.fill: parent
@@ -293,12 +316,14 @@ Item {
                                     }
                                     Text {
                                         anchors.left: parent.left
+                                        anchors.right: parent.right
                                         anchors.bottom: parent.bottom
                                         anchors.margins: 8
                                         text: modelData.name
                                         color: Theme.imageFg
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
+                                        elide: Text.ElideMiddle
                                     }
                                 }
 
@@ -314,32 +339,113 @@ Item {
                             }
                         }
 
-                        // 自定义图片卡
+                        // 用户导入的图（每张都有自己的取景，切回来还是上次调的样子）
+                        Repeater {
+                            model: pane.userPresets
+
+                            delegate: Item {
+                                width: 176
+                                height: 104
+                                readonly property bool selected: modelData.active === true
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: Theme.rMd
+                                    color: Theme.bgCard2
+                                    border.width: selected ? 2 : 1
+                                    border.color: selected ? Theme.accent : Theme.line2
+                                    clip: true
+
+                                    // 缩略图用这张图**自己的**取景，所见即启动页上会看到的
+                                    SBgImage {
+                                        anchors.fill: parent
+                                        anchors.margins: selected ? 2 : 1
+                                        source: modelData.source
+                                        zoom: modelData.zoom
+                                        cropX: modelData.cropX
+                                        cropY: modelData.cropY
+                                    }
+
+                                    Rectangle {
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.bottom: parent.bottom
+                                        height: 26
+                                        color: Theme.scrim
+                                        opacity: 0.62
+                                    }
+                                    Text {
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.bottom: parent.bottom
+                                        anchors.margins: 8
+                                        text: modelData.name
+                                        color: Theme.imageFg
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 11
+                                        elide: Text.ElideMiddle
+                                    }
+
+                                    // 删除（只删数据目录里的副本，不动用户原图）
+                                    Item {
+                                        width: 22
+                                        height: 22
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: 4
+                                        anchors.top: parent.top
+                                        anchors.topMargin: 4
+                                        visible: thumbHover.containsMouse
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            radius: 11
+                                            color: Theme.scrim
+                                            opacity: 0.7
+                                        }
+                                        SIcon {
+                                            anchors.centerIn: parent
+                                            name: "x"
+                                            size: 12
+                                            color: Theme.imageFg
+                                        }
+                                        HoverHandler { id: thumbHover }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (!pane.b) return
+                                                pane.b.removeBgImage(modelData.id)
+                                                if (pane.toast) pane.toast.show("已移除「" + modelData.name + "」", 1800)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (!pane.b) return
+                                        pane.b.applyBgPreset(modelData.id)
+                                        if (pane.toast) pane.toast.show("已使用「" + modelData.name + "」", 1800)
+                                    }
+                                }
+                            }
+                        }
+
+                        // 「选择本地图片」：导入后进图库，随时可切回来
                         Item {
                             width: 176
                             height: 104
-                            readonly property bool selected: pane.usingCustom
 
                             Rectangle {
                                 anchors.fill: parent
                                 radius: Theme.rMd
-                                color: Theme.bgCard2
-                                border.width: selected ? 2 : 1
-                                border.color: selected ? Theme.accent : Theme.line2
+                                color: "transparent"
+                                border.width: 1
+                                border.color: Theme.line2
                                 clip: true
 
-                                SBgImage {
-                                    anchors.fill: parent
-                                    anchors.margins: selected ? 2 : 1
-                                    visible: pane.usingCustom
-                                    source: pane.b ? pane.b.customBgUrl : ""
-                                    zoom: pane.b ? pane.b.bgZoom : 1.0
-                                    cropX: pane.b ? pane.b.cropX : 0.5
-                                    cropY: pane.b ? pane.b.cropY : 0.5
-                                }
-
                                 Column {
-                                    visible: !pane.usingCustom
                                     anchors.centerIn: parent
                                     spacing: 6
                                     SIcon {
@@ -363,9 +469,9 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     if (!pane.b) return
-                                    // chooseBgImage 会复制到数据目录（原图被移走也不影响）
+                                    // 每次选择都会**追加**到图库（同内容自动去重），不覆盖已导入的
                                     if (pane.b.chooseBgImage()) {
-                                        if (pane.toast) pane.toast.show("已更换启动页图片", 2000)
+                                        if (pane.toast) pane.toast.show("已加入图库并启用", 2000)
                                     }
                                 }
                             }
@@ -385,9 +491,8 @@ Item {
                         // 宽度取「上限高度 × 比例」与可用宽度的较小者，高度反算 —— 保证与启动页同比例
                         width: Math.min(parent.width, Math.round(pane.previewMaxH * pane.stageAspect))
                         height: Math.max(160, Math.round(width / pane.stageAspect))
-                        source: (pane.b && pane.b.customBgUrl && pane.b.customBgUrl.length > 0)
-                                ? pane.b.customBgUrl
-                                : (pane.presets.length > 0 ? pane.presets[0].source : "")
+                        // customBgUrl = 当前使用的那张图的显示 URL（内置 → qrc，导入 → file:///）
+                        source: (pane.b && pane.b.customBgUrl) ? pane.b.customBgUrl : ""
                         zoom: pane.viewZoom
                         cropX: pane.viewCx
                         cropY: pane.viewCy
