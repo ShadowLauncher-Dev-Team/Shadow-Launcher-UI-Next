@@ -406,38 +406,6 @@ Item {
                                         elide: Text.ElideMiddle
                                     }
 
-                                    // 删除（只删数据目录里的副本，不动用户原图）
-                                    Item {
-                                        width: 22
-                                        height: 22
-                                        anchors.right: parent.right
-                                        anchors.rightMargin: 4
-                                        anchors.top: parent.top
-                                        anchors.topMargin: 4
-                                        visible: thumbHover.containsMouse
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            radius: 11
-                                            color: Theme.scrim
-                                            opacity: 0.7
-                                        }
-                                        SIcon {
-                                            anchors.centerIn: parent
-                                            name: "x"
-                                            size: 12
-                                            color: Theme.imageFg
-                                        }
-                                        HoverHandler { id: thumbHover }
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                if (!pane.b) return
-                                                pane.b.removeBgImage(modelData.id)
-                                                if (pane.toast) pane.toast.show(qsTr("已移除「%1」").arg(modelData.name), 1800)
-                                            }
-                                        }
-                                    }
                                 }
 
                                 // 边框层（最上层，压住图片的直角，圆角完整）
@@ -456,6 +424,39 @@ Item {
                                         if (!pane.b) return
                                         pane.b.applyBgPreset(modelData.id)
                                         if (pane.toast) pane.toast.show(qsTr("已使用「%1」").arg(modelData.name), 1800)
+                                    }
+                                }
+
+                                // 删除（只删数据目录里的副本，不动用户原图）
+                                Item {
+                                    width: 22
+                                    height: 22
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 4
+                                    anchors.top: parent.top
+                                    anchors.topMargin: 4
+                                    visible: thumbHover.containsMouse
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: 11
+                                        color: Theme.scrim
+                                        opacity: 0.7
+                                    }
+                                    SIcon {
+                                        anchors.centerIn: parent
+                                        name: "x"
+                                        size: 12
+                                        color: Theme.imageFg
+                                    }
+                                    HoverHandler { id: thumbHover }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (!pane.b) return
+                                            pane.b.removeBgImage(modelData.id)
+                                            if (pane.toast) pane.toast.show(qsTr("已移除「%1」").arg(modelData.name), 1800)
+                                        }
                                     }
                                 }
                             }
