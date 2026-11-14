@@ -657,3 +657,4 @@
 | 2026-11-14 | **删除按钮改为常驻**。这个 × 先后两次因悬停判定拿不到 hover 而消失（一次写在按钮自己身上、一次写在整块 tile 上），点击也跟着失效——因为点击那一刻按钮不在。删除是低频且明确的动作，直接把 `visible: true`，彻底移除 hover 依赖。 |
 | 2026-11-14 | **修复：背景图删不掉的真凶——`ShadowBackend` 缺 `removeBgImage` 转发**。QML 里 `pane.b` 是 ShadowBackend，`applyBgPreset` 有转发而 `removeBgImage` 没有，点击直接 `TypeError: Property 'removeBgImage' ... is not a function`，界面毫无反应。补 `Q_INVOKABLE void removeBgImage()` + `m_settings->removeBgImage()` 转发。 |
 | 2026-11-14 | **修复：删除背景没有 toast**。`removeBgImage` 会同步 `emit customBgChanged` → 网格重建 → 正在处理点击的 delegate 被销毁，`onClicked` 里销毁之后的语句不再执行。改为**先弹 toast 再删除**。 |
+| 2026-11-14 | **新增 `tools/pack-release.ps1`（本 checkout 的发布打包）**。仓库根目录的 `pack.ps1` 指向旧项目 `D:\latest-code\cpp` 且找 `qml/`、`qml-next/` 等已不存在的目录，直接跑会打错东西。新脚本：只带自己的二进制（排除 `.exp/.lib/测试 exe`）+ EasyTier `bin/` + `windeployqt --qmldir ui`（**必须给 qmldir，否则 QML 运行时目录整个不部署**）+ CRT 兜底 + D3D/软渲染兜底 + 只裁已知风格目录。产出 `dist/ShadowLauncher-v1.0.4-win64.zip`（230 文件，解压 149.9MB → **68MB**）。 |
