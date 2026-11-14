@@ -341,6 +341,15 @@ Item {
         modal: true
         padding: 0
         closePolicy: Popup.CloseOnEscape
+        // 出现动画：淡入 + 96%→100% 归位（与「删除版本」确认框、全屏页入场同一套语汇）。
+        // 只做入场不做退场：退场会让弹窗播完才消失，等于关个弹窗还要等动画。
+        transformOrigin: Item.Center
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+                NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+            }
+        }
         background: Rectangle {
             radius: Theme.rMd
             color: Theme.bgCard2
