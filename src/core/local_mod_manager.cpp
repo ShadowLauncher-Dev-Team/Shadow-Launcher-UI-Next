@@ -558,7 +558,37 @@ QVariantMap LocalModManager::entryToMap(const LocalModEntry& e) const
     m[QStringLiteral("fileName")]    = e.fileName;
     m[QStringLiteral("modName")]     = e.modName;
     m[QStringLiteral("modId")]       = e.modId;
-    m[QStringLiteral("version")]     = e.version;
+    // ── 清掉未展开的构建占位符（2026-11-14）──
+    // 有些作者打包时没替换构建占位符，fabric.mod.json / mods.toml 的 version 字段
+    // 就是原样的占位符文本（花括号或 @ 包裹的变量名）。直接显示等于把构建残留
+    // 当成版本号给用户看。处理：剥掉占位符本身，保留同一字符串里其它真实内容；
+    // 剥完为空就不显示版本（同屏那一行已经显示文件名，真版本通常在文件名里，不猜）。
+    QString verShown = e.version;
+    {
+        const QChar dollar(0x24);   // 不写字面量，避开各层转义
+        while (true) {
+            const int i = verShown.indexOf(dollar);
+            if (i < 0) break;
+            if (i + 1 < verShown.size() && verShown.at(i + 1) == QLatin1Char('{')) {
+                const int j = verShown.indexOf(QLatin1Char('}'), i + 2);
+                verShown.remove(i, (j < 0 ? verShown.size() : j + 1) - i);
+            } else {
+                verShown.remove(i, 1);
+            }
+        }
+        while (true) {
+            const int i = verShown.indexOf(QLatin1Char('@'));
+            if (i < 0) break;
+            const int j = verShown.indexOf(QLatin1Char('@'), i + 1);
+            if (j < 0) { verShown.remove(i, 1); continue; }
+            verShown.remove(i, j - i + 1);
+        }
+        verShown = verShown.trimmed();
+        const QString edges = QStringLiteral("-._ ");
+        while (!verShown.isEmpty() && edges.contains(verShown.back())) verShown.chop(1);
+        while (!verShown.isEmpty() && edges.contains(verShown.front())) verShown.remove(0, 1);
+    }
+    m[QStringLiteral("version")]     = verShown;
     m[QStringLiteral("description")] = e.description;
     m[QStringLiteral("iconPath")]    = e.iconPath.isEmpty()
         ? QString() : QUrl::fromLocalFile(e.iconPath).toString();

@@ -251,6 +251,9 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.version || ""
+                            // 版本号可能确实不知道（见 local_mod_manager 的占位符清理）：
+                            // 空的时候不占位，免得名字后面拖一截空档。
+                            visible: text.length > 0
                             color: Theme.fg3
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
