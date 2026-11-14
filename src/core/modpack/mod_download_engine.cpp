@@ -664,6 +664,13 @@ void ModDownloadEngine::resetForRetry(const std::shared_ptr<Item>& it)
     it->segs.clear();
     it->segmented = false;
     it->segAborting = false;
+    it->upgrading = false;
+    it->segPrefix = 0;
+    // 重试 = 从头来：段字节会被重新下载，先吐回总量（否则进度虚高）
+    if (it->segBytes > 0) {
+        m_downloadedBytes = qMax<qint64>(0, m_downloadedBytes - it->segBytes);
+        it->segBytes = 0;
+    }
     // 重试 = 全新一轮：运行态全部复位（2026-08-12 补全——旧实现漏了
     // resumeFrom/rangeChecked/enoughBytes/slow*，重试时带残留断点续传状态：
     // 空文件 seek(resumeFrom)+Range 续传 → 前段零填充 → SHA1 必失败；
@@ -759,6 +766,16 @@ void ModDownloadEngine::watchTick()
     const int normalSlots = (m_largeActive > 0) ? qMax(2, m_maxThreads / 2) : m_maxThreads;
     const bool idleSlots = (m_active - m_largeActive) < normalSlots;
     const qint64 slowTick = idleSlots ? kSlowBytesPerTickIdleSlots : kSlowBytesPerTick;
+
+    // ── 运行中升级（2026-11-14）──
+    // 只在**尾程有空槽**时才升级：此时多开连接不会抢任何人的带宽。
+    // 每个 tick 至多升级 1 个，避免一次把空槽全吃光又立刻饥饿。
+    if (idleSlots) {
+        for (auto& it : m_items) {
+            if (it->segmented || it->state != 1 || !it->reply) continue;
+            if (tryUpgradeToSegments(it)) break;
+        }
+    }
 
     // ── 分片段的看门狗（2026-11-14 补，实测缺口）──
     // 分片项没有 it->reply，下面的主循环会整条 continue 跳过，
@@ -947,15 +964,9 @@ void ModDownloadEngine::prepareSegments(std::shared_ptr<Item> it)
     n = qMin(n, idleDriven ? kSegMaxIdle : 4);
     if (n <= 1) { it->segmented = false; return; }
 
-    const qint64 base = it->fileSize / n;
-    for (int i = 0; i < n; ++i) {
-        Segment s;
-        s.start = i * base;
-        s.end = (i == n - 1) ? it->fileSize : (i + 1) * base;
-        s.partPath = it->localPath + QStringLiteral(".part%1").arg(i);
-        s.state = 0;
-        it->segs.append(s);
-    }
+    it->segPrefix = 0;      // 首次分片：没有前缀，从 0 开始拼
+    it->segBytes = 0;
+    setupSegments(it, 0, n);
     it->segmented = true;
     emit logMessage(QStringLiteral("[精卫] [分片] %1（%2 MB）分 %3 段并行%4")
                         .arg(it->localName)
@@ -963,6 +974,108 @@ void ModDownloadEngine::prepareSegments(std::shared_ptr<Item> it)
                         .arg(n)
                         .arg(idleDriven ? QStringLiteral("（空闲槽驱动，空 %1 槽）").arg(idleNow)
                                         : QString()));
+}
+
+// 按 [from, fileSize) 均匀切 n 段。运行中升级与首次分片共用同一套切片规则，
+// 避免两处各写一份、其中一处算错 end 造成重叠（重叠 = 下载多余数据）。
+void ModDownloadEngine::setupSegments(std::shared_ptr<Item> it, qint64 from, int n)
+{
+    it->segs.clear();
+    const qint64 total = it->fileSize - from;
+    if (n <= 0 || total <= 0) return;
+    const qint64 base = total / n;
+    for (int i = 0; i < n; ++i) {
+        Segment s;
+        s.start = from + i * base;
+        s.end = (i == n - 1) ? it->fileSize : (from + (i + 1) * base);
+        s.partPath = it->localPath + QStringLiteral(".part%1").arg(i);
+        s.state = 0;
+        it->segs.append(s);
+    }
+}
+
+// ── 运行中升级（2026-11-14 影的决定：不管限速模型如何，先把空闲连接用满）──
+// 之前的「空闲槽驱动」只在文件**开始那一刻**决策：早就开始单连接慢爬的文件，
+// 等别的文件都下完了、10 个槽空着，也不会中途升级 —— 尾程照样龟速。
+// 这里补上就地升级：保留已落盘的连续前缀，只把**剩余区间**切成 N 段并行。
+//   · 前缀不重下（不浪费流量）
+//   · 剩余区间各段写自己的 .partN，拼装时从 segPrefix 偏移续写
+//   · 任何一步失败 → fallbackToSingle，截断回前缀后断点续传，绝不从头来过
+bool ModDownloadEngine::tryUpgradeToSegments(std::shared_ptr<Item> it)
+{
+    if (!it || it->segmented || it->segFailedOnce || it->upgrading) return false;
+    if (it->state != 1 || !it->reply || !it->outFile) return false;
+    if (it->fileSize <= 0 || it->tmpPath.isEmpty()) return false;   // 不知道总大小，无从切分
+
+    const int idle = m_maxThreads - m_active;    // 本项自己已占 1 槽
+    if (idle < 2) return false;
+
+    // 已落盘的连续前缀：以磁盘实际长度为准（received 是协议层计数，可能超前于写盘）
+    it->outFile->flush();
+    const qint64 onDisk = it->outFile->size();
+    const qint64 prefix = qMin(it->received, onDisk);
+    if (prefix <= 0) return false;
+    const qint64 remain = it->fileSize - prefix;
+    if (remain < kSegMinSliceBytesIdle) return false;   // 剩余太少，切了也赚不回握手
+
+    int n = qMin(1 + idle, kSegMaxIdle);
+    n = static_cast<int>(qMin<qint64>(n, remain / kSegMinSliceBytesIdle));
+    if (n <= 1) return false;
+
+    it->upgrading = true;
+
+    // 1) 掐断单连接：先摘指针，让 readyRead/finished 回调直接返回（不会重复记账）
+    if (it->idleTimer) { it->idleTimer->stop(); it->idleTimer->deleteLater(); it->idleTimer = nullptr; }
+    QNetworkReply* old = it->reply;
+    it->reply = nullptr;
+    if (old) { old->abort(); old->deleteLater(); }
+
+    // 2) 关输出文件，内容留在 tmpPath 作为前缀
+    if (it->outFile) {
+        it->outFile->flush();
+        it->outFile->close();
+        it->outFile->deleteLater();
+        it->outFile = nullptr;
+    }
+
+    // 3) 槽位账：本项原来占 1 槽，改由各段重新占用
+    m_active = qMax(0, m_active - 1);
+    if (it->isLarge && m_largeActive > 0) m_largeActive = qMax(0, m_largeActive - 1);
+
+    // 协议层已收但还没写盘的字节（QNAM 在途缓冲）不属于最终文件：段会重下这一小段，
+    // 这里把它们从总量里扣掉，否则进度会永久虚高一点点。
+    const qint64 inflight = qMax<qint64>(0, it->received - prefix);
+    if (inflight > 0) m_downloadedBytes = qMax<qint64>(0, m_downloadedBytes - inflight);
+    it->received = prefix;
+    it->segPrefix = prefix;
+    it->segBytes = 0;
+    it->slowSinceMs = 0;
+    it->lastWatchBytes = 0;
+    setupSegments(it, prefix, n);
+    if (it->segs.isEmpty()) {       // 理论上不会发生；兜底别把文件卡死
+        it->segPrefix = 0;
+        it->upgrading = false;
+        it->resumeFrom = prefix;    // 保住前缀：launchRequest 会以 Range 续传而不是从头重下
+        m_pending.append(it);
+        pump();
+        return false;
+    }
+    // 段从单连接**当前所在的那个源**起跑：它已经排除了前面几个失败的源，
+    // 从 0 重来等于把已知慢/已知失败的源再踩一遍。
+    if (!it->sources.isEmpty()) {
+        const int from = qBound(0, it->sourceIdx, static_cast<int>(it->sources.size()) - 1);
+        for (auto& sg : it->segs) sg.sourceIdx = from;
+    }
+    it->segmented = true;
+    it->upgrading = false;
+
+    emit logMessage(QStringLiteral("[精卫] [分片] %1 运行中升级：已下 %2 MB，剩余 %3 MB 切 %4 段（空 %5 槽）")
+                        .arg(it->localName)
+                        .arg(prefix / (1024.0 * 1024.0), 0, 'f', 1)
+                        .arg(remain / (1024.0 * 1024.0), 0, 'f', 1)
+                        .arg(n).arg(idle));
+    pumpSegments();
+    return true;
 }
 
 void ModDownloadEngine::pumpSegments()
@@ -1106,6 +1219,7 @@ void ModDownloadEngine::onSegReadyRead(std::shared_ptr<Item> it, int si)
     if (data.isEmpty()) return;
     if (sg.outFile) sg.outFile->write(data);
     sg.received += data.size();
+    it->segBytes += data.size();
     m_downloadedBytes += data.size();
 }
 
@@ -1182,12 +1296,29 @@ void ModDownloadEngine::fallbackToSingle(std::shared_ptr<Item> it, const QString
     }
     clearSegments(it, true);
     it->segAborting = false;
+    // 段下载的字节没有进入最终文件 → 从总量里吐回去，进度不能虚高
+    if (it->segBytes > 0) {
+        m_downloadedBytes = qMax<qint64>(0, m_downloadedBytes - it->segBytes);
+        it->segBytes = 0;
+    }
     it->segmented = false;
     it->segFailedOnce = true;
     it->state = 0;
-    it->resumeFrom = 0;
-    it->received = 0;
-    if (!it->tmpPath.isEmpty()) QFile::remove(it->tmpPath);
+    it->upgrading = false;
+
+    // 运行中升级的文件：前缀是真数据（拼接过的一半可能已写坏，一并截掉），
+    // 截断回前缀后断点续传 —— 绝不重下已经下好的那几个 MB。
+    const qint64 keep = it->segPrefix;
+    it->segPrefix = 0;
+    if (keep > 0 && !it->tmpPath.isEmpty() && QFile::exists(it->tmpPath)) {
+        QFile::resize(it->tmpPath, keep);
+        it->resumeFrom = keep;
+        it->received = keep;
+    } else {
+        it->resumeFrom = 0;
+        it->received = 0;
+        if (!it->tmpPath.isEmpty()) { QFile::remove(it->tmpPath); it->tmpPath.clear(); }
+    }
     m_pending.append(it);
     pump();
 }
@@ -1199,12 +1330,24 @@ void ModDownloadEngine::assembleSegments(std::shared_ptr<Item> it)
             + QUuid::createUuid().toString(QUuid::WithoutBraces).left(8);
 
     QFile out(it->tmpPath);
-    if (!out.open(QIODevice::WriteOnly)) { fallbackToSingle(it, QStringLiteral("无法写入拼接文件")); return; }
+    // 运行中升级：tmpPath 里已有 segPrefix 字节的有效前缀，必须 ReadWrite + seek 续写，
+    // 用 WriteOnly 会把它们直接截断（= 把已经下好的部分白扔掉）。
+    const QIODevice::OpenMode om = (it->segPrefix > 0) ? QIODevice::ReadWrite : QIODevice::WriteOnly;
+    if (!out.open(om)) { fallbackToSingle(it, QStringLiteral("无法写入拼接文件")); return; }
+    if (it->segPrefix > 0) {
+        if (out.size() < it->segPrefix) {
+            out.close();
+            fallbackToSingle(it, QStringLiteral("前缀长度不足"));
+            return;
+        }
+        out.seek(it->segPrefix);
+    }
     for (const auto& sg : it->segs) {
         QFile pf(sg.partPath);
         if (!pf.open(QIODevice::ReadOnly)) {
             out.close();
-            QFile::remove(it->tmpPath);
+            // 不在这里删 tmpPath：fallbackToSingle 会把文件截断回 segPrefix（运行中升级的前缀），
+            // 删了就只能从头重下 —— 白扔掉已经下好的那几个 MB。
             fallbackToSingle(it, QStringLiteral("分段文件缺失"));
             return;
         }
@@ -1213,7 +1356,6 @@ void ModDownloadEngine::assembleSegments(std::shared_ptr<Item> it)
             if (chunk.isEmpty()) break;
             if (out.write(chunk) != chunk.size()) {
                 pf.close(); out.close();
-                QFile::remove(it->tmpPath);
                 fallbackToSingle(it, QStringLiteral("拼接写入失败"));
                 return;
             }
@@ -1224,18 +1366,18 @@ void ModDownloadEngine::assembleSegments(std::shared_ptr<Item> it)
 
     const qint64 got = QFileInfo(it->tmpPath).size();
     if (it->fileSize > 0 && got != it->fileSize) {
-        QFile::remove(it->tmpPath);
         fallbackToSingle(it, QStringLiteral("拼接后大小不符（%1/%2）").arg(got).arg(it->fileSize));
         return;
     }
     if (!verifyFile(it)) {
-        QFile::remove(it->tmpPath);
         fallbackToSingle(it, QStringLiteral("拼接后校验失败"));
         return;
     }
     for (const auto& sg : it->segs) QFile::remove(sg.partPath);
     it->segs.clear();
     it->segmented = false;
+    it->segPrefix = 0;
+    it->segBytes = 0;
     QFile::remove(it->localPath);
     if (!QFile::rename(it->tmpPath, it->localPath)) {
         QFile::remove(it->tmpPath);

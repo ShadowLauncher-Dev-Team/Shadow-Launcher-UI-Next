@@ -140,6 +140,11 @@ private:
         bool segmented = false;      // 走分片通道（大文件）
         bool segFailedOnce = false;  // 分片模式失败过一次 → 永久降级单连接（安全网）
         bool segAborting = false;    // 正在拆段回退，旧回调忽略
+        bool upgrading = false;      // 正在把单连接就地升级成分片（过渡期回调忽略）
+        // 运行中升级（2026-11-14）：前缀 = 升级前已落盘的连续字节数。
+        // 它既是拼接起点（assemble 从该偏移续写），也是回退时的断点续传起点。
+        qint64 segPrefix = 0;
+        qint64 segBytes = 0;         // 各段累计收到字节（回退/重试时从总量里吐回去）
         QList<Segment> segs;
     };
 
@@ -164,6 +169,10 @@ private:
     // ── 分片通道 ──
     int plannedSegCount(qint64 fileSize);
     void prepareSegments(std::shared_ptr<Item> it);
+    // 按 [from, fileSize) 切 n 段（运行中升级与首次分片共用）
+    void setupSegments(std::shared_ptr<Item> it, qint64 from, int n);
+    // 运行中升级：把已在单连接上下载的文件就地切成多段，利用空闲槽
+    bool tryUpgradeToSegments(std::shared_ptr<Item> it);
     void pumpSegments();
     void launchSegment(std::shared_ptr<Item> it, int si);
     void onSegReadyRead(std::shared_ptr<Item> it, int si);
