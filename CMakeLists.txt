@@ -361,12 +361,25 @@ add_custom_target(UiContractCheck
 )
 add_dependencies(ShadowLauncher UiContractCheck)
 
-# 启动页背景图（临时内置图；正式版应由用户自定义背景或版本 splash 提供）
+# 启动页背景图（内置图库；用户仍可自定义 / 导入自己的图）
 qt6_add_resources(ShadowLauncher "ui_stage_assets"
     PREFIX "/ui"
     BASE "ui/assets"
     FILES
         ui/assets/stage-aurora.jpg
+        ui/assets/stage-fangcun.jpg
+        ui/assets/stage-shanhe.jpg
+        ui/assets/stage-linlan.jpg
+        ui/assets/stage-weijian-2.jpg
+        ui/assets/stage-weijian-4.jpg
+        ui/assets/stage-weijian-6.jpg
+        ui/assets/stage-jiguang.jpg
+        ui/assets/stage-yuwen-1.jpg
+        ui/assets/stage-yuwen-2.jpg
+        ui/assets/stage-city-2.jpg
+        ui/assets/stage-city-4.jpg
+        ui/assets/stage-citywalk-6.jpg
+        ui/assets/stage-jingmi.jpg
 )
 
 # 运行时数据（不属于任何 UI）：从旧 qml/ 目录迁出，路径见 src/backend/resource_backend.cpp

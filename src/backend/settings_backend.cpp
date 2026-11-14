@@ -1574,6 +1574,31 @@ void SettingsBackend::saveJavaList(const QVector<JavaInfo>& list)
 //     启动页与外观页预览共用，避免"预览和实际不一样"。
 namespace {
 constexpr const char* kDefaultBgId = "aurora";
+
+// 随包发布的启动页背景（2026-11-14 影提供的一批）。
+// 顺序 = 外观页里的展示顺序；第一项必须是默认极光（图库第 0 位、兜底都用它）。
+// 名字用 QT_TR_NOOP 包起来，实际取值时才 tr() —— 这样 lupdate 能提取，切语言也能跟着变。
+struct BuiltinBgDef {
+    const char* id;
+    const char* source;
+    const char* name;
+};
+constexpr BuiltinBgDef kBuiltinBgs[] = {
+    { "aurora",       "qrc:/ui/stage-aurora.jpg",      QT_TR_NOOP("极光（默认）") },
+    { "fangcun",      "qrc:/ui/stage-fangcun.jpg",     QT_TR_NOOP("方寸") },
+    { "shanhe",       "qrc:/ui/stage-shanhe.jpg",      QT_TR_NOOP("山河") },
+    { "linlan",       "qrc:/ui/stage-linlan.jpg",      QT_TR_NOOP("林澜") },
+    { "weijian-2",    "qrc:/ui/stage-weijian-2.jpg",   QT_TR_NOOP("未见 二") },
+    { "weijian-4",    "qrc:/ui/stage-weijian-4.jpg",   QT_TR_NOOP("未见 四") },
+    { "weijian-6",    "qrc:/ui/stage-weijian-6.jpg",   QT_TR_NOOP("未见 六") },
+    { "jiguang",      "qrc:/ui/stage-jiguang.jpg",     QT_TR_NOOP("寂光") },
+    { "yuwen-1",      "qrc:/ui/stage-yuwen-1.jpg",     QT_TR_NOOP("余温 一") },
+    { "yuwen-2",      "qrc:/ui/stage-yuwen-2.jpg",     QT_TR_NOOP("余温 二") },
+    { "city-2",       "qrc:/ui/stage-city-2.jpg",      QT_TR_NOOP("城市建筑 二") },
+    { "city-4",       "qrc:/ui/stage-city-4.jpg",      QT_TR_NOOP("城市建筑 四") },
+    { "citywalk-6",   "qrc:/ui/stage-citywalk-6.jpg",  QT_TR_NOOP("城市漫步 六") },
+    { "jingmi",       "qrc:/ui/stage-jingmi.jpg",      QT_TR_NOOP("静谧") },
+};
 } // namespace
 
 void SettingsBackend::saveBgLibraryTo(QSettings& s)
@@ -1633,19 +1658,38 @@ void SettingsBackend::ensureBgLibrary()
         }
     }
 
-    // 内置默认图永远在第 0 位：即使配置被写坏 / 全删了，也一定有一张能用的图
-    if (m_bgImages.isEmpty() || !m_bgImages.first().builtin) {
-        BgImage def;
-        def.id      = QString::fromLatin1(kDefaultBgId);
-        def.name    = tr("极光（默认）");
-        def.source  = QStringLiteral("qrc:/ui/stage-aurora.jpg");
-        def.builtin = true;
-        m_bgImages.prepend(def);
+    // ── 内置图库同步（2026-11-14）──
+    // 随包发布的图都在 kBuiltinBgs 表里，这里按表把图库对齐：
+    //   ① 缺的补上 —— 老用户升级后也能看到新图（图库存在 QSettings 里，不会自动出现）；
+    //   ② 名字每次按当前语言重算 —— 不能沿用上次存进 JSON 的旧语言版本；
+    //   ③ 表里已删除的图不再留死卡片。
+    // 内置图永远排在最前、顺序与表一致；导入的图保持原顺序跟在后面。
+    {
+        QSet<QString> keep;
+        for (const BuiltinBgDef& d : kBuiltinBgs) keep.insert(QString::fromLatin1(d.id));
+        for (int i = m_bgImages.size() - 1; i >= 0; --i) {
+            if (m_bgImages.at(i).builtin && !keep.contains(m_bgImages.at(i).id))
+                m_bgImages.removeAt(i);
+        }
+        int slot = 0;
+        for (const BuiltinBgDef& d : kBuiltinBgs) {
+            const QString id = QString::fromLatin1(d.id);
+            int at = indexOfBg(id);
+            if (at < 0) {
+                BgImage img;
+                img.id = id;
+                img.builtin = true;
+                m_bgImages.insert(slot, img);   // 新图先插到位，随后统一填字段
+                at = slot;
+            }
+            BgImage& img = m_bgImages[at];
+            img.builtin = true;
+            img.source  = QString::fromLatin1(d.source);
+            img.name    = tr(d.name);
+            if (at != slot) m_bgImages.move(at, slot);
+            ++slot;
+        }
     }
-    // 内置图的名字是**展示文案**，不能沿用上次存进 JSON 的旧语言版本。
-    // 切了界面语言再启动时，这里强制用当前语言重算一次（用户图的名字是文件名，不动）。
-    m_bgImages[0].builtin = true;
-    m_bgImages[0].name = tr("极光（默认）");
 
     if (m_activeBgId.isEmpty() || indexOfBg(m_activeBgId) < 0)
         m_activeBgId = m_bgImages.first().id;
