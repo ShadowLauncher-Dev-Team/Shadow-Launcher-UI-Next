@@ -144,6 +144,7 @@ private:
     qint64 m_lastBytesMs = 0;
     qint64 m_lastFileProgMs = 0; // fileProgress 回调节流（200ms）
     qreal m_modFrac = 0.0;       // 模组路完成比例（总进度合成用）
+    int m_modPctShown = 0;       // 模组步骤已显示过的百分比（单调，绝不回退）
     int m_modDoneCount = 0;      // 模组路已完成数（文案+百分比用）
     int m_modTotalCount = 0;     // 模组路总数
     int m_modFailedCount = 0;    // 模组路已失败数

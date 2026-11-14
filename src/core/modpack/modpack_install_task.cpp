@@ -190,6 +190,7 @@ void ModpackInstallTask::start(const QString& zipPath, const QString& versionNam
     m_lastBytesMs = 0;
     m_lastFileProgMs = 0;
     m_modFrac = 0.0;
+    m_modPctShown = 0;
 
     if (!m_backupDir.isEmpty()) {
         QDir(m_backupDir).removeRecursively();
@@ -522,20 +523,11 @@ void ModpackInstallTask::runDownload()
         m_mcSpeed = (!m_mcSessionId.isEmpty() && m_vb) ? m_vb->installSpeedOf(m_mcSessionId) : 0;
         m_cardSpeed = m_modEma + m_mcSpeed;
         syncCard();
-        // 步骤 2 字节级折算：单大文件下载中百分比持续前进（修进度停滞观感）
-        int doneCount = 0, skipCount = 0;
-        for (const ModpackRemoteFile& rf : m_meta.files) {
-            if (rf.status == QLatin1String("done")) ++doneCount;
-            else if (rf.status == QLatin1String("skipped")) ++skipCount;
-        }
-        const int effective = qMax(0, m_meta.files.size() - skipCount);
-        if (effective > 0) {
-            const qreal frac = total > 0 ? (qreal)received / total : 0.0;
-            // 同样封顶 99：这里用 (doneCount+frac)/effective，
-            // 与队列口径不同，更容易提前四舍五入到 100。
-            setCardStep(2, QStringLiteral("active"),
-                        qMin(99, qRound(100.0 * (doneCount + frac) / effective)));
-        }
+        // 注意：这里**不再**写步骤 2 的百分比。
+        // 旧实现在这里另算一套 (doneCount + 单文件 frac) / effective 写同一步骤，
+        // 与 queueProgress 的 completed/total 互相踩 → 两个写者来回跳。
+        // 模组少时尤其明显（每个文件占总进度 1/N 很大，跳幅可达二三十个点）。
+        // 步骤百分比现在只由 queueProgress 一处写（见下）。
         for (int i = 0; i < m_cardMods.size(); ++i) {
             QVariantMap mm = m_cardMods[i].toMap();
             if (mm.value(QStringLiteral("name")).toString() == name
@@ -564,7 +556,14 @@ void ModpackInstallTask::runDownload()
             [this](int completed, int total, int failed) {
                 if (m_cardDone) return;   // 已收尾：进度不再合成/下发，防覆盖绿色完成态
                 if (total <= 0) return;
-                m_modFrac = (qreal)completed / total;
+                // ── 步骤 2 百分比的**唯一**写者（2026-11-14）──
+                // 分子必须包含「在跑但没完成」的那部分字节比例，否则模组少时
+                // 每完成一个就跳一大格、且当前文件推进完全看不出来（旧实现只数文件个数，
+                // 又叠加了 fileProgress 里另算的一套 → 两个真相来源互相踩）。
+                const qreal partial = m_downloader ? m_downloader->currentPartialFraction() : 0.0;
+                qreal frac = total > 0 ? (completed + partial) / qreal(total) : 0.0;
+                frac = qBound(qreal(0.0), frac, qreal(1.0));
+                m_modFrac = frac;
                 m_modDoneCount = completed;
                 m_modTotalCount = total;
                 m_modFailedCount = failed;
@@ -576,9 +575,12 @@ void ModpackInstallTask::runDownload()
                 setCardStepName(2, stepName);
                 // 剩文件时封顶 99：qRound(421/422*100) = 100，于是「剩 1 个」配着 100%
                 // —— 用户看上去就是卡死。剩下的那个完成后自然到 100。
-                const int shownPct = remain > 0 ? qMin(99, qRound(100.0 * m_modFrac))
-                                                : qRound(100.0 * m_modFrac);
-                setCardStep(2, QStringLiteral("active"), shownPct);
+                const int raw = remain > 0 ? qMin(99, qRound(100.0 * frac))
+                                           : qRound(100.0 * frac);
+                // 单调：换源/重试会让在跑比例归零，四舍五入也会抖一档。
+                // DOWNLOAD_CONTRACT §3：active 步骤百分比不得回退。
+                if (raw > m_modPctShown) m_modPctShown = raw;
+                setCardStep(2, QStringLiteral("active"), m_modPctShown);
                 // 总进度与副标题由唯一出口合成（原地写文案会与 MC 路互相覆盖）
                 recomposeProgress();
             });
@@ -1283,6 +1285,7 @@ bool ModpackInstallTask::retryFailedModFiles()
     m_cardDone = false;
     m_busy = true;
     m_modFrac = 0.0;
+    m_modPctShown = 0;
     m_cardSpeed = 0;
     m_phase = Phase::Download;
     setCardStep(2, QStringLiteral("active"), 0);
@@ -1466,6 +1469,7 @@ void ModpackInstallTask::initTaskCard()
     m_lastBytesMs = 0;
     m_lastFileProgMs = 0;
     m_modFrac = 0.0;
+    m_modPctShown = 0;
     m_mcSessionId.clear();
     m_cardDone = false;
 

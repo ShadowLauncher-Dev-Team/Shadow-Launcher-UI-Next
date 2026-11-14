@@ -53,6 +53,10 @@ public:
     /// 引擎当前速度（bytes/s）。单一来源：本引擎的滑动窗口值，停流时窗口自然滑落。
     /// 上层只允许格式化显示，**不得再做二次平滑或"无数据减半"**（DOWNLOAD_CONTRACT §4）。
     qint64 currentSpeedBps() const { return static_cast<qint64>(m_emaMbps * 1024.0 * 1024.0); }
+    /// 「在跑但还没完成」的那部分的字节比例之和（0..同时活动文件数）。
+    /// 上层用它做队列进度：(已完成 + partial) / 总数 —— 只报文件个数会让
+    /// 少模组整合包每完成一个就跳一大格，且看不出当前文件推进了多少。
+    double partialFraction() const;
 
     // ── 模组专属配置 ──
     void setMaxThreads(int n) { m_maxThreads = qBound(1, n, 64); }
@@ -164,6 +168,11 @@ private:
     // 而单独下载时它们都能满速——这就是「部分模组失败、单拿出来又能下」的真相。
     // 降到 16KB/500ms（≈32KB/s）：只有真的基本停止传输才换源。
     static constexpr qint64 kSlowBytesPerTick = 16 * 1024;
+    // 尾程（还有空并发槽）专用阈值：此时没有别的文件分摊带宽，
+    // 「慢」就是这条连接本身慢，64KB/500ms（≈128KB/s）以下就该换源。
+    // 实测依据（2026-11-14 日志）：剩 2 个模组时空槽 10 个，
+    // 单连接仍卡在 44KB/s，换源后 15 秒下完 29MB（≈2MB/s）。
+    static constexpr qint64 kSlowBytesPerTickIdleSlots = 64 * 1024;
     static constexpr qint64 kSlowTriggerMs = 2000;
     static constexpr double kGlobalSlowGateMbps = 1.0;   // 1MB/s（2026-08-10 二修：0.25→1.0）
     static constexpr int kMaxSlowSwitches = 6;   // 每文件看门狗换源上限（全源慢时停止，宁可慢爬不误判失败）

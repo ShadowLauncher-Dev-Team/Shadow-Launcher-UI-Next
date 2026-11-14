@@ -82,6 +82,8 @@ public:
     /// 引擎当前速度（bytes/s），直接转发引擎窗口值。
     /// 上层只允许格式化显示，**不得再做二次平滑或"无数据减半"**（DOWNLOAD_CONTRACT §4）。
     qint64 currentSpeedBps() const;
+    /// 在跑文件的字节比例之和（0..活动数）：任务层队列进度 = (完成 + 这个值)/总数。
+    double currentPartialFraction() const;
 
 signals:
     void statusChanged(const QString& text);          // 阶段文案（"正在解析下载地址…"）

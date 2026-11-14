@@ -834,6 +834,11 @@ double ModpackDownloader::currentSpeedMBps() const
     return m_fd ? m_fd->currentSpeedMBps() : 0.0;
 }
 
+double ModpackDownloader::currentPartialFraction() const
+{
+    return m_fd ? m_fd->partialFraction() : 0.0;
+}
+
 qint64 ModpackDownloader::currentSpeedBps() const
 {
     return m_fd ? m_fd->currentSpeedBps() : 0;

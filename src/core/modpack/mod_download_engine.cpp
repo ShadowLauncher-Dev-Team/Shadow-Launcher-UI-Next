@@ -652,6 +652,19 @@ void ModDownloadEngine::finishAll()
 // SpeedMeter — 与 FileDownloader 同款：100ms 采样 + 30 条线性加权窗口
 // ═════════════════════════════════════════════════════════════════════════
 
+double ModDownloadEngine::partialFraction() const
+{
+    double sum = 0.0;
+    for (const auto& it : m_items) {
+        if (it->state != 1) continue;   // 只算正在传的
+        const qint64 denom = it->fileSize > 0 ? it->fileSize : it->total;
+        if (denom <= 0) continue;
+        const double f = double(it->received) / double(denom);
+        sum += f < 0.0 ? 0.0 : (f > 1.0 ? 1.0 : f);
+    }
+    return sum;
+}
+
 void ModDownloadEngine::speedTick()
 {
     if (m_state != Running) return;
@@ -687,6 +700,16 @@ void ModDownloadEngine::watchTick()
     if (m_state != Running) return;
 
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
+
+    // ── 尾程识别（2026-11-14）──
+    // 还有空槽 = 没有别的文件在分摊带宽，此时「单文件慢」就是这条连接本身慢，
+    // 不能再用「全局 EMA 高说明是带宽被分摊」豁免换源（旧逻辑正是这样漏掉了尾程）。
+    // 实测：剩 2 个模组、空槽 10 个，单连接卡 44KB/s 达 10 分钟；
+    // 换源后同一台 CDN 15 秒下完 29MB。所以尾程要更严的阈值 + 不受全局门控。
+    const int normalSlots = (m_largeActive > 0) ? qMax(2, m_maxThreads / 2) : m_maxThreads;
+    const bool idleSlots = (m_active - m_largeActive) < normalSlots;
+    const qint64 slowTick = idleSlots ? kSlowBytesPerTickIdleSlots : kSlowBytesPerTick;
+
     for (auto& it : m_items) {
         if (it->state != 1 || !it->reply) continue;
 
@@ -715,7 +738,7 @@ void ModDownloadEngine::watchTick()
         const qint64 delta = it->received - it->lastWatchBytes;
         it->lastWatchBytes = it->received;
 
-        if (delta >= kSlowBytesPerTick) {
+        if (delta >= slowTick) {
             // 这个 tick 够快 → 重置低速计时
             it->slowSinceMs = 0;
             continue;
@@ -737,7 +760,8 @@ void ModDownloadEngine::watchTick()
         //    2026-08-10 二修：阈值 0.25→1.0——mirror 限流时（单任务 30KB/s×12≈360KB/s）
         //    聚合仍 >0.25 → 门控锁死换源 → 大文件慢爬小文件排队（实测第三次导入
         //    4 分钟 1 个）。1MB/s 下限流场景可换源逃逸到 edge。
-        if (m_emaMbps >= kGlobalSlowGateMbps) {
+        // 尾程（有空槽）不受全局门控：全局 EMA 低恰恰就是这条慢连接造成的
+        if (!idleSlots && m_emaMbps >= kGlobalSlowGateMbps) {
             it->slowSinceMs = 0;
             continue;
         }
