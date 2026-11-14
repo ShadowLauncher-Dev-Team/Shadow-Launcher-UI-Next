@@ -18,6 +18,31 @@ Item {
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     property string currentKey: "quick"
 
+    // ── 换版本 / 重新进入时必须重建分区页（2026-11-14）──
+    // 本页在 StageShell 里是**常驻实例**，打开/关闭只切宿主的 visible，
+    // 页面对象和它里面的分区页都不会被销毁。而每个分区页（VsModsPane 等）
+    // 只在自己 Component.onCompleted 里加载一次数据 —— 于是从版本列表打开
+    // **另一个版本**的版本设置时，Mod 管理显示的还是上一个版本的内容。
+    // （10 个分区里只有 VsExportPane 自己写了 onVersionIdChanged。）
+    // 修法：版本变了 / 页面重新打开时，让 Loader 销毁并重建分区实例。
+    // 顺带把搜索词、滚动位置、选中项这些**属于旧版本**的界面状态一起清掉，
+    // 而不是让它们跨版本残留。
+    property bool opened: true
+    property int paneEpoch: 0
+    function reloadPanes() {
+        // 防抖：打开时 versionId 与 opened 会先后各触发一次，用 epoch 合并成一次重建
+        page.paneEpoch++
+        var token = page.paneEpoch
+        Qt.callLater(function() {
+            if (token !== page.paneEpoch) return
+            page.busy = false
+            page.ensureKeyVisible()      // 新版本可能不支持当前分区（原版没有 mods/）
+            if (paneLoader.active) { paneLoader.active = false; paneLoader.active = true }
+        })
+    }
+    onVersionIdChanged: page.reloadPanes()
+    onOpenedChanged: if (opened) page.reloadPanes()
+
     // ── 当前版本能开哪些内容区（2026-11-13）──
     // 原版没有 mods/、shaderpacks/（游戏根本不会去读），这两个入口以前无条件摆着，
     // 点进去永远是空列表 —— 那是错的。这里按版本实际能力过滤。
@@ -97,6 +122,15 @@ Item {
         return false
     }
     function ensureKeyVisible() {
+        // 待切分区优先：--ui-pane 指定分区的可见性是分两拍到达的
+        // （先按版本目录名猜加载器 → 再等 versionDetails 扫到）。
+        // 旧实现在第一拍把 currentKey 打回 quick、同时 pendingPaneKey 已被消费，
+        // 于是指定分区永远进不去。这里让待切分区优先，且消费时才清空。
+        if (page.pendingPaneKey.length > 0 && page.keyVisible(page.pendingPaneKey)) {
+            page.currentKey = page.pendingPaneKey
+            page.pendingPaneKey = ""
+            return
+        }
         if (!page.keyVisible(page.currentKey)) page.currentKey = "quick"
     }
     // 统一入口：可用就切过去，不可用就说明原因（不静默跳走）。

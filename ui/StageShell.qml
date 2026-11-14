@@ -775,6 +775,9 @@ Item {
                 id: settingsPage
                 anchors.fill: parent
                 versionId: root.settingsVersionId
+                // 页面是常驻实例（只切 visible），分区页不会因此重建，
+                // 所以要把「打开了」这个信号显式传进去触发刷新（2026-11-14）。
+                opened: root.settingsOpen
                 toast: toastHost
                 onClose: root.settingsOpen = false
                 // 全局拖入要按"用户当前在看哪个分区"决定文件落到哪，
