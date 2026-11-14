@@ -1138,12 +1138,19 @@ Item {
 
         Rectangle {
             id: folderPanel
-            anchors.right: parent.right
-            anchors.rightMargin: page.narrow ? 18 : 24
-            anchors.top: parent.top
-            anchors.topMargin: 60
+            // ── 2026-11-14：下拉面板必须跟着触发它的按钮 ──
+            // 原来是 anchors.right + rightMargin: 24，对齐的是**窗口右边缘**；
+            // 但按钮在右上工具栏里，它的右边缘还要减去
+            // 「导入整合包 / 刷新」两个按钮的宽度。两者没关系，
+            // 所以下拉面板一直偏右、与按钮错开（实测截图反馈）。
+            // 现在直接取按钮的实际坐标，右边缘与按钮右边缘对齐、
+            // 底边贴着按钮下沿；放不下就自动往左/往上挤，始终保留 12px。
+            readonly property real chipRightX: folderChip.mapToItem(folderPop, folderChip.width, 0).x
+            readonly property real chipBottomY: folderChip.mapToItem(folderPop, 0, folderChip.height).y
             width: Math.min(380, page.width - 36)
             height: Math.min(page.height - 76, 16 + Math.max(1, page.folders.length) * 46 + 44)
+            x: Math.max(12, Math.min(page.width - width - 12, chipRightX - width))
+            y: Math.max(12, Math.min(chipBottomY + 8, page.height - height - 12))
             radius: 2
             color: Theme.bgCard2
             // 下拉面板：从上方 6px 落下
