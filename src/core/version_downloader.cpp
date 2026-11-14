@@ -1465,8 +1465,9 @@ VersionDownloader::collectVerifyItems(const QJsonObject& versionJson,
                 addArtifact(it.value().toObject());
         }
     }
-    emit verifyProgressChanged(collected, approxTotal);
-    QCoreApplication::processEvents();
+    // 不发进度：这里只是「清点文件」，不是校验。
+    // （2026-11-14 实测小结：这里发过估算百分比，而 updateStep 对 active
+    // 步骤强制百分比单调不回退，会把后面真实校验的 0% 吞掉。）
 
     // 3. Assets from the already-downloaded index
     const QString objectsDir = m_minecraftDir + QStringLiteral("/assets/objects");
@@ -1490,21 +1491,20 @@ VersionDownloader::collectVerifyItems(const QJsonObject& versionJson,
                               sha1,
                               QStringLiteral("assets/%1").arg(it.key())});
                 collected++;
-                if (collected % 500 == 0) {
-                    emit verifyProgressChanged(collected, approxTotal);
-                    QCoreApplication::processEvents();
-                }
+                if (collected % 500 == 0)
+                    QCoreApplication::processEvents();   // 应答消息，不报进度
             }
         }
     }
 
     int totalItems = items.size();
         qCInfo(logVersion) << QStringLiteral("[盘古] 收集到 %1 个文件待校验").arg(totalItems);
-    // Phase A complete — mark as done, then Phase B starts at 0
-    emit verifyProgressChanged(totalItems, totalItems);
-    QCoreApplication::processEvents();
-
-    // Notify UI that verification is starting
+    // ── 真实校验的 0 起点 ──
+    // 旧实现在这里先发一次 (totalItems, totalItems) 假装「Phase A 完成 = 100%」，
+    // 但 VersionBackend::updateStep 对 active 步骤有「百分比不得回退」的契约，
+    // 紧跟着的真实 0% 会被钳成 100%，于是用户只看到
+    // 「校验游戏文件 100%」一直转圈（影反馈）。
+    // 清点文件不是校验工作，不该占用这条进度。
     emit verifyProgressChanged(0, totalItems);
     QCoreApplication::processEvents();
 
