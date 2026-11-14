@@ -1140,4 +1140,13 @@ Item {
             onClicked: if (root.hostWindow) root.hostWindow.close()
         }
     }
+
+    // 协议门禁：未同意前盖住整个界面（连侧栏和窗口按钮一起）。
+    // 必须**最后声明**：同 z 时后声明者在上；上面那排窗口按钮 z:900，本层 z:1000 仍压住它。
+    AgreementGate {
+        id: agreementGate
+        anchors.fill: parent
+        b: root.b
+        hostWindow: root.hostWindow
+    }
 }

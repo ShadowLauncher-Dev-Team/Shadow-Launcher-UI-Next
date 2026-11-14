@@ -302,6 +302,7 @@ qt_add_qml_module(ShadowLauncher
         ui/pages/DownloadPage.qml
         ui/pages/ProgressPage.qml
         ui/LaunchOverlay.qml
+        ui/AgreementGate.qml
         ui/controls/SIcon.qml
         ui/controls/SButton.qml
         ui/controls/SBgImage.qml

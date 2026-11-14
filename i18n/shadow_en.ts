@@ -3811,4 +3811,55 @@ This cannot be undone.</translation>
         <translation>Default game folder</translation>
     </message>
 </context>
+<context>
+    <name>AgreementGate</name>
+    <message>
+        <source>欢迎使用 Shadow Launcher</source>
+        <translation>Welcome to Shadow Launcher</translation>
+    </message>
+    <message>
+        <source>开始前，请阅读并同意以下协议</source>
+        <translation>Please read and accept the agreements below before you start</translation>
+    </message>
+    <message>
+        <source>用户协议</source>
+        <translation>Terms of Service</translation>
+    </message>
+    <message>
+        <source>隐私政策</source>
+        <translation>Privacy Policy</translation>
+    </message>
+    <message>
+        <source>内测协议</source>
+        <translation>Beta Agreement</translation>
+    </message>
+    <message>
+        <source>向下滚动阅读</source>
+        <translation>Scroll to read</translation>
+    </message>
+    <message>
+        <source>已读完</source>
+        <translation>All read</translation>
+    </message>
+    <message>
+        <source>无法加载协议文件</source>
+        <translation>Unable to load the agreement</translation>
+    </message>
+    <message>
+        <source>我已阅读并同意以上全部协议</source>
+        <translation>I have read and accept all agreements above</translation>
+    </message>
+    <message>
+        <source>同意并继续</source>
+        <translation>Accept and continue</translation>
+    </message>
+    <message>
+        <source>退出</source>
+        <translation>Quit</translation>
+    </message>
+    <message>
+        <source>不同意以上协议将无法使用本启动器</source>
+        <translation>You cannot use this launcher without accepting these agreements</translation>
+    </message>
+</context>
 </TS>

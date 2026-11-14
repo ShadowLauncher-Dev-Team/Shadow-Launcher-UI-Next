@@ -3811,4 +3811,55 @@
         <translation>預設遊戲資料夾</translation>
     </message>
 </context>
+<context>
+    <name>AgreementGate</name>
+    <message>
+        <source>欢迎使用 Shadow Launcher</source>
+        <translation>歡迎使用 Shadow Launcher</translation>
+    </message>
+    <message>
+        <source>开始前，请阅读并同意以下协议</source>
+        <translation>開始前，請閱讀並同意以下協議</translation>
+    </message>
+    <message>
+        <source>用户协议</source>
+        <translation>用戶協議</translation>
+    </message>
+    <message>
+        <source>隐私政策</source>
+        <translation>私隱政策</translation>
+    </message>
+    <message>
+        <source>内测协议</source>
+        <translation>內測協議</translation>
+    </message>
+    <message>
+        <source>向下滚动阅读</source>
+        <translation>向下滾動閱讀</translation>
+    </message>
+    <message>
+        <source>已读完</source>
+        <translation>已讀完</translation>
+    </message>
+    <message>
+        <source>无法加载协议文件</source>
+        <translation>無法載入協議檔案</translation>
+    </message>
+    <message>
+        <source>我已阅读并同意以上全部协议</source>
+        <translation>我已閱讀並同意以上全部協議</translation>
+    </message>
+    <message>
+        <source>同意并继续</source>
+        <translation>同意並繼續</translation>
+    </message>
+    <message>
+        <source>退出</source>
+        <translation>退出</translation>
+    </message>
+    <message>
+        <source>不同意以上协议将无法使用本启动器</source>
+        <translation>不同意以上協議將無法使用本啟動器</translation>
+    </message>
+</context>
 </TS>
