@@ -382,9 +382,6 @@ Item {
                                 height: 104
                                 readonly property bool selected: modelData.active === true
 
-                                // 悬停要在**整块 tile** 上判定：只判 22px 小方块的话，
-                                // 指针稍一偏出按钮范围，按钮就消失，等于点不中
-                                HoverHandler { id: uTileHover }
 
                                 // 同上：图片容器不画边框，边框单独一层压在最上面
                                 Rectangle {
@@ -474,7 +471,10 @@ Item {
                                     anchors.top: parent.top
                                     anchors.topMargin: 3
                                     z: 2
-                                    visible: uTileHover.containsMouse === true
+                                    // 常驻显示：这个按钮先后因为「悬停判定写在按钮自己身上」和
+                                    // 「悬停判定写在整块 tile 上」两次拿不到 hover 而消失。
+                                    // 删除是低频且明确的动作，宁可一直露着，也不要看不见/点不中。
+                                    visible: true
                                     Rectangle {
                                         anchors.fill: parent
                                         radius: 11
