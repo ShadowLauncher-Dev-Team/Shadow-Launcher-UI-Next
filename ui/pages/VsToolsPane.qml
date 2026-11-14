@@ -29,6 +29,10 @@ Item {
     property int repairing: 0
     property bool renaming: false
     property string renameText: ""
+    // 删除版本要先确认：版本目录连同里面的模组/存档/配置一起删，不可撤销。
+    property bool confirmingDelete: false
+    // 删完这个版本就不存在了，设置页必须退出（由 VersionSettingsPage 接住）
+    signal requestClose()
 
     Connections {
         target: pane.b
@@ -358,11 +362,84 @@ Item {
                         height: 32
                         radius: 2
                         text: qsTr("删除该版本")
-                        onClicked: {
-                            if (!pane.b) return
-                            pane.b.deleteVersion(pane.versionId)
-                            if (pane.toast) pane.toast.show(qsTr("已删除版本"))
-                        }
+                        onClicked: if (pane.b) pane.confirmingDelete = true
+                    }
+                }
+            }
+        }
+    }
+
+    // 删除版本确认弹层（与 VsSavesPane「删除存档？」同一套体例）
+    // 这条路径必须拦一道：deleteVersion 会 forceRemoveDir 整个 versions/<id>，
+    // 连里面的 mods / saves / config 一起删，还会连带删掉同前缀的加载器版本
+    // （删 "1.20.1" 会顺带删 "1.20.1-forge-47.x"），且不可撤销。
+    Popup {
+        id: deletePop
+        parent: pane
+        anchors.centerIn: parent
+        width: 360
+        modal: true
+        padding: 0
+        visible: pane.confirmingDelete
+        closePolicy: Popup.CloseOnEscape
+        // 出现动画：淡入 + 96%→100% 归位（与全屏页入场同一套语汇，只是幅度小）。
+        // **只做入场、不做退场**：退场动画会让"取消/删除"之后弹窗还挂着播完才消失，
+        // 等于关个弹窗还要等动画——这个坑上一轮已经踩过一次。
+        transformOrigin: Item.Center
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+                NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+            }
+        }
+        background: Rectangle {
+            radius: Theme.rMd
+            color: Theme.bgCard2
+            border.width: 1
+            border.color: Theme.line2
+        }
+        contentItem: Column {
+            width: 360
+            padding: 18
+            spacing: 12
+            Text {
+                text: qsTr("删除该版本？")
+                color: Theme.fg
+                font.family: Theme.fontFamily
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+            }
+            Text {
+                width: parent.width - 36
+                text: qsTr("%1\n整个版本目录会连同其中的模组、存档与配置一起删除，\n同名的加载器版本也会一并删除。这个操作不能撤销。")
+                          .arg(pane.versionId)
+                color: Theme.fg2
+                wrapMode: Text.Wrap
+                font.family: Theme.fontFamily
+                font.pixelSize: 12
+            }
+            Row {
+                spacing: 8
+                SButton {
+                    kind: 1
+                    height: 32
+                    radius: 2
+                    text: qsTr("取消")
+                    onClicked: pane.confirmingDelete = false
+                }
+                SButton {
+                    kind: 1
+                    danger: true
+                    height: 32
+                    radius: 2
+                    text: qsTr("删除")
+                    onClicked: {
+                        if (!pane.b) return
+                        pane.confirmingDelete = false
+                        pane.b.deleteVersion(pane.versionId)
+                        if (pane.toast) pane.toast.show(qsTr("已删除版本"))
+                        // 版本已不存在：留在它的设置页没有意义，退回版本列表
+                        pane.requestClose()
                     }
                 }
             }

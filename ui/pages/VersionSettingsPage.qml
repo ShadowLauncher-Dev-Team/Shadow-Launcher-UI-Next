@@ -495,6 +495,8 @@ Item {
         VsToolsPane {
             versionId: page.versionId
             toast: page.toast
+            // 版本被删掉后它的设置页没有意义，直接退回版本列表
+            onRequestClose: page.close()
         }
     }
     Component {
