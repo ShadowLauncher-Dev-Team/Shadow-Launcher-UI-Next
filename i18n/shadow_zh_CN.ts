@@ -2534,6 +2534,58 @@
         <source>所有文件 (*)</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>重命名文件夹</source>
+        <translation>重命名文件夹</translation>
+    </message>
+    <message>
+        <source>为文件夹命名</source>
+        <translation>为文件夹命名</translation>
+    </message>
+    <message>
+        <source>显示名称</source>
+        <translation>显示名称</translation>
+    </message>
+    <message>
+        <source>移除</source>
+        <translation>移除</translation>
+    </message>
+    <message>
+        <source>确认移除？</source>
+        <translation>确认移除？</translation>
+    </message>
+    <message>
+        <source>仅改启动器里的显示名，不动本地文件夹</source>
+        <translation>仅改启动器里的显示名，不动本地文件夹</translation>
+    </message>
+    <message>
+        <source>仅影响列表里的显示名，不动本地文件夹</source>
+        <translation>仅影响列表里的显示名，不动本地文件夹</translation>
+    </message>
+    <message>
+        <source>已重命名为 %1</source>
+        <translation>已重命名为 %1</translation>
+    </message>
+    <message>
+        <source>已从列表移除（本地文件夹未删除）</source>
+        <translation>已从列表移除（本地文件夹未删除）</translation>
+    </message>
+    <message>
+        <source>移除失败：默认目录不能移除</source>
+        <translation>移除失败：默认目录不能移除</translation>
+    </message>
+    <message>
+        <source>添加失败</source>
+        <translation>添加失败</translation>
+    </message>
+    <message>
+        <source>重命名</source>
+        <translation>重命名</translation>
+    </message>
+    <message>
+        <source>确认</source>
+        <translation>确认</translation>
+    </message>
 </context>
 <context>
     <name>VersionSettingsPage</name>
@@ -3734,7 +3786,7 @@
     </message>
 </context>
 <context>
-    <name>MinecraftFolderBackend</name>
+    <name>ShadowLauncher::MinecraftFolderBackend</name>
     <message>
         <source>默认游戏目录</source>
         <translation>默认游戏目录</translation>

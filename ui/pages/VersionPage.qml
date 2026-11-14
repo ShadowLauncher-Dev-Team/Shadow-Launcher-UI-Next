@@ -209,7 +209,7 @@ Item {
             var ok = page.mcFolder.renameGameFolder(page.folderNameTarget, nm)
             page.folderNamePop = false
             page.mcFolder.refreshFolders()
-            page.flash(ok ? qsTr("已改名为 %1").arg(nm) : qsTr("改名失败"))
+            page.flash(ok ? qsTr("已重命名为 %1").arg(nm) : qsTr("重命名失败"))
         } else {
             var path = page._pendingNewPath || ""
             if (path.length === 0) { page.folderNamePop = false; return }
@@ -1166,18 +1166,39 @@ Item {
                 Repeater {
                     model: page.folders
                     delegate: Item {
+                        id: folderRow
                         width: parent.width
                         height: 44
+
+                        readonly property bool rowActive: !!(modelData && modelData.active)
+                        readonly property bool rowDefault: !!(modelData && modelData.isDefault === true)
+                        readonly property string rowPath: modelData ? (modelData.path || "") : ""
+                        // 鼠标在按钮上时，rowHoverArea 不再收到悬停（按钮在上层），
+                        // 所以行高亮还要算上两个按钮自己的悬停。
+                        readonly property bool hovered: rowHoverArea.containsMouse
+                                                         || renameHover.containsMouse
+                                                         || removeHover.containsMouse
+
+                        // 底色：选中与悬停都要有反馈，并带过渡。
+                        // 原来只有「活动中 = bgCard，其余透明」，鼠标悬停没任何变化。
                         Rectangle {
                             anchors.fill: parent
                             radius: 8
-                            color: (modelData && modelData.active) ? Theme.bgCard : "transparent"
+                            color: folderRow.rowActive ? Theme.bgCard
+                                   : (folderRow.hovered ? Theme.bgHover : "transparent")
+                            Behavior on color {
+                                ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                            }
                         }
+
                         Column {
                             anchors.left: parent.left
                             anchors.leftMargin: 10
-                            anchors.right: parent.right
-                            anchors.rightMargin: 56
+                            // 右边界顺着右侧元素走：有「使用中」跟它，
+                            // 没有就跟操作行，都没有才到边。避免名字跑到按钮下面。
+                            anchors.right: activeTag.visible ? activeTag.left
+                                           : (folderOps.visible ? folderOps.left : parent.right)
+                            anchors.rightMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 2
                             Text {
@@ -1198,97 +1219,135 @@ Item {
                                 elide: Text.ElideMiddle
                             }
                         }
+
+                        // 「使用中」与右侧操作行排成一行，各自锚 right 会重叠（实测）。
                         Text {
-                            visible: modelData && modelData.active
-                            anchors.right: parent.right
-                            anchors.rightMargin: 10
+                            id: activeTag
+                            visible: folderRow.rowActive
+                            anchors.right: folderOps.visible ? folderOps.left : parent.right
+                            anchors.rightMargin: 12
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("使用中")
                             color: Theme.accent
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
-                        // ── 2026-11-14：改名 / 移除 ──
-                        // 只在非活动、非默认的条目上出现（默认目录不可移除，已有后端抦截）。
-                        // 两个按钮叠在一起，鼠标悬停才显形——不占默认视线。
+
+                        // 整行点击 / 悬停区（必须在操作行**下层**）。
+                        // 顺序反了会出两个 bug：盖住按钮的点击；以及 hoverEnabled
+                        // 吃掉按钮的悬停事件，导致“悬停在按钮上按钮不变色”。
+                        MouseArea {
+                            id: rowHoverArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: page.switchFolder(folderRow.rowPath, folderRow.rowDefault)
+                        }
+
+                        // ── 2026-11-14：重命名 / 移除 ──
+                        // 顺序很重要：整行点击的 MouseArea 必须声明在它**之前**，
+                        // 否则 MouseArea 盖在上面会抢掉这两个按钮的点击
+                        // （原来靠 point.position.x 计算坐标硬绕，很脆）。
                         Row {
                             id: folderOps
                             anchors.right: parent.right
                             anchors.rightMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 6
-                            visible: !(modelData && (modelData.isDefault === true))
-                            opacity: folderOpsHover.containsMouse ? 1 : 0.45
-                            Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
+                            spacing: 10
+                            visible: !folderRow.rowDefault
+                            // 默认半透不抢注意力，鼠标上来就亮。
+                            opacity: folderRow.hovered ? 1.0 : 0.7
+                            Behavior on opacity { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
 
                             Text {
-                                text: page.folderPendingDelete === (modelData ? modelData.path : "")
-                                      ? qsTr("确认移除？") : qsTr("改名")
-                                color: Theme.fg2
+                                id: renameBtn
+                                text: page.folderPendingDelete === folderRow.rowPath
+                                      ? qsTr("确认移除？") : qsTr("重命名")
+                                // 悬停提亮：没有这个就完全看不出是可点的
+                                color: renameHover.containsMouse ? Theme.fg : Theme.fg2
+                                Behavior on color {
+                                    ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                                }
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                                 MouseArea {
+                                    id: renameHover
                                     anchors.fill: parent
                                     anchors.margins: -4
+                                    hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         page.folderMenuOpen = false
-                                        page.folderNameTarget = modelData.path
-                                        page.folderNameText = modelData.name || ""
+                                        page.folderNameTarget = folderRow.rowPath
+                                        page.folderNameText = (modelData && modelData.name) ? modelData.name : ""
                                         page.folderNamePop = true
                                     }
                                 }
                             }
                             Text {
-                                visible: !(modelData && modelData.active)
-                                text: page.folderPendingDelete === (modelData ? modelData.path : "")
+                                id: removeBtn
+                                visible: !folderRow.rowActive
+                                text: page.folderPendingDelete === folderRow.rowPath
                                       ? qsTr("确认") : qsTr("移除")
-                                color: page.folderPendingDelete === (modelData ? modelData.path : "")
-                                       ? Theme.dangerText : Theme.fg3
+                                color: page.folderPendingDelete === folderRow.rowPath
+                                       ? Theme.dangerText
+                                       : (removeHover.containsMouse ? Theme.dangerText : Theme.fg3)
+                                Behavior on color {
+                                    ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                                }
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
                                 MouseArea {
+                                    id: removeHover
                                     anchors.fill: parent
                                     anchors.margins: -4
+                                    hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        var pth = modelData ? modelData.path : ""
-                                        if (page.folderPendingDelete === pth) {
-                                            page.removeFolder(pth)
+                                        if (page.folderPendingDelete === folderRow.rowPath) {
+                                            page.removeFolder(folderRow.rowPath)
                                             page.folderMenuOpen = false
                                         } else {
                                             // 第一次点只进入待确认态，不直接删
-                                            page.folderPendingDelete = pth
+                                            page.folderPendingDelete = folderRow.rowPath
                                         }
                                     }
                                 }
                             }
                         }
-                        HoverHandler { id: folderOpsHover }
-                        MouseArea {
-                            anchors.fill: parent
-                            // 右侧操作区不让点击穿过去切换目录
-                            enabled: !folderOps.visible || folderOpsHover.point.position.x < (folderOps.x - 8)
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: page.switchFolder(modelData.path, modelData.isDefault === true)
-                        }
+
                     }
                 }
 
                 Item {
                     width: parent.width
                     height: 40
+                    // 悬停底色：与上面的目录行保持一致，
+                    // 否则这一行看上去像标题而不像可点项。
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 8
+                        color: browseHover.containsMouse ? Theme.bgHover : "transparent"
+                        Behavior on color {
+                            ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                        }
+                    }
                     Text {
                         anchors.left: parent.left
                         anchors.leftMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
                         text: qsTr("浏览其他文件夹…")
-                        color: Theme.accentText
+                        color: browseHover.containsMouse ? Theme.accent : Theme.accentText
+                        Behavior on color {
+                            ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard }
+                        }
                         font.family: Theme.fontFamily
                         font.pixelSize: 13
                     }
                     MouseArea {
+                        id: browseHover
                         anchors.fill: parent
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: page.addFolder()
                     }
@@ -1318,7 +1377,7 @@ Item {
             padding: 16
             spacing: 12
             Text {
-                text: page.folderNameTarget.length > 0 ? qsTr("改名文件夹")
+                text: page.folderNameTarget.length > 0 ? qsTr("重命名文件夹")
                                                        : qsTr("为文件夹命名")
                 color: Theme.fg
                 font.family: Theme.fontFamily

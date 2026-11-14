@@ -2535,6 +2535,58 @@ Install one from the Download page and come back</translation>
         <source>所有文件 (*)</source>
         <translation>All files (*)</translation>
     </message>
+    <message>
+        <source>重命名文件夹</source>
+        <translation>Rename folder</translation>
+    </message>
+    <message>
+        <source>为文件夹命名</source>
+        <translation>Name this folder</translation>
+    </message>
+    <message>
+        <source>显示名称</source>
+        <translation>Display name</translation>
+    </message>
+    <message>
+        <source>移除</source>
+        <translation>Remove</translation>
+    </message>
+    <message>
+        <source>确认移除？</source>
+        <translation>Remove?</translation>
+    </message>
+    <message>
+        <source>仅改启动器里的显示名，不动本地文件夹</source>
+        <translation>Only changes the name shown in the launcher; the folder itself is not touched</translation>
+    </message>
+    <message>
+        <source>仅影响列表里的显示名，不动本地文件夹</source>
+        <translation>Only affects the name shown in this list; the folder itself is not touched</translation>
+    </message>
+    <message>
+        <source>已重命名为 %1</source>
+        <translation>Renamed to %1</translation>
+    </message>
+    <message>
+        <source>已从列表移除（本地文件夹未删除）</source>
+        <translation>Removed from the list; the folder itself was not deleted</translation>
+    </message>
+    <message>
+        <source>移除失败：默认目录不能移除</source>
+        <translation>Cannot remove: the default folder is protected</translation>
+    </message>
+    <message>
+        <source>添加失败</source>
+        <translation>Could not add the folder</translation>
+    </message>
+    <message>
+        <source>重命名</source>
+        <translation>Rename</translation>
+    </message>
+    <message>
+        <source>确认</source>
+        <translation>Confirm</translation>
+    </message>
 </context>
 <context>
     <name>VersionSettingsPage</name>
@@ -3741,7 +3793,7 @@ This cannot be undone.</translation>
     </message>
 </context>
 <context>
-    <name>MinecraftFolderBackend</name>
+    <name>ShadowLauncher::MinecraftFolderBackend</name>
     <message>
         <source>默认游戏目录</source>
         <translation>Default game folder</translation>
