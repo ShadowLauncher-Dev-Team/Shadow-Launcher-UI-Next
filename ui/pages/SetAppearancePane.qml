@@ -8,6 +8,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Window
+import QtQuick.Effects
 import ShadowLauncher.Next
 
 Item {
@@ -294,10 +295,17 @@ Item {
                                 // 四个圆角处会被图片的直角盖掉一截 —— 看起来就是「边框缺角」。
                                 // 所以边框单独抽成最上层一条（见下面 borderLayer），四角永远完整。
                                 Rectangle {
+                                    id: bPicFrame
                                     anchors.fill: parent
                                     radius: Theme.rMd
                                     color: Theme.bgCard2
+                                    // clip 只裁矩形边界：圆角要另外用遮罩，否则四角会露出方角
                                     clip: true
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
+                                        maskEnabled: true
+                                        maskSource: bPicMask
+                                    }
 
                                     Image {
                                         anchors.fill: parent
@@ -334,6 +342,15 @@ Item {
                                     }
                                 }
 
+                                // 圆角遮罩源：只做形状，不可见
+                                Rectangle {
+                                    id: bPicMask
+                                    anchors.fill: parent
+                                    radius: Theme.rMd
+                                    visible: false
+                                    layer.enabled: true
+                                }
+
                                 // 边框层（最上层，圆角完整）
                                 Rectangle {
                                     anchors.fill: parent
@@ -360,16 +377,28 @@ Item {
                             model: pane.userPresets
 
                             delegate: Item {
+                                id: uTile
                                 width: 176
                                 height: 104
                                 readonly property bool selected: modelData.active === true
 
+                                // 悬停要在**整块 tile** 上判定：只判 22px 小方块的话，
+                                // 指针稍一偏出按钮范围，按钮就消失，等于点不中
+                                HoverHandler { id: uTileHover }
+
                                 // 同上：图片容器不画边框，边框单独一层压在最上面
                                 Rectangle {
+                                    id: uPicFrame
                                     anchors.fill: parent
                                     radius: Theme.rMd
                                     color: Theme.bgCard2
+                                    // clip 只裁矩形边界：圆角要另外用遮罩，否则四角会露出方角
                                     clip: true
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
+                                        maskEnabled: true
+                                        maskSource: uPicMask
+                                    }
 
                                     // 缩略图用这张图**自己的**取景，所见即启动页上会看到的
                                     SBgImage {
@@ -408,6 +437,15 @@ Item {
 
                                 }
 
+                                // 圆角遮罩源：只做形状，不可见
+                                Rectangle {
+                                    id: uPicMask
+                                    anchors.fill: parent
+                                    radius: Theme.rMd
+                                    visible: false
+                                    layer.enabled: true
+                                }
+
                                 // 边框层（最上层，压住图片的直角，圆角完整）
                                 Rectangle {
                                     anchors.fill: parent
@@ -429,13 +467,14 @@ Item {
 
                                 // 删除（只删数据目录里的副本，不动用户原图）
                                 Item {
-                                    width: 22
-                                    height: 22
+                                    width: 26
+                                    height: 26
                                     anchors.right: parent.right
-                                    anchors.rightMargin: 4
+                                    anchors.rightMargin: 3
                                     anchors.top: parent.top
-                                    anchors.topMargin: 4
-                                    visible: thumbHover.containsMouse
+                                    anchors.topMargin: 3
+                                    z: 2
+                                    visible: uTileHover.containsMouse === true
                                     Rectangle {
                                         anchors.fill: parent
                                         radius: 11
@@ -448,7 +487,6 @@ Item {
                                         size: 12
                                         color: Theme.imageFg
                                     }
-                                    HoverHandler { id: thumbHover }
                                     MouseArea {
                                         anchors.fill: parent
                                         cursorShape: Qt.PointingHandCursor
