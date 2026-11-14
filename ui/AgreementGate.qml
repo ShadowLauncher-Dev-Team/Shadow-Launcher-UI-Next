@@ -418,7 +418,8 @@ Item {
 
                 Item {
                     id: agreeRow
-                    Layout.preferredWidth: agreeInner.implicitWidth + 4
+                    // 占满剩余宽度：按钮用自然宽度，文案就吃掉剩下的空间（放不下时省略）
+                    Layout.fillWidth: true
                     Layout.preferredHeight: 22
 
                     readonly property bool hover: agreeHover.containsMouse
@@ -465,6 +466,8 @@ Item {
 
                         Text {
                             Layout.alignment: Qt.AlignVCenter
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
                             text: qsTr("我已阅读并同意以上全部协议")
                             color: agreeRow.hover ? Theme.fg : Theme.fg2
                             font.family: Theme.fontFamily
@@ -484,17 +487,14 @@ Item {
                     }
                 }
 
-                Item { Layout.fillWidth: true }
 
                 SButton {
-                    Layout.preferredWidth: 132
                     Layout.preferredHeight: 38
                     text: qsTr("同意并继续")
                     dimmed: !gate.agree
                     onClicked: gate.accept()
                 }
                 SButton {
-                    Layout.preferredWidth: 84
                     Layout.preferredHeight: 38
                     kind: 1
                     text: qsTr("退出")

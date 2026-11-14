@@ -84,6 +84,13 @@ Item {
                    : (root.danger ? (root.onDark ? "#ff9a94" : Theme.dangerText) : root._softFg2)
         }
         Text {
+            // 文字宽度上限 = 按钮宽度 - 左右内边距 - 图标与间距。
+            // 不给上限时，调用方一旦把 width 设得比文案窄，文字会直接从按钮里伸出去
+            // （协议门禁 132px 的「Accept and continue」压在隔壁按钮上就是这么来的）。
+            // 上限而不是固定宽度：正常情况下它仍按内容撑开，只有真的放不下才省略。
+            Layout.maximumWidth: Math.max(0, root.width - 12
+                - ((root.iconName !== "") ? (root.kind === 0 ? 18 : 14) + 9 : 0))
+            elide: Text.ElideRight
             text: root.text
             color: root.kind === 0
                    ? ((root.muted || root.dimmed) ? root._softFg3 : Theme.accentFg)
