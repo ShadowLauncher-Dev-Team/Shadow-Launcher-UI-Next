@@ -88,30 +88,6 @@ QString MinecraftFolderBackend::launcherName() const
 // 读取（每版本）
 // ════════════════════════════════════════════════════════════════
 
-QVariantList MinecraftFolderBackend::versionInfos() const
-{
-    QVariantList out;
-    if (!m_info.valid) return out;
-
-    for (const QString& id : m_info.versionIds) {
-        const QString verDir = m_info.root + QStringLiteral("/versions/") + id;
-        const QString jsonPath = findJsonInDir(verDir);
-        const QString jarPath = findJarInDir(verDir);
-        const QString gdir = resolveGameDirFor(id);
-
-        QVariantMap vm;
-        vm[QStringLiteral("id")] = id;
-        vm[QStringLiteral("jsonPath")] = jsonPath;
-        vm[QStringLiteral("jarPath")] = jarPath;
-        vm[QStringLiteral("gameDir")] = gdir;
-        vm[QStringLiteral("hasJson")] = !jsonPath.isEmpty();
-        vm[QStringLiteral("isolated")] = hasVersionGameData(verDir);
-        vm[QStringLiteral("modsCount")] = versionModsCount(id);
-        out.append(vm);
-    }
-    return out;
-}
-
 QString MinecraftFolderBackend::versionGameDir(const QString& versionId) const
 {
     return resolveGameDirFor(versionId);
@@ -120,16 +96,6 @@ QString MinecraftFolderBackend::versionGameDir(const QString& versionId) const
 QString MinecraftFolderBackend::versionJsonPath(const QString& versionId) const
 {
     return findJsonInDir(m_info.root + QStringLiteral("/versions/") + versionId);
-}
-
-QString MinecraftFolderBackend::versionJarPath(const QString& versionId) const
-{
-    return findJarInDir(m_info.root + QStringLiteral("/versions/") + versionId);
-}
-
-bool MinecraftFolderBackend::versionHasJson(const QString& versionId) const
-{
-    return !findJsonInDir(m_info.root + QStringLiteral("/versions/") + versionId).isEmpty();
 }
 
 int MinecraftFolderBackend::versionModsCount(const QString& versionId) const
@@ -150,20 +116,6 @@ int MinecraftFolderBackend::versionModsCount(const QString& versionId) const
 // ════════════════════════════════════════════════════════════════
 // 应用 / 回退
 // ════════════════════════════════════════════════════════════════
-
-bool MinecraftFolderBackend::applyAsGameDir()
-{
-    if (!m_info.valid || m_info.root.isEmpty()) return false;
-    if (m_applied && !m_info.root.isEmpty()) {
-        // 已应用同一目录：幂等，仍发一次信号确保后端状态一致
-        emit applyRequested(m_info.root, static_cast<int>(m_info.layout));
-        return true;
-    }
-    m_applied = true;
-    emit foreignChanged();
-    emit applyRequested(m_info.root, static_cast<int>(m_info.layout));
-    return true;
-}
 
 void MinecraftFolderBackend::revertToDefault()
 {

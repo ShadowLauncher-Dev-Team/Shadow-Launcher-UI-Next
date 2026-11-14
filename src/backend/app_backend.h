@@ -12,7 +12,6 @@ class AppBackend : public QObject {
     Q_OBJECT
 
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
-    Q_PROPERTY(QString appName READ appName CONSTANT)
     Q_PROPERTY(QString dataDir READ dataDir CONSTANT)
     Q_PROPERTY(QString gameDir READ gameDir NOTIFY gameDirChanged)
     Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY themeChanged)
@@ -22,7 +21,6 @@ public:
     explicit AppBackend(QObject *parent = nullptr);
 
     QString appVersion() const { return QStringLiteral(SHADOW_DISPLAY_VERSION); }
-    QString appName() const { return QStringLiteral("Shadow Launcher"); }
     static constexpr const char* AGREEMENT_VERSION = "1.0";
     QString dataDir() const { return m_dataDir; }
     QString gameDir() const { return m_gameDir; }
@@ -38,8 +36,6 @@ public:
     void setTheme(const QString &theme);
     void setGameDir(const QString &dir);
 
-    Q_INVOKABLE QString resolvePath(const QString &relativePath) const;
-    Q_INVOKABLE void setDevMode(bool enabled);
 
 signals:
     void themeChanged();

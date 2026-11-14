@@ -66,28 +66,4 @@ void AppBackend::setGameDir(const QString &dir)
     }
 }
 
-// ────────────────────────────────────────────────────────────
-// Path Resolution
-// ────────────────────────────────────────────────────────────
-
-QString AppBackend::resolvePath(const QString &relativePath) const
-{
-    return QDir(m_gameDir).absoluteFilePath(relativePath);
-}
-
-// ────────────────────────────────────────────────────────────
-// Dev Mode
-// ────────────────────────────────────────────────────────────
-
-void AppBackend::setDevMode(bool enabled)
-{
-    if (m_devMode != enabled) {
-        m_devMode = enabled;
-        emit devModeChanged();
-        emit logMessage(
-            enabled ? QStringLiteral("Dev mode enabled")
-                    : QStringLiteral("Dev mode disabled"));
-    }
-}
-
 } // namespace ShadowLauncher

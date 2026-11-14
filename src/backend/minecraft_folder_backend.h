@@ -30,24 +30,19 @@ namespace ShadowLauncher {
 class MinecraftFolderBackend : public QObject {
     Q_OBJECT
 
-    Q_PROPERTY(QString currentDir READ currentDir NOTIFY folderChanged)
     Q_PROPERTY(bool valid READ isValid NOTIFY analysisChanged)
-    Q_PROPERTY(int layoutId READ layoutId NOTIFY analysisChanged)
     Q_PROPERTY(QString layoutName READ layoutName NOTIFY analysisChanged)
     Q_PROPERTY(QString launcherName READ launcherName NOTIFY analysisChanged)
     Q_PROPERTY(int versionCount READ versionCount NOTIFY analysisChanged)
     Q_PROPERTY(bool rootHasGameData READ rootHasGameData NOTIFY analysisChanged)
     Q_PROPERTY(int isolatedVersionCount READ isolatedVersionCount NOTIFY analysisChanged)
-    Q_PROPERTY(bool foreignActive READ isForeignActive NOTIFY foreignChanged)
     Q_PROPERTY(QVariantList folders READ folders NOTIFY foldersChanged)
 
 public:
     explicit MinecraftFolderBackend(QObject* parent = nullptr);
 
     // ── 读取当前分析结果 ──
-    QString currentDir() const { return m_info.root; }
     bool isValid() const { return m_info.valid; }
-    int layoutId() const { return static_cast<int>(m_info.layout); }
     QString layoutName() const;
     QString launcherName() const;
     int versionCount() const { return m_info.totalVersionCount; }
@@ -63,17 +58,11 @@ public:
     Q_INVOKABLE void clear();
     /// 完整分析结果（QML 模型用）
     Q_INVOKABLE QVariantMap result() const;
-    /// 每版本详情列表：{id, jsonPath, jarPath, gameDir, isolated, hasJson, modsCount}
-    Q_INVOKABLE QVariantList versionInfos() const;
     /// 解析某版本的实际游戏数据目录（布局感知）
     Q_INVOKABLE QString versionGameDir(const QString& versionId) const;
     Q_INVOKABLE QString versionJsonPath(const QString& versionId) const;
-    Q_INVOKABLE QString versionJarPath(const QString& versionId) const;
-    Q_INVOKABLE bool versionHasJson(const QString& versionId) const;
     /// 某版本 mods 目录下 .jar 数量（不存在返回 0）
     Q_INVOKABLE int versionModsCount(const QString& versionId) const;
-    /// 应用为启动器活动游戏目录（进入外部只读模式）。要求已成功 probe。
-    Q_INVOKABLE bool applyAsGameDir();
     /// 切回启动器自带 .minecraft（退出外部模式）
     Q_INVOKABLE void revertToDefault();
 
