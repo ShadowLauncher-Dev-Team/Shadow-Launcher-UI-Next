@@ -1014,6 +1014,11 @@ void ModDownloadEngine::launchSegment(std::shared_ptr<Item> it, int si)
         Segment& s = it->segs[si];
         if (!s.reply) return;
         const int code = s.reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        // 3xx 是**中间跳转**，Qt 会自己跟（本请求已设 NoLessSafeRedirectPolicy）。
+        // 绝不能把它判成「源不支持分段」：2026-11-14 实测 mod.mcimirror.top 先回 302，
+        // 这里误判后安全网把整个文件永久降级回单连接 —— 等于分片对那批源全军覆没，
+        // 尾程又退回单连接龟速。metaDataChanged 每一跳都会发一次，必须放过 3xx。
+        if (code >= 300 && code < 400) return;
         if (code != 206) {
             s.pendingReason = QStringLiteral("源不支持分段（HTTP %1）").arg(code);
             s.reply->abort();
