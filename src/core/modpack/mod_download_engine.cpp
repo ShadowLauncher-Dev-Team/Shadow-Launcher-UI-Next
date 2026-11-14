@@ -734,6 +734,48 @@ void ModDownloadEngine::watchTick()
     const bool idleSlots = (m_active - m_largeActive) < normalSlots;
     const qint64 slowTick = idleSlots ? kSlowBytesPerTickIdleSlots : kSlowBytesPerTick;
 
+    // ── 分片段的看门狗（2026-11-14 补，实测缺口）──
+    // 分片项没有 it->reply，下面的主循环会整条 continue 跳过，
+    // 于是段被慢源挂着时**永远不会换源**：实测尾程 2 个文件 5 条段各 ~20KB/s，
+    // 合计 0.1MB/s 挂十几分钟。这里按段算速率 + ETA，超限就 abort 该段换源。
+    for (auto& it : m_items) {
+        if (!it->segmented) continue;
+        for (int si = 0; si < it->segs.size(); ++si) {
+            Segment& sg = it->segs[si];
+            if (sg.state != 1 || !sg.reply) continue;
+            if (sg.slowSinceMs < 0) continue;                 // 换源中
+            if (sg.firstByteMs == 0 || now - sg.launchMs < 3000) {
+                sg.lastWatchBytes = sg.received;
+                sg.slowSinceMs = 0;
+                continue;
+            }
+            const qint64 got = sg.received;
+            if (got < sg.lastWatchBytes) { sg.lastWatchBytes = got; sg.slowSinceMs = 0; continue; }
+            const qint64 d = got - sg.lastWatchBytes;
+            sg.lastWatchBytes = got;
+
+            bool slow = (d < slowTick);
+            if (!slow) {
+                // 这一拍够快，但按总量算还来不来得及？
+                const qint64 el = qMax<qint64>(1, now - sg.launchMs);
+                const qint64 remain = (sg.end - sg.start) - got;
+                if (got > 0 && remain > 0 && el >= 5000 && (got * 1000 / el) > 0
+                    && (remain * 1000 / (got * 1000 / el)) > kMaxEtaMs)
+                    slow = true;
+            }
+            if (!slow) { sg.slowSinceMs = 0; continue; }
+            if (sg.slowSinceMs == 0) { sg.slowSinceMs = now; continue; }
+            if (now - sg.slowSinceMs < kSlowTriggerMs) continue;
+            if (sg.slowSwitchCount >= kMaxSlowSwitches) { sg.slowSinceMs = 0; continue; }
+            sg.slowSwitchCount++;
+            sg.slowSinceMs = -1;
+            emit logMessage(QStringLiteral("[精卫] [分片] %1 第%2段慢速换源（%3KB/s）")
+                                .arg(it->localName).arg(si + 1)
+                                .arg(got * 1000 / qMax<qint64>(1, now - sg.launchMs) / 1024));
+            if (sg.reply) sg.reply->abort();
+        }
+    }
+
     for (auto& it : m_items) {
         if (it->state != 1 || !it->reply) continue;
 

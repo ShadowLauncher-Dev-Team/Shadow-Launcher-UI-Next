@@ -96,6 +96,11 @@ private:
         qint64 launchMs = 0;
         qint64 firstByteMs = 0;
         QString pendingReason;         // 该段最近一次失败原因（换源/回退日志用）
+        // 分片段自己的慢速看门狗状态（2026-11-14 补：分片项没有 it->reply，
+        // 主看门狗整条跳过 → 段被慢源挂着时永远不会换源）
+        qint64 lastWatchBytes = 0;
+        qint64 slowSinceMs = 0;
+        int slowSwitchCount = 0;
     };
 
     struct Item {
