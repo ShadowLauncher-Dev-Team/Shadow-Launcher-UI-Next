@@ -937,13 +937,20 @@ Item {
                 }
 
                 Text {
+                    id: fileTitle
                     anchors.left: parent.left; anchors.leftMargin: 18; anchors.top: parent.top; anchors.topMargin: 14
                     text: qsTr("可下载版本"); color: Theme.fg
                     font.family: Theme.fontFamily; font.pixelSize: 13; font.weight: Font.DemiBold
                 }
                 Text {
                     id: fileTag
-                    anchors.left: parent.left; anchors.leftMargin: 98; anchors.top: parent.top; anchors.topMargin: 16
+                    // ── 2026-11-14：不能用写死偏移 ──
+                    // 原来是 anchors.leftMargin: 98，假设标题宽度固定且不超过 80px。
+                    // 中文「可下载版本」正好装得下；英文「Downloadable versions」
+                    // 比 98px 还宽，直接压在标题上（实测截图反馈）。
+                    // 现在锚在标题文字右侧，任何语言都不会重叠。
+                    anchors.left: fileTitle.right; anchors.leftMargin: 8
+                    anchors.top: parent.top; anchors.topMargin: 16
                     // 选中旧版时必须说清楚「你现在下的不是最新」——否则用户以为自己在下最新
                     text: page.picksOldVersion
                           ? qsTr("已选旧版本")

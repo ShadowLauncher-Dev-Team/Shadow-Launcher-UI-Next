@@ -435,6 +435,7 @@ Item {
             onClicked: page.close()
         }
         Text {
+            id: titleTxt
             anchors.left: parent.left
             anchors.leftMargin: page.narrow ? 108 : 120
             anchors.verticalCenter: parent.verticalCenter
@@ -445,8 +446,12 @@ Item {
             font.weight: Font.DemiBold
         }
         Text {
-            anchors.left: parent.left
-            anchors.leftMargin: page.narrow ? 182 : 196
+            // ── 2026-11-14：不能用写死偏移 ──
+            // 原来写死 leftMargin 196，假设标题「选择版本」不超过 76px，
+            // 英文「Select version」约 95px → 两个文字直接叠在一起（实测截图）。
+            // 锚到标题右侧，任何语言都不会重叠。
+            anchors.left: titleTxt.right
+            anchors.leftMargin: 8
             anchors.verticalCenter: parent.verticalCenter
             text: qsTr("%1 个已安装").arg(page.details.length)
             color: Theme.fg3

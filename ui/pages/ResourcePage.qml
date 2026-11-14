@@ -581,6 +581,9 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 32
+            // 分页按钮的间距。原来没显式设，靠 Layout 默认值，
+            // 中文下偶然不重叠，英文下就挤在一起。
+            spacing: 8
             visible: listModel.count > 0
             Item { Layout.fillWidth: true }
             Text {
@@ -589,12 +592,19 @@ Item {
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
             }
+            // ── 2026-11-14：按钮宽度必须随文案自适应 ──
+            // 原来写死 Layout.preferredWidth: 64；中文「上一页」三个字正好装得下，
+            // 但英文「Previous page」比 64px 宽 —— Text 居中后溢出矩形，
+            // 直接压在左侧「1 / 4」上（实测截图反馈）。
+            // 现在按文案 implicitWidth + 左右留白取大，并保留 64px 作为最小宽。
             Rectangle {
-                Layout.preferredWidth: 64; Layout.preferredHeight: 28
+                Layout.preferredWidth: Math.max(64, prevLabel.implicitWidth + 24)
+                Layout.preferredHeight: 28
                 radius: Theme.rSm
                 color: prevHover.containsMouse ? Theme.bgCard : "transparent"
                 border.width: 1; border.color: Theme.line2
                 Text {
+                    id: prevLabel
                     anchors.centerIn: parent
                     text: qsTr("上一页")
                     color: page.pageNo > 0 ? Theme.fg2 : Theme.fg3
@@ -607,11 +617,13 @@ Item {
                 }
             }
             Rectangle {
-                Layout.preferredWidth: 64; Layout.preferredHeight: 28
+                Layout.preferredWidth: Math.max(64, nextLabel.implicitWidth + 24)
+                Layout.preferredHeight: 28
                 radius: Theme.rSm
                 color: nextHover.containsMouse ? Theme.bgCard : "transparent"
                 border.width: 1; border.color: Theme.line2
                 Text {
+                    id: nextLabel
                     anchors.centerIn: parent
                     text: qsTr("下一页")
                     color: page.hasMore() ? Theme.fg2 : Theme.fg3

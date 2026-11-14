@@ -1980,8 +1980,8 @@
         <translation>自動分配</translation>
     </message>
     <message>
-        <source>按物理内存可用量推荐一个值，不用手动调</source>
-        <translation>依實體記憶體可用量建議一個值，不用手動調</translation>
+        <source>按模组数与物理内存估算（建议开；大型整合包手动设定很容易设小）</source>
+        <translation>按模組數與實體記憶體估算（建議開；大型整合包手動設定很容易設得偏小）</translation>
     </message>
     <message>
         <source>最小内存</source>
@@ -2004,8 +2004,8 @@
         <translation>JVM 最大堆積大小（-Xmx）</translation>
     </message>
     <message>
-        <source>自动分配开启时下面的滑块不可调；关掉它才能手动指定上下限。</source>
-        <translation>自動分配開啟時下方的滑桿無法調整；關閉它才能手動指定上下限。</translation>
+        <source>自动分配开启时下面的滑块不可调；关掉它才能手动指定上下限。手动值不看模组数，整合包建议用自动。</source>
+        <translation>自動分配開啟時下方的滑桿不可調；關掉後才能手動指定上下限。手動值不參考模組數量，整合包建議用自動。</translation>
     </message>
 </context>
 <context>
@@ -3048,8 +3048,8 @@
         <translation>自動設定</translation>
     </message>
     <message>
-        <source>启动时按剩余内存动态分配</source>
-        <translation>啟動時依剩餘記憶體動態分配</translation>
+        <source>按该版本的模组数与物理内存估算，每次启动重算</source>
+        <translation>按該版本的模組數與實體記憶體估算，每次啟動重新計算</translation>
     </message>
     <message>
         <source>建议 %1 MB</source>
@@ -3090,6 +3090,14 @@
     <message>
         <source>可用 %1 MB</source>
         <translation>可用 %1 MB</translation>
+    </message>
+    <message>
+        <source>当前 %1 MB 低于该版本建议的 %2 MB。模组较多时内存不足，会在加载世界时卡住或直接崩溃。</source>
+        <translation>目前 %1 MB 低於該版本建議的 %2 MB。模組較多時記憶體不足，會在載入世界時卡住或直接崩潰。</translation>
+    </message>
+    <message>
+        <source>%1 MB·按模组自动</source>
+        <translation>%1 MB·按模組自動</translation>
     </message>
 </context>
 <context>
@@ -3730,6 +3738,13 @@
     <message>
         <source>已开始导出用户数据</source>
         <translation>已開始匯出使用者資料</translation>
+    </message>
+</context>
+<context>
+    <name>MinecraftFolderBackend</name>
+    <message>
+        <source>默认游戏目录</source>
+        <translation>預設遊戲資料夾</translation>
     </message>
 </context>
 </TS>

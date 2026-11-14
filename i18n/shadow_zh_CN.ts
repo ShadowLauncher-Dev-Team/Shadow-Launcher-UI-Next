@@ -1980,8 +1980,8 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>按物理内存可用量推荐一个值，不用手动调</source>
-        <translation type="unfinished"></translation>
+        <source>按模组数与物理内存估算（建议开；大型整合包手动设定很容易设小）</source>
+        <translation>按模组数与物理内存估算（建议开；大型整合包手动设定很容易设小）</translation>
     </message>
     <message>
         <source>最小内存</source>
@@ -2004,8 +2004,8 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>自动分配开启时下面的滑块不可调；关掉它才能手动指定上下限。</source>
-        <translation type="unfinished"></translation>
+        <source>自动分配开启时下面的滑块不可调；关掉它才能手动指定上下限。手动值不看模组数，整合包建议用自动。</source>
+        <translation>自动分配开启时下面的滑块不可调；关掉它才能手动指定上下限。手动值不看模组数，整合包建议用自动。</translation>
     </message>
 </context>
 <context>
@@ -3045,8 +3045,8 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>启动时按剩余内存动态分配</source>
-        <translation type="unfinished"></translation>
+        <source>按该版本的模组数与物理内存估算，每次启动重算</source>
+        <translation>按该版本的模组数与物理内存估算，每次启动重算</translation>
     </message>
     <message>
         <source>建议 %1 MB</source>
@@ -3087,6 +3087,14 @@
     <message>
         <source>可用 %1 MB</source>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>当前 %1 MB 低于该版本建议的 %2 MB。模组较多时内存不足，会在加载世界时卡住或直接崩溃。</source>
+        <translation>当前 %1 MB 低于该版本建议的 %2 MB。模组较多时内存不足，会在加载世界时卡住或直接崩溃。</translation>
+    </message>
+    <message>
+        <source>%1 MB·按模组自动</source>
+        <translation>%1 MB·按模组自动</translation>
     </message>
 </context>
 <context>
@@ -3723,6 +3731,13 @@
     <message>
         <source>已开始导出用户数据</source>
         <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MinecraftFolderBackend</name>
+    <message>
+        <source>默认游戏目录</source>
+        <translation>默认游戏目录</translation>
     </message>
 </context>
 </TS>

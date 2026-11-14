@@ -350,7 +350,9 @@ QVariantMap MinecraftFolderBackend::buildFolderEntry(const QString& path,
     const QString trimmed = name.trimmed();
     m[QStringLiteral("name")] = !trimmed.isEmpty()
         ? trimmed
-        : (isDefault ? QStringLiteral("默认游戏目录") : QDir(clean).dirName());
+        // 2026-11-14：这个名字会直接显示在版本页的目录按钮上，
+        // 原来是 QStringLiteral，切英文界面时仍显示中文（实测）。改用 tr() 才能被译文覆盖。
+        : (isDefault ? tr("默认游戏目录") : QDir(clean).dirName());
 
     if (exists) {
         const auto info = probeMinecraftFolder(clean);

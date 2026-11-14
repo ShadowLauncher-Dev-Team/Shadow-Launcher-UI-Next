@@ -1980,8 +1980,8 @@
         <translation>Allocate automatically</translation>
     </message>
     <message>
-        <source>按物理内存可用量推荐一个值，不用手动调</source>
-        <translation>Pick a value based on available physical memory; no manual tuning needed</translation>
+        <source>按模组数与物理内存估算（建议开；大型整合包手动设定很容易设小）</source>
+        <translation>Sized by mod count and physical memory (keep it on; manual values for large packs are easily set too low)</translation>
     </message>
     <message>
         <source>最小内存</source>
@@ -2004,8 +2004,8 @@
         <translation>JVM maximum heap (-Xmx)</translation>
     </message>
     <message>
-        <source>自动分配开启时下面的滑块不可调；关掉它才能手动指定上下限。</source>
-        <translation>The sliders below are locked while automatic allocation is on; turn it off to set your own limits.</translation>
+        <source>自动分配开启时下面的滑块不可调；关掉它才能手动指定上下限。手动值不看模组数，整合包建议用自动。</source>
+        <translation>The sliders below are locked while automatic allocation is on; turn it off to set your own limits. Manual values ignore mod count, so automatic is recommended for modpacks.</translation>
     </message>
 </context>
 <context>
@@ -3048,8 +3048,8 @@ If you continue, files whose source can't be found will be packed as-is.</transl
         <translation>Automatic</translation>
     </message>
     <message>
-        <source>启动时按剩余内存动态分配</source>
-        <translation>Allocate dynamically from free memory at launch</translation>
+        <source>按该版本的模组数与物理内存估算，每次启动重算</source>
+        <translation>Estimated from this version's mod count and physical memory, recalculated on every launch</translation>
     </message>
     <message>
         <source>建议 %1 MB</source>
@@ -3090,6 +3090,14 @@ If you continue, files whose source can't be found will be packed as-is.</transl
     <message>
         <source>可用 %1 MB</source>
         <translation>%1 MB available</translation>
+    </message>
+    <message>
+        <source>当前 %1 MB 低于该版本建议的 %2 MB。模组较多时内存不足，会在加载世界时卡住或直接崩溃。</source>
+        <translation>%1 MB is below the %2 MB recommended for this version. With many mods, too little memory makes world loading stall or crash outright.</translation>
+    </message>
+    <message>
+        <source>%1 MB·按模组自动</source>
+        <translation>%1 MB · auto by mods</translation>
     </message>
 </context>
 <context>
@@ -3730,6 +3738,13 @@ This cannot be undone.</translation>
     <message>
         <source>已开始导出用户数据</source>
         <translation>User data export started</translation>
+    </message>
+</context>
+<context>
+    <name>MinecraftFolderBackend</name>
+    <message>
+        <source>默认游戏目录</source>
+        <translation>Default game folder</translation>
     </message>
 </context>
 </TS>
