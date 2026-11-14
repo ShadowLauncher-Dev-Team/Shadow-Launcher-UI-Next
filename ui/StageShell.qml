@@ -747,7 +747,11 @@ Item {
     Item {
         id: settingsHost
         anchors.fill: parent
-        visible: root.settingsOpen
+        // 关闭时先让退场动画跑完再隐藏（2026-11-14 影：从版本列表进版本设置，
+        // 退出时没有任何过渡）。旧实现 visible 直接绑 settingsOpen，
+        // 一置 false 宿主立刻消失，退场动画根本没有机会播。
+        property bool closing: false
+        visible: root.settingsOpen || closing
         clip: true
         Rectangle { anchors.fill: parent; color: Theme.bg }
         Item {
@@ -760,10 +764,16 @@ Item {
             scale: 0.988
             states: State {
                 name: "shown"
-                when: root.settingsOpen
+                // closing 期间保持 shown：否则一关就退出 state，内容瞬移回收起位
+                // 再开始淡出（会看到一下"抖动"）。等宿主真正隐藏那帧才复位，
+                // 复位时已经不可见，接着下次打开又是从收起位播入场。
+                when: root.settingsOpen || settingsHost.closing
                 PropertyChanges { target: settingsSurface; x: 0; scale: 1 }
             }
-            // 只写 to: "shown" —— 进入才有过渡；离开没有 transition，保持既有的瞬时关闭
+            // 只写 to: "shown" —— 内容层只有入场位移。
+            // 退场不做内容位移：宿主的底色 Rectangle 是铺满的不透明块，内容一滑走
+            // 就会露出这块纯色，再"啪"地闪出下层页面。退场改为**整个宿主交叉淡出**
+            // （见下面的 settingsFade），下层页面是渐显而不是被硬切。
             transitions: Transition {
                 to: "shown"
                 ParallelAnimation {
@@ -783,6 +793,40 @@ Item {
                 // 全局拖入要按"用户当前在看哪个分区"决定文件落到哪，
                 // 所以把当前分区同步回 StageShell。
                 onCurrentKeyChanged: root.settingsPane = currentKey
+            }
+        }
+
+        // 退场：整个宿主淡出，露出下层（版本列表 / 启动页）。动画跑完才真正隐藏。
+        NumberAnimation {
+            id: settingsFade
+            target: settingsHost
+            property: "opacity"
+            to: 0
+            duration: Theme.durPage
+            easing.type: Theme.easeExit
+        }
+        Timer {
+            id: settingsCloseTimer
+            interval: Theme.durPage
+            onTriggered: {
+                settingsHost.closing = false
+                settingsHost.opacity = 1   // 复位：下次进入从全不透明开始
+            }
+        }
+        Connections {
+            target: root
+            function onSettingsOpenChanged() {
+                if (root.settingsOpen) {
+                    // 进入：立刻恢复不透明，入场位移由上面 to "shown" 负责
+                    settingsCloseTimer.stop()
+                    settingsFade.stop()
+                    settingsHost.opacity = 1
+                    settingsHost.closing = false
+                } else {
+                    settingsHost.closing = true   // 先保持可见
+                    settingsFade.start()
+                    settingsCloseTimer.restart()
+                }
             }
         }
     }
