@@ -147,6 +147,7 @@ private:
 
     void pump();                                   // 调度：填满并发槽
     void launchRequest(std::shared_ptr<Item> it);  // 用当前源发起请求
+    static QString hostOfUrl(const QString& url);
     QString pickSource(std::shared_ptr<Item> it, bool* exhausted);
     void onReplyProgress(std::shared_ptr<Item> it, qint64 recv, qint64 total);
     void onReadyRead(std::shared_ptr<Item> it);
@@ -235,6 +236,11 @@ private:
     // 冗余流量计量：服务器不认 Range（回 200 全量）时我们会 abort，
     // 但 abort 前后可能已进内核缓冲。这里有数字才能证明分片没在偷流量。
     qint64 m_wastedBytes = 0;
+    // 主机健康表：host → 上次被判「慢源」的时刻（2026-11-14）
+    // 实测尾程多个文件在 mod.mcimirror.top / cdn.modrinth.com 之间来回换，
+    // 每个都 13~18KB/s：换到哪儿都慢。单文件视角看不出这点，必须全局记账，
+    // 让后面的文件直接跳过已被证明慢的主机。
+    QHash<QString, qint64> m_hostBadMs;
     qint64 m_connectTotalMs = 0;             // 连接耗时统计（动态超时）
     int m_connectCount = 0;
 };

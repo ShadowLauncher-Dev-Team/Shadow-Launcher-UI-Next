@@ -225,10 +225,36 @@ bool ModDownloadEngine::isMirrorHost(const QString& url) const
         || host.contains(QStringLiteral("bmclapi"));
 }
 
+QString ModDownloadEngine::hostOfUrl(const QString& url)
+{
+    const QString u = url.trimmed();
+    if (u.isEmpty()) return QString();
+    return QUrl(u).host();
+}
+
 QString ModDownloadEngine::pickSource(std::shared_ptr<Item> it, bool* exhausted)
 {
     *exhausted = false;
+    const qint64 badNow = QDateTime::currentMSecsSinceEpoch();
+    constexpr qint64 kBadWindowMs = 90 * 1000;   // 判慢后 90s 内其它文件别再碰它
+    if (m_hostBadMs.size() > 64) {
+        // 只保留仍在窗口内的，避免无限增长
+        for (auto itm = m_hostBadMs.begin(); itm != m_hostBadMs.end(); ) {
+            if (badNow - itm.value() >= kBadWindowMs) itm = m_hostBadMs.erase(itm);
+            else ++itm;
+        }
+    }
+    auto isBad = [this, badNow](const QString& u) {
+        const QString hh = hostOfUrl(u);
+        if (hh.isEmpty()) return false;
+        const auto f = m_hostBadMs.constFind(hh);
+        return f != m_hostBadMs.constEnd() && badNow - f.value() < kBadWindowMs;
+    };
     if (it->sourceIdx < it->sources.size()) {
+        // 顺序里挑第一个「主机近期没被判慢」的；全坏才按原顺序走（宁可慢也别下不了）
+        for (int i = it->sourceIdx; i < it->sources.size(); ++i) {
+            if (!isBad(it->sources[i])) { it->sourceIdx = i; return it->sources[i]; }
+        }
         return it->sources[it->sourceIdx];
     }
     if (!it->fallbackPassDone && !it->sources.isEmpty()) {
@@ -863,6 +889,9 @@ void ModDownloadEngine::watchTick()
         it->slowSwitchCount++;
         it->slowSinceMs = -1;   // 换源中标记：onReplyFinished 到达前不再触发（abort 异步窗口）
         it->lastWatchBytes = it->received;
+        // 全局记账：这个主机现在很慢，后面的文件别再优先选它
+        if (it->sourceIdx < it->sources.size())
+            m_hostBadMs[hostOfUrl(it->sources[it->sourceIdx])] = now;
         // 把实测速率一并打出来：下次看日志就能区分
         // 「真的慢」与「误判」（外部 curl 测该文件可达 574~1022KB/s，
         // 而网关阈值只有 128KB/s）。不打这个数字就永远是猜。
