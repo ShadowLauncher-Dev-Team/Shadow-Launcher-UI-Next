@@ -1143,14 +1143,35 @@ Item {
             // 但按钮在右上工具栏里，它的右边缘还要减去
             // 「导入整合包 / 刷新」两个按钮的宽度。两者没关系，
             // 所以下拉面板一直偏右、与按钮错开（实测截图反馈）。
-            // 现在直接取按钮的实际坐标，右边缘与按钮右边缘对齐、
-            // 底边贴着按钮下沿；放不下就自动往左/往上挤，始终保留 12px。
-            readonly property real chipRightX: folderChip.mapToItem(folderPop, folderChip.width, 0).x
-            readonly property real chipBottomY: folderChip.mapToItem(folderPop, 0, folderChip.height).y
+            // 面板**左边缘**贴着按钮左边缘（不是右对齐）。
+            // 下拉菜单的惯例是从触发器左侧开始向右铺开；
+            // 右对齐会让面板整体往左挪，看起来像“不在正下方”。
+            //
+            // 两个坑（都实测踩过）：
+            // 1) 不能 mapToItem(folderPop, ...)。folderPop 在菜单关闭时 visible = false，
+            //    对**不可见**项做坐标映射会返回 0，绑定就永远停在 0、面板贴左边。
+            //    改用始终可见的 page；folderPop 是 anchors.fill: parent，与 page 同坐标系。
+            // 2) 也不能写成属性绑定。绑定在**组件创建时**就求值一次，那时按钮还在 Row 里
+            //    没完成布局，mapToItem 照样返回 0；而 mapToItem 是普通函数调用，
+            //    QML 追踪不到它的内部依赖，之后布局好了也不会重算。
+            //    所以改成「打开时用 Qt.callLater 主动量一次」，保证量的时候布局已完成。
+            function _place() {
+                var p = folderChip.mapToItem(page, 0, 0)
+                var pw = page.width
+                var w = Math.min(380, pw - 36)
+                var h = Math.min(page.height - 76, 16 + Math.max(1, page.folders.length) * 46 + 44)
+                x = Math.max(12, Math.min(pw - w - 12, p.x))
+                y = Math.max(12, Math.min(p.y + folderChip.height + 6, page.height - h - 12))
+            }
+            Component.onCompleted: Qt.callLater(_place)
+            Connections {
+                target: page
+                function onFolderMenuOpenChanged() { if (page.folderMenuOpen) Qt.callLater(folderPanel._place) }
+                function onWidthChanged() { Qt.callLater(folderPanel._place) }
+                function onHeightChanged() { Qt.callLater(folderPanel._place) }
+            }
             width: Math.min(380, page.width - 36)
             height: Math.min(page.height - 76, 16 + Math.max(1, page.folders.length) * 46 + 44)
-            x: Math.max(12, Math.min(page.width - width - 12, chipRightX - width))
-            y: Math.max(12, Math.min(chipBottomY + 8, page.height - height - 12))
             radius: 2
             color: Theme.bgCard2
             // 下拉面板：从上方 6px 落下
