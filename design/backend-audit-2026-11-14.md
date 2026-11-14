@@ -65,11 +65,11 @@
 | # | 功能 | 后端 API | 现状 | 建议 |
 |---|---|---|---|---|
 | C1 | **协议 / 内测门禁** | `agreementAccepted` `markAgreed` `betaAgreementHtml` `privacyAgreementHtml` `termsAgreementHtml` `betaGateEnabled` `betaStatus` `submitBetaKey` | QML 全部零引用。旧 UI 有 `AgreementOverlay` 强制弹出，**新 UI 完全没有**——用户装完直接进主界面，从未同意协议 | **合规缺口，必须决策**：补协议页，或明确放弃并连后端一起删 |
-| C2 | **Java 安装进度显示** | `javaInstallStep` `javaInstallTotal` 等 | `JavaPage` 只显示一行状态文字，无进度条/步骤 | 接进度条，或删掉多余属性只管状态文字 |
-| C3 | **崩溃手动分析** | `analyzeCrashNow` `cleanupCrashArtifacts` | `LaunchOverlay` 只被动显示，无「立即分析」入口 | 接按钮 |
+| C2 | ~~Java 安装进度显示~~ **误报，已撤销** | `javaInstallStep` `javaInstallTotal` `javaDownloadBytes` `javaDownloadTotal` | **ZIP 安装已有百分比 + 速度 + 状态文字 + 卡片进度条**（`JavaPage.qml:935/995`，读 `javaDownloadPercent` / `javaDownloadSpeedMBps`）。只有「步骤数」和「字节数」这 4 个细粒度字段没人用，用户无感 | 只删这 4 个冗余字段即可，**不需要补进度条** |
+| C3 | **崩溃手动重分析**（可选增强） | `analyzeCrashNow` `cleanupCrashArtifacts` | 崩溃后**分析是自动进行的**（`launch_backend` 触发 `runCrashAnalysis` → `crashAnalyzing` → `lastCrash`）。失败面板已有「导出日志 / 查看日志 / 重试 / 关闭」四个按钮。缺的只是「分析完了想再跑一遍」和「清理崩溃残留」两个次要入口 | 低优先级。可接可不接 |
 | C4 | **用户数据导入** | `executeImport` `validateArchive` 等 | 导出已接，导入未接 | 接导入，或删导入整套 |
 | C5 | **版本级进程优先级** | `versionProcessPriority` `setVersionProcessPriority` | 后端完整，`VsLaunchPane` 无此行 | 加一行 |
-| C6 | **光影 / 配置文件夹** | `openShaderPacksFolder` `openConfigFolder` | `VsToolsPane` 有 Mod/资源包/存档/截图，独缺这两个 | 各加一行按钮 |
+| C6 | ~~光影 / 配置文件夹~~ **部分误报，已修正** | ~~`openConfigFolder`~~（**此接口不存在，原报告为笔误**） | 光影文件夹**已有入口**（`VsShadersPane.qml:128`），资源包同理（`VsPacksPane.qml:115`）。快捷入口只列 4 个：版本/存档/截图/Mod。真正没有的是「config 配置文件夹」——**但后端也没这个接口**，属功能未开发，不是"做了没接" | 若要加，需先在后端实现 `openConfigFolder`；不加则无影响 |
 | C6b | **文件夹改名/移除** | `renameGameFolder` `removeGameFolder` | 用户**能添加文件夹但不能改名或移除**（`VersionPage.qml:187` 只调 `addGameFolder`）。后端实现完整（含固有文件夹保护、活动目录回退），属功能半成品 | **建议接 UI**：文件夹菜单加「重命名 / 移除」 |
 | C7 | **外观页** | `sidebarOpacity` `contentOpacity` `backgroundBlur` `cropX/Y` `pickBackgroundImage` | 外观页仍是占位 | **等外观页动工再统一处理**，现在别删 |
 
