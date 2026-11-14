@@ -917,6 +917,15 @@ void ModDownloadEngine::watchTick()
 
 int ModDownloadEngine::plannedSegCount(qint64 fileSize)
 {
+    // ① 有空闲槽：优先把槽用满，小文件也切（2026-11-14 影的决定）
+    const int idle = qMax(0, m_maxThreads - m_active);
+    if (idle >= 2) {
+        const qint64 bySlice = fileSize / kSegMinSliceBytesIdle;
+        int n = qMin(1 + idle, kSegMaxIdle);
+        n = qMin<qint64>(n, qMax<qint64>(1, bySlice));
+        return qMax(1, n);
+    }
+    // ② 没空槽：保持原规则，只切大文件，别抢小文件的口粮（总量不会因此变多）
     if (fileSize < kSegMinBytes) return 1;
     if (fileSize < 32LL * 1024 * 1024) return 2;
     if (fileSize < 96LL * 1024 * 1024) return 3;
@@ -927,11 +936,15 @@ void ModDownloadEngine::prepareSegments(std::shared_ptr<Item> it)
 {
     it->segs.clear();
     it->segAborting = false;
-    if (it->segFailedOnce || it->fileSize < kSegMinBytes) { it->segmented = false; return; }
+    const int idleNow = qMax(0, m_maxThreads - m_active);
+    const bool idleDriven = idleNow >= 2;
+    const qint64 minTotal = idleDriven ? kSegMinSliceBytesIdle : kSegMinBytes;
+    if (it->segFailedOnce || it->fileSize < minTotal) { it->segmented = false; return; }
 
     int n = plannedSegCount(it->fileSize);
-    n = qMin(n, static_cast<int>(it->fileSize / kSegMinSliceBytes));
-    n = qMin(n, 4);
+    const qint64 minSlice = idleDriven ? kSegMinSliceBytesIdle : kSegMinSliceBytes;
+    n = qMin<qint64>(n, qMax<qint64>(1, it->fileSize / minSlice));
+    n = qMin(n, idleDriven ? kSegMaxIdle : 4);
     if (n <= 1) { it->segmented = false; return; }
 
     const qint64 base = it->fileSize / n;
@@ -944,10 +957,12 @@ void ModDownloadEngine::prepareSegments(std::shared_ptr<Item> it)
         it->segs.append(s);
     }
     it->segmented = true;
-    emit logMessage(QStringLiteral("[精卫] [分片] %1（%2 MB）分 %3 段并行")
+    emit logMessage(QStringLiteral("[精卫] [分片] %1（%2 MB）分 %3 段并行%4")
                         .arg(it->localName)
                         .arg(it->fileSize / (1024.0 * 1024.0), 0, 'f', 1)
-                        .arg(n));
+                        .arg(n)
+                        .arg(idleDriven ? QStringLiteral("（空闲槽驱动，空 %1 槽）").arg(idleNow)
+                                        : QString()));
 }
 
 void ModDownloadEngine::pumpSegments()

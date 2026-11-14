@@ -162,7 +162,7 @@ private:
     void resetForRetry(const std::shared_ptr<Item>& it);   // 重试前完整复位运行态（2026-08-12）
 
     // ── 分片通道 ──
-    static int plannedSegCount(qint64 fileSize);
+    int plannedSegCount(qint64 fileSize);
     void prepareSegments(std::shared_ptr<Item> it);
     void pumpSegments();
     void launchSegment(std::shared_ptr<Item> it, int si);
@@ -195,7 +195,12 @@ private:
     // 8MB 以下不进分片：小文件单连接就够，加连接只会增加失败面。
     // 段数随体积递增，但每段不低于 8MB（切太碎反而慢），上限 4 段。
     static constexpr qint64 kSegMinBytes = 8LL * 1024 * 1024;      // 8MB
-    static constexpr qint64 kSegMinSliceBytes = 8LL * 1024 * 1024; // 每段至少 8MB
+    static constexpr qint64 kSegMinSliceBytes = 8LL * 1024 * 1024; // 每段至少 8MB（无空闲槽时）
+    // 空闲槽驱动（2026-11-14 影的决定：不管限速模型如何，先把空闲连接用满）
+    // 分片的价值不是「文件大」，而是「有空转的槽」——尾程只剩 2~3 个文件、
+    // 10 个槽闲着时，小文件也值得切，一个 3MB 文件 4 段并行能从 205s 降到 52s。
+    static constexpr qint64 kSegMinSliceBytesIdle = 2LL * 1024 * 1024; // 2MB
+    static constexpr int    kSegMaxIdle = 4;                           // 最多 4 段
     int m_active = 0;
     int m_totalFiles = 0;
     int m_completedFiles = 0;
