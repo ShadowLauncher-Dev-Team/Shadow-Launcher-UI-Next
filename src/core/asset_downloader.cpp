@@ -165,8 +165,10 @@ void AssetDownloader::startDownload(const QVector<AssetTask>& tasks, int maxConc
                   return a.size > b.size;
               });
 
-    for (const auto& t : sorted)
+    for (auto t : sorted) {
+        if (t.originalMirrors.isEmpty()) t.originalMirrors = t.mirrors;
         m_pendingQueue.enqueue(t);
+    }
 
     m_state = Running;
     m_lastProgressEmit.start();
@@ -316,7 +318,8 @@ void AssetDownloader::appendTasks(const QVector<AssetTask>& tasks)
     // 重下（实测 3643 文件 578MB 只命中 7 个，缓存形同虚设）。现在与 startDownload
     // 共用 enqueueCachePreCheck：命中者走异步 SHA1 校验（onPreCheckResult 处理）。
     int preCheckAdded = 0;
-    for (const auto& t : sorted) {
+    for (auto t : sorted) {
+        if (t.originalMirrors.isEmpty()) t.originalMirrors = t.mirrors;
         if (enqueueCachePreCheck(t)) {
             preCheckAdded++;
         } else {
@@ -562,7 +565,7 @@ void AssetDownloader::onReplyFinished(QNetworkReply* reply)
             fireNext();
         } else {
             qCWarning(logAsset) << QStringLiteral("  [山海经] 下载失败 %1 所有镜像已耗尽 (%2)").arg(task.sha1, reply->errorString());
-            finishDownload(task, false);
+            retryOrFail(task, reply->errorString());
         }
         return;
     }
@@ -602,7 +605,7 @@ void AssetDownloader::onReplyFinished(QNetworkReply* reply)
                 fireNext();
             } else {
                 qCWarning(logAsset) << QStringLiteral("  [山海经] SHA1 校验失败 %1（所有镜像均不匹配）").arg(task.sha1);
-                finishDownload(task, false);
+                retryOrFail(task, QStringLiteral("SHA1 不匹配"));
             }
             return;
         }
@@ -945,6 +948,43 @@ void AssetDownloader::updateSpeedFloor()
 // Finish tracking for one task
 // ═════════════════════════════════════════════════════════════════════════════
 
+// 失败重试（2026-11-14）：不再把失败文件丢给上层的「校验 + 自动修复」兜底。
+//   理由：兜底那趟要多花 1.3 分钟重校验重下（实测 21 个资源文件），而且期间
+//   下载步骤的分母仍含这些字节 → 百分比永远到不了 100% → 进度条卡在 99%。
+//   在下载阶段内重试，分母能真正被填满，进度条也就自然走到 100%。
+//   轮次用尽仍失败才判失败（此时才轮到上层兜底，这是安全网而不是常规路径）。
+bool AssetDownloader::retryOrFail(const AssetTask& task, const QString& why)
+{
+    if (task.retryRound + 1 >= kMaxRetryRounds) {
+        qCWarning(logAsset) << QStringLiteral("  [山海经] 重试 %1 轮仍失败，交出：%2（%3）")
+            .arg(task.retryRound + 1).arg(task.sha1, why);
+        finishDownload(task, false);
+        return false;
+    }
+
+    AssetTask t = task;
+    t.retryRound++;
+    // 回到**完整**镜像表：任务在换源过程中 mirrors 被逐段裁剪，只剩最后一个源；
+    // 直接复用会让第 2 轮只试那个已经失败的源（等于没重试）。
+    if (!t.originalMirrors.isEmpty()) t.mirrors = t.originalMirrors;
+
+    // 退避：第 2 轮立即，第 3 轮等一会儿（抖动/限流时立刻重试大概率还失败）
+    const int delay = (t.retryRound <= 1) ? 0 : 2000;
+    m_retryScheduled++;
+    qCWarning(logAsset) << QStringLiteral("  [山海经] 重试第 %1 轮：%2（%3）待下载=%4")
+        .arg(t.retryRound).arg(t.sha1.left(12), why).arg(m_pendingQueue.size());
+
+    QTimer::singleShot(delay, this, [this, t]() {
+        if (m_retryScheduled > 0) m_retryScheduled--;
+        if (m_state != Running) return;
+        m_pendingQueue.enqueue(t);
+        if (!m_accelTimer->isActive()) m_accelTimer->start();
+        fireNext();
+        checkAllFinished();
+    });
+    return true;
+}
+
 void AssetDownloader::finishDownload(const AssetTask& task, bool success)
 {
     // NOTE: downloadedBytes are counted in onReplyFinished() or the cache-hit
@@ -1004,6 +1044,7 @@ void AssetDownloader::checkAllFinished()
     if (m_state != Running && m_state != Cancelled) return;
     if (!m_pendingQueue.isEmpty() || !m_inFlight.isEmpty() || !m_pendingPreCheck.isEmpty()) return;
     if (m_preCheckQueued > 0) return;
+    if (m_retryScheduled > 0) return;   // 还有重试在退避等待中（2026-11-14）
 
     m_accelTimer->stop();
     m_state = (m_state == Cancelled) ? Cancelled : Done;

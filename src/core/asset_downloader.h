@@ -46,6 +46,14 @@ public:
         QString sha1;
         QStringList mirrors;   // download URLs, ordered by priority
         qint64 size = 0;
+        // ── 阶段内重试（2026-11-14）──
+        // 背景：所有镜像都失败时旧实现直接 finishDownload(false)，把文件丢给
+        // 后面的「校验 + 自动修复」兜底 —— 实测 21 个资源文件就这样被放弃，
+        // 安装多花 1.3 分钟重校验重下；而在这期间下载步骤的分母仍含这些字节，
+        // 百分比永远到不了 100%，进度条死死停在 99%。
+        // 现在在下载阶段内重试（多轮 + 退避 + 回退到完整镜像表）。
+        int retryRound = 0;
+        QStringList originalMirrors;   // 完整镜像表（镜像轮转时 mirrors 会被裁剪）
     };
 
     explicit AssetDownloader(QObject* parent = nullptr);
@@ -98,6 +106,8 @@ private:
     void setupNam();
     void fireNext();
     void finishDownload(const AssetTask& task, bool success);
+    /// 失败重试：还能重试就排队并返回 true；轮次用尽才真正判失败。
+    bool retryOrFail(const AssetTask& task, const QString& why);
     void checkAllFinished();
 
     // ── Speed-adaptive scheduler (replaces old rampTick) ──
@@ -234,6 +244,10 @@ private:
     int  m_failedCount = 0;
     QStringList m_failedFiles;
     int  m_cacheHitCount = 0;
+    // 已排队但尚未入队重试的任务数：退避等待期间队列是空的，
+    // 若不拦住 checkAllFinished 会误判「全部完成」（进度虚高到 100%）。
+    int  m_retryScheduled = 0;
+    static constexpr int kMaxRetryRounds = 3;   // 含首次共 3 轮
 
     // ── Stats ──
     QAtomicInt m_completedFiles{0};
