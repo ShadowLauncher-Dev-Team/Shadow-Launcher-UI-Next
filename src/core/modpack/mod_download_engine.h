@@ -79,6 +79,25 @@ signals:
     void logMessage(const QString& msg);
 
 private:
+    // ── 大文件分片（2026-11-14）──
+    // 只对 ≥ kSegMinBytes 的模组启用；小文件**完全不进这条通道**，
+    // 仍走原来的单连接 Item 路径 —— 现有体系一行不动。
+    // 段 = 一条独立的 Range 连接，写自己的 .partN 文件，全部完成后按偏移拼接再校验。
+    struct Segment {
+        qint64 start = 0;              // [start, end)
+        qint64 end = 0;
+        qint64 received = 0;
+        QString partPath;
+        QPointer<QNetworkReply> reply;
+        QPointer<QFile> outFile;
+        QPointer<QTimer> idleTimer;
+        int state = 0;                 // 0=pending 1=active 2=done
+        int sourceIdx = 0;
+        qint64 launchMs = 0;
+        qint64 firstByteMs = 0;
+        QString pendingReason;         // 该段最近一次失败原因（换源/回退日志用）
+    };
+
     struct Item {
         // 静态
         QString localPath;
@@ -112,6 +131,11 @@ private:
         int retried = 0;             // 补位重试入队次数（至多 kMaxRounds-1 次，含首次共 5 轮）
     bool isLarge = false;        // 超过 50MB → 走单独通道（不参与小文件并发轮转）
         qint64 failedAtMs = 0;       // 上次失败时刻（重试间隔节流起点）
+        // ── 分片状态 ──
+        bool segmented = false;      // 走分片通道（大文件）
+        bool segFailedOnce = false;  // 分片模式失败过一次 → 永久降级单连接（安全网）
+        bool segAborting = false;    // 正在拆段回退，旧回调忽略
+        QList<Segment> segs;
     };
 
     enum State { Idle, Running, Cancelled };
@@ -130,6 +154,17 @@ private:
     void watchTick();                          // 慢速看门狗：500ms 扫描低速文件 → 换源
     bool verifyFile(const std::shared_ptr<Item>& it) const;
     void resetForRetry(const std::shared_ptr<Item>& it);   // 重试前完整复位运行态（2026-08-12）
+
+    // ── 分片通道 ──
+    static int plannedSegCount(qint64 fileSize);
+    void prepareSegments(std::shared_ptr<Item> it);
+    void pumpSegments();
+    void launchSegment(std::shared_ptr<Item> it, int si);
+    void onSegReadyRead(std::shared_ptr<Item> it, int si);
+    void onSegFinished(std::shared_ptr<Item> it, int si);
+    void clearSegments(std::shared_ptr<Item> it, bool removeParts);
+    void assembleSegments(std::shared_ptr<Item> it);
+    void fallbackToSingle(std::shared_ptr<Item> it, const QString& why);
     bool isMirrorHost(const QString& url) const;
 
     State m_state = Idle;
@@ -150,6 +185,11 @@ private:
     QList<std::shared_ptr<Item>> m_largePending;
     int m_largeActive = 0;
     static constexpr qint64 kLargeFileBytes = 50LL * 1024 * 1024;  // 50MB
+    // ── 分片阈值（2026-11-14）──
+    // 8MB 以下不进分片：小文件单连接就够，加连接只会增加失败面。
+    // 段数随体积递增，但每段不低于 8MB（切太碎反而慢），上限 4 段。
+    static constexpr qint64 kSegMinBytes = 8LL * 1024 * 1024;      // 8MB
+    static constexpr qint64 kSegMinSliceBytes = 8LL * 1024 * 1024; // 每段至少 8MB
     int m_active = 0;
     int m_totalFiles = 0;
     int m_completedFiles = 0;
@@ -187,6 +227,9 @@ private:
     double m_emaMbps = 0.0;
     qint64 m_lastProgressEmitMs = 0;
     qint64 m_lastMirrorLaunchMs = 0;         // 镜像限频
+    // 冗余流量计量：服务器不认 Range（回 200 全量）时我们会 abort，
+    // 但 abort 前后可能已进内核缓冲。这里有数字才能证明分片没在偷流量。
+    qint64 m_wastedBytes = 0;
     qint64 m_connectTotalMs = 0;             // 连接耗时统计（动态超时）
     int m_connectCount = 0;
 };

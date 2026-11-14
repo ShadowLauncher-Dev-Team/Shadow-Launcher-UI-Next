@@ -47,6 +47,11 @@ ModDownloadEngine::~ModDownloadEngine()
         if (it->reply) it->reply->abort();
         if (it->outFile && it->outFile->isOpen()) it->outFile->close();
         if (!it->tmpPath.isEmpty()) QFile::remove(it->tmpPath);
+        for (auto& sg : it->segs) {
+            if (sg.reply) sg.reply->abort();
+            if (sg.outFile && sg.outFile->isOpen()) sg.outFile->close();
+            if (!sg.partPath.isEmpty()) QFile::remove(sg.partPath);
+        }
     }
 }
 
@@ -95,6 +100,11 @@ void ModDownloadEngine::start()
         it->retried = 0;
         it->failedAtMs = 0;
         it->isLarge = (it->fileSize >= kLargeFileBytes);
+        it->segFailedOnce = false;
+        it->segmented = false;
+        it->segAborting = false;
+        prepareSegments(it);            // ≥8MB 走分片通道
+        if (it->segmented) continue;    // 分片自己调度，不进普通队列
         if (it->isLarge) m_largePending.append(it);
         else m_pending.append(it);
     }
@@ -120,6 +130,8 @@ void ModDownloadEngine::cancel()
     m_watchTimer.stop();
     for (auto& it : m_items) {
         if (it->state == 1 && it->reply) it->reply->abort();
+        for (auto& sg : it->segs)
+            if (sg.reply) sg.reply->abort();   // 取消后绝不能继续偷流量
     }
     emit logMessage(QStringLiteral("[精卫] 模组下载已取消"));
     // 注意：不 emit allFinished —— 上层 ModpackDownloader::cancel 自行收尾
@@ -132,6 +144,7 @@ void ModDownloadEngine::cancel()
 void ModDownloadEngine::pump()
 {
     if (m_state != Running) return;
+    pumpSegments();
 
     // ── 大文件单独通道（2026-11-14 实测）──
     // 281MB 的模组与 400 个小文件抢 12 路并发时只分到 143KB/s，
@@ -198,6 +211,7 @@ void ModDownloadEngine::pump()
         }
         auto it = m_pending.takeFirst();
         if (it->state != 0) continue;
+        if (it->segmented) continue;   // 防御：分片项不该出现在普通队列
         it->state = 1;
         m_active++;
         launchRequest(it);
@@ -555,8 +569,8 @@ void ModDownloadEngine::finishItem(std::shared_ptr<Item> it, bool ok, const QStr
         emit logMessage(QStringLiteral("[精卫] [失败] %1: %2").arg(it->localName, it->error));
     }
     emit fileFinished(it->localPath, ok);
-    m_active--;
-    if (it->isLarge) m_largeActive = qMax(0, m_largeActive - 1);
+    if (!it->segmented) m_active--;
+    if (it->isLarge && !it->segmented) m_largeActive = qMax(0, m_largeActive - 1);
 
     emit progressChanged(m_completedFiles, m_totalFiles, m_downloadedBytes, m_totalBytes);
 
@@ -614,6 +628,16 @@ void ModDownloadEngine::tryStartNextRound()
 
 void ModDownloadEngine::resetForRetry(const std::shared_ptr<Item>& it)
 {
+    // 分片态一并复位：残片必须删，否则重试会拼进旧数据（= 下载多余数据）
+    for (auto& sg : it->segs) {
+        if (sg.reply) sg.reply->abort();
+        if (sg.outFile) { sg.outFile->close(); sg.outFile->deleteLater(); sg.outFile = nullptr; }
+        if (sg.idleTimer) { sg.idleTimer->stop(); sg.idleTimer->deleteLater(); sg.idleTimer = nullptr; }
+        if (!sg.partPath.isEmpty()) QFile::remove(sg.partPath);
+    }
+    it->segs.clear();
+    it->segmented = false;
+    it->segAborting = false;
     // 重试 = 全新一轮：运行态全部复位（2026-08-12 补全——旧实现漏了
     // resumeFrom/rangeChecked/enoughBytes/slow*，重试时带残留断点续传状态：
     // 空文件 seek(resumeFrom)+Range 续传 → 前段零填充 → SHA1 必失败；
@@ -810,6 +834,335 @@ void ModDownloadEngine::watchTick()
                             .arg(kbps).arg(elapsedMs).arg(gotBytes));
         // abort 触发 onReplyFinished(OperationCanceled) → sourceFailed → pickSource 换下一个源
         if (it->reply) it->reply->abort();
+    }
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════
+// 大文件分片通道（2026-11-14）
+//   纯增量：小文件一行不改，仍走单连接 Item 路径。
+//   安全网：分片模式一旦失败 → 该文件永久降级回单连接重下（segFailedOnce）。
+// ═════════════════════════════════════════════════════════════════════════
+
+int ModDownloadEngine::plannedSegCount(qint64 fileSize)
+{
+    if (fileSize < kSegMinBytes) return 1;
+    if (fileSize < 32LL * 1024 * 1024) return 2;
+    if (fileSize < 96LL * 1024 * 1024) return 3;
+    return 4;
+}
+
+void ModDownloadEngine::prepareSegments(std::shared_ptr<Item> it)
+{
+    it->segs.clear();
+    it->segAborting = false;
+    if (it->segFailedOnce || it->fileSize < kSegMinBytes) { it->segmented = false; return; }
+
+    int n = plannedSegCount(it->fileSize);
+    n = qMin(n, static_cast<int>(it->fileSize / kSegMinSliceBytes));
+    n = qMin(n, 4);
+    if (n <= 1) { it->segmented = false; return; }
+
+    const qint64 base = it->fileSize / n;
+    for (int i = 0; i < n; ++i) {
+        Segment s;
+        s.start = i * base;
+        s.end = (i == n - 1) ? it->fileSize : (i + 1) * base;
+        s.partPath = it->localPath + QStringLiteral(".part%1").arg(i);
+        s.state = 0;
+        it->segs.append(s);
+    }
+    it->segmented = true;
+    emit logMessage(QStringLiteral("[精卫] [分片] %1（%2 MB）分 %3 段并行")
+                        .arg(it->localName)
+                        .arg(it->fileSize / (1024.0 * 1024.0), 0, 'f', 1)
+                        .arg(n));
+}
+
+void ModDownloadEngine::pumpSegments()
+{
+    if (m_state != Running) return;
+    for (auto& it : m_items) {
+        if (!it->segmented || it->state == 2 || it->state == 3) continue;
+        for (int i = 0; i < it->segs.size(); ++i) {
+            if (m_active >= m_maxThreads) return;
+            if (it->segs[i].state == 0) launchSegment(it, i);
+        }
+    }
+}
+
+void ModDownloadEngine::launchSegment(std::shared_ptr<Item> it, int si)
+{
+    if (m_state != Running || si < 0 || si >= it->segs.size()) return;
+    Segment& sg = it->segs[si];
+    if (sg.state != 0) return;
+    if (sg.sourceIdx >= it->sources.size()) {
+        fallbackToSingle(it, QStringLiteral("该段所有下载源均失败"));
+        return;
+    }
+    const QString url = it->sources.at(sg.sourceIdx);
+    if (url.isEmpty()) { sg.sourceIdx++; launchSegment(it, si); return; }
+
+    // 镜像限频（与单连接路径同一套规则）
+    if (isMirrorHost(url)) {
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        const qint64 wait = m_lastMirrorLaunchMs + m_mirrorRateLimitMs - now;
+        if (wait > 0) {
+            QTimer::singleShot(wait, this, [this, it, si]() {
+                if (m_state == Running && it->segs[si].state == 0
+                    && !it->segs[si].reply) launchSegment(it, si);
+            });
+            return;
+        }
+        m_lastMirrorLaunchMs = now;
+    }
+
+    QDir().mkpath(QFileInfo(it->localPath).absolutePath());
+    auto* f = new QFile(sg.partPath, this);
+    if (!f->open(QIODevice::WriteOnly)) {
+        delete f;
+        sg.sourceIdx++;
+        launchSegment(it, si);
+        return;
+    }
+    sg.outFile = f;
+    sg.received = 0;
+
+    QNetworkRequest req{QUrl(url)};
+    req.setRawHeader("User-Agent", "ShadowLauncher/1.0");
+    if (!m_cfApiKey.isEmpty() && url.contains(QLatin1String("edge.forgecdn.net")))
+        req.setRawHeader("x-api-key", m_cfApiKey.toUtf8());
+    req.setRawHeader("Range", QByteArray("bytes=") + QByteArray::number(sg.start)
+                     + QByteArray("-") + QByteArray::number(sg.end - 1));
+    {
+        QHttp1Configuration h1cfg;
+        h1cfg.setNumberOfConnectionsPerHost(128);
+        req.setHttp1Configuration(h1cfg);
+    }
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
+    req.setRawHeader("Accept-Encoding", "identity");
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                     QNetworkRequest::NoLessSafeRedirectPolicy);
+
+    QNetworkReply* reply = m_nam.get(req);
+    sg.reply = reply;
+    sg.state = 1;
+    sg.launchMs = QDateTime::currentMSecsSinceEpoch();
+    sg.firstByteMs = 0;
+    m_active++;
+
+    const qint64 connectAvg = m_connectCount > 0 ? m_connectTotalMs / m_connectCount : 15000;
+    const qint64 timeoutMs = qMin(qMax(connectAvg, qint64(30000)), qint64(60000));
+    auto* idle = new QTimer(this);
+    idle->setSingleShot(true);
+    idle->setInterval(static_cast<int>(timeoutMs));
+    connect(idle, &QTimer::timeout, this, [this, it, si]() {
+        if (si < it->segs.size() && it->segs[si].reply) it->segs[si].reply->abort();
+    });
+    idle->start();
+    sg.idleTimer = idle;
+
+    // ── 防「下载多余数据」第一道闸（2026-11-14 用户明确的历史坑）──
+    // 旧多线程版本浪费大量流量，就是因为源不认 Range 时每条连接都把**整个文件**下了一遍。
+    // 这里在**响应头到达**（metaDataChanged）就校验，不等 body：
+    //   1) 必须是 206（部分内容），200 = 服务器忽略 Range → 立刻 abort，一个字节都不收；
+    //   2) Content-Range 的起点必须等于我们请求的起点，否则拿到的是错位数据。
+    connect(reply, &QNetworkReply::metaDataChanged, this, [this, it, si]() {
+        if (si >= it->segs.size()) return;
+        Segment& s = it->segs[si];
+        if (!s.reply) return;
+        const int code = s.reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (code != 206) {
+            s.pendingReason = QStringLiteral("源不支持分段（HTTP %1）").arg(code);
+            s.reply->abort();
+            return;
+        }
+        const QByteArray cr = s.reply->rawHeader("Content-Range");   // bytes START-END/TOTAL
+        const int sp = cr.indexOf(' ');
+        const int dash = cr.indexOf('-');
+        if (sp >= 0 && dash > sp) {
+            const qint64 startGot = cr.mid(sp + 1, dash - sp - 1).toLongLong();
+            if (startGot != s.start) {
+                s.pendingReason = QStringLiteral("源返回错误区间（期望 %1 实际 %2）")
+                                      .arg(s.start).arg(startGot);
+                s.reply->abort();
+            }
+        }
+    });
+    connect(reply, &QNetworkReply::readyRead, this, [this, it, si]() { onSegReadyRead(it, si); });
+    connect(reply, &QNetworkReply::finished, this, [this, it, si]() { onSegFinished(it, si); });
+}
+
+void ModDownloadEngine::onSegReadyRead(std::shared_ptr<Item> it, int si)
+{
+    if (m_cancelled || si < 0 || si >= it->segs.size()) return;
+    if (it->segAborting) return;
+    Segment& sg = it->segs[si];
+    if (!sg.reply || !sg.outFile || sg.state != 1) return;
+    if (sg.idleTimer) sg.idleTimer->start();
+
+    if (sg.firstByteMs == 0) {
+        sg.firstByteMs = QDateTime::currentMSecsSinceEpoch();
+        const int code = sg.reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (code != 206) {
+            // 服务器不支持 Range（回 200 全量）：这条连接拿到的不是我们要的区间，作废
+            sg.reply->abort();
+            sg.pendingReason = QStringLiteral("源不支持分段（HTTP %1）").arg(code);
+            return;
+        }
+    }
+    const QByteArray data = sg.reply->readAll();
+    if (data.isEmpty()) return;
+    if (sg.outFile) sg.outFile->write(data);
+    sg.received += data.size();
+    m_downloadedBytes += data.size();
+}
+
+void ModDownloadEngine::onSegFinished(std::shared_ptr<Item> it, int si)
+{
+    if (si < 0 || si >= it->segs.size()) return;
+    Segment& sg = it->segs[si];
+    QNetworkReply* reply = sg.reply;
+    sg.reply = nullptr;
+    if (sg.idleTimer) { sg.idleTimer->stop(); sg.idleTimer->deleteLater(); sg.idleTimer = nullptr; }
+    if (sg.outFile) { sg.outFile->close(); sg.outFile->deleteLater(); sg.outFile = nullptr; }
+
+    if (m_cancelled || it->segAborting) {
+        if (reply) reply->deleteLater();
+        if (sg.state == 1) { sg.state = 0; m_active = qMax(0, m_active - 1); }
+        return;
+    }
+
+    const qint64 want = sg.end - sg.start;
+    const bool okLen = (sg.received == want);
+    const bool netOk = reply && reply->error() == QNetworkReply::NoError;
+    if (reply) reply->deleteLater();
+
+    if (netOk && okLen) {
+        sg.state = 2;
+        m_active = qMax(0, m_active - 1);
+        emit progressChanged(m_completedFiles, m_totalFiles, m_downloadedBytes, m_totalBytes);
+
+        for (int i = 0; i < it->segs.size(); ++i)
+            if (it->segs[i].state != 2) { pumpSegments(); return; }
+
+        assembleSegments(it);
+        return;
+    }
+
+    // 本段失败：这几 MB 是真的浪费了，记账（可观测，不靠感觉）
+    m_wastedBytes += sg.received;
+    sg.state = 0;
+    sg.received = 0;
+    m_active = qMax(0, m_active - 1);
+    if (!sg.partPath.isEmpty()) QFile::remove(sg.partPath);
+    sg.sourceIdx++;
+    if (sg.sourceIdx >= it->sources.size()) {
+        fallbackToSingle(it, QStringLiteral("分段下载失败（%1）").arg(sg.pendingReason.isEmpty()
+                                     ? QStringLiteral("源全部不可用") : sg.pendingReason));
+        return;
+    }
+    emit logMessage(QStringLiteral("[精卫] [分片] %1 第%2段换源").arg(it->localName).arg(si + 1));
+    pumpSegments();
+}
+
+void ModDownloadEngine::clearSegments(std::shared_ptr<Item> it, bool removeParts)
+{
+    for (auto& sg : it->segs) {
+        if (sg.reply) sg.reply->abort();
+        if (sg.outFile) { sg.outFile->close(); sg.outFile->deleteLater(); sg.outFile = nullptr; }
+        if (sg.idleTimer) { sg.idleTimer->stop(); sg.idleTimer->deleteLater(); sg.idleTimer = nullptr; }
+        if (removeParts && !sg.partPath.isEmpty()) QFile::remove(sg.partPath);
+    }
+    it->segs.clear();
+}
+
+// 分片失败 → 永久降级回单连接（安全网：绝不因为分片把整包判死）
+void ModDownloadEngine::fallbackToSingle(std::shared_ptr<Item> it, const QString& why)
+{
+    if (!it->segmented) return;
+    emit logMessage(QStringLiteral("[精卫] [分片] %1 回退单连接：%2（累计浪费 %3 KB）")
+                        .arg(it->localName, why)
+                        .arg(m_wastedBytes / 1024));
+    it->segAborting = true;
+    for (auto& sg : it->segs) {
+        if (sg.state == 1) m_active = qMax(0, m_active - 1);
+        sg.state = 0;
+    }
+    clearSegments(it, true);
+    it->segAborting = false;
+    it->segmented = false;
+    it->segFailedOnce = true;
+    it->state = 0;
+    it->resumeFrom = 0;
+    it->received = 0;
+    if (!it->tmpPath.isEmpty()) QFile::remove(it->tmpPath);
+    m_pending.append(it);
+    pump();
+}
+
+void ModDownloadEngine::assembleSegments(std::shared_ptr<Item> it)
+{
+    if (it->tmpPath.isEmpty())
+        it->tmpPath = it->localPath + QStringLiteral(".tmp-")
+            + QUuid::createUuid().toString(QUuid::WithoutBraces).left(8);
+
+    QFile out(it->tmpPath);
+    if (!out.open(QIODevice::WriteOnly)) { fallbackToSingle(it, QStringLiteral("无法写入拼接文件")); return; }
+    for (const auto& sg : it->segs) {
+        QFile pf(sg.partPath);
+        if (!pf.open(QIODevice::ReadOnly)) {
+            out.close();
+            QFile::remove(it->tmpPath);
+            fallbackToSingle(it, QStringLiteral("分段文件缺失"));
+            return;
+        }
+        while (!pf.atEnd()) {
+            const QByteArray chunk = pf.read(1 << 20);
+            if (chunk.isEmpty()) break;
+            if (out.write(chunk) != chunk.size()) {
+                pf.close(); out.close();
+                QFile::remove(it->tmpPath);
+                fallbackToSingle(it, QStringLiteral("拼接写入失败"));
+                return;
+            }
+        }
+        pf.close();
+    }
+    out.close();
+
+    const qint64 got = QFileInfo(it->tmpPath).size();
+    if (it->fileSize > 0 && got != it->fileSize) {
+        QFile::remove(it->tmpPath);
+        fallbackToSingle(it, QStringLiteral("拼接后大小不符（%1/%2）").arg(got).arg(it->fileSize));
+        return;
+    }
+    if (!verifyFile(it)) {
+        QFile::remove(it->tmpPath);
+        fallbackToSingle(it, QStringLiteral("拼接后校验失败"));
+        return;
+    }
+    for (const auto& sg : it->segs) QFile::remove(sg.partPath);
+    it->segs.clear();
+    it->segmented = false;
+    QFile::remove(it->localPath);
+    if (!QFile::rename(it->tmpPath, it->localPath)) {
+        QFile::remove(it->tmpPath);
+        finishItem(it, false, QStringLiteral("文件落盘失败: %1").arg(it->localPath));
+        return;
+    }
+    it->tmpPath.clear();
+    // 不走 finishItem：各段已完成、m_active 已逐个扣过，再走会多减一次。
+    it->state = 2;
+    m_completedFiles++;
+    emit logMessage(QStringLiteral("[精卫] [完成] %1").arg(it->localName));
+    emit fileFinished(it->localPath, true);
+    emit progressChanged(m_completedFiles, m_totalFiles, m_downloadedBytes, m_totalBytes);
+    if (m_active == 0 && m_pending.isEmpty() && m_largePending.isEmpty()) {
+        if (m_state == Running) tryStartNextRound();
+        else finishAll();
+    } else {
+        pump();
     }
 }
 
