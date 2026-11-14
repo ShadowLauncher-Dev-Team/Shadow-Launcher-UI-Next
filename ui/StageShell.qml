@@ -713,6 +713,10 @@ Item {
         Item {
             id: versionsSurface
             anchors.fill: parent
+            // 独立于 state 管的 x/scale 的第二个位移通道：
+            // 版本设置关闭、回到列表时用它做一次轻微归位（见 versionsSettleAnim）。
+            // 用 transform 而不是再动 x，避免和 state 的 PropertyChanges 抢同一个属性。
+            transform: Translate { id: versionsSettle; y: 0 }
             // 收起态就是出厂位置；打开时由下面的 state 把它归位。
             // 不能用「Behavior + duration: open ? durPage : 0」——时长和位移在同一帧求值，
             // 第二次打开会拿到上一次关闭时算出的 0，位移直接瞬移（影报的"第二次进入是硬切"）。
@@ -740,6 +744,26 @@ Item {
                 root.settingsOpen = true
             }
         }
+
+        // ── 从版本列表进版本设置，退出时的过渡（2026-11-14）──
+        // 关键：**关闭是瞬时的**，设置页立刻消失、不阻塞任何操作；
+        // 过渡做在下层的版本列表上 —— 它自己轻放入场（与启动页
+        // stagePage.playEnter() 完全同一思路）。
+        // 旧做法是让设置页整体淡出 320ms 再消失，等于"关个页面还要等动画"，
+        // 手感很差（影明确否掉）。
+        ParallelAnimation {
+            id: versionsSettleAnim
+            NumberAnimation { target: versionsSettle; property: "y"; from: 10; to: 0; duration: Theme.durBase; easing.type: Theme.easeEnter }
+            NumberAnimation { target: versionsSurface; property: "opacity"; from: 0.92; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+        }
+        Connections {
+            target: root
+            function onSettingsOpenChanged() {
+                // 只有"设置页叠在版本列表之上"这一条路径需要补过渡；
+                // 从启动页进来的那条本来就正常（关闭会重放启动页入场）。
+                if (!root.settingsOpen && root.versionsOpen) versionsSettleAnim.restart()
+            }
+        }
         }
     }
 
@@ -747,11 +771,7 @@ Item {
     Item {
         id: settingsHost
         anchors.fill: parent
-        // 关闭时先让退场动画跑完再隐藏（2026-11-14 影：从版本列表进版本设置，
-        // 退出时没有任何过渡）。旧实现 visible 直接绑 settingsOpen，
-        // 一置 false 宿主立刻消失，退场动画根本没有机会播。
-        property bool closing: false
-        visible: root.settingsOpen || closing
+        visible: root.settingsOpen
         clip: true
         Rectangle { anchors.fill: parent; color: Theme.bg }
         Item {
@@ -764,16 +784,10 @@ Item {
             scale: 0.988
             states: State {
                 name: "shown"
-                // closing 期间保持 shown：否则一关就退出 state，内容瞬移回收起位
-                // 再开始淡出（会看到一下"抖动"）。等宿主真正隐藏那帧才复位，
-                // 复位时已经不可见，接着下次打开又是从收起位播入场。
-                when: root.settingsOpen || settingsHost.closing
+                when: root.settingsOpen
                 PropertyChanges { target: settingsSurface; x: 0; scale: 1 }
             }
-            // 只写 to: "shown" —— 内容层只有入场位移。
-            // 退场不做内容位移：宿主的底色 Rectangle 是铺满的不透明块，内容一滑走
-            // 就会露出这块纯色，再"啪"地闪出下层页面。退场改为**整个宿主交叉淡出**
-            // （见下面的 settingsFade），下层页面是渐显而不是被硬切。
+            // 只写 to: "shown" —— 进入才有过渡；离开没有 transition，保持既有的瞬时关闭
             transitions: Transition {
                 to: "shown"
                 ParallelAnimation {
@@ -793,40 +807,6 @@ Item {
                 // 全局拖入要按"用户当前在看哪个分区"决定文件落到哪，
                 // 所以把当前分区同步回 StageShell。
                 onCurrentKeyChanged: root.settingsPane = currentKey
-            }
-        }
-
-        // 退场：整个宿主淡出，露出下层（版本列表 / 启动页）。动画跑完才真正隐藏。
-        NumberAnimation {
-            id: settingsFade
-            target: settingsHost
-            property: "opacity"
-            to: 0
-            duration: Theme.durPage
-            easing.type: Theme.easeExit
-        }
-        Timer {
-            id: settingsCloseTimer
-            interval: Theme.durPage
-            onTriggered: {
-                settingsHost.closing = false
-                settingsHost.opacity = 1   // 复位：下次进入从全不透明开始
-            }
-        }
-        Connections {
-            target: root
-            function onSettingsOpenChanged() {
-                if (root.settingsOpen) {
-                    // 进入：立刻恢复不透明，入场位移由上面 to "shown" 负责
-                    settingsCloseTimer.stop()
-                    settingsFade.stop()
-                    settingsHost.opacity = 1
-                    settingsHost.closing = false
-                } else {
-                    settingsHost.closing = true   // 先保持可见
-                    settingsFade.start()
-                    settingsCloseTimer.restart()
-                }
             }
         }
     }
