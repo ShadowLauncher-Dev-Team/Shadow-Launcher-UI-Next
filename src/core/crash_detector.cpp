@@ -512,6 +512,60 @@ QStringList CrashDetector::findKeywordsFromCrashReport(const QString& crashRepor
 // Log collection
 // ============================================================
 
+namespace {
+
+// ── 2026-11-14：分析产物不能无限积压 ──
+// 实测：每次崩溃分析都会新建 crash-analysis/<时间戳>/，里面复制整份
+// 启动器日志（实测 51 MB），且从来没人清理 —— 崩溃十几次就是半 GB。
+// 两道阐门：单文件只保留尾部（分析只需要最近上下文）；
+// 分析目录只保留最近 kKeepRuns 次。
+
+constexpr qint64 kMaxLogCopyBytes = 4LL * 1024 * 1024;  // 单日志副本上限 4 MB
+constexpr int    kKeepRuns        = 5;                   // 保留最近 5 次分析
+
+/// 复制日志；超过上限时只保留尾部，并在文件头注明。
+bool copyLogCapped(const QString& src, const QString& dst)
+{
+    QFile in(src);
+    if (!in.open(QIODevice::ReadOnly)) return false;
+    const qint64 size = in.size();
+
+    if (size <= kMaxLogCopyBytes) {
+        in.close();
+        return QFile::copy(src, dst);
+    }
+
+    in.seek(size - kMaxLogCopyBytes);
+    const QByteArray tail = in.readAll();
+    in.close();
+
+    QFile out(dst);
+    if (!out.open(QIODevice::WriteOnly)) return false;
+    out.write((QStringLiteral("[日志过大（%1 MB），仅保留最后 %2 MB]")
+                   .arg(size / 1024 / 1024)
+                   .arg(kMaxLogCopyBytes / 1024 / 1024)
+               + QLatin1Char('\n')).toUtf8());
+    out.write(tail);
+    out.close();
+    return true;
+}
+
+/// 只保留最近 keep 个时间戳目录（名字形如 yyyyMMdd-HHmmss，字典序即时间序）。
+void pruneOldRuns(const QString& base, int keep)
+{
+    QDir dir(base);
+    if (!dir.exists()) return;
+    const QFileInfoList entries =
+        dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::Reversed);
+    for (int i = keep; i < entries.size(); ++i) {
+        QDir(entries[i].absoluteFilePath()).removeRecursively();
+        qCInfo(logLaunch) << QStringLiteral("[崩溃分析] 清理旧分析产物:")
+                          << entries[i].fileName();
+    }
+}
+
+} // namespace
+
 QStringList CrashDetector::collectLogFiles(const QString& gameDir)
 {
     QStringList files;
@@ -775,7 +829,7 @@ CrashReport CrashDetector::analyzeCrash(const QString& gameDir,
         r.exportDir = base + QStringLiteral("/") + ts;
         QDir().mkpath(r.exportDir);
 
-        // Export collected logs
+        // Export collected logs（单文件上限 4MB，超出只保留尾部）
         for (const QString& src : r.collectedLogs) {
             QFileInfo si(src);
             if (!si.exists()) continue;
@@ -784,7 +838,7 @@ CrashReport CrashDetector::analyzeCrash(const QString& gameDir,
             if (si.fileName() == QLatin1String("analysis-report.md")) {
                 dst = r.exportDir + QStringLiteral("/source-") + si.fileName();
             }
-            QFile::copy(src, dst);
+            copyLogCapped(src, dst);
         }
 
         // Write analysis report
@@ -802,6 +856,11 @@ CrashReport CrashDetector::analyzeCrash(const QString& gameDir,
         r.reportFilePath = r.exportDir + QStringLiteral("/analysis-report.md");
         writeReport(r, r.reportFilePath);
     }
+
+    // 每次分析都会新建一个时间戳目录，这里只保留最近几次，
+    // 避免用户不导出就永远不清理。
+    if (!r.exportDir.isEmpty())
+        pruneOldRuns(QFileInfo(r.exportDir).absolutePath(), kKeepRuns);
 
     qCInfo(logLaunch) << QStringLiteral("[崩溃分析] 完成 原因=%1 命中规则=%2 嫌疑模组=%3")
                              .arg(r.reason)

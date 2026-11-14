@@ -2451,15 +2451,6 @@ void LaunchBackend::demoPrecheckFail(const QString& reason)
         : reason);
 }
 
-void LaunchBackend::analyzeCrashNow()
-{
-    if (m_crashAnalysisRunning)
-        return;
-    // 重新分析：保留已捕获的 JVM 输出（清空会导致无崩溃报告+无输出时
-    // 分析结果 isValid=false，弹窗卡在加载圈）。
-    runCrashAnalysis();
-}
-
 QString LaunchBackend::exportCrashLogs(const QString& destDir)
 {
     QString zipPath = destDir;

@@ -164,7 +164,6 @@ public:
     /// 不装 Java、不跑游戏，生产路径永远不会调它。
     Q_INVOKABLE void demoPrecheckFail(const QString& reason = {});
 
-    Q_INVOKABLE void analyzeCrashNow();          // manual re-analysis (e.g. from dialog "重新分析")
     Q_INVOKABLE QString exportCrashLogs(const QString& destDir = {});  // one-click log export
     Q_INVOKABLE void openPath(const QString& path);  // open file/folder in system explorer
     /// 清理启动器生成的崩溃分析产物（crash-analysis/<时间戳>/ 子目录），

@@ -2566,10 +2566,6 @@ void ShadowBackend::demoPrecheckFail(const QString& reason) {
     if (m_launch) m_launch->demoPrecheckFail(reason);
 }
 
-void ShadowBackend::analyzeCrashNow() {
-    if (m_launch) m_launch->analyzeCrashNow();
-}
-
 QString ShadowBackend::exportCrashLogs(const QString& destDir) {
     if (!m_launch) return {};
     return m_launch->exportCrashLogs(destDir);

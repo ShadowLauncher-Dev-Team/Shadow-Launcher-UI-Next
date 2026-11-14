@@ -7,6 +7,7 @@
 // 本页不写死任何版本名，不做动效（等动效系统统一接入）
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import QtQuick.Dialogs
 import ShadowLauncher.Next
 
@@ -23,6 +24,15 @@ Item {
     property string pendingId: (b && b.selectedVersion) ? b.selectedVersion : ""
     readonly property string currentId: (b && b.selectedVersion) ? b.selectedVersion : ""
     property bool folderMenuOpen: false
+    // ── 2026-11-14：游戏文件夹的命名 / 删除 ──
+    // 原来只能「导入」和「切换」，导入错一个就永远删不掉（后端
+    // renameGameFolder/removeGameFolder 早就写好了，只是没人调）。
+    // 注意删除**只删启动器内的登记记录**，不动用户本地文件夹。
+    property bool folderNamePop: false
+    property string folderNameText: ""
+    property string folderNameTarget: ""   // 空 = 新增；非空 = 重命名该路径
+    property string folderPendingDelete: "" // 二次确认用：第一次点后记下路径
+    property string _pendingNewPath: ""      // 已选完、等命名的新目录
     readonly property bool busy: b ? b.launching : false
     property string query: ""
     property var toast: null          // StageShell 注入的 ToastHost：反馈统一走 Toast
@@ -179,15 +189,47 @@ Item {
         page.rev++
         page.flash(isDefault ? qsTr("已切回默认游戏目录") : qsTr("已切换游戏文件夹"))
     }
+    // 选完目录先弹命名框，默认填目录名，用户可改。
+    // 原来直接拿目录名当名字，名字不满意就没办法了。
     function addFolder() {
         if (!page.mcFolder) return
         var p = page.mcFolder.pickFolderDialog()
         if (!p || p.length === 0) return
-        var nm = String(p).replace(/\\/g, "/").split("/").pop()
-        page.mcFolder.addGameFolder(p, nm)
+        page.folderNameTarget = ""
+        page.folderNameText = String(p).replace(/\\/g, "/").split("/").pop()
+        page._pendingNewPath = String(p)
+        page.folderNamePop = true
+    }
+
+    // 命名框确认：新增走 addGameFolder，重命名走 renameGameFolder
+    function commitFolderName() {
+        if (!page.mcFolder) return
+        var nm = page.folderNameText
+        if (page.folderNameTarget.length > 0) {
+            var ok = page.mcFolder.renameGameFolder(page.folderNameTarget, nm)
+            page.folderNamePop = false
+            page.mcFolder.refreshFolders()
+            page.flash(ok ? qsTr("已改名为 %1").arg(nm) : qsTr("改名失败"))
+        } else {
+            var path = page._pendingNewPath || ""
+            if (path.length === 0) { page.folderNamePop = false; return }
+            var ok2 = page.mcFolder.addGameFolder(path, nm)
+            page.folderNamePop = false
+            page._pendingNewPath = ""
+            page.mcFolder.refreshFolders()
+            page.folderMenuOpen = false
+            page.flash(ok2 ? qsTr("已添加文件夹 %1").arg(nm) : qsTr("添加失败"))
+        }
+    }
+
+    // 删除：二次确认。只从启动器登记表移除，不删本地目录。
+    function removeFolder(path) {
+        if (!page.mcFolder) return
+        var ok = page.mcFolder.removeGameFolder(path)
+        page.folderPendingDelete = ""
         page.mcFolder.refreshFolders()
-        page.folderMenuOpen = false
-        page.flash(qsTr("已添加文件夹 %1").arg(nm))
+        page.flash(ok ? qsTr("已从列表移除（本地文件夹未删除）")
+                      : qsTr("移除失败：默认目录不能移除"))
     }
     function commit() {
         if (!page.b || !page.sel) return
@@ -1166,8 +1208,67 @@ Item {
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
+                        // ── 2026-11-14：改名 / 移除 ──
+                        // 只在非活动、非默认的条目上出现（默认目录不可移除，已有后端抦截）。
+                        // 两个按钮叠在一起，鼠标悬停才显形——不占默认视线。
+                        Row {
+                            id: folderOps
+                            anchors.right: parent.right
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 6
+                            visible: !(modelData && (modelData.isDefault === true))
+                            opacity: folderOpsHover.containsMouse ? 1 : 0.45
+                            Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
+
+                            Text {
+                                text: page.folderPendingDelete === (modelData ? modelData.path : "")
+                                      ? qsTr("确认移除？") : qsTr("改名")
+                                color: Theme.fg2
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                                MouseArea {
+                                    anchors.fill: parent
+                                    anchors.margins: -4
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        page.folderMenuOpen = false
+                                        page.folderNameTarget = modelData.path
+                                        page.folderNameText = modelData.name || ""
+                                        page.folderNamePop = true
+                                    }
+                                }
+                            }
+                            Text {
+                                visible: !(modelData && modelData.active)
+                                text: page.folderPendingDelete === (modelData ? modelData.path : "")
+                                      ? qsTr("确认") : qsTr("移除")
+                                color: page.folderPendingDelete === (modelData ? modelData.path : "")
+                                       ? Theme.dangerText : Theme.fg3
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                                MouseArea {
+                                    anchors.fill: parent
+                                    anchors.margins: -4
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        var pth = modelData ? modelData.path : ""
+                                        if (page.folderPendingDelete === pth) {
+                                            page.removeFolder(pth)
+                                            page.folderMenuOpen = false
+                                        } else {
+                                            // 第一次点只进入待确认态，不直接删
+                                            page.folderPendingDelete = pth
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        HoverHandler { id: folderOpsHover }
                         MouseArea {
                             anchors.fill: parent
+                            // 右侧操作区不让点击穿过去切换目录
+                            enabled: !folderOps.visible || folderOpsHover.point.position.x < (folderOps.x - 8)
                             cursorShape: Qt.PointingHandCursor
                             onClicked: page.switchFolder(modelData.path, modelData.isDefault === true)
                         }
@@ -1191,6 +1292,71 @@ Item {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: page.addFolder()
                     }
+                }
+            }
+        }
+    }
+
+    // ── 2026-11-14：文件夹命名弹层（新增 + 改名共用）──
+    Popup {
+        id: folderNamePop
+        parent: page
+        anchors.centerIn: parent
+        width: 340
+        modal: true
+        padding: 0
+        visible: page.folderNamePop
+        closePolicy: Popup.CloseOnEscape
+        background: Rectangle {
+            radius: Theme.rMd
+            color: Theme.bgCard2
+            border.width: 1
+            border.color: Theme.line2
+        }
+        contentItem: Column {
+            width: 340
+            padding: 16
+            spacing: 12
+            Text {
+                text: page.folderNameTarget.length > 0 ? qsTr("改名文件夹")
+                                                       : qsTr("为文件夹命名")
+                color: Theme.fg
+                font.family: Theme.fontFamily
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+            }
+            SInput {
+                width: parent.width - 32
+                text: page.folderNameText
+                placeholder: qsTr("显示名称")
+                onEdited: (t) => page.folderNameText = t
+            }
+            Text {
+                width: parent.width - 32
+                text: page.folderNameTarget.length > 0
+                      ? qsTr("仅改启动器里的显示名，不动本地文件夹")
+                      : qsTr("仅影响列表里的显示名，不动本地文件夹")
+                color: Theme.fg3
+                font.family: Theme.fontFamily
+                font.pixelSize: 10
+                wrapMode: Text.WordWrap
+            }
+            Row {
+                spacing: 8
+                SButton {
+                    kind: 1
+                    height: 30
+                    radius: 2
+                    text: qsTr("取消")
+                    onClicked: { page.folderNamePop = false; page._pendingNewPath = "" }
+                }
+                SButton {
+                    kind: 0
+                    height: 30
+                    radius: 2
+                    text: qsTr("确认")
+                    dimmed: page.folderNameText.length === 0
+                    onClicked: page.commitFolderName()
                 }
             }
         }
