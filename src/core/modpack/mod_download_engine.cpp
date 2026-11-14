@@ -739,9 +739,18 @@ void ModDownloadEngine::watchTick()
         it->lastWatchBytes = it->received;
 
         if (delta >= slowTick) {
-            // 这个 tick 够快 → 重置低速计时
-            it->slowSinceMs = 0;
-            continue;
+            // 这一拍够快：先看「总量上还来不来得及」，来不及照样要换
+            const qint64 elapsedMs = qMax<qint64>(1, now - it->launchMs);
+            const qint64 got = qMax<qint64>(0, it->received - it->resumeFrom);
+            const qint64 remainBytes = (it->fileSize > 0) ? (it->fileSize - it->received) : 0;
+            const bool tooSlowEta = (got > 0 && remainBytes > 0 && elapsedMs >= 5000
+                && (got * 1000 / elapsedMs) > 0
+                && (remainBytes * 1000 / (got * 1000 / elapsedMs)) > kMaxEtaMs);
+            if (!tooSlowEta) {
+                it->slowSinceMs = 0;
+                continue;
+            }
+            // 落到下面统一的「换源」收尾
         }
 
         // 低速 tick

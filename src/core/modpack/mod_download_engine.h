@@ -175,7 +175,11 @@ private:
     static constexpr qint64 kSlowBytesPerTickIdleSlots = 64 * 1024;
     static constexpr qint64 kSlowTriggerMs = 2000;
     static constexpr double kGlobalSlowGateMbps = 1.0;   // 1MB/s（2026-08-10 二修：0.25→1.0）
-    static constexpr int kMaxSlowSwitches = 6;   // 每文件看门狗换源上限（全源慢时停止，宁可慢爬不误判失败）
+    static constexpr int kMaxSlowSwitches = 6;
+    // 「这条连接永远下不完」判定（2026-11-14）：只看 32KB/s 阈值不够——
+    // 44KB/s 下 281MB 要 1.8 小时，实测两次导入都卡在尾程这两个大文件上。
+    // 用「按当前平均速度还需多久」兜底：超过这个时长就换源。
+    static constexpr qint64 kMaxEtaMs = 6 * 60 * 1000;   // 每文件看门狗换源上限（全源慢时停止，宁可慢爬不误判失败）
     static constexpr qint64 kRetryGapMs = 5000;  // 失败重试最小间隔（随重试次数线性放大：5s/10s/15s/20s）
     QElapsedTimer m_speedClock;
     qint64 m_lastSpeedBytes = 0;
