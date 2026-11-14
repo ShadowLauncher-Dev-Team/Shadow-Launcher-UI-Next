@@ -491,8 +491,12 @@ Item {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             if (!pane.b) return
+                                            // 必须先弹 toast、再删：removeBgImage 会同步 emit customBgChanged，
+                                            // 网格立刻重建、本 delegate 被销毁，销毁之后的语句不会执行。
+                                            // 之前先删后弹，结果图删掉了却没有提示。
+                                            var nm = modelData.name
+                                            if (pane.toast) pane.toast.show(qsTr("已移除「%1」").arg(nm), 1800)
                                             pane.b.removeBgImage(modelData.id)
-                                            if (pane.toast) pane.toast.show(qsTr("已移除「%1」").arg(modelData.name), 1800)
                                         }
                                     }
                                 }
