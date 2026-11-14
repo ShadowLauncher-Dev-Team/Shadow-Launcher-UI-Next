@@ -1497,6 +1497,13 @@ void ModpackInstallTask::setCardStep(int idx, const QString& status, int pct)
     QMetaObject::invokeMethod(this, [this, idx, status, pct]() {
         if (idx < 0 || idx >= m_cardSteps.size()) return;
         QVariantMap s = m_cardSteps[idx].toMap();
+        // ── 无变化直接跳过（2026-11-14）──
+        // 模组下载热路径每秒要调 5 次，而百分比通常一整轮都不变。
+        // 旧实现每次都把整份步骤数组推给 QML → 进度页 delegate 每 200ms 全量重算，
+        // 实测日志 72MB 全是 QML 告警刷屏，GUI 线程被拖住。
+        if (s.value(QStringLiteral("status")).toString() == status
+            && s.value(QStringLiteral("percentage")).toInt() == pct)
+            return;
         s[QStringLiteral("status")] = status;
         s[QStringLiteral("percentage")] = pct;
         s[QStringLiteral("show")] = s.value(QStringLiteral("show"), true);
