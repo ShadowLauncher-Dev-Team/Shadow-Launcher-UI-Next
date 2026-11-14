@@ -1312,6 +1312,7 @@ qreal ShadowBackend::bgZoom() const { return m_settings->bgZoom(); }
 void ShadowBackend::setBgZoom(qreal v) { m_settings->setBgZoom(v); }
 QVariantList ShadowBackend::bgPresets() const { return m_settings->bgPresets(); }
 void ShadowBackend::applyBgPreset(const QString& presetId) { m_settings->applyBgPreset(presetId); }
+void ShadowBackend::removeBgImage(const QString& presetId) { m_settings->removeBgImage(presetId); }
 bool ShadowBackend::chooseBgImage() {
     // 复用既有 pickBackgroundImage（会复制到 dataDir/custom_bg 防止原图被移走）
     return !pickBackgroundImage().isEmpty();

@@ -655,3 +655,4 @@
 | 2026-11-14 | **圆角不再被图片盖住**。`Rectangle.clip` 只裁**矩形边界**，不认 `radius`——圆角处会漏出图片方角。内置图与用户图两张缩略图都改为：容器 `layer.enabled` + `MultiEffect { maskEnabled: true; maskSource: <同尺寸圆角矩形> }`，遮罩源 `visible: false` 只提供形状。 |
 | 2026-11-14 | **删除按钮改为整块 tile 悬停 + 严格布尔**。`visible: uTileHover.containsMouse` 在委托初始化时会拿到 undefined（日志连刷 `Unable to assign [undefined] to bool`），写成 `=== true` 消掉；悬停判定从 26px 小方块提到整块 tile，指针不会因稍一偏出就把按钮弄没。按钮 `z: 2` 且是 tile 最后一个子项。 |
 | 2026-11-14 | **删除按钮改为常驻**。这个 × 先后两次因悬停判定拿不到 hover 而消失（一次写在按钮自己身上、一次写在整块 tile 上），点击也跟着失效——因为点击那一刻按钮不在。删除是低频且明确的动作，直接把 `visible: true`，彻底移除 hover 依赖。 |
+| 2026-11-14 | **修复：背景图删不掉的真凶——`ShadowBackend` 缺 `removeBgImage` 转发**。QML 里 `pane.b` 是 ShadowBackend，`applyBgPreset` 有转发而 `removeBgImage` 没有，点击直接 `TypeError: Property 'removeBgImage' ... is not a function`，界面毫无反应。补 `Q_INVOKABLE void removeBgImage()` + `m_settings->removeBgImage()` 转发。 |

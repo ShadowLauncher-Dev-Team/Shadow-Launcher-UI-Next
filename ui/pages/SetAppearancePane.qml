@@ -382,7 +382,6 @@ Item {
                                 height: 104
                                 readonly property bool selected: modelData.active === true
 
-
                                 // 同上：图片容器不画边框，边框单独一层压在最上面
                                 Rectangle {
                                     id: uPicFrame

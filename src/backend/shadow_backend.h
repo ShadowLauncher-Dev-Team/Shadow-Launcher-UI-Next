@@ -323,6 +323,7 @@ public:
     // 外观页：内置预设 / 选图 / 恢复默认 / 取景复位
     Q_INVOKABLE QVariantList bgPresets() const;
     Q_INVOKABLE void applyBgPreset(const QString& presetId);
+    Q_INVOKABLE void removeBgImage(const QString& presetId);
     Q_INVOKABLE bool chooseBgImage();
     Q_INVOKABLE void restoreDefaultBg();
     Q_INVOKABLE void resetBgView();
