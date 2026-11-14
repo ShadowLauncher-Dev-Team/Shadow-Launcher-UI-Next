@@ -1684,6 +1684,18 @@
         <source>以及其他参与内测的小伙伴们也十分感谢！</source>
         <translation>以及其他參與內測的小夥伴們也十分感謝！</translation>
     </message>
+    <message>
+        <source>为启动器的启动页提供了超多好看的壁纸！</source>
+        <translation>為啟動器的啟動頁提供了超多好看的壁紙！</translation>
+    </message>
+    <message>
+        <source>赞助支持</source>
+        <translation>贊助支持</translation>
+    </message>
+    <message>
+        <source>感谢 爱发电用户_Wa3G 为本启动器赞助了19元！</source>
+        <translation>感謝 愛發電用戶_Wa3G 為本啟動器贊助了19元！</translation>
+    </message>
 </context>
 <context>
     <name>SetAdvancedPane</name>

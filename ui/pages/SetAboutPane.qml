@@ -24,6 +24,8 @@ Item {
           desc: qsTr("提供了 MCIM 镜像源，主要用于 Mod 等资源的下载，虽然不大稳定（也可能是我测试太多给我限速了），但好歹不用死守着有时非常逆天的官方源了。") },
         { name: "Lucide", url: "https://lucide.dev/", badge: "",
           desc: qsTr("提供了启动器目前所有可见的图标。") },
+        { name: "MCBLOCK", url: "https://mcblock.top/", badge: "",
+          desc: qsTr("为启动器的启动页提供了超多好看的壁纸！") },
         { name: "ChunMoMo", url: "", badge: qsTr("内测人员"),
           desc: qsTr("直接提供了一台能远程操控的电脑给开发者测试初代联机功能（而且是整整一个下午）。虽然初代联机功能已经废弃，但还是得感谢。") }
     ]
@@ -259,6 +261,19 @@ Item {
                     divider: false
                     label: qsTr("以及其他内测小伙伴")
                     desc: qsTr("以及其他参与内测的小伙伴们也十分感谢！")
+                }
+            }
+
+            // ── 赞助支持 ──
+            SetGroup {
+                width: parent.width
+                title: qsTr("赞助支持")
+
+                SetStack {
+                    width: parent.width
+                    divider: false
+                    label: qsTr("爱发电用户_Wa3G")
+                    desc: qsTr("感谢 爱发电用户_Wa3G 为本启动器赞助了19元！")
                 }
             }
         }

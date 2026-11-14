@@ -1684,6 +1684,18 @@
         <source>以及其他参与内测的小伙伴们也十分感谢！</source>
         <translation>Thanks just as much to everyone else who joined the playtest.</translation>
     </message>
+    <message>
+        <source>为启动器的启动页提供了超多好看的壁纸！</source>
+        <translation>It supplied a great many of the wallpapers you see on the launcher's home page.</translation>
+    </message>
+    <message>
+        <source>赞助支持</source>
+        <translation>Sponsors</translation>
+    </message>
+    <message>
+        <source>感谢 爱发电用户_Wa3G 为本启动器赞助了19元！</source>
+        <translation>Thanks to 爱发电 user_Wa3G for sponsoring this launcher with 19 yuan!</translation>
+    </message>
 </context>
 <context>
     <name>SetAdvancedPane</name>
