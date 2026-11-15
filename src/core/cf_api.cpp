@@ -12,6 +12,7 @@
 #include <QJsonArray>
 #include <QRegularExpression>
 #include <QDateTime>
+#include <QDebug>
 
 #if __has_include("cf_api_key_local.h")
 #include "cf_api_key_local.h"
@@ -164,8 +165,22 @@ void CfApi::search(int classId, const QString& query, int categoryId,
                                   .toObject().value(QStringLiteral("totalCount")).toInt();
             QVariantList items;
             items.reserve(arr.size());
-            for (const QJsonValue& v : arr)
-                items.append(toUnified(v.toObject()));
+            int hidden = 0;
+            for (const QJsonValue& v : arr) {
+                const QJsonObject o = v.toObject();
+                // ── 作者关闭了「允许第三方分发」的项目一律隐藏 ──
+                // CF 的 allowModDistribution=false 是作者显式声明（不是接口故障）：文件仍在 CDN 上，
+                // 但作者不希望第三方启动器代下。绕过它既违背作者意愿，也可能连累整个 API Key 被封。
+                // 所以在**列表层**就滤掉，用户看不到、点不进；而不是等进了详情页才说"没有可下载文件"。
+                if (o.contains(QStringLiteral("allowModDistribution"))
+                    && !o.value(QStringLiteral("allowModDistribution")).toBool(true)) {
+                    ++hidden;
+                    continue;
+                }
+                items.append(toUnified(o));
+            }
+            if (hidden > 0)
+                qInfo().noquote() << QStringLiteral("[CF] 已隐藏 %1 个禁止第三方分发的项目").arg(hidden);
             if (done) done(items, total);
         },
         fail);
@@ -219,15 +234,7 @@ void CfApi::fetchFilesAsVersions(const QString& modId, const QString& gameVersio
                 // 实测 Mercury landing 7.0b+8：API 报 null、该直链 HEAD 200 且长度与 fileLength 完全一致。
                 // 以前这里直接留空 → 详情页显示「该组合没有可下载文件」，把一个能下的文件判成了死路。
                 // 规则与 modpack_downloader.cpp 的 kCfMirrorFileCdn 拼接保持一致（一处规则，两处使用）。
-                QString cfUrl = f.value(QStringLiteral("downloadUrl")).toString();
-                const QString cfFileName = f.value(QStringLiteral("fileName")).toString();
-                const qlonglong cfFileId = (qlonglong)f.value(QStringLiteral("fileId")).toDouble();
-                if (cfUrl.isEmpty() && cfFileId > 0 && !cfFileName.isEmpty()) {
-                    cfUrl = QStringLiteral("https://mod.mcimirror.top/files/%1/%2/%3")
-                                .arg(cfFileId / 1000).arg(cfFileId % 1000)
-                                .arg(QString::fromUtf8(QUrl::toPercentEncoding(cfFileName, "/", " ")));
-                }
-                fileEntry.insert(QStringLiteral("url"), cfUrl);
+                fileEntry.insert(QStringLiteral("url"), f.value(QStringLiteral("downloadUrl")).toString());
                 fileEntry.insert(QStringLiteral("filename"), f.value(QStringLiteral("fileName")).toString());
                 fileEntry.insert(QStringLiteral("size"), (qlonglong)f.value(QStringLiteral("fileLength")).toDouble());
                 fileEntry.insert(QStringLiteral("date_published"), f.value(QStringLiteral("fileDate")).toString());
