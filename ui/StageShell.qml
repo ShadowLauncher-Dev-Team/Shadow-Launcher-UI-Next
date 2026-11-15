@@ -227,8 +227,12 @@ Item {
             toastHost.show(qsTr("%1（另有 %2 个问题）").arg(errors[0]).arg(errors.length - 1), 5000, "error")
         }
     }
-    readonly property bool narrow: width < 900
-    readonly property int sideW: (narrow ? Theme.sideWNarrow : Theme.sideW)
+    // 侧栏只有「完整模式」一种形态。
+    // 曾经按 width < 900 切成图标轨道（Theme.sideWNarrow = 64）：菜单图标与文字锚点对不上，
+    // 而且轨道态下侧栏点击几乎失效 —— 进了「下载进度」页就再也点不回去（影报过）。
+    // 页面内部的窄屏适配（padding / 字号）另有各自的 narrow，与这里无关，那些保留。
+    readonly property bool narrow: false
+    readonly property int sideW: Theme.sideW
     property bool versionsOpen: false
     // 版本设置（从版本页的版本卡片进入；叠在版本页之上，返回时回到版本页）
     property bool settingsOpen: false

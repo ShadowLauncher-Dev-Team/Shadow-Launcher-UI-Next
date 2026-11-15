@@ -55,7 +55,7 @@ Item {
     readonly property real stageAspect: {
         const w = pane.win ? pane.win.width : 1100
         const h = pane.win ? pane.win.height : 720
-        const sw = (w < 900) ? Theme.sideWNarrow : Theme.sideW
+        const sw = Theme.sideW      // 侧栏只有完整模式，示意图别给用户看一个不存在的形态
         return Math.max(0.6, Math.min(3.0, (w - sw) / Math.max(1, h)))
     }
     readonly property real previewMaxH: 340   // 太高会把缩放条挤出可视区，用户得边滚边调
