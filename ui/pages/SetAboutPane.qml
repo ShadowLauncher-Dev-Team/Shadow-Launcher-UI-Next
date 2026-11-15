@@ -12,6 +12,9 @@ Item {
 
     readonly property var b: (typeof backend !== "undefined") ? backend : null
 
+    // 项目地址单一来源：许可证与主页两个按钮都从这里取，别再各写一份
+    readonly property string repoUrl: "https://github.com/xiaole1173/Shadow-Launcher-UI-Next"
+
     // 鸣谢条目：name 有 url 时可点击；badge 非空时显示小徽标
     readonly property var credits: [
         { name: "PCL2", url: "https://github.com/Meloong-Git/PCL", badge: "",
@@ -83,14 +86,14 @@ Item {
                             radius: 2
                             height: 30
                             text: qsTr("GNU AGPL v3 许可证")
-                            onClicked: Qt.openUrlExternally("https://github.com/xiaole1173/shadow-launcher/blob/master/LICENSE")
+                            onClicked: Qt.openUrlExternally(pane.repoUrl + "/blob/main/LICENSE")
                         }
                         SButton {
                             kind: 1
                             radius: 2
                             height: 30
                             text: qsTr("访问项目主页")
-                            onClicked: Qt.openUrlExternally("https://github.com/xiaole1173/shadow-launcher")
+                            onClicked: Qt.openUrlExternally(pane.repoUrl)
                         }
                     }
 

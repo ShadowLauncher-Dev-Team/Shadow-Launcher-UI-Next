@@ -564,9 +564,11 @@ int main(int argc, char *argv[])
 
 
     // Modrinth API: uniquely-identifying User-Agent header (mandatory)
+    // Modrinth 要求 UA 能标识调用方；原来是占位符 YOUR_APP + 旧仓库地址
     HttpClient::instance().setUserAgent(
-        QStringLiteral("YOUR_APP/1.0.0"
-                       " (https://github.com/xiaole1173/shadow-launcher)"));
+        QStringLiteral("ShadowLauncher/%1"
+                       " (https://github.com/xiaole1173/Shadow-Launcher-UI-Next)")
+            .arg(QString::fromLatin1(SHADOW_DISPLAY_VERSION)));
 
     ShadowBackend* backend = new ShadowBackend(&app);
     checkpoint(QStringLiteral("ShadowBackend constructed"));
