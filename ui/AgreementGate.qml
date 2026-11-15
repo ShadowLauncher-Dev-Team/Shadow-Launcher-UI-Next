@@ -285,8 +285,10 @@ Item {
 
                 SSegmented {
                     id: seg
-                    // 自然宽度 + 下限：拉满整行会让两个 tab 各 300px，看着像进度条
-                    Layout.preferredWidth: Math.max(300, seg.implicitWidth)
+                    // 固定宽度，不读 seg.implicitWidth：在 RowLayout 里读它会和布局的
+                    // 宽度分配互相触发（"Binding loop detected for property implicitWidth"），
+                    // 日志里实测每启动一次刷一条。段宽由 SSegmented 内部均分。
+                    Layout.preferredWidth: 320
                     Layout.preferredHeight: seg.implicitHeight
                     items: gate.docTitles
                     currentIndex: gate.docIndex

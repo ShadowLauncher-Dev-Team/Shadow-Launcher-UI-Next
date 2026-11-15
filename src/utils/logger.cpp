@@ -6,6 +6,7 @@
 #include <windows.h>
 #endif
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDebug>
 #include <QDir>
@@ -13,6 +14,8 @@
 #include <QFileInfo>
 #include <QMutexLocker>
 #include <QMutex>
+#include <QRegularExpression>
+#include <QSysInfo>
 #include <QTextStream>
 #include <QtMessageHandler>
 #include <cstdio>
@@ -33,53 +36,164 @@ Q_LOGGING_CATEGORY(logUI,       "Shadow.UI")        // 用户界面操作
 // Keep legacy 'logMgr' for backward compat — maps to same "Shadow.Mod"
 Q_LOGGING_CATEGORY(logMgr,      "Shadow.Mod")
 
-// ── Custom message handler ──
+// ============================================================
+// 日志落盘策略（2026-11-15 重做）
+//
+// 旧做法：一天一个文件、只追加。结果是一天的开发会写进同一份文件，
+// 实测单日 82 MB / 69.5 万行，而其中 92% 是三类循环回声（安装器 JVM 逐行、
+// 游戏 JVM 逐行、同一条 QML 绑定环告警刷 12.5 万次）。
+// 现在：
+//   1. **一次启动一个文件**：logs/shadow_launcher_<yyyy-MM-dd_HH-mm-ss>.log
+//      —— 出问题时「哪一次运行」天然可指认，不会和别的会话混在一起。
+//   2. **只留最近 10 份**：启动时按修改时间清掉更早的（含旧的按日文件）。
+//   3. **连续重复折叠**：同一条消息连续出现 N 次只落 1 行 + 一句折叠计数。
+//      这是兜底：即使某处又把循环日志写回来，也不会再把磁盘写爆。
+//   4. **单次上限 12 MB**：超了写一句提示后停止写文件（控制台照旧）。
+//   5. 文件头带版本 / PID / 系统 / 路径，拿到日志就能对上环境。
+// ============================================================
 
 static QRecursiveMutex g_logMutex;
 static QFile* g_logFile = nullptr;
 static QString g_logDir;
-static QString g_currentLogDate;
+static QString g_sessionStamp;      // 本次运行的时间戳（文件名用）
+static QDateTime g_sessionStart;
+static qint64 g_bytesWritten = 0;
+static bool g_sizeLimitHit = false;
+static int g_repeatCount = 0;       // 上一条消息连续出现了几次
+static QString g_repeatKey;         // 上一条消息的折叠键
+
+static constexpr int    kKeepLogFiles   = 10;
+static constexpr qint64 kMaxSessionBytes = 12LL * 1024 * 1024;
+
+static QString logDirPath(const QString& exeDir)
+{
+    return exeDir + QStringLiteral("/logs");
+}
 
 static QString logFilePath(const QString& exeDir)
 {
-    const QString date = QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd"));
-    return exeDir + QStringLiteral("/logs/shadow_launcher_") + date + QStringLiteral(".log");
+    // 没有会话时间戳时退回按日（尚未初始化就写日志的极端情况）
+    if (g_sessionStamp.isEmpty())
+        return logDirPath(exeDir) + QStringLiteral("/shadow_launcher_")
+               + QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd"))
+               + QStringLiteral(".log");
+    return logDirPath(exeDir) + QStringLiteral("/shadow_launcher_") + g_sessionStamp
+           + QStringLiteral(".log");
 }
 
 static void ensureLogDir(const QString& exeDir)
 {
-    QDir dir(exeDir + QStringLiteral("/logs"));
-    if (!dir.exists()) {
+    QDir dir(logDirPath(exeDir));
+    if (!dir.exists())
         dir.mkpath(QStringLiteral("."));
+}
+
+// 只留最近 kKeepLogFiles 份。只动我们自己的文件名模式，绝不碰目录里别的东西。
+static void pruneOldLogs(const QString& exeDir)
+{
+    QDir dir(logDirPath(exeDir));
+    if (!dir.exists())
+        return;
+
+    // 旧方案（一天一个文件）的遗留：shadow_launcher_2026-11-14.log
+    // 与新方案 shadow_launcher_2026-11-14_20-31-05.log 的区别就是日期后面没有 _时间。
+    // 一次性清掉——它们既不符合保留策略，也是当初把磁盘写爆的那批文件（实测单份 84 MB）。
+    static const QRegularExpression legacyRx(
+        QStringLiteral("^shadow_launcher_[0-9]{4}-[0-9]{2}-[0-9]{2}\\.log$"));
+    const QFileInfoList legacy = dir.entryInfoList(
+        { QStringLiteral("shadow_launcher_*.log") }, QDir::Files);
+    for (const QFileInfo& fi : legacy) {
+        if (legacyRx.match(fi.fileName()).hasMatch())
+            dir.remove(fi.fileName());
+    }
+    const QFileInfoList files = dir.entryInfoList(
+        { QStringLiteral("shadow_launcher_*.log") },
+        QDir::Files, QDir::Time);          // Time = 新→旧
+    for (int i = kKeepLogFiles; i < files.size(); ++i) {
+        if (!dir.remove(files.at(i).fileName()))
+            fprintf(stderr, "[Logger] 旧日志删除失败: %s\n",
+                    qPrintable(files.at(i).absoluteFilePath()));
     }
 }
 
-static void rotateLogFile(const QString& exeDir)
+static void writeRaw(const QString& text)
 {
-    const QString today = QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd"));
-    if (g_currentLogDate == today && g_logFile && g_logFile->isOpen())
+    if (!g_logFile || !g_logFile->isOpen())
         return;
+    if (g_bytesWritten >= kMaxSessionBytes) {
+        if (!g_sizeLimitHit) {
+            g_sizeLimitHit = true;
+            const QString note = QStringLiteral(
+                "… 本次会话日志已达 %1 MB 上限，后续内容不再写入文件（控制台仍然输出）")
+                .arg(kMaxSessionBytes / (1024 * 1024));
+            QTextStream s(g_logFile);
+            s.setEncoding(QStringConverter::Utf8);
+            s << note << Qt::endl;
+            s.flush();
+            g_bytesWritten += note.size();
+        }
+        return;
+    }
+    QTextStream stream(g_logFile);
+    stream.setEncoding(QStringConverter::Utf8);
+    stream << text << Qt::endl;
+    stream.flush();
+    g_bytesWritten += text.toUtf8().size() + 1;
+}
 
+// 连续重复的收束点：离开上一段重复时补一句“重复 N 次”
+static void flushRepeatMarker()
+{
+    if (g_repeatCount > 1) {
+        const QString marker = QStringLiteral("… 上一条连续重复 %1 次（已折叠，未逐行落盘）")
+                                   .arg(g_repeatCount - 1);
+        writeRaw(QStringLiteral("        ") + marker);
+    }
+    g_repeatCount = 0;
+    g_repeatKey.clear();
+}
+
+// 文件头：拿到一份日志就知道是哪次运行、什么环境
+static void writeSessionHeader(const QString& exeDir)
+{
+    const QString version = QCoreApplication::applicationVersion().isEmpty()
+                                ? QStringLiteral("unknown")
+                                : QCoreApplication::applicationVersion();
+    writeRaw(QStringLiteral("——  Shadow Launcher  ——"));
+    writeRaw(QStringLiteral("会话 %1   PID %2")
+                 .arg(g_sessionStamp)
+                 .arg(QCoreApplication::applicationPid()));
+    writeRaw(QStringLiteral("版本 %1   系统 %2   Qt %3")
+                 .arg(version,
+                      QSysInfo::prettyProductName(),
+                      QString::fromLatin1(qVersion())));
+    writeRaw(QStringLiteral("目录 %1").arg(exeDir));
+    writeRaw(QStringLiteral("────────────────────────────"));
+}
+
+static void openSessionLog(const QString& exeDir)
+{
     if (g_logFile) {
         if (g_logFile->isOpen()) g_logFile->close();
         delete g_logFile;
         g_logFile = nullptr;
     }
 
-    g_currentLogDate = today;
     ensureLogDir(exeDir);
 
-    const QString path = logFilePath(exeDir);
-    g_logFile = new QFile(path);
-    if (g_logFile->open(QIODevice::Append | QIODevice::Text)) {
-        QTextStream stream(g_logFile);
-        stream.setEncoding(QStringConverter::Utf8);
-        stream << QStringLiteral("——  Shadow Launcher  ——") << Qt::endl;
-        stream.flush();
-    } else {
+    g_logFile = new QFile(logFilePath(exeDir));
+    if (!g_logFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
         delete g_logFile;
         g_logFile = nullptr;
+        return;
     }
+    g_bytesWritten = 0;
+    g_sizeLimitHit = false;
+    writeSessionHeader(exeDir);
+
+    // 清理放在**新建之后**：本次文件是最新的，按时间保留最新 10 份即可，
+    // 先清后建会变成“清到 10 份再新建”= 11 份。
+    pruneOldLogs(exeDir);
 }
 
 static void shadowMessageHandler(QtMsgType type,
@@ -140,20 +254,21 @@ static void shadowMessageHandler(QtMsgType type,
     if (cleanMsg.size() >= 2 && cleanMsg.startsWith(QChar('"')) && cleanMsg.endsWith(QChar('"')))
         cleanMsg = cleanMsg.mid(1, cleanMsg.size() - 2);
 
-    // Add thread ID for multi-threaded download diagnostics
-    const QString threadTag = QStringLiteral("[T]");
     const QString formatted =
         QStringLiteral("%1 %2 [%3] %4")
             .arg(timestamp, levelStr, module, cleanMsg);
 
     // ── Write to file (skip if SHADOW_DISABLE_FILE_LOG=1) ──
     if (!disableFileLog) {
-        rotateLogFile(g_logDir);
-        if (g_logFile && g_logFile->isOpen()) {
-            QTextStream stream(g_logFile);
-            stream.setEncoding(QStringConverter::Utf8);
-            stream << formatted << Qt::endl;
-            stream.flush();
+        // 连续重复折叠：同一行刷屏时只落第一行，离开重复段时补计数。
+        const QString repeatKey = levelStr + QChar(0x1f) + module + QChar(0x1f) + cleanMsg;
+        if (repeatKey == g_repeatKey) {
+            ++g_repeatCount;
+        } else {
+            flushRepeatMarker();
+            writeRaw(formatted);
+            g_repeatKey = repeatKey;
+            g_repeatCount = 1;
         }
     }
 
@@ -169,6 +284,7 @@ static void shadowMessageHandler(QtMsgType type,
     }
 
     if (type == QtFatalMsg) {
+        flushRepeatMarker();
         if (g_logFile) {
             if (g_logFile->isOpen()) g_logFile->close();
             delete g_logFile;
@@ -192,10 +308,10 @@ void installFileLogger(const QString& exeDir)
     QMutexLocker locker(&g_logMutex);
 
     g_logDir = exeDir;
-    ensureLogDir(exeDir);
+    g_sessionStart = QDateTime::currentDateTime();
+    g_sessionStamp = g_sessionStart.toString(QStringLiteral("yyyy-MM-dd_HH-mm-ss"));
 
-    g_currentLogDate.clear();
-    rotateLogFile(exeDir);
+    openSessionLog(exeDir);
 
     qInstallMessageHandler(shadowMessageHandler);
 
@@ -210,6 +326,17 @@ void installFileLogger(const QString& exeDir)
             "qt.qpa.mime.warning=false\n"
             "qt.network.ssl.warning=false\n"
             "qt.core.qobject.connect.warning=false\n"));
+
+    // 退出时把“重复 N 次”的收尾补上，并留一行会话结束（便于判断是正常退出还是中途被杀）
+    if (QCoreApplication::instance()) {
+        QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                         QCoreApplication::instance(), []() {
+            QMutexLocker lock(&g_logMutex);
+            flushRepeatMarker();
+            const qint64 runSecs = g_sessionStart.secsTo(QDateTime::currentDateTime());
+            writeRaw(QStringLiteral("——  会话结束（运行 %1 秒）——").arg(runSecs));
+        });
+    }
 
     qCInfo(logApp) << QStringLiteral("日志系统已就绪");
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 #include "mod_loader_installer.h"
+
 #include "../utils/hash_utils.h"
 #include "http_client.h"
 #include <memory>
@@ -9,6 +10,7 @@
 #include <QJsonArray>
 #include <QDir>
 #include <QFile>
+#include <QTextStream>
 #include <QDirIterator>
 #include <QFileInfo>
 #include <QStandardPaths>
@@ -44,7 +46,40 @@
 #include <QFutureWatcher>
 #include <QtConcurrent>
 
+
 using namespace ShadowLauncher;
+
+// ═══════════════════════════════════════════════════════════════
+// 安装器输出的落盘策略（2026-11-15）：
+// 以前把安装器 stdout 逐行 qCInfo 进主日志，实测一天 50.9 万行、占整份日志 73%。
+// 现在：完整输出写 logs/installer-last.log（覆盖上次），主日志只留
+//   ① 一行摘要（总行数 / 可疑行数）  ② 值得看的错误行（前 30 条，防刷屏）。
+// ═══════════════════════════════════════════════════════════════
+
+static bool installerLineIsInteresting(const QString& line)
+{
+    static const QRegularExpression rx(
+        QStringLiteral("error|exception|caused by|failed|failure|unable to|cannot|denied|"
+                       "no such file|timed out|timeout|refused|invalid"),
+        QRegularExpression::CaseInsensitiveOption);
+    return line.contains(rx);
+}
+
+static void dumpInstallerOutput(const QString& tag, const QStringList& lines)
+{
+    QDir dir(QCoreApplication::applicationDirPath() + QStringLiteral("/logs"));
+    if (!dir.exists()) dir.mkpath(QStringLiteral("."));
+    QFile f(dir.filePath(QStringLiteral("installer-last.log")));
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+        qCWarning(logLoader) << QStringLiteral("[安装] 无法写入安装器输出文件:") << f.fileName();
+        return;
+    }
+    QTextStream out(&f);
+    out.setEncoding(QStringConverter::Utf8);
+    out << QStringLiteral("—— %1 ——\n").arg(tag);
+    for (const QString& line : lines)
+        out << line << "\n";
+}
 
 // Forward declaration for LZMA decompression (defined below)
 
@@ -1062,9 +1097,14 @@ void ModLoaderInstaller::runOptifineInstaller(const QByteArray& jarData) {
 
         // Log installer output for debugging（2026-08-07：实际输出内容到日志，辅助诊断）
         if (!capturedOutput->isEmpty()) {
-            qCInfo(logLoader) << QStringLiteral("[安装] OptiFine 安装器输出: %1 行").arg(static_cast<int>(capturedOutput->size()));
+            // 同主安装器：完整输出进 installers-last.log，主日志只留摘要与可疑行（结果条数）
+            int interesting = 0;
             for (const QString& ol : *capturedOutput)
-                qCInfo(logLoader) << QStringLiteral("[JVM 输出] ") + ol;
+                if (installerLineIsInteresting(ol)) ++interesting;
+            dumpInstallerOutput(QStringLiteral("OptiFine 安装器"), *capturedOutput);
+            qCInfo(logLoader)
+                << QStringLiteral("[安装] OptiFine 安装器输出 %1 行，可疑 %2 行（完整输出见 logs/installer-last.log）")
+                       .arg(static_cast<int>(capturedOutput->size())).arg(interesting);
         }
 
         if (m_cancelled || !installOk) {
@@ -3531,6 +3571,7 @@ ModLoaderInstaller::runBootstrapperSync(
     elapsed.start();
     const int pollMs = 100;
     QStringList outputLines;
+    int interestingCount = 0;   // 输出里的可疑行总数（主日志只落前 30 条）
     bool procFinished = false;
 
     while (!procFinished && !result.timedOut) {
@@ -3558,8 +3599,12 @@ ModLoaderInstaller::runBootstrapperSync(
             for (const QString& line : lines) {
                 if (line.trimmed().isEmpty()) continue;
                 outputLines.append(line);
-                // JVM 标准输出写入日志（辅助诊断，2026-08-07）
-                qCInfo(logLoader) << QStringLiteral("[安装] JVM 输出: ") + line;
+                // 不再逐行落主日志：只留可疑行，且前 30 条封顶（一次安装几万行是常态）
+                if (installerLineIsInteresting(line)) {
+                    ++interestingCount;
+                    if (interestingCount <= 30)
+                        qCWarning(logLoader) << QStringLiteral("[安装] ") + line;
+                }
                 // 关键词 → 步骤进度映射
                 if (onStepProgress) {
                     if (line == QStringLiteral("Extracting json"))
@@ -3594,9 +3639,12 @@ ModLoaderInstaller::runBootstrapperSync(
         QByteArray stderrData = proc.readAllStandardError();
         if (!stderrData.isEmpty()) {
             for (const auto& line : QString::fromUtf8(stderrData)
-                .split(QRegularExpression(QStringLiteral("[\r\n]+")), Qt::SkipEmptyParts)) {
-                if (!line.trimmed().isEmpty())
-                    qCInfo(logLoader) << QStringLiteral("[安装] JVM 错误输出: ") + line;
+                     .split(QRegularExpression(QStringLiteral("[\r\n]+")), Qt::SkipEmptyParts)) {
+                if (line.trimmed().isEmpty()) continue;
+                outputLines.append(line);
+                ++interestingCount;
+                if (interestingCount <= 30)
+                    qCWarning(logLoader) << QStringLiteral("[安装] ") + line;
             }
         }
         // 兜底：两个通道都空且进程仍在跑 → 短暂等待避免忙轮询
@@ -3609,6 +3657,12 @@ ModLoaderInstaller::runBootstrapperSync(
     }
 
     result.exitCode = proc.exitCode();
+
+    // 完整输出进独立文件；主日志只留一行摘要（原来就是这里写出了 50 万行/日）
+    dumpInstallerOutput(QStringLiteral("%1 %2").arg(loaderName, versionsDirPath), outputLines);
+    qCInfo(logLoader)
+        << QStringLiteral("[安装] %1 安装器输出 %2 行，可疑 %3 行（前 30 条已记录；完整输出见 logs/installer-last.log）")
+               .arg(loaderName).arg(outputLines.size()).arg(interestingCount);
 
     if (result.timedOut) {
         result.success = false;

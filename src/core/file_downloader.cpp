@@ -694,7 +694,8 @@ std::shared_ptr<DownloadThread> FileDownloader::tryAddThread(
     th->sourceUrl = file->orderedSources[sourceIdx];
     maxPiece->downloadEnd = splitPoint;
 
-    qCInfo(logDownload) << QStringLiteral("[夸父] 附加线程 线程号=%1 文件=%2 偏移=%3")
+    // 分片细节：一次下载可能几百个分片，逐条 Info 会把日志刷爆（实测 8000 行/日）
+    qCDebug(logDownload) << QStringLiteral("[夸父] 附加线程 线程号=%1 文件=%2 偏移=%3")
                             .arg(th->uuid).arg(file->localName).arg(splitPoint);
 
     file->threads.append(th);
@@ -806,7 +807,7 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
 
     // URL 必须是最后一个 arg：QString::arg 对替换文本中的 %N 递归处理，
     // URL 含 %2B 等编码时会被后续 .arg() 破坏（2026-08-02 实测日志错乱）
-    qCInfo(logDownload) << QStringLiteral("[夸父] 开始下载 文件=%2 偏移=%3 URL=%1")
+    qCDebug(logDownload) << QStringLiteral("[夸父] 开始下载 文件=%2 偏移=%3 URL=%1")
                             .arg(file->localName).arg(th->downloadStart).arg(th->sourceUrl);
 
     if (!ShadowLauncher::suppressUrlLog())
@@ -1501,7 +1502,7 @@ cleanup:
         if (it != m_hostStats.end()) it->activeRequests--;
     }
 
-    qCInfo(logDownload) << QStringLiteral("[夸父] 线程完成 文件=%1 字节=%2")
+    qCDebug(logDownload) << QStringLiteral("[夸父] 线程完成 文件=%1 字节=%2")
         .arg(file->localName).arg(th->downloadDone);
 
     // ── 取消幂等（契约 §5）：cancel() 之后不得再合并写盘 / 发 fileFinished / 改统计 ──

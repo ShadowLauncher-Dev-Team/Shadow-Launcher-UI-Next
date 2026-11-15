@@ -722,9 +722,12 @@ void Launcher::onReadyReadStdout()
                 emit minecraftLanClosed();
             }
         }
+        // 不再逐行落主日志：全量输出已经写进 shadow-jvm-output.log，
+        // 这里只留过滤后的告警/错误行（与 launchProgress 用同一把筛子）。
+        // 2026-11-15：逐行回显实测一天 1.5 万行，且全是 INFO 噪音。
         for (const QString& l : lines) {
             const QString t = l.trimmed();
-            if (t.isEmpty()) continue;
+            if (t.isEmpty() || isMcOutputNoise(t)) continue;
             qCInfo(logLaunch) << QStringLiteral("[JVM 输出] ") + sanitizeLaunchLog(t);
         }
     }
@@ -768,6 +771,8 @@ void Launcher::onReadyReadStderr()
             for (const QString& l : errLines) {
                 const QString t = l.trimmed();
                 if (t.isEmpty()) continue;
+                // 常见噪音（"Loading …"、资源重载等）走 stderr 的也一律不落盘
+                if (isMcOutputNoise(t)) continue;
                 qCInfo(logLaunch) << QStringLiteral("[JVM 错误输出] ") + sanitizeLaunchLog(t);
             }
         }

@@ -517,9 +517,33 @@ int main(int argc, char *argv[])
 
     // ── Initialise structured logging ──
     initLogger(QCoreApplication::applicationDirPath());
-    checkpoint(QStringLiteral("Logger initialized"));
-    qCInfo(logApp) << QStringLiteral("=== Shadow Launcher v%1 启动 ===").arg(app.applicationVersion())
-                   << "PID:" << QCoreApplication::applicationPid();
+    // 不再单独 checkpoint「Logger initialized」：initLogger 自己会打「日志系统已就绪」，
+    // 两行说同一件事。版本号也不再手写 v 前缀 —— applicationVersion() 已带 v（曾出现 "vv1.0.4"）。
+    // ── 日志自检（--log-selftest）──
+    // 每次改日志管线都该能一句话验完：连续重复是否折叠、文件是否按次存放、文件头是否完整。
+    // 与 --ui-selftest-settings 同性质的一次性测试入口。
+    if (app.arguments().contains(QStringLiteral("--log-selftest"))) {
+        for (int i = 0; i < 5; ++i)
+            qCInfo(logApp).noquote() << QStringLiteral("[log-selftest] 相同的一行");
+        qCInfo(logApp).noquote() << QStringLiteral("[log-selftest] 不同的另一行");
+        const QString dir = QCoreApplication::applicationDirPath() + QStringLiteral("/logs");
+        const QFileInfoList files = QDir(dir).entryInfoList({ QStringLiteral("shadow_launcher_*.log") },
+                                                            QDir::Files, QDir::Time);
+        QString body;
+        if (!files.isEmpty()) {
+            QFile f(files.first().absoluteFilePath());
+            if (f.open(QIODevice::ReadOnly | QIODevice::Text)) body = QString::fromUtf8(f.readAll());
+        }
+        const int sameLines = body.count(QStringLiteral("[log-selftest] 相同的一行"));
+        const bool folded = body.contains(QStringLiteral("上一条连续重复 4 次"));
+        const bool header = body.contains(QStringLiteral("会话 ")) && body.contains(QStringLiteral("Qt "));
+        qInfo().noquote() << QStringLiteral("[log-selftest] 相同行落盘次数=%1（期望 1） 折叠标记=%2 文件头=%3 文件数=%4（期望 <=10）")
+                                 .arg(sameLines).arg(folded).arg(header).arg(files.size());
+        return 0;
+    }
+    qCInfo(logApp) << QStringLiteral("=== Shadow Launcher %1 启动 === PID %2")
+                          .arg(app.applicationVersion())
+                          .arg(QCoreApplication::applicationPid());
 
     // Data directory
     QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
