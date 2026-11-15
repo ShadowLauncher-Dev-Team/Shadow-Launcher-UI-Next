@@ -68,44 +68,7 @@ cmake --build build --config Release --parallel
 
 产物：`build\Release\ShadowLauncher.exe`。直接双击即进入新界面 —— 旧 UI 已于 2026-11-10 整体移除，不存在第二套入口。
 
-清理构建产物请只删已知文件，**不要** `Remove-Item build -Recurse -Force`：
-
-```powershell
-cmake --build build --target clean
-```
-
-## 开发辅助参数
-
-启动器带一组仅开发时使用的命令行开关：
-
-| 参数 | 用途 |
-|---|---|
-| `--log-selftest` | 日志系统自检（折叠、文件头、告警摘要、保留份数），跑完即退出 |
-| `--screenshot <path>` | 启动后截图保存，用于界面回归 |
-| `--navigate <page>` | 直接跳转到指定页面 |
-| `--ui-selftest-settings` | 设置页逐一巡视，检查每个 pane 能否正常渲染 |
-| `--ui-next-mode / --ui-next-density / --ui-next-size` | 覆盖外观模式、密度、窗口尺寸 |
-
-日志按「每一次运行一个文件」写入 `<exe目录>/logs/shadow_launcher_<时间戳>.log`，只保留最近 10 份；告警与错误另存 `logs/errors.log`，跨会话保留。上次运行若是被强杀或崩溃，下次启动会在日志首行报出来。
-
-## UI 硬规则
-
-这些是踩过的坑，改界面前先读：
-
-1. **图标一律 SVG**（`icons/lucide/*.svg`），禁止 emoji 或 Unicode 符号当图标。
-2. **禁止 `SpringAnimation`**：实测数值会发散到 `-Infinity`，控件直接消失。
-3. **禁止整窗 `layer.enabled` + `MultiEffect`**：会触发纹理重分配，表现为文字瞬间放大、控件消失。小图标上色用 `MultiEffect` 可以。
-4. **首屏是「一个决定 + 一个按钮」**，不要摊成等权卡片网格。
-5. **首屏信息准入判据**：一个元素能留下，唯一理由是它能改变用户下一步的动作；说不出改变哪个决定就删掉。
-6. **常态不说话**：不显示「就绪 / 准备就绪」，只有异常才提示。
-7. 颜色、间距、动效一律取自 `Theme`，不在页面里写死数值。
-
-## 文档
-
-- [CODE_INDEX.md](CODE_INDEX.md) —— 全量代码索引（模块职责、关键函数、改动的来龙去脉）
-- [design/DESIGN_SPEC.md](design/DESIGN_SPEC.md) —— 界面设计规范；历次验收记录在 `design/` 下
-- [DOWNLOAD_CONTRACT.md](DOWNLOAD_CONTRACT.md) —— 下载引擎的接口契约与状态机
-- [PROJECT_STATUS.md](PROJECT_STATUS.md) —— 当前阶段与已知问题
+开发环境、调试开关与界面实现约束见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 许可
 
@@ -121,7 +84,19 @@ cmake --build build --target clean
 
 ## 致谢
 
+这个项目在很多地方是照着先行者的路径学来的：
+
+- [PCL2](https://github.com/Meloong-Git/PCL) —— 下载引擎与版本隔离的设计参考了它的实现路径
+- [HMCL](https://github.com/HMCL-dev/HMCL) —— 启动参数构建、版本目录识别等实现参考了它
+- [bangbang93](https://afdian.com/a/bangbang93) —— 提供了镜像源和 Forge 安装工具
+- [z0z0r4](https://www.mcimirror.top/) —— 提供了 MCIM 镜像源，模组等资源不必只依赖官方源
+- [MCBLOCK](https://mcblock.top/) —— 启动页的壁纸素材来自这里
+- [Lucide](https://lucide.dev/) —— 界面里所有图标
+- ChunMoMo（内测人员）—— 初代联机功能测试时提供了一台可远程操控的电脑
+
+基础组件：
+
 - [Qt](https://www.qt.io/) —— 界面与网络框架
-- [Lucide](https://lucide.dev/) —— 图标集
 - [miniz](https://github.com/richgel999/miniz)、[libwebp](https://chromium.googlesource.com/webm/libwebp) —— 第三方库
-- 以及一代 Shadow Launcher 的所有使用者与反馈者
+
+以及一代 Shadow Launcher 的所有使用者与反馈者。
