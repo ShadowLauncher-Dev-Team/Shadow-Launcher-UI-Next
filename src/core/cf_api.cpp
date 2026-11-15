@@ -23,6 +23,7 @@ namespace ShadowLauncher {
 namespace {
 // CF API 端点：镜像优先（MCIM /curseforge/v1/，免 key，files 端点 186ms 远快于官方 6.4s）
 // 官方 api.curseforge.com 作为镜像失败（超时/429/5xx）时的降级源（需 x-api-key）
+// ⚠ 这里的「镜像」只指 API JSON 的中转，不是文件副本：文件请求会 302 到 CF 自己的 CDN。
 const QString kCfMirrorBase = QStringLiteral("https://mod.mcimirror.top/curseforge/v1");
 const QString kCfOfficialBase = QStringLiteral("https://api.curseforge.com/v1");
 } // namespace

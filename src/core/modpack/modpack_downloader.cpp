@@ -478,7 +478,11 @@ void ModpackDownloader::processResolvedBatch(int startIndex, const QMap<int, QJs
         m_items[i].fileName = rf.fileName;
 
         // ── 下载源链（2026-08-10 用户要求）：官方 edge 签名直链优先，镜像 CDN 分片兜底 ──
-        // 官方: downloadUrl（精卫带 x-api-key 认证）；镜像: /files/{fid/1000}/{fid%1000}/{fileName}
+        // 官方: downloadUrl（精卫带 x-api-key 认证）；
+        // 兜底: /files/{fid/1000}/{fid%1000}/{fileName} —— ⚠ 这条**不是** MCIM 自己的副本，
+        // 实测 mod.mcimirror.top 直接 302 跳到 mediafilez.forgecdn.net（CF 自己的 S3 公开桶）。
+        // 也就是说 CDN 不看 allowModDistribution；那个开关只在 API 层生效（API 不给签名直链）。
+        // 所以我们只用它在「作者允许分发」的文件上做加速入口，不拿它去绕禁分发的项目。
         // ⚠ officialOnly（官方补查救回）：镜像未同步该文件 → 镜像分片 URL 必 404，
         // 不拼接（否则精卫先试镜像白等超时才切官方，严重拖慢整体下载）。
         const QString officialUrl = o.value(QStringLiteral("downloadUrl")).toString();
