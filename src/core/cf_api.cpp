@@ -212,7 +212,22 @@ void CfApi::fetchFilesAsVersions(const QString& modId, const QString& gameVersio
                 const QString keyStr = mcVer + QLatin1Char('|') + loaderName.toLower();
 
                 QVariantMap fileEntry;
-                fileEntry.insert(QStringLiteral("url"), f.value(QStringLiteral("downloadUrl")).toString());
+                // ── 下载地址：downloadUrl 为空时按 CF CDN 规则自拼镜像直链 ──
+                // 大量整合包作者关掉了「允许第三方分发」，于是 CF 的 files 接口对每个文件都返回
+                // downloadUrl: null（官方与 MCIM 镜像一致），download-url 接口直接 403。
+                // 但文件本体仍在 CDN 上：https://mod.mcimirror.top/files/{id/1000}/{id%1000}/{fileName}
+                // 实测 Mercury landing 7.0b+8：API 报 null、该直链 HEAD 200 且长度与 fileLength 完全一致。
+                // 以前这里直接留空 → 详情页显示「该组合没有可下载文件」，把一个能下的文件判成了死路。
+                // 规则与 modpack_downloader.cpp 的 kCfMirrorFileCdn 拼接保持一致（一处规则，两处使用）。
+                QString cfUrl = f.value(QStringLiteral("downloadUrl")).toString();
+                const QString cfFileName = f.value(QStringLiteral("fileName")).toString();
+                const qlonglong cfFileId = (qlonglong)f.value(QStringLiteral("fileId")).toDouble();
+                if (cfUrl.isEmpty() && cfFileId > 0 && !cfFileName.isEmpty()) {
+                    cfUrl = QStringLiteral("https://mod.mcimirror.top/files/%1/%2/%3")
+                                .arg(cfFileId / 1000).arg(cfFileId % 1000)
+                                .arg(QString::fromUtf8(QUrl::toPercentEncoding(cfFileName, "/", " ")));
+                }
+                fileEntry.insert(QStringLiteral("url"), cfUrl);
                 fileEntry.insert(QStringLiteral("filename"), f.value(QStringLiteral("fileName")).toString());
                 fileEntry.insert(QStringLiteral("size"), (qlonglong)f.value(QStringLiteral("fileLength")).toDouble());
                 fileEntry.insert(QStringLiteral("date_published"), f.value(QStringLiteral("fileDate")).toString());
