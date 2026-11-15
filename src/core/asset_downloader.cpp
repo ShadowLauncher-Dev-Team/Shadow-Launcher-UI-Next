@@ -939,7 +939,7 @@ void AssetDownloader::updateSpeedFloor()
         m_speedFloorBps.storeRelaxed(newFloor);
         // 只在跨过整 MB 时打日志（避免每次微增刷屏）
         if (newFloor / (1024 * 1024) > currentFloor / (1024 * 1024)) {
-            qCInfo(logAsset) << QStringLiteral("[山海经] 速度下限 %1 M").arg(newFloor / (1024.0 * 1024.0), 0, 'f', 2);
+            qCDebug(logAsset) << QStringLiteral("[山海经] 速度下限 %1 M").arg(newFloor / (1024.0 * 1024.0), 0, 'f', 2);
         }
     }
 }

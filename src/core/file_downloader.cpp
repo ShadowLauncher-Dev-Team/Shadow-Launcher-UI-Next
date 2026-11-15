@@ -1760,7 +1760,7 @@ void FileDownloader::speedTick()
         m_lastFloorIncreaseMs = nowMs;
         // 只在跨过整 MB 时打日志（避免每次微增刷屏）
         if (floorLimit / (1024 * 1024) > currentFloor / (1024 * 1024)) {
-            qCInfo(logDownload) << QStringLiteral("[夸父] 速度下限 %1 M").arg(floorLimit / (1024.0 * 1024.0), 0, 'f', 2);
+            qCDebug(logDownload) << QStringLiteral("[夸父] 速度下限 %1 M").arg(floorLimit / (1024.0 * 1024.0), 0, 'f', 2);
         }
     } else if (nowMs - m_lastFloorIncreaseMs > kFloorDecayMs && currentFloor > kMinSpeedFloorBps) {
         // 5s without growth: decay floor by 50%

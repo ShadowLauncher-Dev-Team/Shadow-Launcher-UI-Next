@@ -61,8 +61,10 @@ static qint64 g_bytesWritten = 0;
 static bool g_sizeLimitHit = false;
 static int g_repeatCount = 0;       // 上一条消息连续出现了几次
 static QString g_repeatKey;         // 上一条消息的折叠键
+static QString g_prevAbnormalName;  // 上一次运行没有写结束标记 → 会话文件名
 
 static constexpr int    kKeepLogFiles   = 10;
+static constexpr qint64 kMaxDigestBytes = 1024 * 1024;   // 告警摘要上限 1 MB
 static constexpr qint64 kMaxSessionBytes = 12LL * 1024 * 1024;
 
 static QString logDirPath(const QString& exeDir)
@@ -153,6 +155,55 @@ static void flushRepeatMarker()
     g_repeatKey.clear();
 }
 
+// ── 告警/错误摘要（logs/errors.log）──
+// 会话日志只留最近 10 份，轮转掉之后历史告警就没了。异常追踪不能跟着一起丢，
+// 所以 W/E 级别另存一份滚动摘要（1 MB 上限，超出转存 errors.prev.log）。
+static QString errorDigestPath(const QString& exeDir)
+{
+    return logDirPath(exeDir) + QStringLiteral("/errors.log");
+}
+
+static void appendErrorDigest(const QString& levelStr, const QString& formatted)
+{
+    const QString path = errorDigestPath(g_logDir);
+    QFile f(path);
+    const bool fresh = !f.exists();
+    if (f.size() > kMaxDigestBytes) {
+        QDir().remove(path + QStringLiteral(".prev"));
+        f.rename(path + QStringLiteral(".prev"));
+    }
+    if (!f.open(QIODevice::Append | QIODevice::Text))
+        return;
+    QTextStream out(&f);
+    out.setEncoding(QStringConverter::Utf8);
+    if (fresh || f.size() == 0)
+        out << QStringLiteral("——  告警 / 错误摘要（跨会话保留，%1 MB 上限）——")
+                   .arg(kMaxDigestBytes / (1024 * 1024)) << Qt::endl;
+    out << QDateTime::currentDateTime().toString(QStringLiteral("MM-dd HH:mm:ss"))
+        << " " << formatted << Qt::endl;
+}
+
+// 上一份会话日志有没有写结束标记？没写 = 被杀 / 崩了。
+// 这是「精简日志之后仍然能追踪异常」的关键一环：不靠翻旧文件，启动就把结论打出来。
+static void detectPreviousSessionHealth(const QString& exeDir)
+{
+    g_prevAbnormalName.clear();
+    QDir dir(logDirPath(exeDir));
+    const QFileInfoList files = dir.entryInfoList(
+        { QStringLiteral("shadow_launcher_*_*.log") }, QDir::Files, QDir::Time);
+    if (files.isEmpty())
+        return;
+    QFile f(files.first().absoluteFilePath());
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+        return;
+    const qint64 keep = 4096;
+    if (f.size() > keep)
+        f.seek(f.size() - keep);
+    const QString tail = QString::fromUtf8(f.readAll());
+    if (!tail.contains(QStringLiteral("会话结束")))
+        g_prevAbnormalName = files.first().fileName();
+}
+
 // 文件头：拿到一份日志就知道是哪次运行、什么环境
 static void writeSessionHeader(const QString& exeDir)
 {
@@ -180,6 +231,7 @@ static void openSessionLog(const QString& exeDir)
     }
 
     ensureLogDir(exeDir);
+    detectPreviousSessionHealth(exeDir);
 
     g_logFile = new QFile(logFilePath(exeDir));
     if (!g_logFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
@@ -270,6 +322,9 @@ static void shadowMessageHandler(QtMsgType type,
             g_repeatKey = repeatKey;
             g_repeatCount = 1;
         }
+        // 告警与错误另存一份跨会话摘要：会话文件会被轮转掉，异常线索不能一起消失
+        if (type != QtInfoMsg)
+            appendErrorDigest(levelStr, formatted);
     }
 
     // ── Write to debug console (skip if SHADOW_DISABLE_FILE_LOG=1) ──
@@ -339,6 +394,12 @@ void installFileLogger(const QString& exeDir)
     }
 
     qCInfo(logApp) << QStringLiteral("日志系统已就绪");
+
+    if (!g_prevAbnormalName.isEmpty()) {
+        qCWarning(logApp).noquote()
+            << QStringLiteral("上一次运行未正常结束（该日志没有「会话结束」标记）: %1")
+                   .arg(g_prevAbnormalName);
+    }
 }
 
 bool suppressUrlLog()

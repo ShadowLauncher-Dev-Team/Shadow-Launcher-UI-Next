@@ -105,6 +105,7 @@ private:
 #include "core/http_client.h"
 
 #include "core/screenshot_server.h"
+#include <cstdio>
 #include "core/modpack/zip_archive.h"
 #include <QFile>
 #include <functional>
@@ -526,6 +527,7 @@ int main(int argc, char *argv[])
         for (int i = 0; i < 5; ++i)
             qCInfo(logApp).noquote() << QStringLiteral("[log-selftest] 相同的一行");
         qCInfo(logApp).noquote() << QStringLiteral("[log-selftest] 不同的另一行");
+        qCWarning(logApp).noquote() << QStringLiteral("[log-selftest] 一条告警（应同时进 errors.log）");
         const QString dir = QCoreApplication::applicationDirPath() + QStringLiteral("/logs");
         const QFileInfoList files = QDir(dir).entryInfoList({ QStringLiteral("shadow_launcher_*.log") },
                                                             QDir::Files, QDir::Time);
@@ -537,8 +539,17 @@ int main(int argc, char *argv[])
         const int sameLines = body.count(QStringLiteral("[log-selftest] 相同的一行"));
         const bool folded = body.contains(QStringLiteral("上一条连续重复 4 次"));
         const bool header = body.contains(QStringLiteral("会话 ")) && body.contains(QStringLiteral("Qt "));
-        qInfo().noquote() << QStringLiteral("[log-selftest] 相同行落盘次数=%1（期望 1） 折叠标记=%2 文件头=%3 文件数=%4（期望 <=10）")
-                                 .arg(sameLines).arg(folded).arg(header).arg(files.size());
+        bool digest = false;
+        {
+            QFile d(QDir(dir).filePath(QStringLiteral("errors.log")));
+            if (d.open(QIODevice::ReadOnly | QIODevice::Text))
+                digest = QString::fromUtf8(d.readAll()).contains(QStringLiteral("log-selftest"));
+        }
+        // 走 stdout 而不是 qInfo：qInfo 会进 OutputDebugStringA，控制台什么都看不到
+        const QString report = QStringLiteral("[log-selftest] 相同行落盘=%1（期望 1） 折叠=%2 文件头=%3 摘要=%4 文件数=%5（期望 <=10）")
+                                   .arg(sameLines).arg(folded).arg(header).arg(digest).arg(files.size());
+        fprintf(stdout, "%s\n", qPrintable(report));
+        fflush(stdout);
         return 0;
     }
     qCInfo(logApp) << QStringLiteral("=== Shadow Launcher %1 启动 === PID %2")
