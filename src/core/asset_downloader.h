@@ -146,8 +146,6 @@ private:
     int  getHostLimit(const QString& host) const;
     /// 同上，但要求调用方已持有 m_hostMutex（hostCanAccept 内部用，避免二次加锁死锁）
     int  hostLimitLocked(const QString& host) const;
-    /// 尾程小文件阶段的有效并发（大文件清零后放开，见 m_boostCap）
-    int  effectiveConcurrent() const { return m_phaseBoost ? qMax(m_maxConcurrent, m_boostCap) : m_maxConcurrent; }
     void adjustHostLimits();              // called periodically to tune limits
 
     // ── 全源不可用冷却（2026-08-05）──
@@ -290,13 +288,6 @@ private:
 
     // ── Concurrency ──
     int  m_maxConcurrent = 16;
-    // ── 尾程小文件阶段并发提升（2026-11-17）──
-    // 依据：实测连接复用是好的（90s 内只用了 30 条 TCP），尾程 0.6s/文件
-    // 是"每请求 TTFB 受限"，不是带宽受限 → 加并发是我唯一还剩的杠杆。
-    // 但大文件阶段加并发会触发 CDN 反压（实测 32 并发 15.9MB 文件反而慢 30%），
-    // 所以只在"队列里已经没有 ≥2MB 的大文件"时放开。
-    int  m_boostCap = 0;        // 0=关闭（默认）；>m_maxConcurrent 时生效
-    bool m_phaseBoost = false;  // 当前是否处于小文件放开阶段
     int  m_targetInflight = 0;             // computed by schedulePhase()
     int  m_burstSent = 0;                  // count of initial burst requests
     int  m_preCheckQueued = 0;             // count of async SHA1 pre-checks in flight

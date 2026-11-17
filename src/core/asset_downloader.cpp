@@ -134,14 +134,6 @@ void AssetDownloader::startDownload(const QVector<AssetTask>& tasks, int maxConc
     }
 
     m_maxConcurrent = qBound(4, maxConcurrent, 256);
-
-    // 尾程小文件并发提升：用环境变量控制，方便同一份二进制做 A/B。
-    // SHADOW_ASSET_BOOST=0 关闭；=32 / =48 时在"大文件清零后"放开到该值。
-    {
-        const int boost = qEnvironmentVariableIntValue("SHADOW_ASSET_BOOST");
-        m_boostCap = (boost > m_maxConcurrent) ? qBound(m_maxConcurrent, boost, 64) : 0;
-        m_phaseBoost = false;
-    }
     m_targetInflight = 0;
     m_phase = PhaseInit;
     m_burstSent = 0;
@@ -1249,27 +1241,6 @@ void AssetDownloader::accelTick()
     // 2026-08-10 修：原实现冷却结束即清零 → 持续全拒时每 5s 重新计时 →
     // kAllBlockedFailMs（120s）失败收尾永不触发 → 永久卡死（配合换镜像被拒场景实锤）
 
-    // ── 尾程小文件阶段判定（2026-11-17）──
-    // 判据是"还有没有 ≥2MB 的文件"，不是"剩多少字节"：
-    // 大文件在时加并发会触发 CDN 反压；大文件清零后剩下的都是小文件，
-    // 每请求是延迟受限（TTFB），此时加并发才有净收益。
-    if (m_boostCap > 0) {
-        bool bigLeft = false;
-        for (int i = 0; i < m_pendingQueue.size(); ++i) {
-            if (m_pendingQueue.at(i).size >= kSegMinBytes) { bigLeft = true; break; }
-        }
-        const bool wantBoost = (!bigLeft && m_pendingQueue.size() > 4);
-        if (wantBoost != m_phaseBoost) {
-            m_phaseBoost = wantBoost;
-            qCInfo(logAsset) << QStringLiteral("  [山海经] [并发] %1（%2 → %3，剩余 %4 个文件）")
-                .arg(wantBoost ? QStringLiteral("进入小文件放开阶段")
-                               : QStringLiteral("回到常规并发"))
-                .arg(wantBoost ? m_maxConcurrent : effectiveConcurrent())
-                .arg(wantBoost ? m_boostCap : m_maxConcurrent)
-                .arg(m_pendingQueue.size());
-        }
-    }
-
     // Sample speed every tick
     sampleSpeed();
     updateSpeedFloor();
@@ -1285,7 +1256,7 @@ void AssetDownloader::accelTick()
     schedulePhase();
 
     int inflight = currentInflight();
-    int target = qMin(m_targetInflight, effectiveConcurrent());
+    int target = m_targetInflight;
 
     // Keep timer running even when full — logSpeed() + adjustHostLimits()
     // need to fire periodically to increase per-host limits.
@@ -1346,7 +1317,7 @@ void AssetDownloader::schedulePhase()
         break;
 
     case PhaseAccelerate:
-        if (inflight >= effectiveConcurrent() || !hasWork) {
+        if (inflight >= m_maxConcurrent || !hasWork) {
             m_phase = PhaseSteady;
             m_targetInflight = qMin(inflight, m_maxConcurrent);
         } else if (speed >= floor && inflight > 0) {
@@ -1648,11 +1619,10 @@ int AssetDownloader::getHostLimit(const QString& host) const
 
 int AssetDownloader::hostLimitLocked(const QString& host) const
 {
-    // 小文件放开阶段：单主机上限跟着提，否则 fixed 16 会把并发卡回去
-    const int boost = m_phaseBoost ? qMax(m_maxConcurrent, m_boostCap) : 0;
+
     // BMCLAPI: fixed at 8 (known to handle this well)
     if (host.contains(QStringLiteral("bmclapi")))
-        return boost > 0 ? boost : 8;
+        return 8;
     // 官方 CDN（Mojang 资源/库）：固定 16 并发——海量资源文件用 4→32 爬升太慢
     // （后期吞吐锁死停摆）；但也不能用满用户并发（夸父+山海经双引擎叠加
     // 会打爆 CDN 触发限流，实测 23:02:49 夸父大文件集体超时 46 秒）
@@ -1660,11 +1630,11 @@ int AssetDownloader::hostLimitLocked(const QString& host) const
         || host.contains(QStringLiteral("libraries.minecraft.net"))
         || host.contains(QStringLiteral("piston-data.mojang.com"))
         || host.contains(QStringLiteral("launcher.mojang.com"))) {
-        return boost > 0 ? boost : 16;
+        return 16;
     }
     auto it = m_hostStats.find(host);
-    if (it == m_hostStats.end()) return boost > 0 ? boost : 4;
-    return qBound(2, qMax(it->dynamicLimit, boost), 64);
+    if (it == m_hostStats.end()) return 4;  // start conservative for unknown hosts
+    return qBound(2, it->dynamicLimit, 32);
 }
 
 bool AssetDownloader::hostCanAccept(const QString& host) const
