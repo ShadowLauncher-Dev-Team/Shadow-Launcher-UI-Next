@@ -306,6 +306,13 @@ private:
     // 旧值 2 配合 50ms tick = 最多 40 请求/秒的派发速率上限，
     // 实测 4048 个资源因此从没跑满 192 并发（在途长期 84~176）。
     static constexpr int kAccelStep = 64;
+    // 2026-11-18（卡顿修复）：每个 accelTick 最多派发多少个请求。
+    // 上一版把节流整个删掉，于是一个 tick 里连发 192 次 fireNext ——
+    // 每次都要构造 QUrl/QNetworkRequest + 一次 mkpath 系统调用 + QNAM::get()，
+    // 192 次 ≈ 10~15ms 全压在 GUI 线程上，每 50ms 来一次 = 肉眼可见的卡顿。
+    // 24/tick × 20 tick/s = 480 请求/秒，仍远高于实测 300 文件/s 的完成速率，
+    // 不会拖慢吞吐，但把突发摊平了。
+    static constexpr int kDispatchPerTick = 24;
     static constexpr int kMaxPerHost = 4;  // max concurrent per host (reduced from 8)
 
     // ── Network managers (2 × HTTP/1.1 to avoid HTTP/2 stream limits) ──
@@ -315,12 +322,22 @@ private:
     // QNAM 仍只有 2 个时，线上真实并发只有 12 —— 实测在途=192 但 114 文件/s、
     // 请求均 1653ms（参考引擎同并发 309 文件/s、190ms）。
     // 32 × 6 = 192 条真实连接，与目标并发对齐。
-    QNetworkAccessManager* m_nam[32] = {};
-    static constexpr int kNamCount = 32;
+    // 2026-11-18（第二轮）：32 → 4。
+    // 上一版认为「Qt 每个连接对象只 6 条 channel，所以要 32 个 QNAM 才有 192 并发」——
+    // 这个前提是错的：Qt 6.5+ 的 QHttp1Configuration::setNumberOfConnectionsPerHost
+    // 可以给到 1~255（我们每请求都设 128），所以**单个 QNAM 就足够**满足 192 并发。
+    // 32 个 QNAM 的实际代价是 32 条网络线程 + 32 份连接池（每份都要各自重新握手），
+    // 是纯粹的额外开销。留 4 个只是为了让分片/探测/普通请求之间少抢同一把连接锁。
+    QNetworkAccessManager* m_nam[4] = {};
+    static constexpr int kNamCount = 4;
     int  m_namRoundRobin = 0;              // simple round-robin
 
     // ── Task queues ──
     QQueue<AssetTask> m_pendingQueue;
+    // 已创建过的目录（只增不减，仅主线程访问）。4117 个文件里有 4117 次
+    // QDir().mkpath()，其中绝大多数是重复创建同一个 assets/objects/xx 目录；
+    // 实测一次 mkpath 是几十微秒的系统调用，攒起来就是每秒几十毫秒的主线程开销。
+    QSet<QString> m_createdDirs;
     struct InFlight {
         AssetTask task;
         int  mirrorIndex = 0;

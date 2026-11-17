@@ -509,7 +509,15 @@ void AssetDownloader::fireNext()
         return;
 
     // ── Dispatch the found file ──
-    QDir().mkpath(QFileInfo(dispatchTask.savePath).absolutePath());
+    // 目录创建走缓存：同一个 objects/xx/ 目录会被上千个文件共享，
+    // 每个文件都调一次 QDir().mkpath() 是纯浪费（见 m_createdDirs 注释）。
+    {
+        const QString dir = QFileInfo(dispatchTask.savePath).absolutePath();
+        if (!m_createdDirs.contains(dir)) {
+            QDir().mkpath(dir);
+            m_createdDirs.insert(dir);
+        }
+    }
     const QString& url = dispatchTask.mirrors[selectedMirror];
     // ── Source selection log (throttled: every 5s or on fallback) ──
     {
@@ -785,6 +793,15 @@ void AssetDownloader::probeRangeSupport(const QVector<AssetTask>& tasks)
         req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
         req.setTransferTimeout(8000);   // 2026-11-18：20s → 8s
+        // 2026-11-18（卡顿/吞吐）：探测请求原先**没有**设 Http1Configuration，
+        // 于是它是该 host 在此 QNAM 上的第一条请求 → 连接按默认 6 条 channel 建好并缓存，
+        // 后面所有真实请求复用这条「6 通道」连接，per-host 128 形同虚设，
+        // 而且连接缓存 key 不含配置，永远不会自愈。这里补上同样配置。
+        {
+            QHttp1Configuration h1cfg;
+            h1cfg.setNumberOfConnectionsPerHost(128);
+            req.setHttp1Configuration(h1cfg);
+        }
 
         const int namIdx = m_namRoundRobin;
         m_namRoundRobin = (m_namRoundRobin + 1) % kNamCount;
@@ -922,10 +939,13 @@ void AssetDownloader::dispatchShardSeg(const QString& key, int segIndex)
     {
         QMutexLocker lock(&m_hostMutex);
         auto hit = m_hostStats.find(host);
+        // 2026-11-18：这段是分片区间请求的超时，原先 cap 在 30s。
+        // 实测 libraries.minecraft.net 首字节 30s 时，5 个分片一起卡在这里，
+        // 资源下完 18.3s 之后还要再等 21s 才收尾。改为 12s 上限、6s 起步。
         const qint64 base = (hit != m_hostStats.end())
-            ? qMax(hit->avgFirstByteMs, 15000LL) : 15000;
+            ? qMax(hit->avgFirstByteMs, 6000LL) : 6000;
         const int fails = (hit != m_hostStats.end()) ? hit->consecutiveFails : 0;
-        req.setTransferTimeout(static_cast<int>(qMin(base * (1 + qMin(fails, 3)), 30000LL)));
+        req.setTransferTimeout(static_cast<int>(qMin(base * (1 + qMin(fails, 2)), 12000LL)));
         m_hostStats[host].activeRequests++;
     }
 
@@ -1328,7 +1348,7 @@ void AssetDownloader::accelTick()
 
     // Fire more requests up to target
     // 2026-11-18：不再按 kAccelStep 限速派发 —— 有槽就填满（fireNext 内部仍有主机级限流兜底）
-    int toSend = target - inflight;
+    int toSend = qMin(target - inflight, kDispatchPerTick);
     for (int i = 0; i < toSend && !m_pendingQueue.isEmpty(); ++i)
         fireNext();
     dispatchPendingShardSegs();

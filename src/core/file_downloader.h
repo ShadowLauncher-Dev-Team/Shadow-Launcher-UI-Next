@@ -296,7 +296,12 @@ static constexpr qint64 kSpeedLimitMinSleepUs   = 4 * 1000;   // 欠账小于 4m
     static constexpr int    kMaxWatchdogAborts = 2;        // 每线程看门狗中止预算（防 attempt 耗尽）
     static constexpr qint64 kMinSplitPieceBytes = 32 * 1024; // 尾程切分最小粒度（32KB）
     static constexpr int kFirstAttemptTimeoutMs = 60000; // 分片首试超时
-    static constexpr int kChunkTimeoutMs = 30000;      // 分片重试超时
+    // 2026-11-18（尾部卡死修复）：分片/片内空闲超时 30s → 12s。
+    // 实测：一次冷装里 libraries.minecraft.net 首字节均 30 秒，5 个分片全部挂在
+    // 30s 空闲超时上，于是「资源 18.3 秒就下完了，安装却还要再等 21 秒」。
+    // setTransferTimeout 是「无数据流动」超时，正常在传的片不受影响；
+    // 12s 足够宽松（官方 CDN 首字节 p90 仅 160ms），又能让死连接尽快换源。
+    static constexpr int kChunkTimeoutMs = 12000;      // 分片重试超时
     static constexpr int kProgressEmitThrottleMs = 150;  // 进度发射节流
 
     // ── Timers ──
