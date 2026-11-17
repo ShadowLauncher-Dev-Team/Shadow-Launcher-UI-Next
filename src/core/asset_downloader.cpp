@@ -139,7 +139,7 @@ void AssetDownloader::startDownload(const QVector<AssetTask>& tasks, int maxConc
         return;
     }
 
-    m_maxConcurrent = qBound(4, maxConcurrent, 256);
+    m_maxConcurrent = qBound(4, maxConcurrent, 1024);
     m_targetInflight = 0;
     m_phase = PhaseInit;
     m_burstSent = 0;

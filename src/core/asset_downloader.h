@@ -59,7 +59,11 @@ public:
     explicit AssetDownloader(QObject* parent = nullptr);
     ~AssetDownloader() override;
 
-    void setMaxConcurrent(int n) { m_maxConcurrent = qBound(4, n, 256); }
+    // 2026-11-18：夹取上限 256 → 1024。
+    // 实测（Node 参考引擎，纯资产 4041 个）：并发 192 → 318 请求/秒，
+    // 384 → 349 请求/秒。请求/秒直接决定小文件海的完成时间，而这里把它夹在 256，
+    // 等于「设置里填 384 也只会跑 256」，上一轮 384 的实测（16.36s）其实测的是 256。
+    void setMaxConcurrent(int n) { m_maxConcurrent = qBound(4, n, 1024); }
     void setSpeedLimitMB(double mbps) { m_speedLimitMB = mbps; }
     /// 工作目录（merged 场景为 UUID 临时目录）——用于缓存 fallback 相对路径推导（2026-08-05）
     void setMinecraftDir(const QString& dir) { m_minecraftDir = dir; }
