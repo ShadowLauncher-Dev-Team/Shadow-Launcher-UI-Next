@@ -34,6 +34,7 @@
 #include <QDateTime>
 #include <QPointer>
 #include <QHostInfo>
+#include <algorithm>
 
 Q_LOGGING_CATEGORY(logAsset, "ShadowDownloader.Asset")
 
@@ -193,6 +194,27 @@ void AssetDownloader::startDownload(const QVector<AssetTask>& tasks, int maxConc
     m_reqFast = 0;
     m_watchdogTimer->start();
     m_throttleTimer->start();
+
+    // ── 周期性进度心跳（2026-11-17）──
+    // 背景：本引擎原本只在 finishDownload() 里发 progressChanged（150ms 节流），
+    // 也就是说"没有文件下完 = 界面完全收不到进度"。上层 VersionBackend 的速度是
+    // 由 progressChanged 驱动的（netDelta/衰减都在里面算），没事件就既不更新也不衰减
+    // —— 用户看到的"卡在 0.1 MB/s 很久不动"就是这么来的（实测截图 16:37）。
+    // 对比：夸父（FileDownloader）有 100ms 的 speedTick 一直在发，所以库阶段不会冻结。
+    // 这里补上同一个节拍，代价是每秒 2 次信号，可忽略。
+    if (!m_emitTimer) {
+        m_emitTimer = new QTimer(this);
+        m_emitTimer->setSingleShot(false);
+        m_emitTimer->setInterval(kEmitIntervalMs);
+        connect(m_emitTimer, &QTimer::timeout, this, [this]() {
+            if (m_state != Running) return;
+            emit progressChanged(m_completedFiles.loadRelaxed(),
+                                 m_totalFiles.loadRelaxed(),
+                                 m_downloadedBytes.loadRelaxed(),
+                                 m_totalBytes.loadRelaxed());
+        });
+    }
+    m_emitTimer->start();
 
     // Log the first few task's mirror sources to verify which source is being used
     if (!tasks.isEmpty()) {
@@ -376,6 +398,7 @@ void AssetDownloader::cancel()
     m_accelTimer->stop();
     m_watchdogTimer->stop();
     if (m_throttleTimer) m_throttleTimer->stop();
+    if (m_emitTimer) m_emitTimer->stop();
     m_emaBps.storeRelaxed(0);   // 取消即报 0，避免上层读到停表前的陈旧速度
 
     QList<QNetworkReply*> toAbort;
@@ -546,7 +569,10 @@ void AssetDownloader::fireNext()
         if (delta > 0) {
             m_downloadedBytes.fetchAndAddRelaxed(delta);
             it->progressBytes = received;
-            it->lastProgressMs = QDateTime::currentMSecsSinceEpoch();
+            const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+            it->lastProgressMs = nowMs;
+            if (it->firstByteMs < 0)
+                it->firstByteMs = qMax<qint64>(0, nowMs - it->startMs);
         }
     });
 
@@ -686,6 +712,19 @@ void AssetDownloader::onReplyFinished(QNetworkReply* reply)
             }
             return;
         }
+    }
+
+    // ── 成功也要记主机健康（2026-11-17 修）──
+    // 旧实现只在失败 / 校验失败时调 recordHostResult(false)，成功一次都不记 →
+    // st.consecutiveFails 只增不减（"连续 3 次成功即恢复"永远等不到），
+    // 于是整轮下载里累计 3 次任意失败，该主机就被打成 degraded →
+    // hostCanAccept() 直接拒发 → 单源时整个下载冻结到 kDegradeRetryMs 后，
+    // 再攒 3 次失败又冻。表现正是"前面快、后面越来越慢、最后卡住不动"。
+    // 放在 SHA1 校验通过之后：校验不通过（数据坏）不算主机成功。
+    {
+        const QString hostOk = extractHost(ift.task.mirrors.value(ift.mirrorIndex));
+        const qint64 fb = (ift.firstByteMs >= 0) ? ift.firstByteMs : elapsed;
+        recordHostResult(hostOk, true, fb);
     }
 
     // 字节已在 downloadProgress 增量累加，这里不再重复累加。
@@ -1544,11 +1583,14 @@ void AssetDownloader::checkAllFinished()
     m_state = (m_state == Cancelled) ? Cancelled : Done;
     m_watchdogTimer->stop();
     if (m_throttleTimer) m_throttleTimer->stop();
+    if (m_emitTimer) m_emitTimer->stop();
 
     emit progressChanged(m_completedFiles.loadRelaxed(),
                          m_totalFiles.loadRelaxed(),
                          m_downloadedBytes.loadRelaxed(),
                          m_totalBytes.loadRelaxed());
+
+    logHostSummary();
 
     if (m_state == Cancelled) {
         emit logMessage(QStringLiteral("[山海经] 下载已取消"));
@@ -1589,6 +1631,35 @@ void AssetDownloader::adjustHostLimits()
             if (st.dynamicLimit != oldLimit)
                 qCDebug(logAsset) << QStringLiteral("  [山海经] 限制 %1 ↑ %2 → %3 (良好)").arg(it.key()).arg(oldLimit).arg(st.dynamicLimit);
         }
+    }
+}
+
+// ── 每主机定量摘要（2026-11-17）──
+// 目的：把「哪个源快、快多少」变成日志里的数字，不再依赖外部抓包或猜测。
+// avgFirstByteMs 只统计成功请求（recordHostResult 里是 3:1 的滑动均值）。
+void AssetDownloader::logHostSummary()
+{
+    struct Row { QString host; int ok; int fail; qint64 firstByte; int limit; bool degraded; };
+    QVector<Row> rows;
+    {
+        QMutexLocker lock(&m_hostMutex);
+        for (auto it = m_hostStats.begin(); it != m_hostStats.end(); ++it) {
+            rows.append({ it.key(), it->totalSuccess, it->totalFails,
+                          static_cast<qint64>(it->avgFirstByteMs), hostLimitLocked(it.key()), it->degraded });
+        }
+    }
+    if (rows.isEmpty()) return;
+
+    std::sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) {
+        return a.firstByte < b.firstByte;   // 快的排前面
+    });
+    for (const Row& r : rows) {
+        qCInfo(logAsset) << QStringLiteral("  [山海经] [主机] %1 成功=%2 失败=%3 首字均=%4ms 并发上限=%5%6")
+            .arg(r.host)
+            .arg(r.ok).arg(r.fail)
+            .arg(r.firstByte)
+            .arg(r.limit)
+            .arg(r.degraded ? QStringLiteral(" [已降级]") : QString());
     }
 }
 
@@ -1886,7 +1957,15 @@ void AssetDownloader::enqueuePreCheck(const AssetTask& task, const QString& chec
     // 旧实现用 sha1 作 key，同一 sha1 重复任务时 map 覆盖但 m_preCheckQueued
     // 计数 +2，回调只 remove 一次 → 计数泄漏 → checkAllFinished 永被
     // "m_preCheckQueued > 0" 挡住 → assets 卡 92% 数分钟）
-    QString preCheckKey = task.savePath + QLatin1Char('|') + task.sha1;
+    // 2026-11-17 修：key 里加自增序号。
+    // 上一版用 savePath|sha1，如果同一个任务被投递两次（初版 4041 条 + appendTasks
+    // 又追加 76 条，两个来源可能包含同一 savePath|sha1），insert 会覆盖前一条，
+    // 但两条 IO 都会跑、onPreCheckResult 也都会回调 → map 里只剩一条 →
+    // 总任务数 +2、完成数 +2、但 map 只少 1：结果是"总 4117 / 完成 4116"，
+    // 进度永远差 1 个到不了 100%（实测 17:09:36 这一次）。加序号后每条互不覆盖。
+    static QAtomicInteger<quint64> s_preCheckSeq{0};
+    const QString preCheckKey = task.savePath + QLatin1Char('|') + task.sha1
+                              + QLatin1Char('#') + QString::number(s_preCheckSeq.fetchAndAddRelaxed(1));
     m_pendingPreCheck.insert(preCheckKey, pcp);
     m_preCheckQueued++;
 
@@ -1896,11 +1975,11 @@ void AssetDownloader::enqueuePreCheck(const AssetTask& task, const QString& chec
     worker->copyOnHit = !checkPath.isEmpty() && checkPath != task.savePath;
 
     QPointer<AssetDownloader> self(this);
-    worker->callback = [self](const AssetDownloader::AssetTask& t, bool sha1Match) {
+    worker->callback = [self, preCheckKey](const AssetDownloader::AssetTask& t, bool sha1Match) {
         if (self) {
-            QMetaObject::invokeMethod(self, [self, t, sha1Match]() {
+            QMetaObject::invokeMethod(self, [self, t, sha1Match, preCheckKey]() {
                 if (self->m_state == AssetDownloader::Cancelled) return;
-                self->onPreCheckResult(t, sha1Match);
+                self->onPreCheckResult(t, sha1Match, preCheckKey);
             });
         }
     };
@@ -1908,10 +1987,9 @@ void AssetDownloader::enqueuePreCheck(const AssetTask& task, const QString& chec
     m_ioPool.start(worker);
 }
 
-void AssetDownloader::onPreCheckResult(const AssetTask& task, bool sha1Match)
+void AssetDownloader::onPreCheckResult(const AssetTask& task, bool sha1Match, const QString& preCheckKey)
 {
-    // 与 enqueuePreCheck 的唯一 key 对齐（savePath|sha1）
-    QString preCheckKey = task.savePath + QLatin1Char('|') + task.sha1;
+    // key 由 enqueuePreCheck 生成并随 lambda 带过来（含自增序号，见那里的说明）
     m_pendingPreCheck.remove(preCheckKey);
     m_preCheckQueued--;
 
@@ -2032,7 +2110,7 @@ void AssetDownloader::logSpeed()
             .arg(m_shards.size())
             .arg(fmtSize(m_wastedBytes.loadRelaxed()));
     const QString tail =
-        QStringLiteral(" | 完成=%1 派发=%2 主线程=%3ms(占%4%% 均%5ms/个) SHA1=%6 请求均=%7ms 快请求=%8%%")
+        QStringLiteral(" | 完成=%1 派发=%2 主线程=%3ms(占比%4% 均%5ms/个) SHA1=%6 请求均=%7ms 快请求%8%")
             .arg(m_replyFinishedCount)
             .arg(m_dispatchCount)
             .arg(qRound64(m_mainThreadWorkUs / 1000.0))

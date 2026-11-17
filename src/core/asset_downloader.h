@@ -146,7 +146,8 @@ private:
     int  getHostLimit(const QString& host) const;
     /// 同上，但要求调用方已持有 m_hostMutex（hostCanAccept 内部用，避免二次加锁死锁）
     int  hostLimitLocked(const QString& host) const;
-    void adjustHostLimits();              // called periodically to tune limits
+    void adjustHostLimits();
+    void logHostSummary();   // [主机] 每主机 成功/失败/首字均 —— 定量证据，不必再靠外部抓包              // called periodically to tune limits
 
     // ── 全源不可用冷却（2026-08-05）──
     // 所有镜像 degraded/限流时：fireNext 每 50ms 扫全队列无意义（锁竞争 + 无日志），
@@ -190,7 +191,7 @@ private:
         qint64 enqueueAtMs = 0;
     };
     QMap<QString, PreCheckPending> m_pendingPreCheck;  // sha1 → task
-    void onPreCheckResult(const AssetTask& task, bool sha1Match);
+    void onPreCheckResult(const AssetTask& task, bool sha1Match, const QString& preCheckKey);
 
     // ════════════════════════════════════════════════════════════════════════
     // 空闲槽驱动的分片（2026-11-17）
@@ -282,6 +283,10 @@ private:
     QTimer* m_accelTimer = nullptr;        // fires every 50ms during accel
     QTimer* m_watchdogTimer = nullptr;     // 挂起看门狗 1s（独立于 accelTick：队列空时 accelTick 会停）
     QTimer* m_throttleTimer = nullptr;     // 分片补派/唤醒兜底 1s（2026-11-17）
+    // 周期性进度心跳 500ms（2026-11-17）：见 asset_downloader.cpp 里的说明。
+    // 没有它，资源阶段的速度数字只在"有文件下完"时才更新 → 卡住时界面冻结。
+    QTimer* m_emitTimer = nullptr;
+    static constexpr int kEmitIntervalMs = 500;
     static constexpr int kAccelIntervalMs = 50;
     static constexpr int kWatchdogIntervalMs = 1000;
     static constexpr qint64 kInFlightStallMs = 30000;  // in-flight 无字节进展 30s → abort 换源
@@ -307,6 +312,11 @@ private:
         int  namIndex = 0;                 // which QNAM handled it
         qint64 startMs = 0;                // for timing
         qint64 progressBytes = 0;          // bytes tracked via downloadProgress (增量)
+        // 首字节时刻（2026-11-17）：第一个 downloadProgress 回调的耗时。
+        // 用途：成功也要 recordHostResult(host, true, 首字ms)——旧实现只在失败时记录，
+        //       导致 consecutiveFails 只增不减（见 recordHostResult 注释），
+        //       累计 3 次失败就把整台主机打成 degraded，Download 随之冻结最多 30s。
+        qint64 firstByteMs = -1;
         qint64 lastProgressMs = 0;         // 最近一次字节进展时刻（挂起看门狗用，2026-08-10）
         bool  watchdogAborted = false;     // 看门狗已 abort（跳过 host 失败记录，防误伤源）
         // ── 慢速拖流跟踪（2026-08-14）──
