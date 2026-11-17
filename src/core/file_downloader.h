@@ -50,6 +50,9 @@ struct DownloadThread {
     qint64 slowBaseBytes = 0;    // 慢速观测基线字节
     int    slowStreak = 0;       // 连续慢速采样计数（≥ kSlowStreakLimit → 切分）
     QAtomicInt watchdogAbort{0}; // 主线程请求中止当前连接（worker 轮询消费后清零）
+    // 主线程 tryAddThread 切分本线程时置 1：worker 收到后立刻 abort 在途请求，
+    // 用缩小后的 Range 重发（已收字节保留，零重复下载）。2026-11-17
+    QAtomicInt rangeShrunk{0};
     int    watchdogAbortCount = 0; // 已中止次数（预算，主线程锁内读写）
 
     qint64 downloadUndone() const { return downloadEnd - downloadStart - downloadDone; }
@@ -241,7 +244,9 @@ private:
     /// 对全部在途 reply 排队 abort（abort 必须在 reply 所属 worker 线程执行）。
     void abortInFlightReplies();
     /// 全局令牌桶限速：worker 每收到一块数据调用一次；超出部分按差额分片 sleep。
-    void applySpeedLimit(qint64 deltaBytes);
+    // abortFlag 非空时：睡眠期间若被置位（线程范围被切分缩小）立即返回，
+    // 避免"限速 sleep 期间继续堆数据 → 一次回调跳几 MB"（2026-11-17）
+    void applySpeedLimit(qint64 deltaBytes, const QAtomicInt* abortFlag = nullptr);
     /// 暂停等待：worker 以 kPausePollMs 粒度轮询，可被 cancel 打断。
     void waitWhilePaused();
 

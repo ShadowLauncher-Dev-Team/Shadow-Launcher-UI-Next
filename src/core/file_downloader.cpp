@@ -405,7 +405,7 @@ void FileDownloader::waitWhilePaused()
 // 关键：预约在锁内串行累加 → N 个 worker 不会各自按 limit 并行（那样实际吞吐 = N×limit）；
 // 聚合吞吐收敛到 limit。
 // sleep 在 worker 线程的读取回调里，阻塞事件循环 → TCP 反压，是真正的传输层限速。
-void FileDownloader::applySpeedLimit(qint64 deltaBytes)
+void FileDownloader::applySpeedLimit(qint64 deltaBytes, const QAtomicInt* abortFlag)
 {
     const qint64 limitBps = m_speedLimitBps.loadRelaxed();
     if (limitBps <= 0 || deltaBytes <= 0) return;   // <=0：未设置限速
@@ -432,6 +432,9 @@ void FileDownloader::applySpeedLimit(qint64 deltaBytes)
     while (true) {
         if (m_cancelled.loadRelaxed() || m_paused.loadRelaxed())
             return;   // 取消/暂停立即放弃本次限速等待
+        // 范围被切分缩小：立刻停等，让调用方去 abort（少睡 = 少囤数据）
+        if (abortFlag && abortFlag->loadRelaxed())
+            return;
         const qint64 nowUs = getElapsedMs() * 1000;
         qint64 remain = 0;
         {
@@ -693,6 +696,11 @@ std::shared_ptr<DownloadThread> FileDownloader::tryAddThread(
     th->downloadEnd = maxPiece->downloadEnd;
     th->sourceUrl = file->orderedSources[sourceIdx];
     maxPiece->downloadEnd = splitPoint;
+    // 关键（2026-11-17）：上面只改了内存里的终点，**已经发出去的 HTTP 请求改不了**。
+    // 不改就等服务器把旧范围发完 → 超出新范围的那段被丢弃，同时新线程又下一遍
+    //（实测 icu4j 15.1MB 被下了 22.6MB = 1.49 倍，见日志「截断多余数据 / 超额止损」）。
+    // 置位后 worker 会立刻 abort 在途请求，用缩小后的 Range 重发，已收字节不重下。
+    maxPiece->rangeShrunk.storeRelaxed(1);
 
     // 分片细节：一次下载可能几百个分片，逐条 Info 会把日志刷爆（实测 8000 行/日）
     qCDebug(logDownload) << QStringLiteral("[夸父] 附加线程 线程号=%1 文件=%2 偏移=%3")
@@ -900,8 +908,15 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 req.setHttp1Configuration(h1cfg);
             }
 
+            // 本次尝试的续传基线：downloadDone 已是「线程内已落盘/已收」的字节数。
+            // 服务器对每个 reply 的 received 都从 0 起算，所以进度回调里要加回这个基线，
+            // 否则断点重发会被算成"负增量"，把 downloadDone 冲小（旧代码不支持续传的根因）。
+            const qint64 attemptBase = th->downloadDone;
+            // 本轮已把范围缩小过（切分）：先清标志，本次用缩小后的终点
+            th->rangeShrunk.storeRelaxed(0);
+
             if (!file->isUnknownSize && !file->isNoSplit) {
-                qint64 start = th->downloadStart + th->downloadDone;
+                qint64 start = th->downloadStart + attemptBase;
                 qint64 end = th->downloadEnd - 1;
                 req.setRawHeader("Range", QString("bytes=%1-%2").arg(start).arg(end).toUtf8());
             }
@@ -937,10 +952,12 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                     [&](qint64 received, qint64 total) {
                 // 取消/暂停后不得再计字节、发进度（契约 §5：回调早退）
                 if (m_cancelled.loadRelaxed() || m_paused.loadRelaxed()) return;
-                qint64 delta = received - th->downloadDone;
+                // 线程内绝对已收 = 本次尝试续传基线 + 本 reply 收到的字节
+                const qint64 absReceived = attemptBase + received;
+                qint64 delta = absReceived - th->downloadDone;
                 if (delta > 0) {
                     // 限速真正作用于传输层：阻塞本 worker 读取 → TCP 反压
-                    applySpeedLimit(delta);
+                    applySpeedLimit(delta, &th->rangeShrunk);
                     // 限速 sleep 期间可能被取消/暂停打断：醒来后再确认一次，绝不写统计
                     if (m_cancelled.loadRelaxed() || m_paused.loadRelaxed()) return;
                     // 限速 sleep 会阻塞本线程事件循环：醒来后重置空闲超时，避免被自己的限速误杀
@@ -960,7 +977,7 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                     if (thMax > 0 && th->downloadDone + delta > thMax)
                         realDelta = qMax<qint64>(0, thMax - th->downloadDone);
                     m_downloadedBytes.fetchAndAddRelaxed(realDelta);
-                    th->downloadDone = qMin(received, thMax > 0 ? thMax : received);
+                    th->downloadDone = qMin(absReceived, thMax > 0 ? thMax : absReceived);
                     // 主流启动器语义：收到数据重置源失败计数（FailCount=0）——
                     // 偶发失败不累计，避免误伤正常源
                     if (sourceIdx < file->sourceFailCounts.size())
@@ -1005,13 +1022,24 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 if (!rangeFilled && respStatus206 == 206
                     && !file->isUnknownSize && !file->isNoSplit) {
                     const qint64 thRange = th->downloadEnd - th->downloadStart;
-                    if (thRange > 0 && received > thRange) {
+                    // ── 范围被主线程切分缩小（2026-11-17）──
+                    // 立刻停手：把已收的前缀留下，用缩小后的 Range 重发。
+                    // 这样「旧范围多出来的那段」一个字节都不会落到网卡上。
+                    if (th->rangeShrunk.loadRelaxed()) {
+                        rangeFilled = true;
+                        rangeData = reply->readAll();
+                        qCInfo(logDownload) << QStringLiteral("[夸父] 范围缩小，重发 文件=%1 新段=%2..%3 已收=%4")
+                            .arg(file->localName).arg(th->downloadStart + attemptBase)
+                            .arg(th->downloadStart + thRange).arg(rangeData.size());
+                        reply->abort();
+                        loop.quit();
+                    } else if (thRange > 0 && absReceived > thRange) {
                         rangeFilled = true;
                         rangeData = reply->readAll();   // abort 前先取出已收数据
                         qCInfo(logDownload)
                             << QStringLiteral("[夸父] 超额止损 文件=%1 起始=%2 范围=%3 已收=%4 已读=%5")
                                    .arg(file->localName).arg(th->downloadStart).arg(thRange)
-                                   .arg(received).arg(rangeData.size());
+                                   .arg(absReceived).arg(rangeData.size());
                         reply->abort();
                         loop.quit();
                     }
@@ -1240,66 +1268,81 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             // 切分下载中线程的 downloadEnd，worker 线程此前无锁读 downloadEnd 截断写盘 →
             // 切分与写盘交错时 tempPath 数据基于旧 range，合并后文件缺块/错位。
             // 现整体加 m_filesMutex：锁内读最新 downloadEnd 截断 + 写盘 + state=3。
+            bool needMoreData = false;   // 只收到范围的一部分（切分后缩小）→ 续传
             {
                 QMutexLocker lock(&m_filesMutex);
                 if (!file->isUnknownSize && !file->isNoSplit) {
-                    // ── Truncate data if thread was split mid-download ──
-                    // When tryAddThread splits a running thread, the in-flight HTTP request
-                    // may return more data than this thread's current (reduced) range.
-                    // Clip to the allocated range to avoid overlapping temp files during merge.
-                    // 注意：截取方向取决于服务器行为（2026-08-02 实测修复）——
-                    //   206 正确分片响应：data 从 0 开始（分片内容）→ left(threadRange)
-                    //   200 忽略 Range 全量：data 从 0 开始（全文件）→ mid(downloadStart, threadRange)
-                    // 旧代码一律 mid(downloadStart, …) 对 206 响应取错位置 → temp 空/错位 → 合并缺块。
-                    qint64 threadRange = th->downloadEnd - th->downloadStart;
-                    if (threadRange > 0 && data.size() > threadRange) {
-                        qint64 excess = data.size() - threadRange;
-                        // 已计入 m_downloadedBytes 的字节（downloadProgress 按当时范围封顶计数）
+                    const qint64 threadRange = th->downloadEnd - th->downloadStart;
+                    const int respStatusNow = reply->attribute(
+                        QNetworkRequest::HttpStatusCodeAttribute).toInt();
+                    // 续传基线下本线程还缺多少：data 只含 attemptBase 之后的字节
+                    const qint64 want = (threadRange > attemptBase) ? (threadRange - attemptBase) : 0;
+                    if (respStatusNow == 200 && file->fileSize > 0 && data.size() >= file->fileSize) {
+                        // 服务器忽略 Range 返回全文件（200）：直接用整文件（主流启动器语义）
+                        qCInfo(logDownload) << QStringLiteral("[夸父] 服务器返回全文件(忽略Range)，整文件使用 文件=%1 大小=%2")
+                            .arg(file->localName).arg(data.size());
+                        th->downloadDone = data.size();
+                        th->isFullFile = true;
+                    } else if (want > 0 && data.size() > want) {
+                        const qint64 excess = data.size() - want;
                         const qint64 counted = th->downloadDone;
-                        const int respStatus = reply->attribute(
-                            QNetworkRequest::HttpStatusCodeAttribute).toInt();
+                        const int respStatus = respStatusNow;
                         qCInfo(logDownload) << QStringLiteral("[夸父] 截断多余数据 文件=%1 起始=%2 预期=%3 实际=%4 超额=%5 状态=%6")
-                            .arg(file->localName).arg(th->downloadStart).arg(threadRange).arg(data.size()).arg(excess).arg(respStatus);
-                        if (respStatus == 200 && file->fileSize > 0 && data.size() >= file->fileSize) {
-                            // 服务器忽略 Range 返回全文件（200）——既然全文件已下完，
-                            // 直接整文件使用（不截断丢弃 23MB 浪费）：标记线程下载完整文件，
-                            // 合并时优先用完整数据（主流启动器 RangeNotSupported → 单线程全量语义）
-                            qCInfo(logDownload) << QStringLiteral("[夸父] 服务器返回全文件(忽略Range)，整文件使用 文件=%1 大小=%2")
-                                .arg(file->localName).arg(data.size());
-                            th->downloadDone = data.size();
-                            // 让合并逻辑走“单线程完整”路径：临时文件直接写全文件
-                            th->isFullFile = true;
-                        } else {
-                            data = (respStatus == 206)
-                                ? data.left(threadRange)
-                                : data.mid(th->downloadStart, threadRange);
-                            th->downloadDone = threadRange;
-                        }
-                        // ── 字节修正（2026-08-05）──
-                        // downloadProgress 已按线程范围封顶计数（49ac408）：分片后到达的
-                        // 超额数据从未计入 m_downloadedBytes，旧代码无条件扣 excess 会把
-                        // 未计入部分二次扣减 → 全局字节欠计（尾部下载中速度/进度被拉低）。
-                        // 改为只扣“已计入但超出最终范围”的部分；未计入的超额由切分出的
-                        // 新分片线程另行计数，总量自洽。
+                            .arg(file->localName).arg(th->downloadStart + attemptBase).arg(want).arg(data.size()).arg(excess).arg(respStatus);
+                        data = data.left(want);
+                        th->downloadDone = attemptBase + data.size();
                         const qint64 finalDone = th->downloadDone;
                         if (counted > finalDone)
                             m_downloadedBytes.fetchAndAddRelaxed(-(counted - finalDone));
+                    } else {
+                        th->downloadDone = attemptBase + data.size();
                     }
+                    if (!th->isFullFile && threadRange > 0 && th->downloadDone < threadRange)
+                        needMoreData = true;
                 }
-                // Write data
-                if (file->isNoSplit) {
-                    QFile f(file->localPath);
-                    QDir().mkpath(QFileInfo(file->localPath).absolutePath());
-                    file->targetWritten = true;   // 直写最终路径：取消后必须删
-                    if (f.open(QIODevice::WriteOnly)) { f.write(data); f.close(); }
-                } else {
+
+                if (needMoreData) {
+                    // 续传：已收字节写到临时文件的正确偏移，保留给下一次尝试。
+                    // 必须 ReadWrite（WriteOnly 会截断，把前面已落盘的进度清掉）。
                     QString tmpDir = QFileInfo(file->localPath).absolutePath() + "/.shadow_temp/";
                     QDir().mkpath(tmpDir);
                     th->tempPath = tmpDir + QString("dl_%1_%2.tmp").arg(file->localName).arg(th->uuid);
                     QFile f(th->tempPath);
-                    if (f.open(QIODevice::WriteOnly)) { f.write(data); f.close(); }
+                    if (f.open(QIODevice::ReadWrite)) {
+                        f.seek(attemptBase);
+                        f.write(data);
+                        f.close();
+                    }
+                    th->state = 2;   // 仍在下载，不置 3
+                } else {
+                    // Write data
+                    if (file->isNoSplit) {
+                        QFile f(file->localPath);
+                        QDir().mkpath(QFileInfo(file->localPath).absolutePath());
+                        file->targetWritten = true;   // 直写最终路径：取消后必须删
+                        if (f.open(QIODevice::WriteOnly)) { f.write(data); f.close(); }
+                    } else {
+                        QString tmpDir = QFileInfo(file->localPath).absolutePath() + "/.shadow_temp/";
+                        QDir().mkpath(tmpDir);
+                        th->tempPath = tmpDir + QString("dl_%1_%2.tmp").arg(file->localName).arg(th->uuid);
+                        QFile f(th->tempPath);
+                        // 分片线程的临时文件里只放「本线程范围」的字节，从 0 开始写；
+                        // 续传场景前面已有 attemptBase 字节，必须 ReadWrite + seek 保留
+                        if (f.open(QIODevice::ReadWrite)) {
+                            f.seek(attemptBase);
+                            f.write(data);
+                            f.close();
+                        }
+                    }
+                    th->state = 3;
                 }
-                th->state = 3;
+            }
+            if (needMoreData) {
+                // 范围被缩小：本次 abort 是策略性的，不占重试预算
+                if (rangeFilled) { --attempt; }
+                rangeFilled = false;
+                rangeData.clear();
+                continue;
             }
             goto worker_done;
         }
