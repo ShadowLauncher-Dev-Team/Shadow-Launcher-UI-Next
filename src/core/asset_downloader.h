@@ -146,6 +146,8 @@ private:
     int  getHostLimit(const QString& host) const;
     /// 同上，但要求调用方已持有 m_hostMutex（hostCanAccept 内部用，避免二次加锁死锁）
     int  hostLimitLocked(const QString& host) const;
+    /// 尾程小文件阶段的有效并发（大文件清零后放开，见 m_boostCap）
+    int  effectiveConcurrent() const { return m_phaseBoost ? qMax(m_maxConcurrent, m_boostCap) : m_maxConcurrent; }
     void adjustHostLimits();              // called periodically to tune limits
 
     // ── 全源不可用冷却（2026-08-05）──
@@ -288,6 +290,13 @@ private:
 
     // ── Concurrency ──
     int  m_maxConcurrent = 16;
+    // ── 尾程小文件阶段并发提升（2026-11-17）──
+    // 依据：实测连接复用是好的（90s 内只用了 30 条 TCP），尾程 0.6s/文件
+    // 是"每请求 TTFB 受限"，不是带宽受限 → 加并发是我唯一还剩的杠杆。
+    // 但大文件阶段加并发会触发 CDN 反压（实测 32 并发 15.9MB 文件反而慢 30%），
+    // 所以只在"队列里已经没有 ≥2MB 的大文件"时放开。
+    int  m_boostCap = 0;        // 0=关闭（默认）；>m_maxConcurrent 时生效
+    bool m_phaseBoost = false;  // 当前是否处于小文件放开阶段
     int  m_targetInflight = 0;             // computed by schedulePhase()
     int  m_burstSent = 0;                  // count of initial burst requests
     int  m_preCheckQueued = 0;             // count of async SHA1 pre-checks in flight
@@ -349,6 +358,12 @@ private:
     // 这段跑在主线程；若它占比高，就说明主线程被哈希/拷贝堵住，连接再多也没用。
     qint64 m_mainThreadWorkUs = 0;
     qint64 m_sha1Bytes = 0;
+    // 单请求耗时分布（2026-11-17）：直接验证"连接是否被复用"。
+    // 复用成功时小文件请求 ≈ TTFB(0.38s)；每次都重建连接则 ≈ 0.64s（外加 TCP+TLS）。
+    // 平均值会被大文件拖偏，所以同时统计"快请求占比"，两者一起看才准。
+    qint64 m_reqTotalMs = 0;
+    int    m_reqCount = 0;
+    int    m_reqFast = 0;      // < 500ms 的请求数
     int    m_replyFinishedCount = 0;
     int    m_dispatchCount = 0;
     QElapsedTimer m_hbTimer;          // 心跳专用时钟（不借用 sampleSpeed 的 50ms 周期）
