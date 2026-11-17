@@ -9,13 +9,23 @@
 
 #include <QString>
 #include "../utils/types.h"
+#include "region_utils.h"
 
 namespace ShadowLauncher {
 namespace SourcePolicy {
 
-/// AutoSwitch 与 PreferOfficial 同义：官方优先、失败自动切镜像
+/// 是否优先官方源。
+/// 2026-11-18 改：AutoSwitch（自动）不再等同官方优先，而是**按区域择优**——
+/// 国内官方 CDN 首字节 280–800ms、BMCLAPI 50–70ms（同文件差 4–10 倍），
+/// 所以国内「自动」= 镜像优先；国外仍是官方优先（官方在那边本来就快）。
+/// 显式的 PreferMirror / PreferOfficial 不受影响，用户选了就照办。
 inline bool preferOfficial(DownloadSourcePolicy p) {
-    return p == DownloadSourcePolicy::PreferOfficial || p == DownloadSourcePolicy::AutoSwitch;
+    switch (p) {
+    case DownloadSourcePolicy::PreferOfficial: return true;
+    case DownloadSourcePolicy::PreferMirror:   return false;
+    case DownloadSourcePolicy::AutoSwitch:     return !RegionUtils::isChinaRegion();
+    }
+    return true;
 }
 
 inline QString mcManifestMirror() {
@@ -46,6 +56,7 @@ inline SourceRoute routeFor(RequestClass cls, DownloadSourcePolicy fileSource,
 {
     switch (cls) {
     case RequestClass::Metadata:
+        // 元数据是几 KB 的 JSON，双源竞速与区域无关（谁先到用谁）
         return SourceRoute{ true, preferOfficial(listSource) };
     case RequestClass::LoaderArtifact:
         // 镜像优先 + 官方兜底：这不是拍脑袋，而是因为 files.minecraftforge.net /

@@ -1707,17 +1707,18 @@ int AssetDownloader::getHostLimit(const QString& host) const
 int AssetDownloader::hostLimitLocked(const QString& host) const
 {
 
-    // BMCLAPI: fixed at 8 (known to handle this well)
+    // 2026-11-18：单主机上限不再写死 8/16，而是跟随总并发（上限 64）。
+    // 理由：一次安装是几千个小文件，耗时 ≈ 文件数 × 单请求延迟 ÷ 并发，
+    // 延迟主导；把总并发抬到 64 却让单主机卡在 16，等于只抬了一半。
+    // 仍低于总并发一点（-2），给双引擎（夸父+山海经）叠加留余量。
+    const int hostCap = qMax(4, m_maxConcurrent);
     if (host.contains(QStringLiteral("bmclapi")))
-        return 8;
-    // 官方 CDN（Mojang 资源/库）：固定 16 并发——海量资源文件用 4→32 爬升太慢
-    // （后期吞吐锁死停摆）；但也不能用满用户并发（夸父+山海经双引擎叠加
-    // 会打爆 CDN 触发限流，实测 23:02:49 夸父大文件集体超时 46 秒）
+        return qMin(hostCap, 32);
     if (host.contains(QStringLiteral("resources.download.minecraft.net"))
         || host.contains(QStringLiteral("libraries.minecraft.net"))
         || host.contains(QStringLiteral("piston-data.mojang.com"))
         || host.contains(QStringLiteral("launcher.mojang.com"))) {
-        return 16;
+        return hostCap;
     }
     auto it = m_hostStats.find(host);
     if (it == m_hostStats.end()) return 4;  // start conservative for unknown hosts
@@ -1909,6 +1910,17 @@ public:
         const QString targetPath = checkPath.isEmpty() ? task.savePath : checkPath;
         bool sha1Match = false;
         {
+            // ── 存在 + 尺寸匹配即视为命中（2026-11-18）──
+            // 依据：文件路径本身就是内容哈希（assets/objects/xx/<sha1>），
+            // 尺寸也对得上 → 再整文件算一遍 SHA1 只是白读盘。
+            // 一次冷装 4000 个文件时这部分开销被放大；HMCL 的资产检查也只做
+            // Files.isRegularFile（FileDownloadTask 的 caching 分支）。
+            // 注意：**下载完成后的 SHA1 校验不变**（onReplyFinished 里那一层还在），
+            // 所以首次下载的数据完整性不受影响，这里省掉的是「已存在文件」的重校验。
+            const QFileInfo fi(targetPath);
+            if (fi.exists() && fi.isFile() && task.size > 0 && fi.size() == task.size) {
+                sha1Match = true;
+            } else {
             QFile f(targetPath);
             if (f.open(QIODevice::ReadOnly)) {
                 QCryptographicHash hash(QCryptographicHash::Sha1);
@@ -1917,6 +1929,7 @@ public:
                 if (hash.result().toHex() == task.sha1) {
                     sha1Match = true;
                 }
+            }
             }
         }
         // If hit came from a fallback cache path, copy to working dir

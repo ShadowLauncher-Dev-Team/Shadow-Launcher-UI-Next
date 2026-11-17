@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 #include "settings_backend.h"
+#include "../core/region_utils.h"
+#include "../utils/types.h"
 #include "../core/version_isolation.h"
 #include "../utils/logger.h"
 
@@ -266,10 +268,34 @@ void SettingsBackend::loadSettings()
     // 加载器（Forge/NeoForge/Fabric/OptiFine）的下载源在 version_backend /
     // mod_loader_installer 内独立处理（2026-08-15：加载器默认镜像优先，
     // 与全局 fileSource 解耦，避免影响 MC 下载）。
-    m_fileDownloadSource = qBound(0, s.value(QStringLiteral("download/fileSource"), 1).toInt(), 2);
-    m_listDownloadSource = qBound(0, s.value(QStringLiteral("download/listSource"), 1).toInt(), 2);
+    // 2026-11-18：默认改为 AutoSwitch(2) = 按区域择优（国内镜像优先）。
+    // 依据：HMCL 对比实测 26.2 下载 11s vs 我们 58s，差距主因是「源」和「并发」，
+    // 而我们的默认把国内用户固定送去了首字节 280–800ms 的官方 CDN。
+    m_fileDownloadSource = qBound(0, s.value(QStringLiteral("download/fileSource"), 2).toInt(), 2);
+    m_listDownloadSource = qBound(0, s.value(QStringLiteral("download/listSource"), 2).toInt(), 2);
     // 旧配置里的 64 也要夹回合理区间（读时钳制，避免历史值绕过 setter）
-    m_maxDownloadThreads = qBound(1, s.value(QStringLiteral("download/threadLimit"), 16).toInt(), 24);
+    m_maxDownloadThreads = qBound(1, s.value(QStringLiteral("download/threadLimit"), defaultDownloadConcurrency()).toInt(), 64);
+
+    // ── 一次性迁移（regionPolicyV1）──
+    // 老版本把「官方优先(1)」写死成默认并存进了注册表，也把线程数写死成 16。
+    // 这两条在国内都是明显吃亏的选择。这里只迁移**一次**（写了标记就不再动），
+    // 用户之后手动改设置也不会被覆盖。
+    //   源：1(官方优先) → 2(自动，国内=镜像优先)
+    //   线程：16(旧默认) → 核数×4（≤64）
+    if (!s.value(QStringLiteral("download/regionPolicyV1"), false).toBool()) {
+        const bool cn = RegionUtils::isChinaRegion();
+        bool changed = false;
+        if (m_fileDownloadSource == 1) { m_fileDownloadSource = 2; changed = true; }
+        if (m_maxDownloadThreads == 16) { m_maxDownloadThreads = defaultDownloadConcurrency(); changed = true; }
+        s.setValue(QStringLiteral("download/fileSource"), m_fileDownloadSource);
+        s.setValue(QStringLiteral("download/threadLimit"), m_maxDownloadThreads);
+        s.setValue(QStringLiteral("download/regionPolicyV1"), true);
+        if (changed) {
+            qCInfo(logApp) << QStringLiteral("[设置] 首次按区域调优下载策略 区域=%1 源策略=%2 并发=%3")
+                .arg(cn ? QStringLiteral("中国") : QStringLiteral("其他"))
+                .arg(m_fileDownloadSource).arg(m_maxDownloadThreads);
+        }
+    }
     {
         const double lim = s.value(QStringLiteral("download/speedLimitMB"), -1.0).toDouble();
         m_downloadSpeedLimitMB = (lim <= 0.0) ? -1.0 : qBound(0.1, lim, 20.0);

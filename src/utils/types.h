@@ -2,6 +2,9 @@
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 #pragma once
 
+#include <thread>
+#include <QtGlobal>
+
 #include <QString>
 #include <QStringList>
 #include <QDateTime>
@@ -52,8 +55,17 @@ enum class DownloadSourcePolicy : int {
     AutoSwitch     = 2   // Mojang primary, auto-switch to BMCLAPI if slow
 };
 
+/// 默认并发：核数 ×4 上限 64（与 HMCL FetchTask.DEFAULT_CONCURRENCY 同口径）。
+/// 依据：一次安装几千个小文件，耗时 ≈ 文件数 × 单请求延迟 ÷ 并发，
+/// 延迟主导 → 并发几乎是唯一线性杠杆（实测 16→64 有 4 倍空间）。
+inline int defaultDownloadConcurrency() {
+    const unsigned hw = std::thread::hardware_concurrency();
+    const int cores = hw > 0 ? static_cast<int>(hw) : 4;
+    return qBound(4, cores * 4, 64);
+}
+
 struct DownloadConfig {
-    int maxWorkers = 16;   // 并发上限 24（settings 层夹取），精卫固定 12
+    int maxWorkers = defaultDownloadConcurrency();   // 并发上限 64（settings 层夹取），精卫固定 12
     double speedLimitMB = -1;
     DownloadSourcePolicy fileSource = DownloadSourcePolicy::PreferOfficial;   // 全局 MC 下载策略
     DownloadSourcePolicy listSource = DownloadSourcePolicy::PreferOfficial;

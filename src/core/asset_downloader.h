@@ -257,7 +257,10 @@ private:
     // 分片阈值（2026-11-17 实测校准）
     // ≥2MB 才值得切：assets 最大约 11MB，2MB 以下切出来的段太小、握手开销占比高。
     // 每段 ≥512KB：Range 请求头开销可以忽略，且避免产生大量碎片段。
-    static constexpr qint64 kSegMinBytes    = 2LL * 1024 * 1024;
+    // 分片门槛 2026-11-18：2MB → 8MB。实测资产/库绝大多数是 4KB–2MB，
+    // 2MB 就切只会多出「探测 + 临时文件 + 合并」开销而无收益；
+    // 真正需要并发的是几十 MB 的大文件。
+    static constexpr qint64 kSegMinBytes    = 8LL * 1024 * 1024;
     static constexpr qint64 kMinShardPiece  = 512 * 1024;
     static constexpr int    kMaxShardPieces = 8;
 
