@@ -64,13 +64,18 @@ Item {
                 SetRow {
                     width: parent.width
                     label: qsTr("最大并发连接")
-                    desc: qsTr("太高会被下载站限流，16 是稳妥值")
+                    // 2026-11-18：这句原本写「16 是稳妥值」，但实测 192 才是最快档
+                    //（官方源 192 并发冷装 16.0s，64 并发 56.9s）。改成按实测口径描述，
+                    // 不再给用户「调高会出问题」的暗示 —— 真正会限流的是第三方镜像，不是官方源。
+                    desc: qsTr("越高越快，官方源实测 192 最快；第三方镜像并发过高可能被限流")
                     SSlider {
                         width: 260
                         from: 1
-                        to: 24
+                        // 2026-11-18：上限原本写死 24，而核心层夹取到 256、默认给到 192。
+                        // 结果滑块永远贴在右端、数字却显示 192，改不动也看不出。
+                        to: 256
                         step: 1
-                        value: pane.s ? pane.s.maxDownloadThreads : 16
+                        value: pane.s ? pane.s.maxDownloadThreads : 192
                         // maxDownloadThreads 是 Q_PROPERTY 的 WRITE 访问器，只能赋值；
                     // 当方法调用会抛 TypeError，滑块动了但右侧数字不变。
                     onMoved: (v) => { if (pane.s) pane.s.maxDownloadThreads = v }
@@ -79,7 +84,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: 46
                         horizontalAlignment: Text.AlignRight
-                        text: (pane.s ? pane.s.maxDownloadThreads : 16)
+                        text: (pane.s ? pane.s.maxDownloadThreads : 192)
                         color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 12

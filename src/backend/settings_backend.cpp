@@ -299,20 +299,15 @@ void SettingsBackend::loadSettings()
                 .arg(m_fileDownloadSource).arg(m_maxDownloadThreads);
         }
     }
-    // ── 一次性迁移 v2（2026-11-18 下午）──
-    // 上午那版把 threadLimit 写成 64 / 源写成「镜像优先(0)」；两者都被完整量测否掉了。
-    // 这里只在标记未写时纠正一次：64 → 新默认；0(镜像优先) → 2(自动=官方优先兜底镜像)。
+    // ── 一次性标记 v2（2026-11-18 下午，已改为「不再覆盖用户选择」）──
+    // 原版在这里把 64 → 新默认、0(镜像优先) → 2(自动)，实际把影手动选的「镜像优先」改掉了。
+    // 影的原话：覆盖配置用于测试没问题，但**不该悄悄改用户存的设置**。
+    // 所以现在这段只写标记 + 记一行日志，一个值都不动。
+    // 需要纠正的值只在「新装」（上面 default 生效）时纠正，老装一律尊重注册表。
     if (!s.value(QStringLiteral("download/regionPolicyV2"), false).toBool()) {
-        bool changed = false;
-        if (m_maxDownloadThreads == 64) { m_maxDownloadThreads = defaultDownloadConcurrency(); changed = true; }
-        if (m_fileDownloadSource == 0) { m_fileDownloadSource = 2; changed = true; }
-        s.setValue(QStringLiteral("download/threadLimit"), m_maxDownloadThreads);
-        s.setValue(QStringLiteral("download/fileSource"), m_fileDownloadSource);
         s.setValue(QStringLiteral("download/regionPolicyV2"), true);
-        if (changed) {
-            qCInfo(logApp) << QStringLiteral("[设置] 下载策略校正 v2（官方优先 + 并发 %1）")
-                .arg(m_maxDownloadThreads);
-        }
+        qCInfo(logApp) << QStringLiteral("[设置] 下载策略沿用用户保存值 源策略=%1 并发=%2（v2 标记已写，不再覆盖）")
+            .arg(m_fileDownloadSource).arg(m_maxDownloadThreads);
     }
     {
         const double lim = s.value(QStringLiteral("download/speedLimitMB"), -1.0).toDouble();
