@@ -515,7 +515,12 @@ void FileDownloader::managerTick()
         if (f->isNoSplit && !f->threads.isEmpty()) continue; // single-thread files, already started
 
         // 速度门限：速度足够时不再给已有线程的文件加分片（主流启动器语义）
-        if (speedEnough) continue;
+        // ⚠️ 2026-11-18（尾部慢的真凶）：这个门限看的是**整机**速度，不是本文件速度。
+        // 冷装时 415MB 资源由山海经跑出 33MB/s，于是"速度足够"恒成立 →
+        // 夸父这 9 个文件（共 74MB）永远停在 1~2 条连接上，平均只有 3.8MB/s，
+        // 结果「资源 15.8 秒下完，安装却要等到 19.2 秒」。
+        // 例外：本文件线程数少于 4 时无条件加分片 —— 大文件本来就该多连接。
+        if (speedEnough && f->threads.size() >= 4) continue;
 
         // Check if preparing threads outnumber downloading threads
         int prep = 0, dl = 0;
