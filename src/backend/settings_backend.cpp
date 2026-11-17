@@ -268,13 +268,13 @@ void SettingsBackend::loadSettings()
     // 加载器（Forge/NeoForge/Fabric/OptiFine）的下载源在 version_backend /
     // mod_loader_installer 内独立处理（2026-08-15：加载器默认镜像优先，
     // 与全局 fileSource 解耦，避免影响 MC 下载）。
-    // 2026-11-18：默认改为 AutoSwitch(2) = 按区域择优（国内镜像优先）。
-    // 依据：HMCL 对比实测 26.2 下载 11s vs 我们 58s，差距主因是「源」和「并发」，
-    // 而我们的默认把国内用户固定送去了首字节 280–800ms 的官方 CDN。
+    // 2026-11-18（二次修正）：默认 AutoSwitch(2) = 官方优先 + 镜像兜底。
+    // 早上那版让国内「自动」走镜像，是用单发 curl 数据定的；完整量测（5173 文件）
+    // 推翻它：镜像优先 105.7s vs 官方优先 16.7s，镜像慢 6 倍。
     m_fileDownloadSource = qBound(0, s.value(QStringLiteral("download/fileSource"), 2).toInt(), 2);
     m_listDownloadSource = qBound(0, s.value(QStringLiteral("download/listSource"), 2).toInt(), 2);
-    // 旧配置里的 64 也要夹回合理区间（读时钳制，避免历史值绕过 setter）
-    m_maxDownloadThreads = qBound(1, s.value(QStringLiteral("download/threadLimit"), defaultDownloadConcurrency()).toInt(), 64);
+    // 并发上限 64 → 256（参考引擎实测 192 是拐点，256 不再更快但要留余量给用户手调）
+    m_maxDownloadThreads = qBound(1, s.value(QStringLiteral("download/threadLimit"), defaultDownloadConcurrency()).toInt(), 256);
 
     // ── 一次性迁移（regionPolicyV1）──
     // 老版本把「官方优先(1)」写死成默认并存进了注册表，也把线程数写死成 16。
@@ -286,7 +286,10 @@ void SettingsBackend::loadSettings()
         const bool cn = RegionUtils::isChinaRegion();
         bool changed = false;
         if (m_fileDownloadSource == 1) { m_fileDownloadSource = 2; changed = true; }
-        if (m_maxDownloadThreads == 16) { m_maxDownloadThreads = defaultDownloadConcurrency(); changed = true; }
+        // 16 是旧默认；64 是 2026-11-18 上午那版默认 —— 两个都迁到新默认（192）
+        if (m_maxDownloadThreads == 16 || m_maxDownloadThreads == 64) {
+            m_maxDownloadThreads = defaultDownloadConcurrency(); changed = true;
+        }
         s.setValue(QStringLiteral("download/fileSource"), m_fileDownloadSource);
         s.setValue(QStringLiteral("download/threadLimit"), m_maxDownloadThreads);
         s.setValue(QStringLiteral("download/regionPolicyV1"), true);
@@ -294,6 +297,21 @@ void SettingsBackend::loadSettings()
             qCInfo(logApp) << QStringLiteral("[设置] 首次按区域调优下载策略 区域=%1 源策略=%2 并发=%3")
                 .arg(cn ? QStringLiteral("中国") : QStringLiteral("其他"))
                 .arg(m_fileDownloadSource).arg(m_maxDownloadThreads);
+        }
+    }
+    // ── 一次性迁移 v2（2026-11-18 下午）──
+    // 上午那版把 threadLimit 写成 64 / 源写成「镜像优先(0)」；两者都被完整量测否掉了。
+    // 这里只在标记未写时纠正一次：64 → 新默认；0(镜像优先) → 2(自动=官方优先兜底镜像)。
+    if (!s.value(QStringLiteral("download/regionPolicyV2"), false).toBool()) {
+        bool changed = false;
+        if (m_maxDownloadThreads == 64) { m_maxDownloadThreads = defaultDownloadConcurrency(); changed = true; }
+        if (m_fileDownloadSource == 0) { m_fileDownloadSource = 2; changed = true; }
+        s.setValue(QStringLiteral("download/threadLimit"), m_maxDownloadThreads);
+        s.setValue(QStringLiteral("download/fileSource"), m_fileDownloadSource);
+        s.setValue(QStringLiteral("download/regionPolicyV2"), true);
+        if (changed) {
+            qCInfo(logApp) << QStringLiteral("[设置] 下载策略校正 v2（官方优先 + 并发 %1）")
+                .arg(m_maxDownloadThreads);
         }
     }
     {

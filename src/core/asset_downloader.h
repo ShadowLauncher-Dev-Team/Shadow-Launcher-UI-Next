@@ -299,12 +299,24 @@ private:
     int  m_targetInflight = 0;             // computed by schedulePhase()
     int  m_burstSent = 0;                  // count of initial burst requests
     int  m_preCheckQueued = 0;             // count of async SHA1 pre-checks in flight
-    static constexpr int kBurstSize = 4;   // immediate burst (reduced from 12, servers throttle >4)
-    static constexpr int kAccelStep = 2;   // add per tick during accelerate (reduced from 4)
+    // 2026-11-18：初始爆发 4 → 64。实测官方 CDN 对 192 并发完全无压力（首字节 p90 160ms），
+    // 而「一次只发 4 个」把前 192 个请求摊成十几秒才铺满。
+    static constexpr int kBurstSize = 64;
+    // 2026-11-18：每 tick 增量 2 → 64（= 并发上限的三分之一）。
+    // 旧值 2 配合 50ms tick = 最多 40 请求/秒的派发速率上限，
+    // 实测 4048 个资源因此从没跑满 192 并发（在途长期 84~176）。
+    static constexpr int kAccelStep = 64;
     static constexpr int kMaxPerHost = 4;  // max concurrent per host (reduced from 8)
 
     // ── Network managers (2 × HTTP/1.1 to avoid HTTP/2 stream limits) ──
-    QNetworkAccessManager* m_nam[2] = {nullptr, nullptr};
+    // 2026-11-18：2 → 32 个 QNAM。
+    // 依据：Qt 的 QHttpNetworkConnection 每个「连接对象」默认只有 6 条 channel，
+    // 也就是说**单主机实际并发 = 6 × QNAM 数**。只把 m_maxConcurrent 抬到 192、
+    // QNAM 仍只有 2 个时，线上真实并发只有 12 —— 实测在途=192 但 114 文件/s、
+    // 请求均 1653ms（参考引擎同并发 309 文件/s、190ms）。
+    // 32 × 6 = 192 条真实连接，与目标并发对齐。
+    QNetworkAccessManager* m_nam[32] = {};
+    static constexpr int kNamCount = 32;
     int  m_namRoundRobin = 0;              // simple round-robin
 
     // ── Task queues ──

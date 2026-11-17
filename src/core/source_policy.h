@@ -15,15 +15,22 @@ namespace ShadowLauncher {
 namespace SourcePolicy {
 
 /// 是否优先官方源。
-/// 2026-11-18 改：AutoSwitch（自动）不再等同官方优先，而是**按区域择优**——
-/// 国内官方 CDN 首字节 280–800ms、BMCLAPI 50–70ms（同文件差 4–10 倍），
-/// 所以国内「自动」= 镜像优先；国外仍是官方优先（官方在那边本来就快）。
-/// 显式的 PreferMirror / PreferOfficial 不受影响，用户选了就照办。
+/// ── 2026-11-18 二次修正（推翻同日早上的「按区域择优」）──
+/// 早上我按「单次 curl 首字节」判定镜像更快，于是让国内 AutoSwitch = 镜像优先。
+/// 但那是**单发 curl** 的数据，真实并发下结论相反。用独立参考引擎跑完整 5173 文件量测：
+///   镜像优先 + 64 并发 → 105.7s / 49 文件/s（4.6MB/s）
+///   官方优先 + 128 并发 → 21.5s / 240 文件/s（26.3MB/s）
+///   官方优先 + 192 并发 → 16.7s / 309 文件/s（33.9MB/s）
+/// 原因也查清了：BMCLAPI 不是 CDN，它是 **302 到第三方节点池**
+/// （open-bmcl-api.lunar.cc / hurtmc / sakura.sld.tw / 933.moe 随机分），
+/// 每个文件多一次跳转 + 随机落到跨境小节点，单连接只有 ~70KB/s；
+/// 官方 Azure Front Door 则是稳定的 111ms 首字节 + 单连接满速。
+/// 结论：**自动 = 官方优先，镜像只做失败兜底**。显式 PreferMirror 仍照办（用户要就给他）。
 inline bool preferOfficial(DownloadSourcePolicy p) {
     switch (p) {
     case DownloadSourcePolicy::PreferOfficial: return true;
     case DownloadSourcePolicy::PreferMirror:   return false;
-    case DownloadSourcePolicy::AutoSwitch:     return !RegionUtils::isChinaRegion();
+    case DownloadSourcePolicy::AutoSwitch:     return true;   // 实测决定，与区域无关
     }
     return true;
 }

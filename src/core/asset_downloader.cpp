@@ -108,10 +108,14 @@ void AssetDownloader::setupNam()
     m_targetInflight = 0;
     m_phase = PhaseInit;
 
-    // Two QNAMs for HTTP/1.1 — each with 255 connections per host max.
-    // Per-request we set Http2AllowedAttribute=false to prevent ALPN
-    // from negotiating HTTP/2, which causes RST_STREAM issues on BMCLAPI.
-    for (int i = 0; i < 2; ++i) {
+    // ── 2026-11-18：QNAM 数量从 2 提到 32 ──
+    // Qt 的 QHttpNetworkConnection 每个连接对象默认 6 条 channel，
+    // 所以「单主机真实并发 = 6 × QNAM 数」。之前 2 个 QNAM = 12 条真实连接，
+    // 与我们声明的 192 并发差 16 倍：日志里在途=192 却只有 114 文件/s、请求均 1653ms
+    // （参考引擎同样 192 并发是 309 文件/s、190ms）。
+    // 32 × 6 = 192，与目标并发对齐。每个 QNAM 自带一条网络线程，32 个线程可接受。
+    // 仍然逐请求 Http2AllowedAttribute=false（HTTP/2 单连接复用会把 192 请求挤到少数流上）。
+    for (int i = 0; i < kNamCount; ++i) {
         if (m_nam[i]) {
             m_nam[i]->disconnect();
             m_nam[i]->deleteLater();
@@ -120,7 +124,8 @@ void AssetDownloader::setupNam()
         m_nam[i] = new QNetworkAccessManager(this);
     }
 
-    qCInfo(logAsset) << QStringLiteral("[山海经] 2× QNAM 就绪");
+    qCInfo(logAsset) << QStringLiteral("[山海经] %1× QNAM 就绪（单主机真实并发 ≈ %2）")
+        .arg(kNamCount).arg(kNamCount * 6);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -540,17 +545,21 @@ void AssetDownloader::fireNext()
         QMutexLocker lock(&m_hostMutex);
         auto it = m_hostStats.find(host);
         int fails = (it != m_hostStats.end()) ? it->consecutiveFails : 0;
+        // 2026-11-18：基线 15s→6s、上限 30s→12s。
+        // 实测官方源首字节 p90 仅 160ms；这里给 6s 起步已经非常宽松，
+        // 而坏节点（镜像池里的跨境小节点）必须在秒级被放弃 —— 一个 20s 超时
+        // 就吃掉整轮 1/4 时间（27MB jar 卡了 19s 才重试）。
         qint64 base = (it != m_hostStats.end())
-            ? qMax(it->avgFirstByteMs, 15000LL)
-            : 15000;
-        qint64 timeoutMs = qMin(base * (1 + qMin(fails, 3)), 30000LL);
+            ? qBound(6000LL, it->avgFirstByteMs * 3, 12000LL)
+            : 6000;
+        qint64 timeoutMs = qMin(base * (1 + qMin(fails, 3)), 12000LL);
         req.setTransferTimeout(static_cast<int>(timeoutMs));
         it->activeRequests++;
     }
 
     // Round-robin across 2 QNAMs
     int namIdx = m_namRoundRobin;
-    m_namRoundRobin = (m_namRoundRobin + 1) & 1;
+    m_namRoundRobin = (m_namRoundRobin + 1) % kNamCount;
 
     QNetworkReply* reply = m_nam[namIdx]->get(req);
     ++m_dispatchCount;
@@ -775,10 +784,10 @@ void AssetDownloader::probeRangeSupport(const QVector<AssetTask>& tasks)
         req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
         req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
-        req.setTransferTimeout(20000);
+        req.setTransferTimeout(8000);   // 2026-11-18：20s → 8s
 
         const int namIdx = m_namRoundRobin;
-        m_namRoundRobin = (m_namRoundRobin + 1) & 1;
+        m_namRoundRobin = (m_namRoundRobin + 1) % kNamCount;
         QNetworkReply* reply = m_nam[namIdx]->get(req);
 
         // 不等 body：响应头一到就能判定。不支持 Range 时立刻 abort，避免为探测
@@ -921,7 +930,7 @@ void AssetDownloader::dispatchShardSeg(const QString& key, int segIndex)
     }
 
     const int namIdx = m_namRoundRobin;
-    m_namRoundRobin = (m_namRoundRobin + 1) & 1;
+    m_namRoundRobin = (m_namRoundRobin + 1) % kNamCount;
     QNetworkReply* reply = m_nam[namIdx]->get(req);
     ++m_dispatchCount;
 
@@ -1060,6 +1069,10 @@ void AssetDownloader::finalizeShard(const QString& key)
 
     qCInfo(logAsset) << QStringLiteral("  [山海经] [分片] %1 合并完成 %2 段 %3（SHA1 通过）")
         .arg(st.task.sha1.left(12)).arg(st.segData.size()).arg(fmtSize(whole.size()));
+    // 2026-11-18 记账修正：分片路径的完成不经过 onReplyFinished，
+    // 所以从来没累加过 m_netOk，审计就永远「差 1 个任务」。
+    // 分片只是传输手段不同，本质仍是一次网络成功，这里补记。
+    ++m_netOk;
     enqueueIO(st.task, whole);
 }
 
@@ -1210,7 +1223,7 @@ void AssetDownloader::watchdogTick()
         QStringList stale;
         for (auto sit = m_shards.begin(); sit != m_shards.end(); ++sit) {
             if (sit->inflight > 0) continue;
-            if (sit->lastActiveMs > 0 && nowS - sit->lastActiveMs < 20000) continue;
+            if (sit->lastActiveMs > 0 && nowS - sit->lastActiveMs < 8000) continue;
             stale.append(sit.key());
         }
         for (const QString& k : stale)
@@ -1314,7 +1327,8 @@ void AssetDownloader::accelTick()
     }
 
     // Fire more requests up to target
-    int toSend = qMin(target - inflight, kAccelStep);
+    // 2026-11-18：不再按 kAccelStep 限速派发 —— 有槽就填满（fireNext 内部仍有主机级限流兜底）
+    int toSend = target - inflight;
     for (int i = 0; i < toSend && !m_pendingQueue.isEmpty(); ++i)
         fireNext();
     dispatchPendingShardSegs();
@@ -1402,6 +1416,16 @@ void AssetDownloader::schedulePhase()
             m_targetInflight = qMin(8, m_maxConcurrent);
         }
         break;
+    }
+
+    // ── 2026-11-18：队列还长时，目标并发直接拉满，不做「每 tick 加一点」的爬坡 ──
+    // 实测（32 QNAM / 192 并发）爬坡期在途长期只有 83~107，4048 个资源跑了 17.6s；
+    // 参考引擎同并发跑 5059 个（含库）只用 16.4s，差别就是「有没有一直在满并发」。
+    // 爬坡本来是给慢速网络做自适应的，但队列里还有几千个小文件时它只有害处。
+    if (pending > 64 && m_phase != PhaseCooldown
+        && inflight < m_maxConcurrent) {
+        m_targetInflight = m_maxConcurrent;
+        m_phase = PhaseAccelerate;
     }
 }
 

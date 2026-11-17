@@ -52,20 +52,24 @@ struct Account {
 enum class DownloadSourcePolicy : int {
     PreferMirror   = 0,  // BMCLAPI primary, fall back to Mojang
     PreferOfficial = 1,  // Mojang primary, fall back to BMCLAPI
-    AutoSwitch     = 2   // Mojang primary, auto-switch to BMCLAPI if slow
+    AutoSwitch     = 2   // 按区域择优（2026-11-18 实测：官方源比镜像快 5 倍，故国内也先官方）
 };
 
-/// 默认并发：核数 ×4 上限 64（与 HMCL FetchTask.DEFAULT_CONCURRENCY 同口径）。
-/// 依据：一次安装几千个小文件，耗时 ≈ 文件数 × 单请求延迟 ÷ 并发，
-/// 延迟主导 → 并发几乎是唯一线性杠杆（实测 16→64 有 4 倍空间）。
+/// 默认并发：核数 ×12，夹取 [32, 192]。
+/// 依据（2026-11-18 独立参考引擎实测，5173 个文件 / 565.9MB，官方源）：
+///   并发 128 → 21.5s（240 文件/s）
+///   并发 192 → 16.7s（309 文件/s）  ← 拐点
+///   并发 256 → 16.4s（316 文件/s）  ← 收益消失
+/// 一次安装几千个小文件，耗时 ≈ 文件数 × 单请求延迟 ÷ 并发，延迟主导，
+/// 所以并发是唯一线性杠杆；但超过 192 后 TCP/服务端排队吃掉收益。
 inline int defaultDownloadConcurrency() {
     const unsigned hw = std::thread::hardware_concurrency();
     const int cores = hw > 0 ? static_cast<int>(hw) : 4;
-    return qBound(4, cores * 4, 64);
+    return qBound(32, cores * 12, 192);
 }
 
 struct DownloadConfig {
-    int maxWorkers = defaultDownloadConcurrency();   // 并发上限 64（settings 层夹取），精卫固定 12
+    int maxWorkers = defaultDownloadConcurrency();   // 并发上限 192（settings 层夹取），精卫固定 12
     double speedLimitMB = -1;
     DownloadSourcePolicy fileSource = DownloadSourcePolicy::PreferOfficial;   // 全局 MC 下载策略
     DownloadSourcePolicy listSource = DownloadSourcePolicy::PreferOfficial;

@@ -901,7 +901,7 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                         fails = it->consecutiveFails;
                 }
                 const qint64 base = isOfficialUrl ? 12000 : 15000;
-                timeoutMs = static_cast<int>(qMin(base * (1 + qMin(fails, 3)), 30000LL));
+                timeoutMs = static_cast<int>(qMin(base * (1 + qMin(fails, 3)), 12000LL));
             }
             // 主流启动器语义：源失败累计（failCount≥5 且无进度）才禁用换源——
             // 不在 attempt 层面对官方特殊处理（官方优先时坚持官方直到禁用）
