@@ -328,6 +328,10 @@ private:
     // 可以给到 1~255（我们每请求都设 128），所以**单个 QNAM 就足够**满足 192 并发。
     // 32 个 QNAM 的实际代价是 32 条网络线程 + 32 份连接池（每份都要各自重新握手），
     // 是纯粹的额外开销。留 4 个只是为了让分片/探测/普通请求之间少抢同一把连接锁。
+    // 2026-11-18（第三轮）：4 → 16。
+    // TCP 采样证据：h1 下进程最多 300 条连接，但**前 4 秒只建起 104 条**（约 26 条/秒）。
+    // Qt 的连接建立是在各自的 QNAM 线程上串行完成的，QNAM 越多 → 并行建连越多。
+    // 4 个 QNAM 时这条斜率就是 26/s，16 个理论上 ×4。先量，不猜。
     QNetworkAccessManager* m_nam[4] = {};
     static constexpr int kNamCount = 4;
     int  m_namRoundRobin = 0;              // simple round-robin
@@ -340,6 +344,12 @@ private:
     QSet<QString> m_createdDirs;
     // 起速诊断：记录开跑时刻，前 8 秒每秒打一条 [起速]，用来量「192 条连接
     // 建立需要多久」而不是靠猜（2026-11-18：前 5 秒只有 23MB/s，中段 42MB/s）。
+    // 事件循环卡顿探针：20ms 定时器量「本拍距离上一拍过了多久」，取 5 秒窗口内的最大值。
+    // 目的：把「主线程被堵」和「网络慢」分开。若 maxGap 上百毫秒且与吞吐锯齿同步，
+    // 就说明瓶颈在 GUI 线程而不是链路（2026-11-18：吞吐呈 22MB → 8MB → 45MB 锯齿）。
+    QTimer* m_lagTimer = nullptr;
+    qint64 m_lagLast = 0;
+    qint64 m_lagMaxMs = 0;
     qint64 m_rampStartMs = 0;
     int    m_rampNextSec = 1;
     struct InFlight {

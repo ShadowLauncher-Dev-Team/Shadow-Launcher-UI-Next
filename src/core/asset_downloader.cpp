@@ -239,6 +239,22 @@ void AssetDownloader::startDownload(const QVector<AssetTask>& tasks, int maxConc
             }
         });
     }
+    // ── 事件循环卡顿探针（2026-11-18）──
+    if (!m_lagTimer) {
+        m_lagTimer = new QTimer(this);
+        m_lagTimer->setInterval(20);
+        connect(m_lagTimer, &QTimer::timeout, this, [this]() {
+            const qint64 now = QDateTime::currentMSecsSinceEpoch();
+            if (m_lagLast > 0) {
+                const qint64 gap = now - m_lagLast - 20;
+                if (gap > m_lagMaxMs) m_lagMaxMs = gap;
+            }
+            m_lagLast = now;
+        });
+    }
+    m_lagLast = 0;
+    m_lagMaxMs = 0;
+    m_lagTimer->start();
     m_rampStartMs = QDateTime::currentMSecsSinceEpoch();
     m_rampNextSec = 1;
     m_emitTimer->start();
@@ -2218,7 +2234,7 @@ void AssetDownloader::logSpeed()
             .arg(m_shards.size())
             .arg(fmtSize(m_wastedBytes.loadRelaxed()));
     const QString tail =
-        QStringLiteral(" | 完成=%1 派发=%2 主线程=%3ms(占比%4% 均%5ms/个) SHA1=%6 请求均=%7ms 快请求%8%")
+        QStringLiteral(" | 完成=%1 派发=%2 主线程=%3ms(占比%4% 均%5ms/个) SHA1=%6 请求均=%7ms 快请求%8% 卡顿=%9ms")
             .arg(m_replyFinishedCount)
             .arg(m_dispatchCount)
             .arg(qRound64(m_mainThreadWorkUs / 1000.0))
@@ -2226,8 +2242,10 @@ void AssetDownloader::logSpeed()
             .arg(QString::number(avgMainMs, 'f', 2))
             .arg(fmtSize(m_sha1Bytes))
             .arg(m_reqCount > 0 ? qRound64((double)m_reqTotalMs / m_reqCount) : 0)
-            .arg(m_reqCount > 0 ? qRound(100.0 * m_reqFast / m_reqCount) : 0);
+            .arg(m_reqCount > 0 ? qRound(100.0 * m_reqFast / m_reqCount) : 0)
+            .arg(m_lagMaxMs);
     qCInfo(logAsset) << (head + tail);
+    m_lagMaxMs = 0;   // 每 5 秒窗口清零，看的是窗口内最坏一次事件循环停顿
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
