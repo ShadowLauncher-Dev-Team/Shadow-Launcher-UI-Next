@@ -34,6 +34,9 @@ namespace ShadowDownloader {
 
 // ── Per-thread download state ──
 struct DownloadThread {
+    // 单次请求最多覆盖多少字节。给「切分」留出安全的未请求尾部：
+    // 请求越窄，能安全切给新线程的区间越多，且永不与在途请求重叠。
+    static constexpr qint64 kRequestWindowBytes = 8LL * 1024 * 1024;
     int uuid = 0;
     qint64 downloadStart = 0;
     qint64 downloadEnd = 0;
@@ -53,6 +56,9 @@ struct DownloadThread {
     // 主线程 tryAddThread 切分本线程时置 1：worker 收到后立刻 abort 在途请求，
     // 用缩小后的 Range 重发（已收字节保留，零重复下载）。2026-11-17
     QAtomicInt rangeShrunk{0};
+    // 已发出的 Range 终点（独占）。切分只允许落在它之后 —— 因为已经发出去的请求
+    // 改不了，只有「还没请求」的区间才能安全分给别人。2026-11-17
+    QAtomicInteger<qint64> requestedEnd{0};
     int    watchdogAbortCount = 0; // 已中止次数（预算，主线程锁内读写）
 
     qint64 downloadUndone() const { return downloadEnd - downloadStart - downloadDone; }

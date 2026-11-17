@@ -665,6 +665,21 @@ std::shared_ptr<DownloadThread> FileDownloader::tryAddThread(
     if (!maxPiece || maxUndone < 256 * 1024) return nullptr;   // 主流启动器 FilePieceLimit=256KB
 
     qint64 splitPoint = maxPiece->downloadEnd - static_cast<qint64>(maxUndone * 0.4);
+    // 只能在「尚未发出的请求」区间里切（2026-11-17）：
+    // requestedEnd 之后才是还没下发的字节，切到这里新线程与在途请求零重叠。
+    {
+        // 本函数由 managerTick 调用，而 managerTick 全程持有 m_filesMutex ——
+        // 这里再加锁就是同一线程二次加锁（非递归 QMutex）= 死锁。
+        const qint64 reqEnd = maxPiece->requestedEnd.loadRelaxed();
+        // requestedEnd 还是 0 = 该线程**还没发出第一个请求**：此刻切它没有任何安全点
+        //（切完它才发请求，请求终点就可能越过新边界 → 又是多余字节）。
+        // 直接放弃本次切分，下一拍（50ms）worker 已登记后再切。
+        // 实测：不加这条会出现一次 8MB 满窗口的超额（1.21.4.jar 超额 4,141,056）。
+        if (reqEnd <= maxPiece->downloadStart) return nullptr;
+        if (splitPoint < reqEnd) splitPoint = reqEnd;
+        // 未请求尾部太小就不切（等下次；宁可少一个线程，也不下多余字节）
+        if (maxPiece->downloadEnd - splitPoint < kMinSplitPieceBytes) return nullptr;
+    }
 
     // Pick a healthy source
     // ── 主流启动器语义：顺序 fallback（源 0 起）+ 镜像禁止分片 ──
@@ -746,8 +761,15 @@ std::shared_ptr<DownloadThread> FileDownloader::trySplitSlowThread(
     if (isMirrorUrl(file->orderedSources[sourceIdx]))
         return nullptr;
 
-    // 中点切分：老分片保留 [start, splitPoint)，新分片 [splitPoint, end)
-    const qint64 splitPoint = th->downloadEnd - undone / 2;
+    // 中点切分，但同样只能落在「已发出请求的终点之后」：
+    // 在途请求改不了，切到它前面就是白下再丢。
+    qint64 splitPoint = th->downloadEnd - undone / 2;
+    {
+        const qint64 reqEnd = th->requestedEnd.loadRelaxed();
+        if (reqEnd <= th->downloadStart) return nullptr;   // 首个请求还没登记
+        if (splitPoint < reqEnd) splitPoint = reqEnd;
+        if (th->downloadEnd - splitPoint < kMinSplitPieceBytes) return nullptr;
+    }
     if (splitPoint <= th->downloadStart) return nullptr;
 
     auto nth = std::make_shared<DownloadThread>();
@@ -916,8 +938,22 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             th->rangeShrunk.storeRelaxed(0);
 
             if (!file->isUnknownSize && !file->isNoSplit) {
-                qint64 start = th->downloadStart + attemptBase;
-                qint64 end = th->downloadEnd - 1;
+                const qint64 start = th->downloadStart + attemptBase;
+                // ── 有界窗口（2026-11-17）──
+                // 关键：一次只请求「窗口」这么多，而不是整个剩余区间。
+                // 这样「还没请求的尾部」始终存在，切分可以在那里安全进行，
+                // 永远不会出现「已发出请求的终点被改小 → 多余字节被丢弃」。
+                qint64 reqEndExcl = th->downloadEnd;
+                const qint64 cap = start + DownloadThread::kRequestWindowBytes;
+                if (reqEndExcl > cap) reqEndExcl = cap;
+                // ⚠ 这里绝不能锁 m_filesMutex：managerTick 在切分时**全程持有**该锁，
+                // 且 worker 是它启动的 —— 再取一次就是自锁/互锁（实测：日志停在
+                // 「所有文件已启动首线程」后 47 秒零输出，jar 全部没落地）。
+                // requestedEnd 是原子量，登记即生效；万一登记与切分交错，
+                // rangeShrunk 兜底会中止重发，最多损失一个突发。
+                if (reqEndExcl > th->downloadEnd) reqEndExcl = th->downloadEnd;
+                th->requestedEnd.storeRelaxed(reqEndExcl);
+                const qint64 end = reqEndExcl - 1;
                 req.setRawHeader("Range", QString("bytes=%1-%2").arg(start).arg(end).toUtf8());
             }
 
@@ -1338,8 +1374,14 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 }
             }
             if (needMoreData) {
-                // 范围被缩小：本次 abort 是策略性的，不占重试预算
-                if (rangeFilled) { --attempt; }
+                // 窗口链（本次请求正常结束但线程范围未满）：不占重试预算。
+                // 只有「确实收到了新字节」才回退计数，避免服务器返回空包时死循环。
+                if (th->downloadDone > attemptBase) { --attempt; }
+                // ⚠ 必须把 sourceOk 归零：for 循环条件是 !sourceOk，而上面成功收尾
+                // 时已置 true —— 不清掉的话 continue 直接退出整个尝试循环，
+                // 线程带着「只下了一个窗口」的数据就结束 → 文件永久不完整
+                //（实测：窗口化后校验报 2 个文件缺失/校验失败）。
+                sourceOk = false;
                 rangeFilled = false;
                 rangeData.clear();
                 continue;
