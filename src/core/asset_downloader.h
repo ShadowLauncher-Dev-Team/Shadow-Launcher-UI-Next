@@ -343,6 +343,15 @@ private:
     QAtomicInteger<qint64> m_totalBytes{0};
     QAtomicInteger<qint64> m_downloadedBytes{0};
     qint64 m_lastSpeedLogBytes = 0;   // 吞吐心跳基线（2026-11-17）
+    // ── 主线程开销 / 真实派发率实测（2026-11-17）──
+    // 目的：定位"引擎吞吐远低于同并发 curl 实测"的原因，而不是继续猜。
+    // m_mainThreadWorkUs 只统计 onReplyFinished 里 readAll + SHA1 + 投递的耗时，
+    // 这段跑在主线程；若它占比高，就说明主线程被哈希/拷贝堵住，连接再多也没用。
+    qint64 m_mainThreadWorkUs = 0;
+    qint64 m_sha1Bytes = 0;
+    int    m_replyFinishedCount = 0;
+    int    m_dispatchCount = 0;
+    QElapsedTimer m_hbTimer;          // 心跳专用时钟（不借用 sampleSpeed 的 50ms 周期）
     QAtomicInteger<qint64> m_lastSampleBytes{0};
     QAtomicInteger<qint64> m_cacheBytes{0};  // bytes from cache hits (excluded from speed calc)
     QString m_fallbackCacheDir;            // gameDir to check for existing files before downloading

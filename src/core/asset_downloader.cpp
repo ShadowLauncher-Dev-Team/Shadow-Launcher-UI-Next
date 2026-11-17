@@ -182,6 +182,12 @@ void AssetDownloader::startDownload(const QVector<AssetTask>& tasks, int maxConc
     m_lastProgressEmit.start();
     m_downloadTimer.start();
     m_speedLogTimer.start();
+    m_hbTimer.start();
+    m_lastSpeedLogBytes = 0;
+    m_mainThreadWorkUs = 0;
+    m_sha1Bytes = 0;
+    m_replyFinishedCount = 0;
+    m_dispatchCount = 0;
     m_watchdogTimer->start();
     m_throttleTimer->start();
 
@@ -519,6 +525,7 @@ void AssetDownloader::fireNext()
     m_namRoundRobin = (m_namRoundRobin + 1) & 1;
 
     QNetworkReply* reply = m_nam[namIdx]->get(req);
+    ++m_dispatchCount;
 
     InFlight ift;
     ift.task = dispatchTask;
@@ -620,6 +627,13 @@ void AssetDownloader::onReplyFinished(QNetworkReply* reply)
         return;
     }
 
+    // ── 主线程开销计时（2026-11-17）──
+    // 从 readAll 起算到 enqueueIO 投递完成：其中包括一次全量拷贝 + 一次完整 SHA1。
+    // 这段是主线程的串行成本，直接决定"每秒能完成几个文件"的上限。
+    QElapsedTimer mainWork;
+    mainWork.start();
+    ++m_replyFinishedCount;
+
     QByteArray data = reply->readAll();
 
     // DNS IP reliability reward
@@ -666,6 +680,10 @@ void AssetDownloader::onReplyFinished(QNetworkReply* reply)
 
     // I/O offload: SHA1 + disk write in thread pool
     enqueueIO(task, data);
+
+    // 主线程串行成本累计（含 SHA1）
+    m_mainThreadWorkUs += mainWork.nsecsElapsed() / 1000;
+    if (!task.sha1.isEmpty()) m_sha1Bytes += data.size();
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -850,6 +868,7 @@ void AssetDownloader::dispatchShardSeg(const QString& key, int segIndex)
     const int namIdx = m_namRoundRobin;
     m_namRoundRobin = (m_namRoundRobin + 1) & 1;
     QNetworkReply* reply = m_nam[namIdx]->get(req);
+    ++m_dispatchCount;
 
     InFlight ift;
     ift.task = st.task;
@@ -1966,7 +1985,9 @@ void AssetDownloader::logSpeed()
 
     adjustHostLimits();
 
-    const qint64 elapsed = qMax<qint64>(1, m_speedTimer.elapsed());
+    // ⚠ 必须用自己的时钟：m_speedTimer 被 sampleSpeed() 每 50ms restart 一次，
+    // 借用它算出来的"5 秒吞吐"其实是 50ms 窗口 → 输出过 226929 MB/s 这种荒谬数字。
+    const qint64 elapsed = qMax<qint64>(1, m_hbTimer.restart());
     const qint64 now = m_downloadedBytes.loadRelaxed() - m_cacheBytes.loadRelaxed();
     const qint64 delta = now - m_lastSpeedLogBytes;
     m_lastSpeedLogBytes = now;
@@ -1978,9 +1999,22 @@ void AssetDownloader::logSpeed()
         if (m_pendingQueue.at(i).size >= kSegMinBytes) ++bigLeft;
     }
 
+    // 主线程占比：这段跑在主线程（拷贝 + SHA1），是"每秒能完成几个文件"的硬上限来源
+    const qint64 totalMs = m_downloadTimer.elapsed();
+    const double mainPct = (totalMs > 0)
+        ? (m_mainThreadWorkUs / 1000.0) * 100.0 / totalMs : 0.0;
+    const double avgMainMs = (m_replyFinishedCount > 0)
+        ? (m_mainThreadWorkUs / 1000.0) / m_replyFinishedCount : 0.0;
+
     qCInfo(logAsset) << QStringLiteral("[山海经] [吞吐] %1/s 在途=%2 待下载=%3 大文件剩余=%4 分片任务=%5 作废=%6")
         .arg(fmtSize(bps)).arg(m_inFlight.size()).arg(m_pendingQueue.size())
-        .arg(bigLeft).arg(m_shards.size()).arg(fmtSize(m_wastedBytes.loadRelaxed()));
+        .arg(bigLeft).arg(m_shards.size()).arg(fmtSize(m_wastedBytes.loadRelaxed()))
+        + QStringLiteral(" | 完成=%1 派发=%2 主线程=%3ms(占%4%% 均%5ms/个) SHA1=%6")
+              .arg(m_replyFinishedCount).arg(m_dispatchCount)
+              .arg(qRound64(m_mainThreadWorkUs / 1000.0))
+              .arg(QString::number(mainPct, 'f', 1))
+              .arg(QString::number(avgMainMs, 'f', 2))
+              .arg(fmtSize(m_sha1Bytes));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
