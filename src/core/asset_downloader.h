@@ -112,6 +112,7 @@ private:
 
     // ── Speed-adaptive scheduler (replaces old rampTick) ──
     void accelTick();                      // called by m_accelTimer
+    void throttledTick();                  // called by m_throttleTimer（1s，轻量兜底）
     void watchdogTick();                   // called by m_watchdogTimer（2026-08-10）
     void schedulePhase();
     int  currentInflight() const;
@@ -130,6 +131,12 @@ private:
         bool  degraded = false;            // skip if too many fails
         qint64 degradedAtMs = 0;           // 降级时间戳（2026-08-05：超过 kDegradeRetryMs 自动恢复，防永久卡死）
         int  dynamicLimit = 4;             // current dynamic per-host limit
+        // ── Range 支持（2026-11-17）──
+        // 分片前必须先确认这个 host 认 Range。探测用 bytes=0-0（1 字节），
+        // 只探一次。为什么必须探：服务器若不认 Range 会退化成 200 全文件，
+        // 每条"分片"连接都会把整个文件下一遍 —— 用户明确要求不能出现这种
+        // 多余流量，所以宁可在不确定时老老实实单连接。
+        int  rangeOk = -1;                 // -1=未探测 0=不支持 1=支持
     };
     QString extractHost(const QString& url) const;
     bool hostCanAccept(const QString& host) const;
@@ -137,6 +144,8 @@ private:
     /// Per-host connection limit — dynamically adjusted.
     /// BMCLAPI: separate limit; others use host-specific dynamic limit.
     int  getHostLimit(const QString& host) const;
+    /// 同上，但要求调用方已持有 m_hostMutex（hostCanAccept 内部用，避免二次加锁死锁）
+    int  hostLimitLocked(const QString& host) const;
     void adjustHostLimits();              // called periodically to tune limits
 
     // ── 全源不可用冷却（2026-08-05）──
@@ -183,6 +192,74 @@ private:
     QMap<QString, PreCheckPending> m_pendingPreCheck;  // sha1 → task
     void onPreCheckResult(const AssetTask& task, bool sha1Match);
 
+    // ════════════════════════════════════════════════════════════════════════
+    // 空闲槽驱动的分片（2026-11-17）
+    // ════════════════════════════════════════════════════════════════════════
+    // 现象：assets 已按大小降序派发，但"最大的文件"若撞上慢连接，会成为收尾
+    // 阶段仅剩的在途请求 —— 十几个槽位全空转，整体速度掉回单连接水平
+    // （用户实测尾程 <1MB/s，与模组下载修复前完全同型）。
+    //
+    // 策略与模组下载（精卫）一致：不看"文件大不大"，只看"有没有空槽"。
+    //   ① 派发时就有空闲槽且文件够大 → 直接按空闲槽数切段并发；
+    //   ② 已经在下载的大文件遇到空闲槽 → 就地切分：已收字节作为第 0 段保留，
+    //      剩余部分才发 Range —— 已收字节绝不重下。
+    //
+    // 三道"不多下一字节"的闸门：
+    //   1) 先对 host 做 1 字节 Range 探测，只对确认回 206 的 host 开分片；
+    //   2) 每个分片响应必须 206 且 Content-Range 起点等于请求起点，否则立即
+    //      abort（此时代码还没开始收 body，浪费≈0），该 host 永久改为单连接；
+    //   3) 合并后校验 SHA1，不匹配则整文件回退单连接重下，并把作废字节
+    //      计入 m_wastedBytes —— 让"有没有偷流量"可测，不靠感觉。
+    struct InFlight;   // 定义在下方"Task queues"区（handleShardReply 声明需要前置声明）
+
+    struct ShardState {
+        AssetTask task;
+        qint64 total = -1;
+        QVector<qint64> segStart;      // 每段起始偏移
+        QVector<qint64> segLen;        // 每段长度
+        QVector<qint64> segHave;       // 每段已收字节
+        QVector<QByteArray> segData;   // 每段已收内容（assets ≤ 11MB，内存足够）
+        QVector<int> segState;         // 0=待发 1=在途 2=完成
+        int inflight = 0;
+        int mirrorBase = 0;            // 选源起点（分片沿用主任务的源顺序）
+        int segRetry = 0;              // 段级连续失败计数
+        qint64 lastActiveMs = 0;       // 最近一次有段在跑/有进展的时刻（防"无源可派"下永久挂起）
+    };
+    QMap<QString, ShardState> m_shards;   // key = savePath|sha1（同 SHA1 可对应多条目，不能只用 sha1）
+    QMap<QString, int> m_rangeProbe;      // host → -1 探测中 / 0 不支持 / 1 支持
+    QAtomicInteger<qint64> m_wastedBytes{0};   // 分片作废字节（回退/校验失败时累计）
+
+    /// 分片任务主键（与缓存预检查同规则：同一 SHA1 可对应多个 savePath）
+    static QString shardKeyOf(const AssetTask& t) {
+        return t.savePath + QLatin1Char('|') + t.sha1;
+    }
+    int  shardIdleSlots() const { return m_maxConcurrent - m_inFlight.size(); }
+    /// 对候选 host 各发一次 1 字节 Range 探测（每 host 只探一次）
+    void probeRangeSupport(const QVector<AssetTask>& tasks);
+    /// 派发时判断该不该分片（够大 + 有空槽 + host 认 Range）
+    bool tryStartShard(const AssetTask& task, int mirrorIndex);
+    /// 把任务拆成分片并发；prefix 为已收前缀（就地切分时非空）
+    bool startShardFromPrefix(const AssetTask& task, int mirrorIndex, const QByteArray& prefix);
+    /// 派发某一段（续传该段剩余部分）
+    void dispatchShardSeg(const QString& key, int segIndex);
+    /// 分片响应收尾（onReplyFinished 分流入口）
+    void handleShardReply(QNetworkReply* reply, const InFlight& ift);
+    /// 全部段到齐 → 合并 → SHA1 → 落盘
+    void finalizeShard(const QString& key);
+    /// 放弃分片：作废已收字节（计入浪费），整文件回退单连接重下
+    void abandonShard(const QString& key, const QString& why);
+    /// 空闲槽补派分片段（watchdog / accel 调用）
+    int  dispatchPendingShardSegs();
+    /// 空闲槽驱动：把在途的单连接大文件就地切成多段
+    void trySplitInFlight();
+
+    // 分片阈值（2026-11-17 实测校准）
+    // ≥2MB 才值得切：assets 最大约 11MB，2MB 以下切出来的段太小、握手开销占比高。
+    // 每段 ≥512KB：Range 请求头开销可以忽略，且避免产生大量碎片段。
+    static constexpr qint64 kSegMinBytes    = 2LL * 1024 * 1024;
+    static constexpr qint64 kMinShardPiece  = 512 * 1024;
+    static constexpr int    kMaxShardPieces = 8;
+
     // ── Async DNS resolution ──
     struct DnsPending {
         QString host;
@@ -204,6 +281,7 @@ private:
     Phase m_phase = PhaseInit;
     QTimer* m_accelTimer = nullptr;        // fires every 50ms during accel
     QTimer* m_watchdogTimer = nullptr;     // 挂起看门狗 1s（独立于 accelTick：队列空时 accelTick 会停）
+    QTimer* m_throttleTimer = nullptr;     // 分片补派/唤醒兜底 1s（2026-11-17）
     static constexpr int kAccelIntervalMs = 50;
     static constexpr int kWatchdogIntervalMs = 1000;
     static constexpr qint64 kInFlightStallMs = 30000;  // in-flight 无字节进展 30s → abort 换源
@@ -239,6 +317,16 @@ private:
         qint64 rateWindowStartMs = 0;      // 当前速率窗口起始时刻
         qint64 rateWindowBytes = 0;        // 窗口起始时的 progressBytes
         int    slowStreak = 0;             // 连续低速窗口计数
+
+        // ── 分片（2026-11-17）──
+        // 一条在途请求可能是「整文件要求」也可能是「某个分片段的 Range 请求」。
+        // shardKey 非空即后者；segIndex 指向该段在 ShardState 里的下标。
+        QString shardKey;
+        int     segIndex = -1;
+        qint64  rangeExpectStart = -1;     // 本次 Range 请求的起点（校验 Content-Range 用）
+        QByteArray keepPrefix;             // 就地切分时保留的已收字节（abort 会清缓冲，必须先取）
+        bool    converting = false;        // 正在从单连接转为分片
+        bool    rangeBad = false;          // 服务器没按 Range 响应（非 206 / 起点不符）
     };
     QMap<QNetworkReply*, InFlight> m_inFlight;
     int  m_failedCount = 0;
@@ -254,6 +342,7 @@ private:
     QAtomicInt m_totalFiles{0};
     QAtomicInteger<qint64> m_totalBytes{0};
     QAtomicInteger<qint64> m_downloadedBytes{0};
+    qint64 m_lastSpeedLogBytes = 0;   // 吞吐心跳基线（2026-11-17）
     QAtomicInteger<qint64> m_lastSampleBytes{0};
     QAtomicInteger<qint64> m_cacheBytes{0};  // bytes from cache hits (excluded from speed calc)
     QString m_fallbackCacheDir;            // gameDir to check for existing files before downloading

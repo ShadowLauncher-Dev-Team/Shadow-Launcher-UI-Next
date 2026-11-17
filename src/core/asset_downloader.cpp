@@ -76,6 +76,14 @@ AssetDownloader::AssetDownloader(QObject* parent)
     m_watchdogTimer->setInterval(kWatchdogIntervalMs);
     connect(m_watchdogTimer, &QTimer::timeout, this, &AssetDownloader::watchdogTick);
 
+    // 分片补派 / accelTimer 唤醒兜底（2026-11-17）：1s 节拍，轻量。
+    // 与 watchdog 分开是因为 watchdog 里还有 abort 逻辑，语义不同，
+    // 混在一起以后改一处会误伤另一处。
+    m_throttleTimer = new QTimer(this);
+    m_throttleTimer->setSingleShot(false);
+    m_throttleTimer->setInterval(1000);
+    connect(m_throttleTimer, &QTimer::timeout, this, &AssetDownloader::throttledTick);
+
     // I/O thread pool: 4 workers for SHA1 + disk writes
     m_ioPool.setMaxThreadCount(kMaxIOWorkers);
 
@@ -175,6 +183,7 @@ void AssetDownloader::startDownload(const QVector<AssetTask>& tasks, int maxConc
     m_downloadTimer.start();
     m_speedLogTimer.start();
     m_watchdogTimer->start();
+    m_throttleTimer->start();
 
     // Log the first few task's mirror sources to verify which source is being used
     if (!tasks.isEmpty()) {
@@ -237,6 +246,11 @@ void AssetDownloader::startDownload(const QVector<AssetTask>& tasks, int maxConc
     if (fastCacheHits > 0) {
         emit logMessage(QStringLiteral("[山海经] 预检查: %1 个文件进入异步 SHA1 校验").arg(fastCacheHits));
     }
+
+    // ── Range 支持探测（2026-11-17）──
+    // 每个 host 一次 1 字节请求。探测结果决定后面能不能对它分片：
+    // 未探测/不支持 → 永远走单连接，绝不冒"多下一遍整个文件"的风险。
+    probeRangeSupport(tasks);
 
     // ── Phase 1: Burst — fire kBurstSize immediately ──
     // (Only for files that definitely need downloading, pre-checks run in parallel)
@@ -317,6 +331,10 @@ void AssetDownloader::appendTasks(const QVector<AssetTask>& tasks)
     // 旧实现：appendTasks 直接全部入队下载、无预检查 → 阶段 B assets 每次都全量
     // 重下（实测 3643 文件 578MB 只命中 7 个，缓存形同虚设）。现在与 startDownload
     // 共用 enqueueCachePreCheck：命中者走异步 SHA1 校验（onPreCheckResult 处理）。
+    // 追加批次同样要探 Range：assets（阶段 B）走的就是这条路径，
+    // 只在 startDownload 里探会导致大文件所在的 host 永远是"未探测"→ 永不分片。
+    probeRangeSupport(sorted);
+
     int preCheckAdded = 0;
     for (auto t : sorted) {
         if (t.originalMirrors.isEmpty()) t.originalMirrors = t.mirrors;
@@ -348,6 +366,7 @@ void AssetDownloader::cancel()
     m_state = Cancelled;
     m_accelTimer->stop();
     m_watchdogTimer->stop();
+    if (m_throttleTimer) m_throttleTimer->stop();
     m_emaBps.storeRelaxed(0);   // 取消即报 0，避免上层读到停表前的陈旧速度
 
     QList<QNetworkReply*> toAbort;
@@ -356,6 +375,7 @@ void AssetDownloader::cancel()
     m_inFlight.clear();
     m_pendingQueue.clear();
     m_pendingPreCheck.clear();
+    m_shards.clear();          // 分片状态一并丢弃（在途段随 replies abort 失效）
 
     for (auto* reply : toAbort) {
         reply->abort();
@@ -441,6 +461,13 @@ void AssetDownloader::fireNext()
 
     // 成功派发 → 清零全拒持续计时（2026-08-05）
     m_allBlockedSinceMs = 0;
+
+    // ── 空闲槽驱动分片：够大 + 有空槽 + host 认 Range → 直接切段并发 ──
+    // 放在这里而不是"收尾阶段"才做，是因为空槽出现在任何时刻：
+    // 大文件先派发（大小降序），只要它还没下完而队列已经空/变短，
+    // 空槽就该立刻喂给它，而不是干等它单连接爬完。
+    if (tryStartShard(dispatchTask, selectedMirror))
+        return;
 
     // ── Dispatch the found file ──
     QDir().mkpath(QFileInfo(dispatchTask.savePath).absolutePath());
@@ -550,6 +577,29 @@ void AssetDownloader::onReplyFinished(QNetworkReply* reply)
     const AssetTask& task = ift.task;
     qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - ift.startMs;
 
+    // ── 就地切分收尾（2026-11-17）──
+    // 这条请求是被 trySplitInFlight() abort 掉的：已收字节存在 keepPrefix 里，
+    // 剩余部分改由多个 Range 段并发拉。已收部分不重下 → 零浪费。
+    if (ift.converting) {
+        if (m_state == Running && ift.keepPrefix.size() > 0) {
+            startShardFromPrefix(ift.task, ift.mirrorIndex, ift.keepPrefix);
+        } else {
+            // 前缀为空或已取消：老路重下（这种情况下没有可复用的进度）
+            m_pendingQueue.prepend(ift.task);
+            if (m_state == Running && !m_accelTimer->isActive())
+                m_accelTimer->start();
+        }
+        checkAllFinished();
+        return;
+    }
+
+    // ── 分片段收尾（2026-11-17）──
+    if (!ift.shardKey.isEmpty()) {
+        handleShardReply(reply, ift);
+        checkAllFinished();
+        return;
+    }
+
     if (reply->error() != QNetworkReply::NoError) {
         QString host = extractHost(ift.task.mirrors.value(ift.mirrorIndex));
         // 挂起看门狗 abort 是本地超时，不代表源故障——不计 host 失败（防误伤官方源）
@@ -619,6 +669,393 @@ void AssetDownloader::onReplyFinished(QNetworkReply* reply)
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// 空闲槽驱动的分片（2026-11-17）
+// ═════════════════════════════════════════════════════════════════════════════
+// 与模组下载（精卫）同一思路：判断依据不是"文件大不大"，而是"有没有空槽"。
+// 尾程只剩一两个大文件时，十几个槽位空转 —— 此时把大文件切开喂满槽位，
+// 聚合速度才上得来。
+//
+// 零多余流量是硬约束（用户明确要求）。为此：
+//   1. 分片前对 host 做 1 字节 Range 探测，只对确认 206 的 host 分片；
+//   2. 每段响应必须 206 且 Content-Range 起点与请求一致，否则立刻 abort
+//      （此时还没收 body，浪费≈0），该 host 永久降级为单连接；
+//   3. 就地切分时已收字节整段保留，只对剩余部分发 Range；
+//   4. 合并后校验 SHA1，失败则整文件回退单连接，并把作废字节计入 m_wastedBytes。
+
+void AssetDownloader::probeRangeSupport(const QVector<AssetTask>& tasks)
+{
+    QMap<QString, QString> sampleUrl;   // host → 一条可用的真实 URL
+    for (const auto& t : tasks) {
+        if (t.size < kSegMinBytes || t.sha1.isEmpty() || t.mirrors.isEmpty()) continue;
+        const QString url = t.mirrors.first();
+        const QString host = extractHost(url);
+        if (m_rangeProbe.contains(host) || sampleUrl.contains(host)) continue;
+        sampleUrl.insert(host, url);
+    }
+    for (auto it = sampleUrl.begin(); it != sampleUrl.end(); ++it) {
+        const QString host = it.key();
+        m_rangeProbe.insert(host, -1);   // 探测中：期间该 host 一律单连接
+
+        QNetworkRequest req{QUrl(it.value())};
+        req.setRawHeader("User-Agent", "ShadowLauncher/1.0");
+        req.setRawHeader("Range", "bytes=0-0");     // 只要 1 字节
+        req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
+        req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::NoLessSafeRedirectPolicy);
+        req.setTransferTimeout(20000);
+
+        const int namIdx = m_namRoundRobin;
+        m_namRoundRobin = (m_namRoundRobin + 1) & 1;
+        QNetworkReply* reply = m_nam[namIdx]->get(req);
+
+        // 不等 body：响应头一到就能判定。不支持 Range 时立刻 abort，避免为探测
+        // 白下整个文件（这正是"多余流量"最容易漏掉的地方）。
+        connect(reply, &QNetworkReply::metaDataChanged, this, [this, reply, host]() {
+            const int code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            if (code == 0 || (code >= 300 && code < 400)) return;   // 中间态/重定向
+            if (code != 206) {
+                m_rangeProbe.insert(host, 0);
+                reply->abort();
+            }
+        });
+        connect(reply, &QNetworkReply::finished, this, [this, reply, host]() {
+            const int code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            const QByteArray cr = reply->rawHeader("Content-Range");
+            const bool ok = (code == 206 && cr.startsWith("bytes 0-0/"));
+            if (m_rangeProbe.value(host, -1) != 0)
+                m_rangeProbe.insert(host, ok ? 1 : 0);
+            qCInfo(logAsset) << QStringLiteral("  [山海经] [分片探测] %1 %2 (HTTP %3)")
+                .arg(host,
+                     ok ? QStringLiteral("支持 Range") : QStringLiteral("不支持 Range，走单连接"))
+                .arg(code);
+            reply->deleteLater();
+        });
+    }
+}
+
+bool AssetDownloader::tryStartShard(const AssetTask& task, int mirrorIndex)
+{
+    if (m_state != Running) return false;
+    if (task.size < kSegMinBytes || task.sha1.isEmpty()) return false;
+    if (m_shards.contains(shardKeyOf(task))) return false;
+    const QString host = extractHost(task.mirrors.value(mirrorIndex));
+    const int rk = m_rangeProbe.value(host, -2);
+    if (rk != 1) {
+        // 从未探测过 → 顺手补一次探测（下个候选文件就能用上）。
+        // 探测失败/不支持都只会让它继续走单连接，不会多下字节。
+        if (rk == -2) probeRangeSupport({task});
+        return false;                                      // 未确认支持 → 老老实实单连接
+    }
+    if (shardIdleSlots() < 2) return false;                // 没空槽，切了只是抢口粮
+    return startShardFromPrefix(task, mirrorIndex, QByteArray());
+}
+
+bool AssetDownloader::startShardFromPrefix(const AssetTask& task, int mirrorIndex,
+                                          const QByteArray& prefix)
+{
+    const QString key = shardKeyOf(task);
+    if (m_shards.contains(key)) return false;
+
+    const qint64 total = task.size;
+    const qint64 have = prefix.size();
+    if (total <= 0 || have >= total) return false;
+
+    // 段数 = 空闲槽数（上限 kMaxShardPieces），且每段 ≥ kMinShardPiece。
+    // 空闲槽少 → 切得少；这正是"按需切片"，不是固定 4 段/8 段。
+    const qint64 remain = total - have;
+    int pieces = qMin(kMaxShardPieces, qMax(2, shardIdleSlots()));
+    pieces = static_cast<int>(qMin<qint64>(pieces, remain / kMinShardPiece));
+    if (pieces < 2) return false;
+
+    ShardState st;
+    st.task = task;
+    st.total = total;
+    st.mirrorBase = mirrorIndex;
+    st.lastActiveMs = QDateTime::currentMSecsSinceEpoch();
+
+    if (have > 0) {
+        // 已收前缀原样保留为第 0 段（不再占用连接、也不会重下）
+        st.segStart.append(0);
+        st.segLen.append(have);
+        st.segHave.append(have);
+        st.segData.append(prefix);
+        st.segState.append(2);
+    }
+    const qint64 len = remain / pieces;
+    for (int i = 0; i < pieces; ++i) {
+        const qint64 segBegin = have + i * len;
+        const qint64 segEnd = (i == pieces - 1) ? total : (have + (i + 1) * len);
+        st.segStart.append(segBegin);
+        st.segLen.append(segEnd - segBegin);
+        st.segHave.append(0);
+        st.segData.append(QByteArray());
+        st.segState.append(0);
+    }
+
+    QDir().mkpath(QFileInfo(task.savePath).absolutePath());
+    m_shards.insert(key, st);
+    qCInfo(logAsset) << QStringLiteral("  [山海经] [分片] %1 切 %2 段（总 %3，已收前缀 %4，空闲槽 %5）")
+        .arg(task.sha1.left(12)).arg(pieces).arg(fmtSize(total))
+        .arg(fmtSize(have)).arg(shardIdleSlots());
+
+    for (int i = 0; i < pieces; ++i)
+        dispatchShardSeg(key, i);
+    return true;
+}
+
+void AssetDownloader::dispatchShardSeg(const QString& key, int segIndex)
+{
+    auto it = m_shards.find(key);
+    if (it == m_shards.end()) return;
+    ShardState& st = it.value();
+    if (segIndex < 0 || segIndex >= st.segState.size()) return;
+    if (st.segState[segIndex] != 0) return;
+    if (m_state != Running) return;
+
+    const qint64 segBegin = st.segStart[segIndex] + st.segHave[segIndex];
+    const qint64 segEnd = st.segStart[segIndex] + st.segLen[segIndex] - 1;
+    if (segEnd < segBegin) { st.segState[segIndex] = 2; return; }
+
+    // 选源：沿用主任务的源顺序，跳过不可用的 host
+    int mi = -1;
+    for (int k = st.mirrorBase; k < st.task.mirrors.size(); ++k) {
+        if (hostCanAccept(extractHost(st.task.mirrors[k]))) { mi = k; break; }
+    }
+    if (mi < 0) return;   // 稍后由 watchdog / accelTick 补派
+
+    const QString url = st.task.mirrors[mi];
+    const QString host = extractHost(url);
+
+    QNetworkRequest req{QUrl(url)};
+    req.setRawHeader("User-Agent", "ShadowLauncher/1.0");
+    req.setRawHeader("Range", QStringLiteral("bytes=%1-%2").arg(segBegin).arg(segEnd).toUtf8());
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                     QNetworkRequest::NoLessSafeRedirectPolicy);
+    {
+        QHttp1Configuration h1cfg;
+        h1cfg.setNumberOfConnectionsPerHost(128);
+        req.setHttp1Configuration(h1cfg);
+    }
+    {
+        QMutexLocker lock(&m_hostMutex);
+        auto hit = m_hostStats.find(host);
+        const qint64 base = (hit != m_hostStats.end())
+            ? qMax(hit->avgFirstByteMs, 15000LL) : 15000;
+        const int fails = (hit != m_hostStats.end()) ? hit->consecutiveFails : 0;
+        req.setTransferTimeout(static_cast<int>(qMin(base * (1 + qMin(fails, 3)), 30000LL)));
+        m_hostStats[host].activeRequests++;
+    }
+
+    const int namIdx = m_namRoundRobin;
+    m_namRoundRobin = (m_namRoundRobin + 1) & 1;
+    QNetworkReply* reply = m_nam[namIdx]->get(req);
+
+    InFlight ift;
+    ift.task = st.task;
+    ift.mirrorIndex = mi;
+    ift.namIndex = namIdx;
+    ift.startMs = QDateTime::currentMSecsSinceEpoch();
+    ift.shardKey = key;
+    ift.segIndex = segIndex;
+    ift.rangeExpectStart = segBegin;
+    m_inFlight.insert(reply, ift);
+
+    st.segState[segIndex] = 1;
+    st.inflight++;
+    st.lastActiveMs = QDateTime::currentMSecsSinceEpoch();
+
+    connect(reply, &QNetworkReply::downloadProgress, this, [this, reply](qint64 received, qint64) {
+        auto i2 = m_inFlight.find(reply);
+        if (i2 == m_inFlight.end()) return;
+        const qint64 delta = received - i2->progressBytes;
+        if (delta > 0) {
+            m_downloadedBytes.fetchAndAddRelaxed(delta);
+            i2->progressBytes = received;
+            i2->lastProgressMs = QDateTime::currentMSecsSinceEpoch();
+        }
+    });
+    // 响应头阶段就校验 Range：此时还没开始收 body，判定失败立刻 abort = 零浪费
+    connect(reply, &QNetworkReply::metaDataChanged, this, [this, reply]() {
+        auto i2 = m_inFlight.find(reply);
+        if (i2 == m_inFlight.end()) return;
+        InFlight& w = i2.value();
+        const int code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (code == 0 || (code >= 300 && code < 400)) return;   // 中间态：重定向交给 Qt
+        if (code == 200) { w.rangeBad = true; reply->abort(); return; }  // 无视 Range
+        if (code != 206) return;                                        // 其它错误交 finished
+        const QByteArray want = QStringLiteral("bytes %1-").arg(w.rangeExpectStart).toUtf8();
+        if (!reply->rawHeader("Content-Range").startsWith(want)) {
+            w.rangeBad = true;      // 起点不符 = 拿到的是错位数据，绝不能收
+            reply->abort();
+        }
+    });
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() { onReplyFinished(reply); });
+}
+
+void AssetDownloader::handleShardReply(QNetworkReply* reply, const InFlight& ift)
+{
+    auto it = m_shards.find(ift.shardKey);
+    if (it == m_shards.end()) return;     // 已被放弃/取消
+    ShardState& st = it.value();
+    if (st.inflight > 0) st.inflight--;
+    if (ift.segIndex < 0 || ift.segIndex >= st.segState.size()) return;
+
+    const QString host = extractHost(st.task.mirrors.value(ift.mirrorIndex));
+
+    if (ift.rangeBad) {
+        // 探测说支持、实际却不按 Range 回：这个 host 以后永远单连接
+        m_rangeProbe.insert(host, 0);
+        abandonShard(ift.shardKey, QStringLiteral("服务器未按 Range 响应"));
+        return;
+    }
+    if (m_state == Cancelled) return;
+
+    const bool netErr = (reply->error() != QNetworkReply::NoError);
+    if (netErr) {
+        recordHostResult(host, false, 0);
+        st.segState[ift.segIndex] = 0;
+        if (++st.segRetry > 8) {
+            abandonShard(ift.shardKey, QStringLiteral("分片连续失败"));
+            return;
+        }
+        dispatchShardSeg(ift.shardKey, ift.segIndex);
+        return;
+    }
+
+    recordHostResult(host, true, 0);
+    st.segRetry = 0;
+
+    QByteArray data = reply->readAll();
+    const qint64 want = st.segLen[ift.segIndex] - st.segHave[ift.segIndex];
+    if (want > 0 && data.size() > want) {
+        // 本段范围内的数据已够：多的部分直接丢（不写盘、也不会用），
+        // 正常情况下不会发生（Range 精确到字节），发生即说明服务器超发。
+        qCWarning(logAsset) << QStringLiteral("  [山海经] [分片] %1 段%2 超发 %3 字节，截断")
+            .arg(st.task.sha1.left(12)).arg(ift.segIndex).arg(data.size() - want);
+        data.truncate(static_cast<int>(want));
+    }
+    st.segData[ift.segIndex].append(data);
+    st.segHave[ift.segIndex] += data.size();
+
+    if (st.segHave[ift.segIndex] >= st.segLen[ift.segIndex]) {
+        st.segState[ift.segIndex] = 2;
+    } else {
+        // 没收满：只补拉剩下的那截（已收字节保留）——绝不从头重下
+        st.segState[ift.segIndex] = 0;
+        dispatchShardSeg(ift.shardKey, ift.segIndex);
+        return;
+    }
+
+    for (int s2 : st.segState) {
+        if (s2 != 2) return;      // 还有段没收完
+    }
+    finalizeShard(ift.shardKey);
+}
+
+void AssetDownloader::finalizeShard(const QString& key)
+{
+    auto it = m_shards.find(key);
+    if (it == m_shards.end()) return;
+    ShardState st = it.value();
+    m_shards.erase(it);
+
+    QByteArray whole;
+    whole.reserve(static_cast<int>(st.total));
+    for (const auto& seg : st.segData)
+        whole.append(seg);
+
+    if (whole.size() != st.total) {
+        m_wastedBytes.fetchAndAddRelaxed(whole.size());
+        qCWarning(logAsset) << QStringLiteral("  [山海经] [分片] %1 合并尺寸不符 %2/%3，回退单连接重下")
+            .arg(st.task.sha1.left(12)).arg(whole.size()).arg(st.total);
+        AssetTask t = st.task;
+        m_pendingQueue.prepend(t);
+        if (!m_accelTimer->isActive()) m_accelTimer->start();
+        return;
+    }
+    if (!st.task.sha1.isEmpty() && ShadowLauncher::sha1Hex(whole) != st.task.sha1) {
+        m_wastedBytes.fetchAndAddRelaxed(whole.size());
+        qCWarning(logAsset) << QStringLiteral("  [山海经] [分片] %1 SHA1 校验失败（浪费 %2），回退单连接重下")
+            .arg(st.task.sha1.left(12)).arg(fmtSize(whole.size()));
+        AssetTask t = st.task;
+        m_pendingQueue.prepend(t);
+        if (!m_accelTimer->isActive()) m_accelTimer->start();
+        return;
+    }
+
+    qCInfo(logAsset) << QStringLiteral("  [山海经] [分片] %1 合并完成 %2 段 %3（SHA1 通过）")
+        .arg(st.task.sha1.left(12)).arg(st.segData.size()).arg(fmtSize(whole.size()));
+    enqueueIO(st.task, whole);
+}
+
+void AssetDownloader::abandonShard(const QString& key, const QString& why)
+{
+    auto it = m_shards.find(key);
+    if (it == m_shards.end()) return;
+    AssetTask task = it->task;
+    qint64 got = 0;
+    for (const auto& d : it->segData) got += d.size();
+    m_shards.erase(it);
+
+    m_wastedBytes.fetchAndAddRelaxed(got);
+    qCWarning(logAsset) << QStringLiteral("  [山海经] [分片] %1 放弃（%2），已收 %3 作废，整文件回退单连接")
+        .arg(task.sha1.left(12), why).arg(fmtSize(got));
+
+    if (!task.originalMirrors.isEmpty()) task.mirrors = task.originalMirrors;
+    m_pendingQueue.prepend(task);
+    if (m_state == Running && !m_accelTimer->isActive())
+        m_accelTimer->start();
+}
+
+int AssetDownloader::dispatchPendingShardSegs()
+{
+    if (m_state != Running || m_shards.isEmpty()) return 0;
+    QList<QPair<QString, int>> pending;
+    for (auto it = m_shards.begin(); it != m_shards.end(); ++it) {
+        for (int i = 0; i < it->segState.size(); ++i)
+            if (it->segState[i] == 0) pending.append(qMakePair(it.key(), i));
+    }
+    int fired = 0;
+    for (const auto& pr : pending) {
+        if (shardIdleSlots() <= 0) break;
+        dispatchShardSeg(pr.first, pr.second);
+        ++fired;
+    }
+    return fired;
+}
+
+void AssetDownloader::trySplitInFlight()
+{
+    if (m_state != Running) return;
+    if (shardIdleSlots() < 2) return;      // 没空槽：不切（切了只是抢后面文件的口粮）
+
+    QList<QNetworkReply*> cand;
+    for (auto it = m_inFlight.begin(); it != m_inFlight.end(); ++it) {
+        const InFlight& w = it.value();
+        if (!w.shardKey.isEmpty() || w.converting) continue;   // 已经是分片段/正在转
+        if (w.task.size < kSegMinBytes || w.task.sha1.isEmpty()) continue;
+        if (w.progressBytes <= 0) continue;                    // 一个字节都还没到：交给预派发切片更省事
+        if (w.task.size - w.progressBytes < 2 * kMinShardPiece) continue;  // 剩下的不够切
+        const QString host = extractHost(w.task.mirrors.value(w.mirrorIndex));
+        if (m_rangeProbe.value(host, -1) != 1) continue;
+        cand.append(it.key());
+    }
+    for (auto* reply : cand) {
+        if (shardIdleSlots() < 2) break;
+        auto it = m_inFlight.find(reply);
+        if (it == m_inFlight.end() || it->converting) continue;
+        // abort() 会清空未读缓冲：必须在 abort 之前把已收字节取走，
+        // 否则这部分数据白下载 —— 正是用户要求杜绝的"多余数据"。
+        it->keepPrefix = reply->readAll();
+        it->converting = true;
+        qCInfo(logAsset) << QStringLiteral("  [山海经] [分片] %1 就地切分（已收 %2，空闲槽 %3）")
+            .arg(it->task.sha1.left(12)).arg(fmtSize(it->keepPrefix.size())).arg(shardIdleSlots());
+        reply->abort();
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // Speed-adaptive scheduler (replaces the old rampTick)
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -683,6 +1120,27 @@ void AssetDownloader::watchdogTick()
     }
     for (auto* reply : toAbort) {
         reply->abort();
+    }
+
+    // ── 空闲槽驱动分片（2026-11-17）──
+    // 放在看门狗里而不是只放 accelTick：队列派空后 accelTick 会 stop，
+    // 而"尾程只剩一两个大文件、十几个槽空转"恰恰发生在队列派空之后。
+    trySplitInFlight();
+    dispatchPendingShardSegs();
+
+    // 分片僵死兜底（2026-11-17）：段全部待发却派不出去（host 全降级/限流）时，
+    // 不能因为 m_shards 非空就一直挡住 checkAllFinished —— 20s 无任何推进就放弃分片，
+    // 整文件回退单连接（宁可慢，不能挂）。
+    if (!m_shards.isEmpty()) {
+        const qint64 nowS = QDateTime::currentMSecsSinceEpoch();
+        QStringList stale;
+        for (auto sit = m_shards.begin(); sit != m_shards.end(); ++sit) {
+            if (sit->inflight > 0) continue;
+            if (sit->lastActiveMs > 0 && nowS - sit->lastActiveMs < 20000) continue;
+            stale.append(sit.key());
+        }
+        for (const QString& k : stale)
+            abandonShard(k, QStringLiteral("分片长时间无法推进"));
     }
 
     // ── 完成兜底（2026-08-14 修复：assets 卡 92% 数分钟）──
@@ -771,11 +1229,13 @@ void AssetDownloader::accelTick()
     // Keep timer running even when full — logSpeed() + adjustHostLimits()
     // need to fire periodically to increase per-host limits.
     // Only stop when there's genuinely no work left.
-    if (m_pendingQueue.isEmpty() && m_pendingPreCheck.isEmpty()) {
+    // 分片任务还没收尾时不能停表：否则队列派空后没人补派剩余段（2026-11-17）
+    if (m_pendingQueue.isEmpty() && m_pendingPreCheck.isEmpty() && m_shards.isEmpty()) {
         m_accelTimer->stop();
         return;
     }
     if (inflight >= target) {
+        dispatchPendingShardSegs();   // 目标并发未满时先把分片的剩余段喂满
         return;  // at capacity, but keep timer for limit adjustment
     }
 
@@ -783,6 +1243,7 @@ void AssetDownloader::accelTick()
     int toSend = qMin(target - inflight, kAccelStep);
     for (int i = 0; i < toSend && !m_pendingQueue.isEmpty(); ++i)
         fireNext();
+    dispatchPendingShardSegs();
 
     // accelTick: debug-level (every 50ms would flood log file)
     // Enable with: setFilterRules(\"ShadowDownloader.Asset.debug=true\")
@@ -1045,10 +1506,12 @@ void AssetDownloader::checkAllFinished()
     if (!m_pendingQueue.isEmpty() || !m_inFlight.isEmpty() || !m_pendingPreCheck.isEmpty()) return;
     if (m_preCheckQueued > 0) return;
     if (m_retryScheduled > 0) return;   // 还有重试在退避等待中（2026-11-14）
+    if (!m_shards.isEmpty()) return;    // 还有分片任务没收尾（2026-11-17）
 
     m_accelTimer->stop();
     m_state = (m_state == Cancelled) ? Cancelled : Done;
     m_watchdogTimer->stop();
+    if (m_throttleTimer) m_throttleTimer->stop();
 
     emit progressChanged(m_completedFiles.loadRelaxed(),
                          m_totalFiles.loadRelaxed(),
@@ -1109,6 +1572,21 @@ QString AssetDownloader::extractHost(const QString& url) const
 
 int AssetDownloader::getHostLimit(const QString& host) const
 {
+    // 固定档位不碰锁，先判掉（hostCanAccept 会在持锁状态下调 hostLimitLocked，
+    // 这里如果无条件加锁就会自锁 —— 旧实现正是这样，只是恰好只走固定档位才没炸）。
+    if (host.contains(QStringLiteral("bmclapi"))
+        || host.contains(QStringLiteral("resources.download.minecraft.net"))
+        || host.contains(QStringLiteral("libraries.minecraft.net"))
+        || host.contains(QStringLiteral("piston-data.mojang.com"))
+        || host.contains(QStringLiteral("launcher.mojang.com"))) {
+        return hostLimitLocked(host);
+    }
+    QMutexLocker lock(&m_hostMutex);
+    return hostLimitLocked(host);
+}
+
+int AssetDownloader::hostLimitLocked(const QString& host) const
+{
     // BMCLAPI: fixed at 8 (known to handle this well)
     if (host.contains(QStringLiteral("bmclapi")))
         return 8;
@@ -1121,8 +1599,6 @@ int AssetDownloader::getHostLimit(const QString& host) const
         || host.contains(QStringLiteral("launcher.mojang.com"))) {
         return 16;
     }
-    // Other hosts: use dynamically adjusted per-host limit
-    QMutexLocker lock(&m_hostMutex);
     auto it = m_hostStats.find(host);
     if (it == m_hostStats.end()) return 4;  // start conservative for unknown hosts
     return qBound(2, it->dynamicLimit, 32);
@@ -1135,7 +1611,7 @@ bool AssetDownloader::hostCanAccept(const QString& host) const
     if (it == m_hostStats.end()) return true;  // unknown = accept
     // degraded 过期自动恢复由 accelTick 定期执行（2026-08-05，本方法 const 只读）
     if (it->degraded) return false;
-    if (it->activeRequests >= getHostLimit(host)) return false;
+    if (it->activeRequests >= hostLimitLocked(host)) return false;   // 已持锁，走无锁版本
     return true;
 }
 
@@ -1469,7 +1945,9 @@ void AssetDownloader::logState(const char* event)
         .arg(fmtSize(bytes))
         .arg(QString::number(speed, 'f', 1))
         .arg(fmtSize(m_speedFloorBps.loadRelaxed()))
-        .arg(m_cacheHitCount);
+        .arg(m_cacheHitCount)
+        + QStringLiteral(" 分片任务=%1 分片作废=%2")
+              .arg(m_shards.size()).arg(fmtSize(m_wastedBytes.loadRelaxed()));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1478,10 +1956,56 @@ void AssetDownloader::logState(const char* event)
 
 void AssetDownloader::logSpeed()
 {
-    // 周期性调整每主机限速（原 1s/5s 速度日志已按用户要求移除，仅保留限速调整）
+    // 周期性调整每主机限速 + 吞吐心跳（2026-11-17）
+    // 诊断价值：assets 尾程的"龟速/静止"以前在日志里完全看不见 —— 没有速度行，
+    // 只能从下一条 dispatch 日志的间隔反推，实测因此多花了两轮排查。
+    // 现在每 5s 打一行吞吐，静止多久、还剩多少、有多少在途，一行就能看出来。
     if (m_speedLogTimer.elapsed() < 5000)
         return;
     m_speedLogTimer.restart();
 
     adjustHostLimits();
+
+    const qint64 elapsed = qMax<qint64>(1, m_speedTimer.elapsed());
+    const qint64 now = m_downloadedBytes.loadRelaxed() - m_cacheBytes.loadRelaxed();
+    const qint64 delta = now - m_lastSpeedLogBytes;
+    m_lastSpeedLogBytes = now;
+    const qint64 bps = delta * 1000 / elapsed;
+
+    // 剩下多少大文件
+    int bigLeft = 0;
+    for (int i = 0; i < m_pendingQueue.size(); ++i) {
+        if (m_pendingQueue.at(i).size >= kSegMinBytes) ++bigLeft;
+    }
+
+    qCInfo(logAsset) << QStringLiteral("[山海经] [吞吐] %1/s 在途=%2 待下载=%3 大文件剩余=%4 分片任务=%5 作废=%6")
+        .arg(fmtSize(bps)).arg(m_inFlight.size()).arg(m_pendingQueue.size())
+        .arg(bigLeft).arg(m_shards.size()).arg(fmtSize(m_wastedBytes.loadRelaxed()));
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Throttled tick（2026-11-17）
+// ═════════════════════════════════════════════════════════════════════════════
+// 背景：accelTick 在「队列派空」或「inflight >= target」时会 stop 定时器。
+// 分片引入后，"inflight == target" 不再等于"没有工作"——target 是按
+// schedulePhase 用旧的 inflight 算出来的，分片段完成一个就少一个 in-flight，
+// 此时若没有人再调 dispatchPendingShardSegs，剩下的段就一直待发，
+// 表现为「前段很快、后段莫名静止 30 秒」（实测 new3 10:43:47→10:44:39 空档）。
+// 所以必须有一张每秒都还在的表。它只做三件轻量的事，不参与派发节奏。
+void AssetDownloader::throttledTick()
+{
+    if (m_state != Running) return;
+
+    // 分片段补派：完成一段就让出槽位，槽位立刻还给分片
+    if (!m_shards.isEmpty()) {
+        dispatchPendingShardSegs();
+        trySplitInFlight();
+    }
+
+    // 队列还在 → 别让 accelTimer 停摆（停摆期间没人派发，等于空转）
+    bool hasWork = !m_pendingQueue.isEmpty() || !m_pendingPreCheck.isEmpty() || !m_shards.isEmpty();
+    if (hasWork && !m_accelTimer->isActive())
+        m_accelTimer->start();
+
+    checkAllFinished();
 }
