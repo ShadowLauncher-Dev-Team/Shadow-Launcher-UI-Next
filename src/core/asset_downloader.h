@@ -338,6 +338,10 @@ private:
     // QDir().mkpath()，其中绝大多数是重复创建同一个 assets/objects/xx 目录；
     // 实测一次 mkpath 是几十微秒的系统调用，攒起来就是每秒几十毫秒的主线程开销。
     QSet<QString> m_createdDirs;
+    // 起速诊断：记录开跑时刻，前 8 秒每秒打一条 [起速]，用来量「192 条连接
+    // 建立需要多久」而不是靠猜（2026-11-18：前 5 秒只有 23MB/s，中段 42MB/s）。
+    qint64 m_rampStartMs = 0;
+    int    m_rampNextSec = 1;
     struct InFlight {
         AssetTask task;
         int  mirrorIndex = 0;

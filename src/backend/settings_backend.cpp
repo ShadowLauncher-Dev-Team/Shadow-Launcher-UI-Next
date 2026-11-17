@@ -274,7 +274,7 @@ void SettingsBackend::loadSettings()
     m_fileDownloadSource = qBound(0, s.value(QStringLiteral("download/fileSource"), 2).toInt(), 2);
     m_listDownloadSource = qBound(0, s.value(QStringLiteral("download/listSource"), 2).toInt(), 2);
     // 并发上限 64 → 256（参考引擎实测 192 是拐点，256 不再更快但要留余量给用户手调）
-    m_maxDownloadThreads = qBound(1, s.value(QStringLiteral("download/threadLimit"), defaultDownloadConcurrency()).toInt(), 256);
+    m_maxDownloadThreads = qBound(1, s.value(QStringLiteral("download/threadLimit"), defaultDownloadConcurrency()).toInt(), 512);
 
     // ── 一次性迁移（regionPolicyV1）──
     // 老版本把「官方优先(1)」写死成默认并存进了注册表，也把线程数写死成 16。

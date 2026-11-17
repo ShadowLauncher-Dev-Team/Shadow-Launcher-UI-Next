@@ -219,8 +219,28 @@ void AssetDownloader::startDownload(const QVector<AssetTask>& tasks, int maxConc
                                  m_totalFiles.loadRelaxed(),
                                  m_downloadedBytes.loadRelaxed(),
                                  m_totalBytes.loadRelaxed());
+            // ── 起速诊断（2026-11-18）──
+            // 冷装实测起点很慢：前 5 秒 23MB/s、中段 42MB/s。要判断这是
+            // 「连接建立要时间」还是「派发没铺开」，需要 1 秒粒度的数据，
+            // 5 秒一条的 [吞吐] 看不出来。只在前 8 秒打，平时零开销。
+            if (m_rampStartMs > 0 && m_rampNextSec <= 8) {
+                const qint64 el = QDateTime::currentMSecsSinceEpoch() - m_rampStartMs;
+                if (el >= m_rampNextSec * 1000) {
+                    const qint64 bytes = m_downloadedBytes.loadRelaxed();
+                    const double mbps = (el > 0) ? (bytes / 1048576.0) / (el / 1000.0) : 0.0;
+                    qCInfo(logAsset) << QStringLiteral("  [山海经] [起速] t=%1s 完成=%2 在途=%3 已下=%4 均速=%5MB/s")
+                        .arg(el / 1000)
+                        .arg(m_completedFiles.loadRelaxed())
+                        .arg(m_inFlight.size())
+                        .arg(fmtSize(bytes))
+                        .arg(QString::number(mbps, 'f', 1));
+                    ++m_rampNextSec;
+                }
+            }
         });
     }
+    m_rampStartMs = QDateTime::currentMSecsSinceEpoch();
+    m_rampNextSec = 1;
     m_emitTimer->start();
 
     // Log the first few task's mirror sources to verify which source is being used
@@ -535,14 +555,22 @@ void AssetDownloader::fireNext()
     req.setRawHeader("User-Agent", "ShadowLauncher/1.0");
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                      QNetworkRequest::NoLessSafeRedirectPolicy);
-    // Disable HTTP/2 — BMCLAPI and Mojang CDN send RST_STREAM under
-    // concurrent HTTP/2 streams. HTTP/1.1 with multiple connections is
-    // more reliable for asset downloads.
-    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
+    // ── 2026-11-18（第三轮）：官方源放开 HTTP/2 ──
+    // 起速实测（1 秒粒度）：在途 235 条只拿到 3.2MB，每条约 13KB —— 典型的
+    // 「每条连接各自慢启动」。192~256 并发下前 4 秒只能拿到 53MB，
+    // 而 t=4~6s 稳定期能到 62~65MB/s。也就是说**爬坡吃掉的那 3~4 秒**
+    // 才是距 11 秒的主因，不是稳态带宽。
+    // HTTP/2 把多文件复用到一条连接上：带宽爬坡只发生一次，而不是 200 多次。
+    // 注意：镜像（BMCLAPI）当年就是在 h2 并发流下吐 RST_STREAM 才被禁用的，
+    // 所以这里**只对官方 CDN 放开**，镜像继续走 HTTP/1.1。
+    const QString attrHost = extractHost(url);
+    const bool officialHost = attrHost.endsWith(QStringLiteral(".minecraft.net"))
+                           || attrHost == QStringLiteral("minecraft.net");
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, officialHost);
     // Per-request HTTP/1.1 config: 255 connections per host per QNAM
     {
         QHttp1Configuration h1cfg;
-        h1cfg.setNumberOfConnectionsPerHost(128);
+        h1cfg.setNumberOfConnectionsPerHost(255);
         req.setHttp1Configuration(h1cfg);
     }
     // Per-source adaptive timeout（主流启动器语义）:
@@ -799,7 +827,7 @@ void AssetDownloader::probeRangeSupport(const QVector<AssetTask>& tasks)
         // 而且连接缓存 key 不含配置，永远不会自愈。这里补上同样配置。
         {
             QHttp1Configuration h1cfg;
-            h1cfg.setNumberOfConnectionsPerHost(128);
+            h1cfg.setNumberOfConnectionsPerHost(255);
             req.setHttp1Configuration(h1cfg);
         }
 
@@ -933,7 +961,7 @@ void AssetDownloader::dispatchShardSeg(const QString& key, int segIndex)
                      QNetworkRequest::NoLessSafeRedirectPolicy);
     {
         QHttp1Configuration h1cfg;
-        h1cfg.setNumberOfConnectionsPerHost(128);
+        h1cfg.setNumberOfConnectionsPerHost(255);
         req.setHttp1Configuration(h1cfg);
     }
     {

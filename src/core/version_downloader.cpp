@@ -196,7 +196,7 @@ void VersionDownloader::setCacheFallbackDir(const QString& dir)
 void VersionDownloader::setDownloadConfig(const DownloadConfig& config)
 {
     m_downloadCfg = config;
-    m_maxWorkers = qBound(1, config.maxWorkers, 256);  // 2026-11-18：上限 64→256（实测 192 为拐点）
+    m_maxWorkers = qBound(1, config.maxWorkers, 512);  // 2026-11-18：上限 64→256（实测 192 为拐点）
     if (m_downloader) {
         m_downloader->setMaxThreads(m_maxWorkers);
         m_downloader->setSpeedLimitMB(config.speedLimitMB);
