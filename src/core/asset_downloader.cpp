@@ -139,6 +139,8 @@ void AssetDownloader::startDownload(const QVector<AssetTask>& tasks, int maxConc
     m_phase = PhaseInit;
     m_burstSent = 0;
     m_cacheHitCount = 0;
+    m_netOk = 0;
+    m_droppedTasks = 0;
     m_preCheckQueued = 0;
     m_cacheBytes.storeRelaxed(0);
     m_dnsPendingCount = 0;
@@ -725,6 +727,7 @@ void AssetDownloader::onReplyFinished(QNetworkReply* reply)
         const QString hostOk = extractHost(ift.task.mirrors.value(ift.mirrorIndex));
         const qint64 fb = (ift.firstByteMs >= 0) ? ift.firstByteMs : elapsed;
         recordHostResult(hostOk, true, fb);
+        ++m_netOk;
     }
 
     // 字节已在 downloadProgress 增量累加，这里不再重复累加。
@@ -1597,6 +1600,19 @@ void AssetDownloader::checkAllFinished()
         emit allFinished(false, m_failedCount, m_failedFiles);
     } else {
         bool ok = (m_failedCount == 0);
+        // 对账：总数 == 缓存命中 + 网络成功 + 失败 + 丢弃，否则说明有任务漏账
+        {
+            const qint64 accounted = qint64(m_cacheHitCount) + m_netOk + m_failedCount + m_droppedTasks;
+            qCInfo(logAsset) << QStringLiteral("  [山海经] [审计] 总数=%1 缓存命中=%2 网络成功=%3 失败=%4 丢弃=%5 完成计数器=%6")
+                .arg(m_totalFiles.loadRelaxed())
+                .arg(m_cacheHitCount).arg(m_netOk).arg(m_failedCount).arg(m_droppedTasks)
+                .arg(m_completedFiles.loadRelaxed());
+            if (accounted != m_totalFiles.loadRelaxed()) {
+                qCWarning(logAsset) << QStringLiteral("  [山海经] [审计] 账不平！差 %1 个任务（合计 %2 / 总数 %3）")
+                    .arg(m_totalFiles.loadRelaxed() - accounted).arg(accounted)
+                    .arg(m_totalFiles.loadRelaxed());
+            }
+        }
         emit logMessage(QStringLiteral("[山海经] 资源文件下载完成 总数=%1 缓存命中=%2 失败=%3 峰值=%4 MB/s")
                             .arg(m_totalTaskCount)
                             .arg(m_cacheHitCount)
@@ -1993,7 +2009,14 @@ void AssetDownloader::onPreCheckResult(const AssetTask& task, bool sha1Match, co
     m_pendingPreCheck.remove(preCheckKey);
     m_preCheckQueued--;
 
-    if (m_state != Running) return;
+    // 丢任务审计（2026-11-17）：这里要是 return，这个任务既不算完成也不算失败，
+    // 分母已经加过 → 进度永远差 1 个。记账，让 "总数 = 缓存命中+网络+失败+丢弃" 可核对。
+    if (m_state != Running) {
+        ++m_droppedTasks;
+        qCWarning(logAsset) << QStringLiteral("  [山海经] [审计] 预检查结果到达时状态非 Running，任务被丢弃：%1")
+            .arg(task.sha1.left(12));
+        return;
+    }
 
     if (sha1Match) {
         // Cache hit: count bytes, finish, and fire next

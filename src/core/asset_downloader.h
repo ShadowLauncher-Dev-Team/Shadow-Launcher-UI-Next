@@ -340,6 +340,9 @@ private:
     };
     QMap<QNetworkReply*, InFlight> m_inFlight;
     int  m_failedCount = 0;
+    // 任务账务审计（2026-11-17）：总数 == 缓存命中 + 网络成功 + 失败 + 丢弃
+    int  m_netOk = 0;          // 走网络且校验通过的文件数
+    int  m_droppedTasks = 0;   // 因状态非 Running 被丢弃、既不算成功也不算失败的任务数
     QStringList m_failedFiles;
     int  m_cacheHitCount = 0;
     // 已排队但尚未入队重试的任务数：退避等待期间队列是空的，
