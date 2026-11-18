@@ -452,6 +452,18 @@ void FileDownloader::applySpeedLimit(qint64 deltaBytes, const QAtomicInt* abortF
 
 void FileDownloader::managerTick()
 {
+    // 2026-11-18（修界面卡顿）：managerTick 跑在 GUI 线程上，50ms 一次。
+    // 卡顿探针抓到 1.5 秒级停顿，但日志/日志缓冲都排除了 → 要证明是哪个 tick 占住的。
+    QElapsedTimer tickClock;
+    tickClock.start();
+    struct TickWatch {
+        QElapsedTimer& t; FileDownloader* self;
+        ~TickWatch() {
+            const qint64 ms = t.elapsed();
+            if (ms > 200)
+                qCWarning(logDownload) << QStringLiteral("[夸父] managerTick 占用 GUI 线程 %1ms").arg(ms);
+        }
+    } tickWatch{tickClock, this};
     if (m_state != Running || m_cancelled.loadRelaxed()) return;
 
     int active = m_activeThreads.loadRelaxed();

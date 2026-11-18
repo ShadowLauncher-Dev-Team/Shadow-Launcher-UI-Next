@@ -248,6 +248,13 @@ void AssetDownloader::startDownload(const QVector<AssetTask>& tasks, int maxConc
             if (m_lagLast > 0) {
                 const qint64 gap = now - m_lagLast - 20;
                 if (gap > m_lagMaxMs) m_lagMaxMs = gap;
+                // 单次超过 300ms 立刻打一条：5 秒汇总只能证明"卡了"，
+                // 定位需要**确切时刻**，好和同一时刻其它模块的日志对齐。
+                if (gap > 300) {
+                    qCWarning(logAsset) << QStringLiteral("  [卡顿] GUI 线程停顿 %1ms 在途=%2 待下载=%3 分片=%4")
+                        .arg(gap).arg(m_inFlight.size()).arg(m_pendingQueue.size())
+                        .arg(m_shards.size());
+                }
             }
             m_lagLast = now;
         });
@@ -545,15 +552,9 @@ void AssetDownloader::fireNext()
         return;
 
     // ── Dispatch the found file ──
-    // 目录创建走缓存：同一个 objects/xx/ 目录会被上千个文件共享，
-    // 每个文件都调一次 QDir().mkpath() 是纯浪费（见 m_createdDirs 注释）。
-    {
-        const QString dir = QFileInfo(dispatchTask.savePath).absolutePath();
-        if (!m_createdDirs.contains(dir)) {
-            QDir().mkpath(dir);
-            m_createdDirs.insert(dir);
-        }
-    }
+    // 2026-11-18：**GUI 线程不再建目录**（原来虽有缓存，但仍要在 GUI 上做
+    // QDir().mkpath 系统调用；磁盘被下载写满时一次 mkpath 能卡几十毫秒，
+    // 叠加起来就是探针抓到的 1.5~2 秒停顿）。改由 IO 池在建文件前 ensureDir。
     const QString& url = dispatchTask.mirrors[selectedMirror];
     // ── Source selection log (throttled: every 5s or on fallback) ──
     {
@@ -1309,6 +1310,17 @@ void AssetDownloader::watchdogTick()
 
 void AssetDownloader::accelTick()
 {
+    // 2026-11-18：同 夸父 managerTick —— 每次 tick 占用 GUI 线程多久必须有数字。
+    QElapsedTimer accelClock;
+    accelClock.start();
+    struct AccelWatch {
+        QElapsedTimer& t;
+        ~AccelWatch() {
+            const qint64 ms = t.elapsed();
+            if (ms > 200)
+                qCWarning(logAsset) << QStringLiteral("  [山海经] accelTick 占用 GUI 线程 %1ms").arg(ms);
+        }
+    } accelWatch{accelClock};
     if (m_state != Running) {
         m_accelTimer->stop();
         return;
@@ -1934,13 +1946,27 @@ void AssetDownloader::checkAllDnsResolved()
 // I/O offload — SHA1 verification + disk write in thread pool
 // ═════════════════════════════════════════════════════════════════════════════
 
+void AssetDownloader::ensureDir(const QString& dir)
+{
+    if (dir.isEmpty()) return;
+    {
+        QMutexLocker l(&m_dirMutex);
+        if (m_createdDirs.contains(dir)) return;
+    }
+    QDir().mkpath(dir);
+    QMutexLocker l(&m_dirMutex);
+    m_createdDirs.insert(dir);   // 并发重复建目录无害，最多多做一次 syscall
+}
+
 class IOWorker : public QRunnable {
 public:
     AssetDownloader::AssetTask task;
     QByteArray data;
+    AssetDownloader* owner = nullptr;          // 用来调 ensureDir（IO 池线程上建目录）
     std::function<void(const AssetDownloader::AssetTask&, bool)> callback;
 
     void run() override {
+        if (owner) owner->ensureDir(QFileInfo(task.savePath).absolutePath());
         // SHA1 already verified in onReplyFinished().
         // This worker only writes verified data to disk.
         bool writeOk = false;
@@ -1967,6 +1993,7 @@ void AssetDownloader::enqueueIO(const AssetTask& task, const QByteArray& data)
     auto* worker = new IOWorker();
     worker->task = task;
     worker->data = data;
+    worker->owner = this;
 
     QPointer<AssetDownloader> self(this);
     worker->callback = [self](const AssetDownloader::AssetTask& t, bool ok) {

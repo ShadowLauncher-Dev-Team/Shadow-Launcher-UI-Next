@@ -345,7 +345,14 @@ private:
     // 已创建过的目录（只增不减，仅主线程访问）。4117 个文件里有 4117 次
     // QDir().mkpath()，其中绝大多数是重复创建同一个 assets/objects/xx 目录；
     // 实测一次 mkpath 是几十微秒的系统调用，攒起来就是每秒几十毫秒的主线程开销。
+    // 已建目录：**GUI 线程不再碰磁盘**。建目录全部交给 IO 池（ensureDir），
+    // 这张表只做「建过没有」的快查，用 mutex 保护（IO 池 8 线程并发调）。
     QSet<QString> m_createdDirs;
+    QMutex m_dirMutex;
+    public:
+    /// 线程安全：确保目录存在（IO 池调用；GUI 线程不再做 mkpath）
+    void ensureDir(const QString& dir);
+    private:
     // 起速诊断：记录开跑时刻，前 8 秒每秒打一条 [起速]，用来量「192 条连接
     // 建立需要多久」而不是靠猜（2026-11-18：前 5 秒只有 23MB/s，中段 42MB/s）。
     // 事件循环卡顿探针：20ms 定时器量「本拍距离上一拍过了多久」，取 5 秒窗口内的最大值。

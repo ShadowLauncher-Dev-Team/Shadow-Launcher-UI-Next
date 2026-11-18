@@ -8,6 +8,9 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QElapsedTimer>
+#include <QTimer>
+#include <QByteArray>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -67,6 +70,19 @@ static constexpr int    kKeepLogFiles   = 10;
 static constexpr qint64 kMaxDigestBytes = 1024 * 1024;   // 告警摘要上限 1 MB
 static constexpr qint64 kMaxSessionBytes = 12LL * 1024 * 1024;
 
+// ── 日志写入缓冲（2026-11-18 修「MC 下载时界面卡顿」）──
+// 旧实现每写一行就 stream.flush()，而且全程持 g_logMutex：
+// 下载高峰期每秒几十行，磁盘又正被几百 MB 写占满，
+// 每次 flush 可能阻塞几十~上百毫秒，**调用线程（多数是 GUI 线程）就被拖住**，
+// 其它线程想打日志也在锁上排队 → 表现为界面卡 1~2 秒。
+// 现在：普通行先进内存缓冲，攒够 16KB 或由 1 秒定时器统一落盘；
+// 警告/错误仍然立刻落盘（异常线索不能丢）。
+static QByteArray g_logBuf;                    // 待写入的会话日志
+static QByteArray g_digestBuf;                 // 待写入的 errors.log
+static constexpr int kLogBufFlushBytes = 16 * 1024;
+static constexpr int kDigestBufFlushBytes = 4 * 1024;
+static bool g_slowLogReported = false;
+
 static QString logDirPath(const QString& exeDir)
 {
     return exeDir + QStringLiteral("/logs");
@@ -118,7 +134,11 @@ static void pruneOldLogs(const QString& exeDir)
     }
 }
 
-static void writeRaw(const QString& text)
+// 把缓冲真正写进文件（调用方必须已持有 g_logMutex）
+static void flushLogBuffersLocked(bool includeDigest);
+static QString errorDigestPath(const QString& exeDir);
+
+static void writeRaw(const QString& text, bool urgent = false)
 {
     if (!g_logFile || !g_logFile->isOpen())
         return;
@@ -136,11 +156,52 @@ static void writeRaw(const QString& text)
         }
         return;
     }
-    QTextStream stream(g_logFile);
-    stream.setEncoding(QStringConverter::Utf8);
-    stream << text << Qt::endl;
-    stream.flush();
+    if (g_logBuf.size() > 64 * 1024)      // 上限保护：极端刷屏时别把内存撑爆
+        return;
+    g_logBuf.append(text.toUtf8());
+    g_logBuf.append('\n');
     g_bytesWritten += text.toUtf8().size() + 1;
+    if (urgent || g_logBuf.size() >= kLogBufFlushBytes)
+        flushLogBuffersLocked(urgent);
+}
+
+// 真正落盘。普通日志按 16KB 批量写，W/E 立刻写。
+static void flushLogBuffersLocked(bool includeDigest)
+{
+    if (g_logFile && g_logFile->isOpen() && !g_logBuf.isEmpty()) {
+        const QByteArray chunk = g_logBuf;
+        g_logBuf.clear();
+        QElapsedTimer slow;
+        slow.start();
+        g_logFile->write(chunk);
+        g_logFile->flush();
+        // 自测：一次批量写超过 50ms 说明磁盘在拖我们，打一条留证（每会话一次）
+        if (!g_slowLogReported && slow.elapsed() > 50) {
+            g_slowLogReported = true;
+            const QByteArray note = QByteArrayLiteral(
+                "（自检）日志批量写盘耗时 >50ms，磁盘当时很忙——这类阻塞会直接卡住调用线程\n");
+            g_logFile->write(note);
+            g_logFile->flush();
+        }
+    }
+    if ((includeDigest || g_digestBuf.size() >= kDigestBufFlushBytes) && !g_digestBuf.isEmpty()) {
+        const QString path = errorDigestPath(g_logDir);
+        QFile f(path);
+        const bool fresh = !f.exists();
+        if (f.size() > kMaxDigestBytes) {
+            QDir().remove(path + QStringLiteral(".prev"));
+            f.rename(path + QStringLiteral(".prev"));
+        }
+        if (f.open(QIODevice::Append | QIODevice::Text)) {
+            if (fresh || f.size() == 0) {
+                f.write(QStringLiteral("——  告警 / 错误摘要（跨会话保留，%1 MB 上限）——\n")
+                            .arg(kMaxDigestBytes / (1024 * 1024)).toUtf8());
+            }
+            f.write(g_digestBuf);
+            f.flush();
+        }
+        g_digestBuf.clear();
+    }
 }
 
 // 连续重复的收束点：离开上一段重复时补一句“重复 N 次”
@@ -163,24 +224,20 @@ static QString errorDigestPath(const QString& exeDir)
     return logDirPath(exeDir) + QStringLiteral("/errors.log");
 }
 
+// 2026-11-18：改为写内存缓冲，由 flushLogBuffersLocked 统一批量落盘。
+// 旧实现每条警告都要 exists/size/open/write/close 各一次系统调用，
+// 下载高峰期大量「请求失败/慢速换源」告警会把 GUI 线程拖住。
 static void appendErrorDigest(const QString& levelStr, const QString& formatted)
 {
-    const QString path = errorDigestPath(g_logDir);
-    QFile f(path);
-    const bool fresh = !f.exists();
-    if (f.size() > kMaxDigestBytes) {
-        QDir().remove(path + QStringLiteral(".prev"));
-        f.rename(path + QStringLiteral(".prev"));
-    }
-    if (!f.open(QIODevice::Append | QIODevice::Text))
-        return;
-    QTextStream out(&f);
-    out.setEncoding(QStringConverter::Utf8);
-    if (fresh || f.size() == 0)
-        out << QStringLiteral("——  告警 / 错误摘要（跨会话保留，%1 MB 上限）——")
-                   .arg(kMaxDigestBytes / (1024 * 1024)) << Qt::endl;
-    out << QDateTime::currentDateTime().toString(QStringLiteral("MM-dd HH:mm:ss"))
-        << " " << formatted << Qt::endl;
+    Q_UNUSED(levelStr);
+    if (g_digestBuf.size() > 256 * 1024) return;
+    g_digestBuf.append(QDateTime::currentDateTime()
+                           .toString(QStringLiteral("MM-dd HH:mm:ss")).toUtf8());
+    g_digestBuf.append(' ');
+    g_digestBuf.append(formatted.toUtf8());
+    g_digestBuf.append('\n');
+    if (g_digestBuf.size() >= kDigestBufFlushBytes)
+        flushLogBuffersLocked(false);
 }
 
 // 上一份会话日志有没有写结束标记？没写 = 被杀 / 崩了。
@@ -318,7 +375,8 @@ static void shadowMessageHandler(QtMsgType type,
             ++g_repeatCount;
         } else {
             flushRepeatMarker();
-            writeRaw(formatted);
+            // 警告/错误立刻落盘（异常线索不能等 1 秒定时器），普通 info 走缓冲
+            writeRaw(formatted, type != QtInfoMsg);
             g_repeatKey = repeatKey;
             g_repeatCount = 1;
         }
@@ -329,11 +387,23 @@ static void shadowMessageHandler(QtMsgType type,
 
     // ── Write to debug console (skip if SHADOW_DISABLE_FILE_LOG=1) ──
     if (!disableFileLog) {
+        // ── 2026-11-18：只在真的挂着调试器时才走 OutputDebugStringA ──
+        // 它在没有调试器/被第三方工具（录屏、部分安全软件）接管调试端口时，
+        // 可能阻塞到超时；而这里是**每行一次**，调用线程（多数是 GUI 线程）
+        // 会被直接卡住。实测一次 MC 下载的卡顿探针抓到 2 秒级停顿，
+        // 这条是 GUI 线程上少数可能"长时间不返回"的调用之一，先摘掉。
+        // 需要看调试输出时设环境变量 SHADOW_DEBUG_OUTPUT=1。
+        static const bool forceDebugOut =
+            qEnvironmentVariableIsSet("SHADOW_DEBUG_OUTPUT");
+#ifdef Q_OS_WIN
+        if (forceDebugOut || IsDebuggerPresent()) {
+            QByteArray utf8 = formatted.toUtf8();
+            utf8.append('\n');
+            OutputDebugStringA(utf8.constData());
+        }
+#else
         QByteArray utf8 = formatted.toUtf8();
         utf8.append('\n');
-#ifdef Q_OS_WIN
-        OutputDebugStringA(utf8.constData());
-#else
         fwrite(utf8.constData(), 1, utf8.size(), stderr);
 #endif
     }
@@ -389,8 +459,24 @@ void installFileLogger(const QString& exeDir)
             QMutexLocker lock(&g_logMutex);
             flushRepeatMarker();
             const qint64 runSecs = g_sessionStart.secsTo(QDateTime::currentDateTime());
-            writeRaw(QStringLiteral("——  会话结束（运行 %1 秒）——").arg(runSecs));
+            writeRaw(QStringLiteral("——  会话结束（运行 %1 秒）——").arg(runSecs), true);
+    flushLogBuffersLocked(true);   // 缓冲里剩下的必须落盘，否则最后几秒日志丢掉
         });
+    }
+
+    // ── 定时落盘（2026-11-18）──
+    // 见 writeRaw 说明：普通行走内存缓冲，这里每秒统一写一次，
+    // 把「每行一次 flush」压成「每秒一次批量写」，GUI 线程不再被日志 IO 拖住。
+    if (QCoreApplication::instance() && !qApp->property("_shadowLogFlushTimer").isValid()) {
+        auto* t = new QTimer(QCoreApplication::instance());
+        t->setInterval(1000);
+        t->setTimerType(Qt::CoarseTimer);
+        QObject::connect(t, &QTimer::timeout, QCoreApplication::instance(), []() {
+            QMutexLocker lock(&g_logMutex);
+            flushLogBuffersLocked(false);
+        });
+        t->start();
+        qApp->setProperty("_shadowLogFlushTimer", true);
     }
 
     qCInfo(logApp) << QStringLiteral("日志系统已就绪");
