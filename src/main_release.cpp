@@ -1000,6 +1000,30 @@ int main(int argc, char *argv[])
         });
     }
 
+    // ── Test import mode: 自动触发整合包导入 ──
+    // 用途：不靠人工点界面就能复跑整合包下载，验证下载引擎（分片探测/速度心跳）
+    // 与进度页绑定循环。与 --test-download（纯 MC）互补。
+    int testImportIdx = args.indexOf(QStringLiteral("--test-import"));
+    if (testImportIdx >= 0 && testImportIdx + 1 < args.size()) {
+        const QString testZip = args.at(testImportIdx + 1);
+        qCInfo(logApp) << QStringLiteral("[自动测试] 整合包导入测试 路径=%1").arg(testZip);
+        QTimer::singleShot(2500, backend, [&engine, backend, testZip]() {
+            if (!engine.rootObjects().isEmpty())
+                engine.rootObjects().first()->setProperty("navListIndex", 1);
+            QTimer::singleShot(800, backend, [backend, testZip]() {
+                QObject* imp = backend->modpackImporter();
+                if (!imp) {
+                    qCWarning(logApp) << QStringLiteral("[自动测试] 找不到 ModpackImporter");
+                    return;
+                }
+                qCInfo(logApp) << QStringLiteral("[自动测试] 触发整合包导入");
+                QMetaObject::invokeMethod(imp, "startImport",
+                    Q_ARG(QString, testZip), Q_ARG(QString, QString()),
+                    Q_ARG(bool, false), Q_ARG(QString, QString()));
+            });
+        });
+    }
+
     // ── Navigate + Screenshot test mode ──
     // Smart timing: wait for content-ready signal, not fixed delay
     // Usage: --screenshot <name> [--navigate <page>:<tab>]

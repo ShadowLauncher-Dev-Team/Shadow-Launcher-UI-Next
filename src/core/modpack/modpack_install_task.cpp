@@ -92,6 +92,23 @@ ModpackInstallTask::ModpackInstallTask(QObject* parent)
         // 停流就会滑落归零，再加一层就会让速度出现"突然砍半"的假跳变（用户看到的"速度乱跳"之一）。
         m_modEma = m_downloader ? qMax<qint64>(0, m_downloader->currentSpeedBps()) : 0;
         m_cardSpeed = m_modEma + m_mcSpeed;
+        // ── 速度心跳：每 2s 一行，三种来源同框（2026-11-18）──
+        {
+            const qint64 nowBeat = QDateTime::currentMSecsSinceEpoch();
+            if (m_lastSpeedBeatMs == 0) m_lastSpeedBeatMs = nowBeat;
+            if (nowBeat - m_lastSpeedBeatMs >= 2000 && !m_modsDone) {
+                const qint64 totalBytes = m_downloader ? m_downloader->downloadedBytes() : 0;
+                const qint64 deltaBytes = totalBytes - m_lastBeatBytes;
+                m_lastBeatBytes = totalBytes;
+                m_lastSpeedBeatMs = nowBeat;
+                emit logLine(tr("[速度] 卡片=%1MB/s 模组=%2MB/s MC=%3MB/s 2s字节增量=%4 已完成=%5/%6")
+                                 .arg(m_cardSpeed / 1048576.0, 0, 'f', 2)
+                                 .arg(m_modEma / 1048576.0, 0, 'f', 2)
+                                 .arg(m_mcSpeed / 1048576.0, 0, 'f', 2)
+                                 .arg(deltaBytes)
+                                 .arg(m_modDoneCount).arg(m_modTotalCount));
+            }
+        }
         // ── 模组路悬挂兜底（2026-11-14 实测）──
         // MC 路已经完成、模组路却迟迟不收口：速度持续为 0 超过阈值就强制收口，
         // 否则 allFinished 一旦永远不来，任务就永远 busy，用户只能杀进程。

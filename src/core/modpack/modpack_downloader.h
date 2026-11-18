@@ -82,6 +82,8 @@ public:
     /// 引擎当前速度（bytes/s），直接转发引擎窗口值。
     /// 上层只允许格式化显示，**不得再做二次平滑或"无数据减半"**（DOWNLOAD_CONTRACT §4）。
     qint64 currentSpeedBps() const;
+    /// 引擎累计已下载字节（速度心跳用它算 2s 增量，区分"显示冻结"与"真停滞"）
+    qint64 downloadedBytes() const;
     /// 在跑文件的字节比例之和（0..活动数）：任务层队列进度 = (完成 + 这个值)/总数。
     double currentPartialFraction() const;
 

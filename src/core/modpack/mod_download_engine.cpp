@@ -232,6 +232,40 @@ QString ModDownloadEngine::hostOfUrl(const QString& url)
     return QUrl(u).host();
 }
 
+// 探测某个 URL 所在 host 是否认 Range（只读响应头，零 body）
+void ModDownloadEngine::probeRangeSupport(const QString& url)
+{
+    const QString host = hostOfUrl(url);
+    if (host.isEmpty() || m_rangeSupport.contains(host)) return;
+    m_rangeSupport.insert(host, -1);            // -1 = 探测中
+
+    QNetworkRequest req{QUrl(url)};
+    req.setRawHeader("User-Agent", "ShadowLauncher/1.0");
+    req.setRawHeader("Range", "bytes=0-0");     // 只要 1 个字节
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                     QNetworkRequest::NoLessSafeRedirectPolicy);
+    req.setTransferTimeout(8000);
+    QNetworkReply* r = m_nam.get(req);
+    QObject::connect(r, &QNetworkReply::metaDataChanged, this, [this, r, host]() {
+        if (m_rangeSupport.value(host) != -1) return;
+        const int code = r->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (code >= 300 && code < 400) return;      // 中间跳转，等最终响应
+        if (code == 206) {
+            m_rangeSupport.insert(host, 1);
+        } else {
+            m_rangeSupport.insert(host, 0);
+            emit logMessage(QStringLiteral("[精卫] [分片] %1 不认 Range（HTTP %2），该源后续文件一律单连接")
+                                .arg(host).arg(code));
+        }
+        r->abort();                                  // 只要响应头，一个字节 body 都不收
+    });
+    QObject::connect(r, &QNetworkReply::finished, this, [this, r, host]() {
+        if (m_rangeSupport.value(host) == -1) m_rangeSupport.insert(host, 0);
+        r->deleteLater();
+    });
+}
+
 QString ModDownloadEngine::pickSource(std::shared_ptr<Item> it, bool* exhausted)
 {
     *exhausted = false;
@@ -958,6 +992,17 @@ void ModDownloadEngine::prepareSegments(std::shared_ptr<Item> it)
     const qint64 minTotal = idleDriven ? kSegMinSliceBytesIdle : kSegMinBytes;
     if (it->segFailedOnce || it->fileSize < minTotal) { it->segmented = false; return; }
 
+    // 已知该源不认 Range：别浪费一次分段尝试（2026-11-18，见 probeRangeSupport）
+    {
+        const int si = qBound(0, it->sourceIdx, qMax(0, it->sources.size() - 1));
+        const QString segHost = it->sources.isEmpty() ? QString() : hostOfUrl(it->sources.at(si));
+        if (!segHost.isEmpty()) {
+            const int rs = m_rangeSupport.value(segHost, -1);
+            if (rs == 0) { it->segmented = false; return; }
+            if (rs == -1) probeRangeSupport(it->sources.at(si));   // 顺手探测，下个文件起生效
+        }
+    }
+
     int n = plannedSegCount(it->fileSize);
     const qint64 minSlice = idleDriven ? kSegMinSliceBytesIdle : kSegMinSliceBytes;
     n = qMin<qint64>(n, qMax<qint64>(1, it->fileSize / minSlice));
@@ -1017,6 +1062,13 @@ bool ModDownloadEngine::tryUpgradeToSegments(std::shared_ptr<Item> it)
     if (prefix <= 0) return false;
     const qint64 remain = it->fileSize - prefix;
     if (remain < kSegMinSliceBytesIdle) return false;   // 剩余太少，切了也赚不回握手
+
+    // 已知该源不认 Range：不做就地升级（否则要先把几 MB 下完才发现，纯浪费）
+    {
+        const int si = qBound(0, it->sourceIdx, qMax(0, it->sources.size() - 1));
+        const QString segHost = it->sources.isEmpty() ? QString() : hostOfUrl(it->sources.at(si));
+        if (!segHost.isEmpty() && m_rangeSupport.value(segHost, -1) == 0) return false;
+    }
 
     int n = qMin(1 + idle, kSegMaxIdle);
     n = static_cast<int>(qMin<qint64>(n, remain / kSegMinSliceBytesIdle));
@@ -1177,7 +1229,17 @@ void ModDownloadEngine::launchSegment(std::shared_ptr<Item> it, int si)
         // 尾程又退回单连接龟速。metaDataChanged 每一跳都会发一次，必须放过 3xx。
         if (code >= 300 && code < 400) return;
         if (code != 206) {
-            s.pendingReason = QStringLiteral("源不支持分段（HTTP %1）").arg(code);
+            // 404/403 是「这个源没有这个文件」，不是「不支持分段」（2026-11-18 修）：
+            // 以前一律写成「源不支持分段」，日志里两种完全不同的故障长得一样，
+            // 而且会把好源误标成不可分段。
+            s.pendingReason = (code == 404 || code == 403)
+                ? QStringLiteral("源不可用（HTTP %1）").arg(code)
+                : QStringLiteral("源不支持分段（HTTP %1）").arg(code);
+            if (code != 404 && code != 403) {
+                // 明确「不认 Range」才写表；404/403 是源的问题，不污染这张表
+                const QString h = hostOfUrl(it->sources.value(s.sourceIdx));
+                if (!h.isEmpty()) m_rangeSupport.insert(h, 0);
+            }
             s.reply->abort();
             return;
         }

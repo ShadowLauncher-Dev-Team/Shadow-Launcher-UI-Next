@@ -3270,23 +3270,39 @@ void VersionBackend::updateDownloadProgress(const QString& versionId,
     qint64 netDb = db - cacheBytes;
     qint64 netDelta = netDb - st.networkBytesDl;
 
+    // ── 采样窗口下限（2026-11-18 修「速度乱飙 / 冻结不动」）──
+    // 旧代码只判 dtSec > 0：两次更新相隔 5ms、增量 1MB，直接算出 200MB/s。
+    // 现场用新加的 [速度] 心跳抓到实锤：
+    //     卡片=20.94MB/s 模组=0.02MB/s MC=20.92MB/s  2s 字节增量=65536
+    // 真实速度只有 0.03MB/s，卡片却报 20.9MB/s；另一次飙到 247MB/s。
+    // 速度本质是「窗口统计」，窗口太短必然是噪声：
+    // 不足 kMinSampleSec 只做衰减、不重新采样，增量留给下一个够长的窗口。
+    constexpr double kTau = 1.5;          // 时间常数 1.5s：停流后平滑回落
+    constexpr double kMinSampleSec = 0.2; // 采样窗口下限（本地文件 IO 也够用）
+    bool windowAdvanced = false;
     if (st.speedLastTimeMs > 0) {
         const double dtSec = double(nowMs - st.speedLastTimeMs) / 1000.0;
         if (dtSec > 0) {
-            constexpr double kTau = 1.5;   // 时间常数 1.5s：停流后平滑回落
             st.smoothSpeed *= std::exp(-dtSec / kTau);
-            if (netDelta > 0) {
-                double instantBps = double(netDelta) / dtSec;
-                constexpr double kAlpha = 0.15;
-                st.smoothSpeed = kAlpha * instantBps + (1.0 - kAlpha) * st.smoothSpeed;
+            if (dtSec >= kMinSampleSec) {
+                if (netDelta > 0) {
+                    const double instantBps = double(netDelta) / dtSec;
+                    constexpr double kAlpha = 0.15;
+                    st.smoothSpeed = kAlpha * instantBps + (1.0 - kAlpha) * st.smoothSpeed;
+                }
+                windowAdvanced = true;
             }
             st.speed = (st.smoothSpeed <= 1.0) ? 0 : static_cast<qint64>(st.smoothSpeed);
         }
     } else if (netDelta > 0) {
         st.smoothSpeed = 0.0;   // 首个真实网络增量：先播种，不显示速度
+        windowAdvanced = true;
     }
-    st.speedLastTimeMs = nowMs;
-    st.networkBytesDl = netDb;
+    // 窗口没攒够时**不要**推进基准，否则增量被吞掉、速度永远偏低
+    if (windowAdvanced || st.speedLastTimeMs <= 0) {
+        st.speedLastTimeMs = nowMs;
+        st.networkBytesDl = netDb;
+    }
 
     st.bytesDl = db;
 
@@ -7665,7 +7681,17 @@ qint64 VersionBackend::installSpeedOf(const QString& installId) const
     if (!ds) return 0;
     if (m_dlStates.contains(ds->mcVersion) && !ds->mcDownloadDone)
         return m_dlStates.value(ds->mcVersion).speed;
-    return ds->mlSpeed > 0 ? ds->mlSpeed : 0;
+    // ── 2026-11-18 修「明明还在下载，速度却冻结不动」──
+    // 上面那段过了之后（MC 下载已完成），旧代码无条件返回 ds->mlSpeed。
+    // 但 mlSpeed 在两次速度窗口之间**刻意保留旧值、不写 0**（见 5814 行），
+    // 加载器下载结束或卡住之后，这个陈旧值就会被永远当成「当前速度」返回：
+    // 卡片速度从此钉在 1.x MB/s 不动，而模组下载那一路的真实速度被它一起加成，
+    // 用户看到的就是「进度在走、速度不动」。
+    // 只有加载器下载确实还在进行时才采信 mlSpeed；否则归零，
+    // 让模组路（ModpackInstallTask 里读精卫引擎的窗口值）成为唯一的来源。
+    if (ds->loaderDownloadActive)
+        return ds->mlSpeed > 0 ? ds->mlSpeed : 0;
+    return 0;
 }
 
 QVariantList VersionBackend::sessionSteps(const QString& installId) const

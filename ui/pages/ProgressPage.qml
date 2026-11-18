@@ -76,6 +76,14 @@ Item {
         return c
     }
 
+    // 供 delegate 用：只吃标量 rev 作依赖，真正的数组从 _stepsByIid 取（不参与依赖分析）
+    function stepsOf(iid) {
+        var v = page._stepsByIid[String(iid)]
+        return v ? v : null
+    }
+    function stepFieldRev(rev, iid, idx, key) { return stepField(page.stepsOf(iid), idx, key) }
+    function countStepsRev(rev, iid) { return countSteps(page.stepsOf(iid)) }
+
     function visibleSteps(src) {
         var out = []
         if (!src) return out
@@ -96,6 +104,14 @@ Item {
     property string remainText: "—"
     property var _doneAt: ({})
     property var _rowSig: ({})   // iid -> 上次写入的内容签名（内容未变就不 set）
+    // ── 步骤快照（2026-11-18 修 binding loop）──
+    // steps 是 ListModel 的**数组角色**：每读一次就返回一个新数组，
+    // 于是 delegate 里任何「绑定里调用 stepField(steps, ...)」都会被 QML 判成循环
+    //（实测一轮整合包导入刷了 368 条 stepDetail binding loop）。
+    // 修法：steps 不再作为绑定依赖，改存进这个普通 JS 表（不是 QML 属性，不参与依赖分析）；
+    // delegate 只绑**标量** stepsRev，steps 内容一变就让 rev 变 → 绑定求值一次，不会循环。
+    property var _stepsByIid: ({})
+    property int _stepsRev: 0
     property var _fadeAt: ({})   // iid -> 失败态首次出现时间（用于延迟自动移除卡片）
     Timer {
         interval: 400; repeat: true
@@ -155,6 +171,8 @@ Item {
                 delete page._fadeAt[iidKey]
             }
             list.push({
+                // rev 每次 push 都换新值：set() 后 delegate 只重算一次步骤相关绑定
+                rev: (page._stepsRev = page._stepsRev + 1),
                 iid: r.iid, name: r.name, phase: r.phase,
                 progress: r.progress || 0, speed: r.speed || 0, eta: r.eta || 0,
                 steps: (r.steps || []).map(function(s) {
@@ -174,6 +192,8 @@ Item {
         for (var n = 0; n < list.length; ++n) {
             var item = list[n]
             seenIds[item.iid] = true
+            // 快照进表（供 delegate 用，见 _stepsByIid 注释）
+            page._stepsByIid[String(item.iid)] = item.steps
             var row = -1
             for (var r = 0; r < cardModel.count; ++r) {
                 if (cardModel.get(r).iid === item.iid) { row = r; break }
@@ -440,7 +460,8 @@ Item {
                 // 底部按钮行直接压在最后一行步骤上（实测重叠）。
                 // 这里必须跟 stepsCol 用同一个条件。
                 height: 46 + 10 + 3 + (failed ? 30 : 8) + stepCount * 23 + 12 + 32 + 12
-                readonly property int stepCount: page.countSteps(steps)
+                readonly property int stepsRev: rev
+                readonly property int stepCount: page.countStepsRev(stepsRev, cardIid)
                 radius: 10
                 color: tcard.isFailed ? Theme.bgCard2 : Theme.bgCard2
                 border.color: tcard.isFailed ? Theme.bgHover : Theme.line2
@@ -601,15 +622,15 @@ Item {
                         // 加载器/ Fabric API 步骤被整段裁掉，用户只看得到 MC 的四步）。
                         // 步骤数组只在重建步骤时改长度（下载热路径只改字段），delegate 不会反复重建；
                         // 转圈是 C++ 场景图 item，即使重建也不会打断动画。
-                        model: page.countSteps(steps)
+                        model: page.countStepsRev(stepsRev, cardIid)
                         delegate: Item {
                             width: stepsCol.width
                             // 只绑原始值（字符串/数字），不绑对象：返回对象会让 QML 认为
                             // 每次求值都产生新值，触发 binding loop，delegate 反复刷新 → 动画重启。
-                            readonly property string stepName: page.stepField(steps, index, "name")
-                            readonly property string st: page.stepField(steps, index, "status")
-                            readonly property string stepDetail: page.stepField(steps, index, "detail")
-                            readonly property real stepPct: page.stepField(steps, index, "pct")
+                            readonly property string stepName: page.stepFieldRev(stepsRev, cardIid, index, "name")
+                            readonly property string st: page.stepFieldRev(stepsRev, cardIid, index, "status")
+                            readonly property string stepDetail: page.stepFieldRev(stepsRev, cardIid, index, "detail")
+                            readonly property real stepPct: page.stepFieldRev(stepsRev, cardIid, index, "pct")
                             height: stepName.length > 0 ? 23 : 0
                             visible: stepName.length > 0
                             Item {

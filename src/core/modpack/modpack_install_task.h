@@ -143,6 +143,13 @@ private:
     qint64 m_lastBytes = 0;
     qint64 m_lastBytesMs = 0;
     qint64 m_lastFileProgMs = 0; // fileProgress 回调节流（200ms）
+    // ── 速度心跳（2026-11-18）──
+    // 现场：卡片显示 1.7MB/s 不动，但文件仍在一个个完成。
+    // 光看界面上那个数字无法分辨「显示冻结」还是「引擎真停了」，
+    // 所以每 2 秒把三个来源各打一次：卡片值 / 模组引擎窗口值 / MC 路值 + 累计字节。
+    // 字节在涨而卡片速度不变 = 显示问题；字节不涨 = 真停滞。
+    qint64 m_lastSpeedBeatMs = 0;
+    qint64 m_lastBeatBytes = 0;
     qreal m_modFrac = 0.0;       // 模组路完成比例（总进度合成用）
     int m_modPctShown = 0;       // 模组步骤已显示过的百分比（单调，绝不回退）
     int m_modDoneCount = 0;      // 模组路已完成数（文案+百分比用）

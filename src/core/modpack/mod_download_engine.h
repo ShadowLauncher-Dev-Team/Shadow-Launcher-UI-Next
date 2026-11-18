@@ -153,6 +153,15 @@ private:
     void pump();                                   // 调度：填满并发槽
     void launchRequest(std::shared_ptr<Item> it);  // 用当前源发起请求
     static QString hostOfUrl(const QString& url);
+
+    // ── Range 支持探测（2026-11-18）──
+    // 现场：422 个文件的整合包里，「源不支持分段（HTTP 404）」出现 2 次，
+    // 每次都要先把几 MB 下完才发现源不认 Range（累计浪费 18MB）。
+    // 和山海经同款补丁：先发一个 **1 字节** Range 探测，只认 206；
+    // 已知不支持的 host，后续文件一律不分片 —— 一个字节都不浪费。
+    // 这张表是 per-host 的，一个整合包里同源文件成百上千，探测一次就够。
+    //   m_rangeSupport[host]: 1=支持 206，0=不支持，不存在=未知
+    void probeRangeSupport(const QString& url);
     QString pickSource(std::shared_ptr<Item> it, bool* exhausted);
     void onReplyProgress(std::shared_ptr<Item> it, qint64 recv, qint64 total);
     void onReadyRead(std::shared_ptr<Item> it);
@@ -255,6 +264,8 @@ private:
     // 每个都 13~18KB/s：换到哪儿都慢。单文件视角看不出这点，必须全局记账，
     // 让后面的文件直接跳过已被证明慢的主机。
     QHash<QString, qint64> m_hostBadMs;
+    // Range 支持表：1=206 支持，0=不认 Range，不存在=未知（见 probeRangeSupport）
+    QHash<QString, int> m_rangeSupport;
     qint64 m_connectTotalMs = 0;             // 连接耗时统计（动态超时）
     int m_connectCount = 0;
 };
