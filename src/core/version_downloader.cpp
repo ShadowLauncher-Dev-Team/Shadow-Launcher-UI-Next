@@ -1689,44 +1689,109 @@ QString VersionDownloader::AsyncVerifyWorker::sha1FileFast(const QString& filePa
 }
 
 void VersionDownloader::AsyncVerifyWorker::process() {
-    const int kEmitInterval = 10;
     m_failed = 0;
     m_failedLabels.clear();
     m_failedPaths.clear();
 
-    for (int i = 0; i < m_items.size(); ++i) {
-        if (m_cancelled.loadAcquire()) {
-            emit cancelled(i + 1, m_items.size());
-            emit finished(false, m_failedLabels, m_failedPaths);
-            return;
-        }
-
-        // ── 2026-11-18：整文件重算 SHA1（影要求恢复）──
-        // 说明：我先砍掉了这段，理由是一轮「暖装」里它花了 23.7 秒。
-        // 但那次的文件是刚从别的目录复制过来、不在页缓存里，成本是磁盘读；
-        // 冷装时文件刚由本引擎写完、内容还在内存里，实际只多几秒。
-        // 现在恢复：完整性优先，增量以实测为准。
-        const auto& item = m_items[i];
-        if (!QFileInfo::exists(item.fullPath)) {
-            m_failed++;
-            m_failedLabels.append(item.label);
-            m_failedPaths.append(item.fullPath);
-        } else if (!item.expectedSha1.isEmpty()) {
-            const QString actual = sha1FileFast(item.fullPath);
-            if (actual.compare(item.expectedSha1, Qt::CaseInsensitive) != 0) {
-                m_failed++;
-                m_failedLabels.append(item.label + QStringLiteral(" (SHA1)"));
-                m_failedPaths.append(item.fullPath);
-            }
-        }
-
-        if ((i + 1) % kEmitInterval == 0 || (i + 1) == m_items.size()) {
-            emit progressChecked(i + 1, m_items.size());
-        }
+    const int n = m_items.size();
+    if (n <= 0) {
+        emit finished(true, m_failedLabels, m_failedPaths);
+        return;
     }
 
-    bool allPassed = (m_failed == 0);
-    emit finished(allPassed, m_failedLabels, m_failedPaths);
+    // ── 2026-11-19：整文件 SHA1 校验改为多线程 ──
+    // 现场：5148 个文件（约 700MB）单线程校验实测 **34.4 秒**
+    //（21:00:32.721 → 21:01:07.129）。而同一份数据裸测：
+    //   462MB / 5148 个 → 单线程 1.8 秒（253MB/s，每文件 0.42ms）
+    // 说明慢的不是 SHA1 也不是磁盘带宽，而是**每个文件约 5ms 的固定延迟**
+    //（刚写完的回写压力 / 杀软逐个扫描 / 冷页缓存），单线程把它串行化了。
+    // 多线程让这些延迟重叠：N 路并行近似 N 倍，且 SHA1 本身是 CPU 计算，
+    // 与 IO 等待天然可以重叠。
+    QElapsedTimer total;
+    total.start();
+
+    const int nThreads = qBound(1, QThread::idealThreadCount(), 8);
+    QVector<QString> badLabels(n);
+    QVector<QString> badPaths(n);
+    QAtomicInt nextIdx(0);
+    QAtomicInt doneCount(0);
+
+    struct VerifyJob : public QRunnable {
+        const QVector<VersionDownloader::VerifyItem>* items = nullptr;
+        QVector<QString>* badLabels = nullptr;
+        QVector<QString>* badPaths = nullptr;
+        QAtomicInt* nextIdx = nullptr;
+        QAtomicInt* doneCount = nullptr;
+        QAtomicInt* cancelled = nullptr;
+        int total = 0;
+
+        void run() override {
+            for (;;) {
+                if (cancelled->loadAcquire()) return;
+                const int i = nextIdx->fetchAndAddRelaxed(1);
+                if (i >= total) return;
+                const auto& item = items->at(i);
+                QString label, path;
+                if (!QFileInfo::exists(item.fullPath)) {
+                    label = item.label;
+                    path = item.fullPath;
+                } else if (!item.expectedSha1.isEmpty()) {
+                    const QString actual = VersionDownloader::AsyncVerifyWorker::sha1FileFast(item.fullPath);
+                    if (actual.compare(item.expectedSha1, Qt::CaseInsensitive) != 0) {
+                        label = item.label + QStringLiteral(" (SHA1)");
+                        path = item.fullPath;
+                    }
+                }
+                if (!label.isEmpty()) {
+                    // 每个下标只被一个线程写，无需加锁
+                    (*badLabels)[i] = label;
+                    (*badPaths)[i] = path;
+                }
+                doneCount->fetchAndAddRelaxed(1);
+            }
+        }
+    };
+
+    {
+        QThreadPool pool;
+        pool.setMaxThreadCount(nThreads);
+        for (int t = 0; t < nThreads; ++t) {
+            auto* job = new VerifyJob;
+            job->items = &m_items;
+            job->badLabels = &badLabels;
+            job->badPaths = &badPaths;
+            job->nextIdx = &nextIdx;
+            job->doneCount = &doneCount;
+            job->cancelled = &m_cancelled;
+            job->total = n;
+            pool.start(job);
+        }
+        // 主循环只负责报进度（每 100ms 一次），不参与校验本身
+        while (!pool.waitForDone(100)) {
+            emit progressChecked(doneCount.loadRelaxed(), n);
+            if (m_cancelled.loadAcquire()) break;
+        }
+        pool.waitForDone();
+    }
+
+    if (m_cancelled.loadAcquire()) {
+        emit cancelled(doneCount.loadRelaxed(), n);
+        emit finished(false, m_failedLabels, m_failedPaths);
+        return;
+    }
+
+    for (int i = 0; i < n; ++i) {
+        if (!badLabels[i].isEmpty()) {
+            m_failed++;
+            m_failedLabels.append(badLabels[i]);
+            m_failedPaths.append(badPaths[i]);
+        }
+    }
+    emit progressChecked(n, n);
+    qCInfo(logDownload) << QStringLiteral("[校验] %1 个文件 %2 线程耗时 %3ms，失败 %4")
+                               .arg(n).arg(nThreads).arg(total.elapsed()).arg(m_failed);
+
+    emit finished(m_failed == 0, m_failedLabels, m_failedPaths);
 }
 
 } // namespace ShadowLauncher
