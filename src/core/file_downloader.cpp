@@ -1215,7 +1215,12 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 if (watchdogAbortedThisAttempt) {
                     watchdogAbortedThisAttempt = false;
                     prevWatchdogAbort = true;
-                    th->downloadDone = 0;
+                    // ── 2026-11-19：中止前把已收字节救回来 ──
+                    // 旧代码直接 downloadDone = 0：本次 attempt 收的几 MB 全部丢掉，
+                    // 下次从 downloadStart 重新下。慢速连接被看门狗切分后，
+                    // 「切一次丢一次、丢了再慢」互为因果 —— 越切越慢。
+                    // 现在保持 downloadDone（它就是续传基线：请求从
+                    // downloadStart + attemptBase 起发），切分只缩小终点，前缀不重下。
                     continue;
                 }
                 prevWatchdogAbort = false;
@@ -1944,10 +1949,26 @@ bool FileDownloader::hostCanAccept(const QString& host) const
     // 模组专项：单镜像 host 场景跳过 degraded 拦截——短时连续失败若标记降级，
     // 会导致后续所有文件无法启动、整队列卡死（实测 129 文件尾部大文件全部拒启）；
     // MC 多源场景保留 degraded 源隔离（降级源不参与新连接）
-    if (it->degraded && !m_modpackMode) return false;
-    // per-host 上限跟随用户设置的最大线程数（m_maxThreads 已由用户配置流入）；
-    // 模组专项：MCIM 镜像实测 16+ 会限流饿死连接，固定 12 温和稳定
-    const int limit = m_modpackMode ? 12 : qMax(1, m_maxThreads);
+    // 2026-11-19：降级带时限（见 HostStats::degradedUntilMs）。到期即放行，
+    // 否则「拒发新请求 → 永远没有成功 3 次 → 永远降级」会死锁一整个进程。
+    if (it->degraded && !m_modpackMode) {
+        if (getElapsedMs() < it->degradedUntilMs) return false;
+        // 到期：解除封锁，允许一条新连接去试探
+        const_cast<HostStats&>(*it).degraded = false;
+        const_cast<HostStats&>(*it).consecutiveFails = 0;
+    }
+    // ── per-host 并发上限（2026-11-19）──
+    // 旧值：非模组 = m_maxThreads（192）。夸父开的是**长连接 Range 请求**，
+    // 76 个库文件 × 最多 4 分片 → 可以把近 200 条长连接同时压到
+    // libraries.minecraft.net 一台主机上。
+    // 现场日志（26.3 安装）：126MB 花了 72 秒，其中 icu4j 与 26.3.jar 两个文件
+    // 反复「超时」重试（每次间隔正好 12 秒 = 空闲超时），说明**部分连接被饿死**，
+    // 而其余连接正常跑完 —— 典型的单主机连接数过多被对端限流。
+    // 而且速度门限是 4MB/s：低于它就一直加分片，于是「越慢 → 连接越多 →
+    // 越容易被限流 → 更慢」构成正反馈。
+    // 现在给单主机一个温和上限（64）：仍够 76 个文件几乎并行，但不再把 200 条
+    // 长连接压在一台机器上。模组专项保持 12（MCIM 镜像 16+ 会限流）。
+    const int limit = m_modpackMode ? 12 : qBound(8, m_maxThreads, 64);
     if (it->activeRequests >= limit) return false;
     return true;
 }
@@ -1969,8 +1990,10 @@ void FileDownloader::recordHostResult(const QString& host, bool ok)
         // 降级是全局的（影响所有文件）——阈值必须足够高，接近“官方完全停摆”
         // 才全局降级，避免偶发失败（3 次）就把官方全局拉黑 → 全部切镜像 →
         // 镜像负载暴增限流（“官方优先”设置被架空）。10 次连续失败 ≈ 源真挂。
-        if (st.consecutiveFails >= 10)
+        if (st.consecutiveFails >= 10) {
             st.degraded = true;
+            st.degradedUntilMs = getElapsedMs() + kDegradeHoldMs;
+        }
     }
 }
 

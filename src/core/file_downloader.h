@@ -215,6 +215,13 @@ private:
         int  totalFails = 0;
         int  totalSuccess = 0;
         bool degraded = false;
+        // ── 2026-11-19：降级必须有时限 ──
+        // 旧逻辑：degraded 后 hostCanAccept 直接拒发新请求，而解除条件写的是
+        // 「成功 3 次」——被拒发就永远成功不了 → **降级 = 本进程内永久拉黑**。
+        // 官方 host 一旦被拉黑，后续所有库文件只能落到 BMCLAPI 慢节点上
+        //（实测 32~40 请求/秒），表现就是「下载游戏库 0.2MB/s」。
+        // 现在：降级只封锁降级窗口，到期自动放行一次重试。
+        qint64 degradedUntilMs = 0;
     };
     mutable QMutex m_hostMutex;
     QMap<QString, HostStats> m_hostStats;
@@ -264,6 +271,9 @@ private:
     // 低于期望速度就分片（官方多连接补偿单连接慢），速度到 4MB/s 自然停
     //（per-host/线程上限仍防爆）。
     static constexpr qint64 kSpeedLimitLowBps = 4LL * 1024 * 1024;
+    // 降级封锁的时长（2026-11-19）。到期自动放行一次试探性重连，
+    // 否则「降级后不允许发请求 → 永远无法成功 3 次 → 永远降级」= 进程内永久拉黑。
+    static constexpr qint64 kDegradeHoldMs = 30 * 1000;
     QList<qint64> m_speedRecords;
     QElapsedTimer m_speedTimer;
     qint64 m_lastSpeedBytes = 0;
