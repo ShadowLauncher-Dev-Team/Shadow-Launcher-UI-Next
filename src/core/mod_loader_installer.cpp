@@ -194,20 +194,52 @@ void ModLoaderInstaller::downloadToFile(const QString& url, const QString& saveP
                                          std::function<void(qint64, qint64)> rawProgress) {
     if (m_cancelled) { done(false, "Cancelled"); return; }
     QString fileName = savePath.section('/', -1);
-    HttpClient::DownloadHandle* reply = HttpClient::instance().downloadWithReply(url, savePath,
-        [this, fileName, reportProgress, rawProgress](qint64 received, qint64 total) {
+
+    // ⚠ 2026-11-20 实测事故：整合包导入卡在「下载 Forge 依赖库 98%」，
+    // 日志停在最后一个安装器库的「下载完成」，之后 90 秒一行都没有、CPU 空转。
+    // 原因：这个回调是安装器库进度**唯一**的推进源，而 downloadWithReply 在
+    // 「请求已建立但服务器再也不发数据」时既不给 error 也不 finish（小文件走
+    // 单连接路径，没有分片那套停滞检测）→ done 永不回调 → pump 里
+    // active 永不归零 → finishLibs 永不触发 → 整个导入永久挂住。
+    // 修法：给每个下载挂一个「45 秒无进展就放弃」的看门狗，保证 done 恰好回调一次，
+    // 让上层的镜像降级/整链重试能接手，而不是无声挂死。
+    struct Ctx { std::atomic<bool> settled{false}; HttpClient::DownloadHandle* handle = nullptr; };
+    auto ctx = std::make_shared<Ctx>();
+    QTimer* watchdog = new QTimer(this);
+    watchdog->setSingleShot(true);
+    watchdog->setInterval(45000);
+    auto settle = [this, ctx, watchdog, done](bool ok, const QString& error) {
+        if (ctx->settled.exchange(true)) return;      // 只回调一次（超时与真实结果可能同时到）
+        watchdog->stop();
+        watchdog->deleteLater();
+        if (ctx->handle) m_activeReplies.removeOne(ctx->handle);
+        done(ok, error);
+    };
+    connect(watchdog, &QTimer::timeout, this, [this, ctx, settle, savePath]() {
+        if (ctx->settled.load()) return;
+        qCWarning(logLoader) << QStringLiteral("[安装] 下载停滞超时（45s 无进展），放弃本次: %1").arg(savePath);
+        if (ctx->handle) ctx->handle->abort();
+        settle(false, QStringLiteral("下载停滞超时（45s 无进展）"));
+    });
+    watchdog->start();
+
+    ctx->handle = HttpClient::instance().downloadWithReply(url, savePath,
+        [this, fileName, reportProgress, rawProgress, watchdog](qint64 received, qint64 total) {
             if (m_cancelled) return;
+            watchdog->start();   // 有字节进展就重置停滞计时
             if (rawProgress) rawProgress(received, total);
             else if (reportProgress) emitByteProgress(fileName, received, total);
         },
-        [this, done, reply](bool ok, const QString& error) {
-            m_activeReplies.removeOne(reply);
-            if (m_cancelled) { done(false, "Cancelled"); return; }
-            done(ok, error);
+        [this, settle](bool ok, const QString& error) {
+            if (m_cancelled) { settle(false, "Cancelled"); return; }
+            settle(ok, error);
         },
         -1, -1, QString(),
         m_downloadSkipProbe);   // 2026-08-14：安装器库小文件批量免探测
-    if (reply) m_activeReplies.append(reply);
+
+    if (ctx->settled.load()) return;   // 同步失败：回调已经走完，别再挂到活跃表
+    if (!ctx->handle) { settle(false, QStringLiteral("无法创建下载任务")); return; }
+    m_activeReplies.append(ctx->handle);
 }
 
 void ModLoaderInstaller::downloadToMemory(const QString& url,
