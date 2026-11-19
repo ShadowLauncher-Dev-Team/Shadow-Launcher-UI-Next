@@ -245,6 +245,20 @@ void VersionDownloader::downloadVersion(const QJsonObject& versionJson,
     qCInfo(logDownload) << engineBanner("pangu");
     emit logMessage(engineBanner("pangu"));
     emit logMessage(QStringLiteral("[盘古] 开始下载版本 %1").arg(versionId));
+    // 2026-11-19：把「设置页 -> 引擎」的生效值打在下载起点。
+    // 设置里写 192、引擎实际跑 24 这类事只能靠这一行看出来（本次审计踩过）。
+    qCInfo(logDownload) << QStringLiteral("[盘古] 生效配置: 并发=%1 限速=%2 源策略=%3")
+                        .arg(m_maxWorkers)
+                        .arg(m_downloadCfg.speedLimitMB > 0
+                                 ? QStringLiteral("%1 MB/s").arg(m_downloadCfg.speedLimitMB)
+                                 : QStringLiteral("不限"))
+                        .arg(static_cast<int>(m_downloadCfg.fileSource));
+    emit logMessage(QStringLiteral("[盘古] 生效配置: 并发=%1 限速=%2 源策略=%3")
+                        .arg(m_maxWorkers)
+                        .arg(m_downloadCfg.speedLimitMB > 0
+                                 ? QStringLiteral("%1 MB/s").arg(m_downloadCfg.speedLimitMB)
+                                 : QStringLiteral("不限"))
+                        .arg(static_cast<int>(m_downloadCfg.fileSource)));
 
     // --- Step 1: Save version JSON to disk ---
     const QString versionDir = m_minecraftDir + QStringLiteral("/versions/") + versionId;
@@ -405,6 +419,12 @@ void VersionDownloader::downloadVersion(const QJsonObject& versionJson,
             }
 
             QMetaObject::invokeMethod(this, [this, toDownload, cacheHits, hasLibTasks]() {
+                // 2026-11-19 修：阶段 A 的 QtConcurrent 预检回调没有取消守卫，
+                // 而取消后 start()/startDownload() 会清掉 m_cancelled，于是点取消后
+                // 预检回调照样把任务塞进下载引擎 → 下载「复活」，还会二次触发
+                // downloadFinished。阶段 B（473 行）本来就有这个守卫，这里补齐。
+                // 判据：取消后日志里又出现「[盘古] 缓存预检」/ 引擎重新开始派发。
+                if (m_state == Cancelled) return;
                 // 命中者计入完成（不读盘不排队）
                 for (const auto& ch : cacheHits)
                     m_downloader->notifyCacheHit(ch.first, ch.second);

@@ -614,7 +614,12 @@ void AssetDownloader::fireNext()
             : 6000;
         qint64 timeoutMs = qMin(base * (1 + qMin(fails, 3)), 12000LL);
         req.setTransferTimeout(static_cast<int>(timeoutMs));
-        it->activeRequests++;
+        // 2026-11-19 修：这里原来是 it->activeRequests++，而 it 可能等于 end()
+        // （首次向该 host 派发时 m_hostStats 里还没有这条记录，插入只发生在请求结束后）。
+        // 对 end() 解引用是未定义行为：MSVC 下多半写进 std::map 头节点的闲置存储，
+        // MinGW/libstdc++ 下是越界写；附带该次派发也不会计入 per-host 并发。
+        // 用 operator[] 让首次派发就插入记录。
+        m_hostStats[host].activeRequests++;
     }
 
     // Round-robin across 2 QNAMs
@@ -623,6 +628,7 @@ void AssetDownloader::fireNext()
 
     QNetworkReply* reply = m_nam[namIdx]->get(req);
     ++m_dispatchCount;
+    m_allBlockedSinceMs = 0;   // 2026-11-19：真派发出去了才清零全拒计时（见 managerTick）
 
     InFlight ift;
     ift.task = dispatchTask;
@@ -1375,7 +1381,9 @@ void AssetDownloader::accelTick()
         }
         return;
     }
-    m_allBlockedSinceMs = 0;   // 成功派发（fireNext 找到可用源）后由 fireNext 清零；这里保留累计
+    // 2026-11-19 修：这里原本无条件清零，等于把「全拒已持续多久」每秒重置一次，
+    // 下面那段注释（「原实现冷却结束即清零 → 永不触发」）说的正是这一行本身。
+    // 现在清零的责任交给真正派发成功的地方（dispatchOne 里 ++m_dispatchCount 之后）。
     // 2026-08-10 修：原实现冷却结束即清零 → 持续全拒时每 5s 重新计时 →
     // kAllBlockedFailMs（120s）失败收尾永不触发 → 永久卡死（配合换镜像被拒场景实锤）
 
@@ -1686,6 +1694,7 @@ void AssetDownloader::checkAllFinished()
     if (m_state != Running && m_state != Cancelled) return;
     if (!m_pendingQueue.isEmpty() || !m_inFlight.isEmpty() || !m_pendingPreCheck.isEmpty()) return;
     if (m_preCheckQueued > 0) return;
+    if (m_ioPending.loadRelaxed() > 0) return;   // 2026-11-19：还有 IO 写盘没落定
     if (m_retryScheduled > 0) return;   // 还有重试在退避等待中（2026-11-14）
     if (!m_shards.isEmpty()) return;    // 还有分片任务没收尾（2026-11-17）
 
@@ -2006,12 +2015,14 @@ void AssetDownloader::enqueueIO(const AssetTask& task, const QByteArray& data)
     worker->callback = [self](const AssetDownloader::AssetTask& t, bool ok) {
         if (self) {
             QMetaObject::invokeMethod(self, [self, t, ok]() {
-                if (self->m_state == AssetDownloader::Cancelled) return;
+                self->m_ioPending.fetchAndSubRelaxed(1);   // 2026-11-19：先销账再判完成
+                if (self->m_state == AssetDownloader::Cancelled) { self->checkAllFinished(); return; }
                 self->finishDownload(t, ok);
             });
         }
     };
 
+    m_ioPending.fetchAndAddRelaxed(1);
     m_ioPool.start(worker);
 }
 

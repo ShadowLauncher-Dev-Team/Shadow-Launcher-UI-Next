@@ -66,7 +66,10 @@ public:
     void setTargetDir(const QString& dir) { m_targetDir = dir; }
     void setFiles(QList<ModpackRemoteFile>* files) { m_files = files; }
     // 覆盖钩子：落盘前若目标已存在旧文件则回调（任务层用于回滚备份）
-    void setOverwriteHook(const std::function<void(const QString& savePath)>& hook) { m_overwriteHook = hook; }
+    // 2026-11-19：回调改成返回「备份是否成功」——旧实现是 void，
+    // 所以「备份失败」这件事到不了下载器，删除旧文件照样执行，
+    // 一旦随后下载失败，旧版本文件就永久消失。
+    void setOverwriteHook(const std::function<bool(const QString& savePath)>& hook) { m_overwriteHook = hook; }
     // 新建文件钩子：成功落盘后回调（任务层登记回滚，失败/取消时清理）
     void setCreatedHook(const std::function<void(const QString& savePath)>& hook) { m_createdHook = hook; }
 
@@ -163,7 +166,7 @@ private:
     QTimer* m_stallTimer = nullptr;    // 下载阶段停滞看门狗（5s 一扫，60s 无字节判失败）
     qint64 m_lastWatchdogBytes = -1;   // 上一次采样到的引擎累计字节
     qint64 m_lastWatchdogMs = 0;       // 最近一次字节增长时刻
-    std::function<void(const QString&)> m_overwriteHook;   // 覆盖旧文件前的回调
+    std::function<bool(const QString&)> m_overwriteHook;   // 覆盖旧文件前的回调（true = 已备份/可安全删除）
     std::function<void(const QString&)> m_createdHook;     // 新建文件落盘后的回调（回滚登记）
     QList<QPointer<QNetworkReply>> m_inflight;   // CF API 在途请求（取消时 abort）
 

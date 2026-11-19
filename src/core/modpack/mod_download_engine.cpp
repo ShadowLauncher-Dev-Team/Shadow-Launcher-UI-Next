@@ -241,6 +241,9 @@ void ModDownloadEngine::probeRangeSupport(const QString& url)
 
     QNetworkRequest req{QUrl(url)};
     req.setRawHeader("User-Agent", "ShadowLauncher/1.0");
+    // 2026-11-19 修：官方 edge CDN 自 2026-07-16 起强制 x-api-key，探测却不带 →
+    // 收到 401，被下一行分支记成「该源不认 Range」，整台 host 从此永久单连接。
+    if (!m_cfApiKey.isEmpty()) req.setRawHeader("x-api-key", m_cfApiKey.toUtf8());
     req.setRawHeader("Range", "bytes=0-0");     // 只要 1 个字节
     req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
@@ -253,15 +256,28 @@ void ModDownloadEngine::probeRangeSupport(const QString& url)
         if (code >= 300 && code < 400) return;      // 中间跳转，等最终响应
         if (code == 206) {
             m_rangeSupport.insert(host, 1);
-        } else {
+        } else if (code == 200 || code == 404 || code == 403
+                   || code == 405 || code == 416) {
+            // 200 = 服务器忽略了 Range（真不支持）；404/403/405/416 = 该 URL/资源层面
+            // 不适用分段。这些是「这台 host 不认 Range」的确定证据。
             m_rangeSupport.insert(host, 0);
             emit logMessage(QStringLiteral("[精卫] [分片] %1 不认 Range（HTTP %2），该源后续文件一律单连接")
+                                .arg(host).arg(code));
+        } else {
+            // 2026-11-19 修：401/429/5xx 是「鉴权/限流/服务端故障」，跟 Range 能力无关。
+            // 旧代码把它们也记成 0，等于因为一次限流就永久关掉该 host 的分片。
+            // 这里撤销探测记录，等下次真正需要时重新探测。
+            m_rangeSupport.remove(host);
+            emit logMessage(QStringLiteral("[精卫] [分片] %1 Range 探测无结论（HTTP %2），稍后重探")
                                 .arg(host).arg(code));
         }
         r->abort();                                  // 只要响应头，一个字节 body 都不收
     });
     QObject::connect(r, &QNetworkReply::finished, this, [this, r, host]() {
-        if (m_rangeSupport.value(host) == -1) m_rangeSupport.insert(host, 0);
+        if (m_rangeSupport.value(host) == -1) {
+            // 没拿到任何响应头就结束了（断连/超时）——同样不能据此判定不支持分段。
+            m_rangeSupport.remove(host);
+        }
         r->deleteLater();
     });
 }

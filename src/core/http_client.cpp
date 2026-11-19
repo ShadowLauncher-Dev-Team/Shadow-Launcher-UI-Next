@@ -301,10 +301,46 @@ void HttpClient::startSingle(const QString& url, const QString& savePath,
                              qint64 resumeFrom, qint64 expectedSize,
                              const QString& expectedSha1, DownloadHandle* handle)
 {
-    const QString tmpPath = savePath + QStringLiteral(".tmp");
+    QString tmpPath = savePath + QStringLiteral(".tmp");
     const QFileInfo fi(savePath);
     QDir().mkpath(fi.absolutePath());
-    if (resumeFrom <= 0) QFile::remove(tmpPath);
+    // ── 2026-11-19 修：续传语义与落盘文件不一致 ──
+    // 旧实现：Range 起点取调用方给的 resumeFrom（= 正式文件 savePath 的大小），
+    // 而收到的字节 append 到 savePath.tmp，收尾 remove(savePath)+rename(tmp→savePath)。
+    // 结果正式文件只剩「续传的那一段」，前缀被 remove 掉了 —— 自更新续传一次就把
+    // 启动器 exe 换成半截文件（本轮审计 P1，调用方 update_manager 不传 sha1，
+    // verifyFile 恒过，坏 exe 还会进 Ready）。
+    // 现在：先把正式文件的前缀搬进 tmp，续传段接在后面，收尾的 rename 才是完整的。
+    if (resumeFrom > 0) {
+        const qint64 tmpSize = QFileInfo::exists(tmpPath) ? QFileInfo(tmpPath).size() : -1;
+        if (tmpSize != resumeFrom) {
+            QFile src(savePath);
+            bool seeded = false;
+            if (src.exists() && src.size() >= resumeFrom && src.open(QIODevice::ReadOnly)) {
+                QFile dst(tmpPath);
+                if (dst.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+                    qint64 left = resumeFrom;
+                    char buf[1 << 16];
+                    while (left > 0) {
+                        const qint64 n = src.read(buf, qMin<qint64>(sizeof(buf), left));
+                        if (n <= 0) break;
+                        if (dst.write(buf, n) != n) { left = -1; break; }
+                        left -= n;
+                    }
+                    dst.close();
+                    seeded = (left == 0);
+                }
+            }
+            src.close();
+            if (!seeded) {
+                // 前缀拿不到（文件已变/被删/写失败）→ 退回整段重下，绝不拼半截
+                resumeFrom = 0;
+                QFile::remove(tmpPath);
+            }
+        }
+    } else {
+        QFile::remove(tmpPath);
+    }
 
     const QString mirror = mirrorUrl(url);
     const QString primaryUrl = mirror.isEmpty() ? url : mirror;

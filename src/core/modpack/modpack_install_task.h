@@ -114,7 +114,7 @@ private:
     void recomposeProgress();
     void log(const QString& msg);
     void registerCreatedFile(const QString& path);
-    void registerOverwrite(const QString& path);
+    bool registerOverwrite(const QString& path);   // 2026-11-19：返回是否已成功备份
 
     // ── 原生任务卡片（InstallCardModel 轮询通道）──
     void initTaskCard();                 // 注册卡片 + 基础步骤初始化

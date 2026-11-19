@@ -43,7 +43,10 @@ constexpr qreal kMcInstallWeight = 0.25;
 // 模组路悬挂兜底：MC 路已完成后，若模组路连续 2 分钟字节不动、
 // 且 allFinished 迟迟不来，就不能再等下去。实测：单个失败文件在
 // 多源切换 + 重试间隔下能连续折腾六分钟，界面上就是「剩 1 个文件」不动。
-constexpr qint64 kModStallMs = 120000;
+// 2026-11-19：120s 小于精卫自身的最坏自愈预算（单文件 5 轮重试 × (50s 退避 + 多源
+// 30~45s 超时) ≈ 230s）。也就是说引擎还在正常重试、上层已经判死了 —— 表现是
+// 大文件尾部被判失败、整包回滚。download.h 里同类判据已论证取 240s，这里对齐。
+constexpr qint64 kModStallMs = 240000;
 constexpr qreal kFinalizeWeight = 0.05;
 
 } // namespace
@@ -609,8 +612,8 @@ void ModpackInstallTask::runDownload()
 
     m_downloader->setTargetDir(m_resourceDir);
     m_downloader->setFiles(&m_meta.files);
-    m_downloader->setOverwriteHook([this](const QString& savePath) {
-        registerOverwrite(savePath);
+    m_downloader->setOverwriteHook([this](const QString& savePath) -> bool {
+        return registerOverwrite(savePath);
     });
     m_downloader->setCreatedHook([this](const QString& savePath) {
         // 新建文件登记回滚：任务失败/取消时清理，共享目录模式不残留
@@ -1640,9 +1643,9 @@ void ModpackInstallTask::registerCreatedFile(const QString& path)
         m_createdFiles.insert(path);
 }
 
-void ModpackInstallTask::registerOverwrite(const QString& path)
+bool ModpackInstallTask::registerOverwrite(const QString& path)
 {
-    if (m_overwriteBackup.contains(path)) return;
+    if (m_overwriteBackup.contains(path)) return true;
     if (m_backupDir.isEmpty()) {
         m_backupDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation)
             + QStringLiteral("/shadow-modpack-backup-%1")
@@ -1654,7 +1657,10 @@ void ModpackInstallTask::registerOverwrite(const QString& path)
     if (QFile::copy(path, backup)) {
         m_overwriteBackup.insert(path, backup);
         emit logLine(tr("已备份将被覆盖的文件: %1").arg(path));
+        return true;
     }
+    emit logLine(tr("警告：无法备份将被覆盖的文件（覆盖后不可恢复）: %1").arg(path));
+    return false;
 }
 
 QVariantList ModpackInstallTask::modItems() const

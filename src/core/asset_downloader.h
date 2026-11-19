@@ -303,6 +303,10 @@ private:
     int  m_targetInflight = 0;             // computed by schedulePhase()
     int  m_burstSent = 0;                  // count of initial burst requests
     int  m_preCheckQueued = 0;             // count of async SHA1 pre-checks in flight
+    // 2026-11-19：IO 写盘在途计数。完成计数是在写入回调里才加的，而
+    // checkAllFinished 的闸门只查队列/在途/预检/分片 —— 最后一批写盘尚未落定时
+    // 就可能报「全部完成」，上游立刻开始校验，与在途写盘竞态（可能校验到半截文件）。
+    QAtomicInteger<int> m_ioPending{0};
     // 2026-11-18：初始爆发 4 → 64。实测官方 CDN 对 192 并发完全无压力（首字节 p90 160ms），
     // 而「一次只发 4 个」把前 192 个请求摊成十几秒才铺满。
     static constexpr int kBurstSize = 64;

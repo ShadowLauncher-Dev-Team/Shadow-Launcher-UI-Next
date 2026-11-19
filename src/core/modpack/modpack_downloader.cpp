@@ -785,7 +785,15 @@ void ModpackDownloader::startEngineDownloads()
         // 覆盖处理：备份旧文件并删除 → 引擎永远写全新文件（引擎无覆盖钩子，
         // 且 isNoSplit 直接写最终路径，会截断覆盖旧文件，必须先清场）
         if (QFileInfo::exists(it.savePath)) {
-            if (m_overwriteHook) m_overwriteHook(it.savePath);
+            bool backedUp = true;
+            if (m_overwriteHook) backedUp = m_overwriteHook(it.savePath);
+            if (!backedUp) {
+                // 2026-11-19：备份失败时必须留痕。旧实现不看回调结果，
+                // 删了旧文件又没备份，下载再失败就是永久丢失。
+                qCWarning(logMod) << QStringLiteral("[精卫] 覆盖前备份失败，旧文件一旦被覆盖将无法恢复 %1")
+                    .arg(it.savePath);
+                emit logLine(tr("警告：覆盖前备份失败，旧文件不可恢复: %1").arg(it.savePath));
+            }
             QFile::remove(it.savePath);
             m_preExisting.insert(it.savePath);
         }
