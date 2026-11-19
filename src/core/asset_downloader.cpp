@@ -583,7 +583,14 @@ void AssetDownloader::fireNext()
     const QString attrHost = extractHost(url);
     const bool officialHost = attrHost.endsWith(QStringLiteral(".minecraft.net"))
                            || attrHost == QStringLiteral("minecraft.net");
-    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, officialHost);
+    // ── 2026-11-19：官方源也关掉 HTTP/2（撤回 11-18 的实验）──
+    // 实测代价：26.2（5059 个资源）时服务器直接拒绝新流并关连接，
+    //   W [qt.network.http2] Server stopped accepting new streams before this stream was dispatched
+    //   W [山海经] 下载失败 xxx 所有镜像已耗尽 (Connection closed)   ← 成片连锁取消，重试 2 轮
+    // 收益只有 15.67s → 15.13s（样本还带噪声），风险和收益不成比例。
+    // 回归 HTTP/1.1：每条请求独占一条连接，不再有"整条连接被关掉"的放大效应。
+    Q_UNUSED(officialHost);
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
     // Per-request HTTP/1.1 config: 255 connections per host per QNAM
     {
         QHttp1Configuration h1cfg;

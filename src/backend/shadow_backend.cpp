@@ -3226,9 +3226,48 @@ void ShadowBackend::launch(const QString& versionId, bool online) {
                                   ygg2->accessToken(), true);
             m_launch->setYggdrasilMode(ygg2->apiRoot(), ygg2->accessToken());
         } else {
-            qCInfo(logLaunch) << QStringLiteral("[认证] 在线模式启动 玩家名=%1 uuid=%2").arg(m_account->username(), m_account->accountUuid());
-            m_launch->setAuthInfo(m_account->username(), m_account->accountUuid(),
-                                  m_account->mcToken(), true);
+            // ── 2026-11-19 修「放置久了再启动会进离线模式」──
+            // 旧实现直接把 m_account->mcToken() 塞进启动参数，**不校验时效、不刷新**。
+            // 微软 accessToken 只有约 24 小时，启动器开着放一夜后再启动，
+            // 送进去的就是一个过期令牌 → 服务端拒绝 → 游戏内表现为离线（Realms 也废）。
+            // 导出脚本那条路（exportLaunchScript）一直有校验+刷新，主启动路径漏了。
+            // 这里补上同样的逻辑：过期先同步刷新（最长等 15 秒），失败才降级离线。
+            QString token = m_account->mcToken();
+            if (!m_account->msMcTokenValid()) {
+                if (m_account->msRefreshToken().isEmpty()) {
+                    token.clear();
+                    emit logMessage(tr("正版令牌已过期且没有刷新令牌，本次启动将以离线身份进入（请重新登录正版账号）"));
+                    qCWarning(logLaunch) << QStringLiteral("[认证] 令牌过期且无 refresh_token，降级离线");
+                } else {
+                    qCInfo(logLaunch) << QStringLiteral("[认证] 正版令牌已过期，启动前同步刷新...");
+                    QEventLoop loop;
+                    QTimer timeout;
+                    timeout.setSingleShot(true);
+                    QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+                    QMetaObject::Connection c1 = connect(m_account, &AccountBackend::tokenRefreshed,
+                        &loop, [&loop](bool ok) { loop.quit(); });
+                    QMetaObject::Connection c2 = connect(m_account, &AccountBackend::tokenRefreshFailed,
+                        &loop, [&loop](bool, const QString&) { loop.quit(); });
+                    timeout.start(15000);
+                    m_account->refreshMicrosoftToken();
+                    loop.exec();
+                    timeout.stop();
+                    disconnect(c1);
+                    disconnect(c2);
+                    if (m_account->msMcTokenValid()) {
+                        token = m_account->mcToken();
+                        qCInfo(logLaunch) << QStringLiteral("[认证] 令牌刷新成功，按正版身份启动");
+                    } else {
+                        token.clear();
+                        emit logMessage(tr("正版令牌过期且刷新失败（网络或账号问题），本次以离线身份进入"));
+                        qCWarning(logLaunch) << QStringLiteral("[认证] 刷新失败，降级离线");
+                    }
+                }
+            }
+            qCInfo(logLaunch) << QStringLiteral("[认证] 在线模式启动 玩家名=%1 uuid=%2 令牌=%3")
+                                     .arg(m_account->username(), m_account->accountUuid(),
+                                          token.isEmpty() ? QStringLiteral("无(离线)") : QStringLiteral("有效"));
+            m_launch->setAuthInfo(m_account->username(), m_account->accountUuid(), token, !token.isEmpty());
         }
     } else {
         qCInfo(logLaunch) << QStringLiteral("[认证] 离线模式启动 玩家名=%1 uuid=%2").arg(m_account->offlineUsername(), m_account->offlineUuid());

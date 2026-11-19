@@ -745,16 +745,31 @@ void VersionBackend::installVersion(const QString& versionId)
 
     // ── Build step pipeline for pure MC download (skipped if part of merged install) ──
     {
+        // ── 2026-11-19 修「下载卡片异常丢失」──
+        // 旧逻辑：只要 m_downloadSessions 里存在一个 mcVersion 相同的合并会话，就认为
+        // 「本次是整合包的 MC 部分」，于是跳过建卡片。
+        // 但**已结束的**整合包会话不会被清出这张表（它只在下一次 dismissCard 时才清），
+        // 所以紧接着安装同版本原版 MC 时（整合包基础版本恰好也是 26.2），
+        // 新任务被误判成合并子任务 → 卡片从不创建；下载器本身照跑，用户看到的就是
+        // 「下载在正常进行，卡片却不见了」。
+        // 只有**仍在进行中**的合并会话才配当当前这次安装的父任务。
         bool isMergedMc = false;
         for (auto mit = m_downloadSessions.constBegin(); mit != m_downloadSessions.constEnd(); ++mit) {
-            if (mit.value() && mit.value()->isMerged() && mit.value()->mcVersion == versionId) {
-                isMergedMc = true;
-                break;
-            }
+            auto* mds = mit.value();
+            if (!mds || !mds->isMerged() || mds->mcVersion != versionId) continue;
+            if (mds->isFailed() || mds->mcDownloadDone || mds->totalProgress() >= 0.999) continue;
+            isMergedMc = true;
+            break;
         }
         if (!isMergedMc) {
             auto* ds = ensureSession(versionId);
             if (ds) {
+                // 同名会话可能是上一次安装（或整合包 MC 部分）遗留的已完成会话。
+                // 直接复用会让新卡片一出生就是 100%，被进度页当成终态收起 →
+                // 同样是「下载在跑、卡片不见」。新装必须从干净状态开始。
+                if (ds->mcDownloadDone || ds->isFailed() || ds->totalProgress() >= 0.999) {
+                    ds->reset();
+                }
                 {
                     const auto plan = ShadowLauncher::LoaderPlan::make(QStringLiteral("vanilla"));
                     rebuildStepsByKeys(versionId, plan.keys, plan.weights, plan.shows);
