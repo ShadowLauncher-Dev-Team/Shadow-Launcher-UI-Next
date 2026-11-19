@@ -117,7 +117,12 @@ public:
     void addInFlightReply(QNetworkReply* reply);
     void removeInFlightReply(QNetworkReply* reply);
 
-    void setMaxThreads(int n) { m_maxThreads = qBound(1, n, 24); }
+    // 2026-11-19 修正：这里原本夹到 **24**，而调用方（version_downloader）
+    // 传进来的是设置里的并发（默认 192，夹到 512）。结果「并发 192」只对山海经生效，
+    // 夸父（库/jar）一直被钉在 24 —— 76 个库文件只能 24 路并行。
+    // 与 per-host 上限的关系也塌了：hostCanAccept 里 qBound(8, m_maxThreads, 64)
+    // 在 m_maxThreads=24 时恒等于 24，"单主机 64 上限"的保护根本不可能生效。
+    void setMaxThreads(int n) { m_maxThreads = qBound(1, n, 256); }
     int maxThreads() const { return m_maxThreads; }
     void setSpeedLimitMB(double mb) { m_speedLimitBps.storeRelaxed(static_cast<qint64>(mb * 1024 * 1024)); }
     /// 模组下载专项模式（ModpackDownloader 实例开启；MC 下载实例保持默认关闭）：
@@ -195,7 +200,11 @@ private:
     QAtomicInt m_cacheHits{0};   // 缓存命中数（addFile 阶段累计，start 时统一入账）
     int m_cacheHitLogCtr = 0;    // 命中日志节流计数（2026-08-05）
     QAtomicInteger<qint64> m_downloadedBytes{0};  // 仅真实网络收发字节（缓存命中不累加）
-    QAtomicInteger<qint64> m_cacheBytes{0};  // 保留字段：缓存命中分支已不累加，恒为 0（不参与速度）
+    QAtomicInteger<qint64> m_cacheBytes{0};
+    // 2026-11-19：start() 会把 m_cacheHits 取出清零（入账到 completed），
+    // 而收尾汇总又去读这个计数 → 汇总里「缓存命中」恒为 0（日志实测 3 次命中 0）。
+    // 这里留一份基数，收尾时用它报告真实命中数。
+    int m_cacheHitBase = 0;  // 保留字段：缓存命中分支已不累加，恒为 0（不参与速度）
     QAtomicInteger<qint64> m_totalBytes{0};
     QAtomicInt m_activeThreads{0};
     QAtomicInt m_nextUuid{0};

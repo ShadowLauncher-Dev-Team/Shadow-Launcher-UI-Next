@@ -215,6 +215,7 @@ void FileDownloader::start()
     // 缓存全命中时 completed==total 但无 worker → allFinished 永不触发 → 下载卡死。
     {
         const int hits = m_cacheHits.fetchAndStoreRelaxed(0);
+        m_cacheHitBase += hits;   // 留基数给收尾汇总（m_cacheHits 已被清零）
         if (hits > 0) {
             m_completedFiles.fetchAndAddRelaxed(hits);
             m_totalFiles.fetchAndAddRelaxed(hits);
@@ -893,6 +894,9 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
         const int attemptLimit = modRetriedOnce ? 1 : 6;
         int rateLimitHits = 0;   // 本源 429/503 命中次数（上限 5，防止"永远 429"把线程锁死）
         bool prevWatchdogAbort = false;   // 上一次尝试是否因看门狗中止（跳过快速失败守卫）
+        // 连续「超时且零字节进展」次数（2026-11-19）：用于快速换源，
+        // 见下方守卫注释（旧守卫要求 elapsed<5500，而一次超时就有 12s，永不成立）。
+        int consecutiveTimeouts = 0;
         for (int attempt = 0; attempt < attemptLimit && !sourceOk; ++attempt) {
             if (m_cancelled.loadRelaxed()) goto cleanup;
             waitWhilePaused();
@@ -920,13 +924,19 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 const qint64 base = isOfficialUrl ? 12000 : 15000;
                 timeoutMs = static_cast<int>(qMin(base * (1 + qMin(fails, 3)), 12000LL));
             }
-            // 主流启动器语义：源失败累计（failCount≥5 且无进度）才禁用换源——
-            // 不在 attempt 层面对官方特殊处理（官方优先时坚持官方直到禁用）
-            // 看门狗中止后跳过该守卫：中止是策略性换连接，不是快速失败
-            if (attempt >= 2 && file->expectedSha1.isEmpty()
-                && (getElapsedMs() - startTimeMs) < 5500 && !prevWatchdogAbort) break;
-            if (attempt >= kMaxChunkAttempts && (getElapsedMs() - startTimeMs) < 5500
-                && !prevWatchdogAbort) break;
+            // ── 2026-11-19 修正「快速失败守卫形同虚设」──
+            // 旧条件要求 (elapsed < 5500ms)，但单次超时本身就有 12s，
+            // 所以 attempt 到 2/5 时 elapsed 恒 >12000 → 两个守卫永不成立 →
+            // 同一个源被死磕满 5 次（=60s）。现场：jna-platform-5.17.0.jar
+            // 连续 5 次 12.5s 超时，白付 43 秒，用户看到「卡 99%」。
+            // 现在：只要「本次是超时、且没有任何字节进展」，连续 2 次就直接换源。
+            if (consecutiveTimeouts >= 2 && !prevWatchdogAbort) {
+                qCWarning(logDownload) << QStringLiteral("[夸父] 连续 %1 次超时且零进展，放弃本源换源 文件=%2")
+                    .arg(consecutiveTimeouts).arg(file->localName);
+                if (sourceIdx < file->sourceFailCounts.size())
+                    file->sourceFailCounts[sourceIdx] = 5;   // 触发换源判定
+                break;
+            }
             if (attempt > 0) QThread::msleep(kRetryBackoffMs);
 
             QNetworkRequest req{QUrl(url)};
@@ -980,6 +990,15 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             QTimer timeout;
             timeout.setSingleShot(true);
             bool timedOut = false;
+            // ── 2026-11-19：超时归因（只做诊断，不改行为）──
+            // 现场：jna-platform-5.17.0.jar（1.3MB）连续 5 次「12s 超时」，
+            // 而同一 URL 用 curl 三次全部 1.4~1.7s 下完 —— 说明对端没问题，
+            // 是我们的请求在某处被卡住。要区分「请求没被服务端处理」和
+            // 「有响应头但没 body」，必须在超时那一刻记录这两个事实。
+            bool metaSeen = false;
+            qint64 bytesSeen = 0;
+            connect(reply, &QNetworkReply::metaDataChanged,
+                    [&metaSeen]() { metaSeen = true; });
 
             connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
             connect(&timeout, &QTimer::timeout, [&]() { timedOut = true; loop.quit(); });
@@ -1006,6 +1025,7 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 // 取消/暂停后不得再计字节、发进度（契约 §5：回调早退）
                 if (m_cancelled.loadRelaxed() || m_paused.loadRelaxed()) return;
                 // 线程内绝对已收 = 本次尝试续传基线 + 本 reply 收到的字节
+                bytesSeen = received;
                 const qint64 absReceived = attemptBase + received;
                 qint64 delta = absReceived - th->downloadDone;
                 if (delta > 0) {
@@ -1204,11 +1224,30 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             if (rangeFilled) {
                 // 数据完整（>= 本线程范围），不重试、不计 FailCount
             } else if (timedOut || reply->error() != QNetworkReply::NoError) {
-                qCWarning(logDownload) << QStringLiteral("[夸父] 请求失败 URL=%1 错误=%2 重试=%3")
+                qCWarning(logDownload) << QStringLiteral("[夸父] 请求失败 URL=%1 错误=%2 重试=%3 | 归因: 响应头=%4 已收=%5B 耗时=%6ms 状态=%7")
                     .arg(url, timedOut ? QStringLiteral("超时") : reply->errorString())
-                    .arg(attempt + 1);
+                    .arg(attempt + 1)
+                    .arg(metaSeen ? QStringLiteral("有") : QStringLiteral("无"))
+                    .arg(bytesSeen)
+                    .arg(getElapsedMs() - startTimeMs)
+                    .arg(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt());
+                if (timedOut && bytesSeen == 0) ++consecutiveTimeouts;
+                else consecutiveTimeouts = 0;
                 reply->abort();
                 reply->deleteLater();
+                // ── 2026-11-19：超时且连响应头都没收到 → 清掉该线程 QNAM 的连接缓存 ──
+                // 现场证据（4 轮定向复现，第 2 轮）：同一个 1.3MB 小文件连续 5 次
+                // 「12s 超时」，归因显示**响应头=无、已收=0B**；而同一 URL 用 curl
+                // 连发 3 次全部 200、1.4~1.7 秒下完（含 8 条并发 Range 也全 206）。
+                // 既然对端正常、我们却连响应头都拿不到，最可能就是这条 QNAM 的连接池里
+                // 躺着一条「半死」连接（对端已关、本地未感知），请求全排上去干等。
+                // workerQnam() 是 thread_local 跨文件复用，重试又落回同一线程 → 同一条坏连接。
+                // 超时时清缓存，强制下一条请求重新建连。
+                if (timedOut && !metaSeen) {
+                    mgr.clearConnectionCache();
+                    qCWarning(logDownload) << QStringLiteral("[夸父] 超时无响应头，已清空连接缓存（强制重建连接） 文件=%1")
+                        .arg(file->localName);
+                }
                 // ── 看门狗中止（2026-08-05）──
                 // 慢速分片后的策略性换连接：不算失败（不累计 FailCount）、
                 // 跳过快速失败守卫，直接以缩小后的范围换新连接重试。
@@ -1349,11 +1388,13 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                             .arg(file->localName).arg(th->downloadStart + attemptBase).arg(want).arg(data.size()).arg(excess).arg(respStatus);
                         data = data.left(want);
                         th->downloadDone = attemptBase + data.size();
+                consecutiveTimeouts = 0;   // 本 attempt 有数据 → 链路正常，清零（2026-11-19）
                         const qint64 finalDone = th->downloadDone;
                         if (counted > finalDone)
                             m_downloadedBytes.fetchAndAddRelaxed(-(counted - finalDone));
                     } else {
                         th->downloadDone = attemptBase + data.size();
+                consecutiveTimeouts = 0;   // 本 attempt 有数据 → 链路正常，清零（2026-11-19）
                     }
                     if (!th->isFullFile && threadRange > 0 && th->downloadDone < threadRange)
                         needMoreData = true;
@@ -1901,7 +1942,7 @@ void FileDownloader::updateStats()
         m_state = Idle;
         const qint64 totalDl = m_totalBytes.loadRelaxed();
         // 完成汇总带缓存命中数（2026-08-05 补：缓存复用可见）
-        const int cacheHits = m_cacheHits.loadRelaxed();
+        const int cacheHits = m_cacheHitBase + m_cacheHits.loadRelaxed();   // 2026-11-19：补上 start() 清零前的基础数
         emit logMessage(QString::fromUtf8("[夸父] [完成] 下载完成: %1/%2 文件, %3, 速度 %4 MB/s, 缓存命中 %5")
                             .arg(done).arg(total)
                             .arg(formatSize(totalDl))
