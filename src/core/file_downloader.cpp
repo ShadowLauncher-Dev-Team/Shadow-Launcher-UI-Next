@@ -1833,6 +1833,14 @@ bool FileDownloader::mergeFile(std::shared_ptr<FileDownload> file)
     auto sorted = file->threads;
     std::sort(sorted.begin(), sorted.end(), [](auto& a, auto& b) { return a->downloadStart < b->downloadStart; });
 
+    // ── 2026-11-20：合并层补长度校验 ──
+    // 现场（本地坏镜像 /partshort：声明 8MB 只发 4MB 就断）**没有**复现「短分片被
+    // 合进正式文件」——下载层重试到上限后直接判失败，mergeFile 根本没被调用。
+    // 但这一层的不变量确实没人检查：这里只把每个分片 temp 原样 readAll 后追加，
+    // 不比对「分片实际长度 vs 它负责的区间」，rename 前也只靠 SHA1（没有 sha1 的文件
+    // 就没人管）。也就是说，只要哪一天某条路径让一个短分片「成功」返回，
+    // 合并就会安静地生成一个短文件。补上校验，代价是每个文件一次 stat。
+    qint64 expectedBytes = 0;
     for (auto& th : sorted) {
         if (th->tempPath.isEmpty()) continue;
         QFile tf(th->tempPath);
@@ -1841,9 +1849,29 @@ bool FileDownloader::mergeFile(std::shared_ptr<FileDownload> file)
             QFile::remove(mergeTmp);   // 半截合并文件不留在最终路径
             return false;
         }
+        // 注意：downloadEnd 是**排他**上界（实测区间 0..16777216 实际写 16777216 字节），
+        // 所以这里不按区间重算期望长度，只累加分片实际长度，最后与声明的文件大小比对。
+        expectedBytes += tf.size();
         out.write(tf.readAll());
         tf.close();
         tf.remove();
+    }
+    // 与声明大小比对：这是唯一与分片区间约定无关的不变量。
+    // 分片全收但总长偏短，只可能是某片被静默丢弃；没有 sha1 的文件全靠这道闸。
+    const qint64 declared = (file->isUnknownSize || file->sizeIsPlaceholder) ? -1 : file->fileSize;
+    if (expectedBytes > 0 && out.size() != expectedBytes) {
+        qCWarning(logDownload) << QStringLiteral("[夸父] 合并总长不符，丢弃 文件=%1 累计=%2 落盘=%3")
+            .arg(file->localName).arg(expectedBytes).arg(out.size());
+        out.close();
+        QFile::remove(mergeTmp);
+        return false;
+    }
+    if (declared > 0 && out.size() != declared) {
+        qCWarning(logDownload) << QStringLiteral("[夸父] 合并后大小与声明不符，丢弃 文件=%1 声明=%2 实际=%3")
+            .arg(file->localName).arg(declared).arg(out.size());
+        out.close();
+        QFile::remove(mergeTmp);
+        return false;
     }
     if (!commitTmp()) {
         QFile::remove(mergeTmp);
