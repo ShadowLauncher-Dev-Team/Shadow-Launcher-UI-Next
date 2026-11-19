@@ -202,6 +202,7 @@ void ModpackDownloader::start(bool includeOptional, bool resumeFailedOnly)
     m_items.clear();
     m_inflight.clear();
     m_preExisting.clear();
+    m_overwriteRisk.clear();
     m_downloadUrlPending.clear();
     m_downloadUrlInflight.clear();
     m_officialOnlyFileIds.clear();
@@ -782,19 +783,24 @@ void ModpackDownloader::startEngineDownloads()
             }
             continue;
         }
-        // 覆盖处理：备份旧文件并删除 → 引擎永远写全新文件（引擎无覆盖钩子，
-        // 且 isNoSplit 直接写最终路径，会截断覆盖旧文件，必须先清场）
+        // 覆盖处理：只备份，不删除旧文件。
+        // 依据（2026-11-20 核对引擎实现）：ModDownloadEngine 的下落路径是
+        // 「写 localPath + .tmp-xxxx → 校验 → QFile::remove(localPath) + rename」
+        // （finishItem / assembleSegments），**不会**截断最终路径，
+        // 所以旧文件能安然保留到新文件校验通过的那一刻才被替换。
+        // 旧实现「备份失败也照样 QFile::remove」= 下载再失败就永久丢失（2026-11-19 留痕）。
+        // 现在：备份失败也不删，记进 m_overwriteRisk 供收尾提示，仍照常排队下载
+        // （引擎成功后会用新文件覆盖它——这正是用户要的"覆盖旧版本"语义）。
         if (QFileInfo::exists(it.savePath)) {
             bool backedUp = true;
             if (m_overwriteHook) backedUp = m_overwriteHook(it.savePath);
             if (!backedUp) {
-                // 2026-11-19：备份失败时必须留痕。旧实现不看回调结果，
-                // 删了旧文件又没备份，下载再失败就是永久丢失。
-                qCWarning(logMod) << QStringLiteral("[精卫] 覆盖前备份失败，旧文件一旦被覆盖将无法恢复 %1")
+                m_overwriteRisk.insert(it.savePath);
+                qCWarning(logMod) << QStringLiteral("[精卫] 覆盖前备份失败，旧文件保留；新文件落盘后旧内容不可恢复 %1")
                     .arg(it.savePath);
-                emit logLine(tr("警告：覆盖前备份失败，旧文件不可恢复: %1").arg(it.savePath));
+                emit logLine(tr("警告：覆盖前备份失败，旧文件已保留（下载成功后仍会被新文件替换）: %1")
+                                 .arg(it.savePath));
             }
-            QFile::remove(it.savePath);
             m_preExisting.insert(it.savePath);
         }
         QDir().mkpath(QFileInfo(it.savePath).absolutePath());
@@ -934,7 +940,11 @@ void ModpackDownloader::onEngineFileFinished(const QString& localPath, bool succ
             ? tr("下载失败（详见日志）") : m_lastEngineError;
         m_lastEngineError.clear();
         rf.error = it.error;
-        QFile::remove(localPath);   // 清理引擎残留的半截文件（isNoSplit 直接写最终路径）
+        // 只清理「本次新建」的目标：引擎写的是 localPath.tmp-xxxx，失败时最终路径上没有半截文件；
+        // 覆盖场景（m_preExisting）里 localPath 是用户旧文件，绝不能在这里删掉
+        //（旧注释「isNoSplit 直接写最终路径」的前提在引擎改成 tmp+rename 后已不成立）。
+        if (!m_preExisting.contains(localPath))
+            QFile::remove(localPath);
         emit fileFinished(idx, false, it.error);
         if (first)
             emit logLine(tr("⚠ %1 下载失败: %2").arg(it.fileName, it.error));

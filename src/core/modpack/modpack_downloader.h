@@ -89,6 +89,9 @@ public:
     qint64 downloadedBytes() const;
     /// 在跑文件的字节比例之和（0..活动数）：任务层队列进度 = (完成 + 这个值)/总数。
     double currentPartialFraction() const;
+    /// 覆盖风险清单（2026-11-20）：目标已存在、但覆盖前备份失败的文件。
+    /// 这些文件仍会照常下载并被新文件覆盖，只是原内容已无处恢复 → 收尾时要提示用户。
+    QSet<QString> overwriteRiskFiles() const { return m_overwriteRisk; }
 
 signals:
     void statusChanged(const QString& text);          // 阶段文案（"正在解析下载地址…"）
@@ -172,6 +175,7 @@ private:
 
     ShadowDownloader::ModDownloadEngine* m_fd = nullptr;  // 引擎实例（每次 start 新建）
     QSet<QString> m_preExisting;   // addFile 前已存在的目标（覆盖场景，成功不登记新建）
+    QSet<QString> m_overwriteRisk; // 覆盖前备份失败的目标（旧文件保留，但成功后不可恢复）
     qint64 m_lastQueueEmitMs = 0;  // queueProgress 桥接限频（200ms）
     qint64 m_lastFileProgMs = 0;   // fileProgress 桥接限频（200ms）
     QString m_lastEngineError;     // 引擎最近一条失败/校验日志（失败详情透传卡片）

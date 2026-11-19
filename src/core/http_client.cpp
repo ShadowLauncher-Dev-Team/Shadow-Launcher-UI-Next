@@ -21,6 +21,7 @@
 
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QHttp1Configuration>
 #include "utils/logger.h"
 #include <QNetworkProxy>
 #include <QNetworkDiskCache>
@@ -114,6 +115,16 @@ static QNetworkRequest buildRequest(const NetworkConfig& cfg, const QUrl& url,
     QNetworkRequest req(url);
     req.setRawHeader("User-Agent",
                      QString::fromStdString(cfg.userAgent).toUtf8());
+    // 2026-11-20：驿道一直没关 HTTP/2。夸父/山海经早已回退（官方 CDN 会拒绝新流），
+    // 但驿道漏了 —— 对 bmclapi2 用 HTTP/2 每条请求必报 "HTTP/2 protocol error"，
+    // 表现是整合包 Forge 依赖库阶段 30ms 一轮的无限重试、速度 0、卡在 96%。
+    // 单主机 255 连接同样是 Qt 6.5+ 才有的；与另两个引擎保持同一口径。
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
+    {
+        QHttp1Configuration h1cfg;
+        h1cfg.setNumberOfConnectionsPerHost(255);
+        req.setHttp1Configuration(h1cfg);
+    }
     req.setTransferTimeout(timeoutMs > 0 ? timeoutMs : cfg.totalTimeoutMs);
     if (!useCache)
         req.setAttribute(QNetworkRequest::CacheLoadControlAttribute,
@@ -158,6 +169,18 @@ void HttpClient::DownloadHandle::abort()
     QMutexLocker lock(&m_mutex);
     if (m_aborted) return;
     m_aborted = true;
+    const auto replies = m_replies;
+    lock.unlock();
+    for (auto* r : replies) {
+        if (r) r->abort();
+    }
+}
+
+void HttpClient::DownloadHandle::abortInFlightReplies()
+{
+    // 与 abort() 的唯一区别：不置 m_aborted。
+    // 用途：分片失败后要释放其余在途分片，但仍允许 finishAll 走「整包单连接重下」兜底。
+    QMutexLocker lock(&m_mutex);
     const auto replies = m_replies;
     lock.unlock();
     for (auto* r : replies) {
@@ -299,7 +322,8 @@ void HttpClient::startSingle(const QString& url, const QString& savePath,
                              std::function<void(qint64, qint64)> progress,
                              std::function<void(bool, const QString&)> done,
                              qint64 resumeFrom, qint64 expectedSize,
-                             const QString& expectedSha1, DownloadHandle* handle)
+                             const QString& expectedSha1, DownloadHandle* handle,
+                             bool noMirror)
 {
     QString tmpPath = savePath + QStringLiteral(".tmp");
     const QFileInfo fi(savePath);
@@ -342,7 +366,9 @@ void HttpClient::startSingle(const QString& url, const QString& savePath,
         QFile::remove(tmpPath);
     }
 
-    const QString mirror = mirrorUrl(url);
+    // noMirror：分片失败降级重下时由调用方置真 —— 否则会重新选回同一个坏镜像，
+    // 形成「镜像失败 → 降级 → 又选同一镜像」的 30ms 死循环（2026-11-20 实机）。
+    const QString mirror = noMirror ? QString() : mirrorUrl(url);
     const QString primaryUrl = mirror.isEmpty() ? url : mirror;
     const bool isMirror = !mirror.isEmpty() && primaryUrl == mirror;
 
@@ -452,12 +478,16 @@ void HttpClient::startSingle(const QString& url, const QString& savePath,
                     if (*sharedDone) (*sharedDone)(false, QStringLiteral("重命名失败: %1").arg(tmpPath));
                 }
             } else if (isMirror) {
+                // 2026-11-20：这里必须 noMirror=true —— 否则 startSingle 内部又对 url
+                // 做一次 mirrorUrl() 映射，回到刚失败的同一个镜像。实机表现就是日志
+                // 反复打「切换到官方源 X」却始终在请求 bmclapi，整合包 Forge 依赖库
+                // 卡在 95%、速度 0，无限重试。
                 qCInfo(logDownload).noquote() << QStringLiteral("[驿道] 镜像源失败 %1，切换到官方源 %2").arg(errStr, url);
                 QFile::remove(tmpPath);
                 startSingle(url, savePath,
                             sharedProg ? *sharedProg : nullptr,
                             sharedDone ? *sharedDone : nullptr,
-                            resumeFrom, expectedSize, expectedSha1, handle);
+                            resumeFrom, expectedSize, expectedSha1, handle, true);
             } else {
                 QFile::remove(tmpPath);
                 if (*sharedDone) {
@@ -584,6 +614,9 @@ void HttpClient::runChunked(const QString& finalUrl, qint64 total,
     // 探测失败会降级（startChunked），但"某一片耗尽重试"以前直接判死整单。
     // Java 大包（141-190MB，8 片）最容易因为个别连接被重置而整单失败，
     // 而单连接走的是既有"镜像优先 + 官方兜底 + 停滞检测"路径。
+    // 2026-11-20：这条兜底此前是死代码（finishChunk 先 handle->abort() 置 m_aborted，
+    // 这里条件恒假）；改为 finishChunk 只中止在途分片、不置取消标记后，兜底真正可达。
+    // 唯一被排除的仍是「用户取消」（m_aborted）——那不能悄悄重下整包。
     auto fellBackToSingle = std::make_shared<bool>(false);
 
     // ── 整体收尾（仅一次）──
@@ -603,8 +636,9 @@ void HttpClient::runChunked(const QString& finalUrl, qint64 total,
                 ctx->file = nullptr;
             }
             QFile::remove(tmpPath);
+            // finalUrl 已是「镜像/官方」解析后的地址；noMirror=true 避免再套一层镜像映射。
             startSingle(finalUrl, savePath, progress, done,
-                        -1, expectedSize, expectedSha1, handle);
+                        -1, expectedSize, expectedSha1, handle, true);
             return;
         }
         ctx->finished = true;
@@ -642,9 +676,14 @@ void HttpClient::runChunked(const QString& finalUrl, qint64 total,
                                                     const QString& err) {
         if (ctx->failed || ctx->finished) return;
         if (!ok) {
-            // 某片已耗尽重试次数 → 整体失败（其余片由 abort 中止、回调短路）
+            // 某片已耗尽重试次数 → 整体失败（其余片由中止释放，回调经 ctx->failed 短路）。
+            // 坑（2026-11-20）：原来这里调 handle->abort()，会把句柄标志成"用户取消"，
+            // 于是 finishAll 的降级条件 !(handle && handle->m_aborted) 恒假、
+            // startSingle 的取消短路也永远命中 —— 「分片失败 → 整包单连接重下」成了死代码。
+            // 现在只中止在途请求、不置取消标记：真取消仍走 handle->abort()（见 startShard 的
+            // m_aborted 判定与 finishAll 里的同一条件），所以正常路径/取消语义都不变。
             ctx->failed = true;
-            if (handle) handle->abort();
+            if (handle) handle->abortInFlightReplies();
             finishAll(false, err.isEmpty()
                 ? QStringLiteral("分片下载失败")
                 : QStringLiteral("分片下载失败: %1").arg(err));

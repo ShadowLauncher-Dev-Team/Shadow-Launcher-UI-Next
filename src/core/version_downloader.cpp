@@ -30,6 +30,7 @@
 #include <QNetworkReply>
 #include <QTimer>
 #include <QAtomicInt>
+#include <QSet>
 #include <QUrl>
 
 namespace ShadowLauncher {
@@ -1188,7 +1189,7 @@ void VersionDownloader::collectTasks(const QJsonObject& versionJson,
 // Mirror fallback: switch to next mirror and retry
 // ═══════════════════════════════════════════════════════════
 
-void VersionDownloader::retryWithNextMirror()
+void VersionDownloader::retryWithNextMirror(const QStringList& badPaths)
 {
     if (m_fallbackIndex + 1 >= m_fallbackChain.size())
         return;
@@ -1235,23 +1236,71 @@ void VersionDownloader::retryWithNextMirror()
     QVector<DownloadTask> tasks;
     collectTasks(m_currentVersionJson, m_currentVersionId, m_assetObjects, tasks);
 
-    // Reset tracking — only libraries/jar go back to FileDownloader
+    // Reset tracking — 库/jar 回夸父(FileDownloader)，assets 回山海经(AssetDownloader)
     m_libTasksDone = false;
 
-    // Filter to only library/jar tasks (category 1) for FileDownloader retry
+    // 按类目拆任务：cat==2 → assets；其余 → 库/jar
     QVector<DownloadTask> libTasks;
+    QVector<DownloadTask> assetOnly;
     bool hasLibTasks = false;
     for (const auto& t : tasks) {
-        int cat = m_fileCategory.value(t.savePath, -1);
-        if (cat != 2) {  // not asset → library/jar
+        if (m_fileCategory.value(t.savePath, -1) == 2) {
+            assetOnly.append(t);
+        } else {
             libTasks.append(t);
             hasLibTasks = true;
         }
     }
 
-    m_totalFiles.storeRelaxed(libTasks.size() + (m_assetDownloader ? m_assetDownloader->totalFiles() : 0));
+    // ── assets 必须跟着重下（2026-11-20 修）──
+    // 旧实现只把 cat != 2 交给新的 FileDownloader（注释写着「only libraries/jar
+    // go back to FileDownloader」），assets 任务被整个丢弃；但两侧 totalFiles 仍按
+    // libTasks + m_assetDownloader->totalFiles() 计，且 m_assetTasksDone 保持 true、
+    // 山海经早已收工 → 校验判定缺失的 assets 永远补不回来，下一轮校验必然同批失败，
+    // 直到镜像链耗尽报「N 个文件缺失」（实测读秒级重试同批失败）。
+    // AssetDownloader 已有现成入口 appendTasks()：未运行时内部转 startDownload 并重置
+    // 计数，运行中则追加。已存在且尺寸一致的 asset 走异步缓存预检查 → 不产生流量。
+    if (!assetOnly.isEmpty() && m_assetDownloader) {
+        // 校验判坏的 assets 先清掉：缓存预检查对「存在且尺寸一致」的文件直接判命中，
+        // 不清就等于把这个坏文件又当成已完成（assets/objects 是内容寻址缓存，删掉重下安全）。
+        QSet<QString> bad;
+        for (const QString& p : badPaths) bad.insert(p);
+        QVector<AssetDownloader::AssetTask> assetTasks;
+        assetTasks.reserve(assetOnly.size());
+        for (const auto& t : assetOnly) {
+            if (bad.contains(t.savePath) && QFileInfo::exists(t.savePath)
+                && !QFile::remove(t.savePath)) {
+                emit logMessage(QStringLiteral("[盘古] 警告: 无法删除校验失败的资源文件，可能仍被判为缓存命中: %1")
+                                    .arg(t.savePath));
+            }
+            AssetDownloader::AssetTask at;
+            at.savePath = t.savePath;
+            at.sha1     = t.sha1;
+            at.size     = t.totalBytes;
+            // 源顺序：[新镜像, 其余镜像..., Mojang]——collectTasks 已按 setMirror(next) 排好
+            QStringList mirrors;
+            mirrors << t.url;
+            for (const auto& m : t.mirrors) {
+                if (!mirrors.contains(m)) mirrors << m;
+            }
+            at.mirrors = mirrors;
+            assetTasks.append(at);
+        }
+        m_assetTasksDone = false;   // 必须复位：不然新 FileDownloader 一完成，
+                                    // checkBothDownloadersDone 会在 assets 未下完时就放行
+        m_assetDownloader->appendTasks(assetTasks);
+        emit logMessage(QStringLiteral("[盘古] %1 个资源文件重新交给山海经（已存在的走缓存预检查，不重下）")
+                            .arg(assetTasks.size()));
+    }
+
+    m_totalFiles.storeRelaxed(libTasks.size()
+        + (m_assetDownloader ? m_assetDownloader->totalFiles() : 0));
 
     if (!hasLibTasks) {
+        // 没有库/jar 任务：新建的 FileDownloader 不会被 start()，也就永远不会发
+        // allFinished → m_libTasksDone 若保持 false，checkBothDownloadersDone 永远等不到
+        // （旧实现就在这里直接 return，任务挂死）。库侧直接判完成，让 assets/校验继续。
+        m_libTasksDone = true;
         m_state = Running;
         checkBothDownloadersDone();
         return;
@@ -1279,7 +1328,8 @@ void VersionDownloader::retryWithNextMirror()
     }
     m_downloader->start();
 
-    // AssetDownloader is already running (or completed) — no need to restart
+    // assets 已在上面的 appendTasks() 里重新投递（2026-11-20）：未运行 → 内部转
+    // startDownload 并重置计数；已存在且尺寸一致的走异步缓存预检查，不产生流量。
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1603,8 +1653,6 @@ void VersionDownloader::onVerifyFinished(bool allPassed,
                                           const QStringList& missedLabels,
                                           const QStringList& missedPaths)
 {
-    Q_UNUSED(missedPaths)
-
     // Cleanup thread — direct delete is safe because quit() + wait()
     // guarantees the thread event loop has stopped before we proceed.
     if (m_verifyThread) {
@@ -1641,7 +1689,7 @@ void VersionDownloader::onVerifyFinished(bool allPassed,
             emit logMessage(QStringLiteral("[盘古] [重试] 完整性校验未通过 (%1 缺失), 切换到 %2 重试...")
                                 .arg(missedLabels.size())
                                 .arg(next.name));
-            retryWithNextMirror();
+            retryWithNextMirror(missedPaths);
             return;
         }
 

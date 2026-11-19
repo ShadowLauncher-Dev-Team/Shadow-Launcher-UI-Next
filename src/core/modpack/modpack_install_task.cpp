@@ -730,6 +730,24 @@ void ModpackInstallTask::tryFinalize()
     if (m_cancel) { tryCancelFinish(); return; }
     if (!m_modsDone || !m_mcDone) return;   // 两路都完成才汇合
     if (m_phase == Phase::Error || m_phase == Phase::Cancelled || m_phase == Phase::Done) return;
+
+    // 覆盖风险收尾提示（2026-11-20）：备份失败但旧文件已保留、随后被新文件覆盖的那些路径。
+    // 只在真正收尾（两路都完成）时提示一次，避免每轮补下都刷屏。
+    if (m_downloader) {
+        const QSet<QString> risk = m_downloader->overwriteRiskFiles();
+        if (!risk.isEmpty()) {
+            emit logLine(tr("警告：%1 个旧文件覆盖前备份失败，新文件已覆盖，原内容不可恢复：")
+                             .arg(risk.size()));
+            int shown = 0;
+            for (const QString& p : risk) {
+                if (shown++ >= 5) {
+                    emit logLine(tr("   ...（其余 %1 个见下载日志）").arg(risk.size() - 5));
+                    break;
+                }
+                emit logLine(QStringLiteral("   ") + p);
+            }
+        }
+    }
     runFinalize();
 }
 
@@ -1304,6 +1322,11 @@ bool ModpackInstallTask::retryFailedModFiles()
     m_modsDone = false;
     m_cardDone = false;
     m_busy = true;
+    // m_finalizing 必须和 m_busy 一起复位：fail()/failPartial() 会把它置 true，
+    // 而 onDownloadAllFinished() 首行就是 if (m_finalizing) return;。
+    // 只清 m_busy 不清它 → 补下轮次下载器照跑，但收尾被这道闸吞掉、永不 emit finished，
+    // 任务永久 busy（下一次「补下」也被 isRunning 挡掉），实测必卡死。
+    m_finalizing = false;
     m_modFrac = 0.0;
     m_modPctShown = 0;
     m_cardSpeed = 0;

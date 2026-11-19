@@ -1176,8 +1176,12 @@ void ModDownloadEngine::launchSegment(std::shared_ptr<Item> it, int si)
         const qint64 wait = m_lastMirrorLaunchMs + m_mirrorRateLimitMs - now;
         if (wait > 0) {
             QTimer::singleShot(wait, this, [this, it, si]() {
-                if (m_state == Running && it->segs[si].state == 0
-                    && !it->segs[si].reply) launchSegment(it, si);
+                // 延迟窗口内这一项可能已 fallbackToSingle → clearSegments 把 segs 清空，
+                // 直接 it->segs[si] 是越界 UB（同函数下方的 idle 定时器早就有这层守卫）。
+                // si 本身在入队时已校验，这里只防"延迟期间 segs 缩短"。
+                if (m_state != Running || si < 0 || si >= it->segs.size()) return;
+                if (it->segs[si].state == 0 && !it->segs[si].reply)
+                    launchSegment(it, si);
             });
             return;
         }

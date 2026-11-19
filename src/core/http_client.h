@@ -82,6 +82,11 @@ public:
         explicit DownloadHandle(QObject* parent = nullptr);
         void addReply(QNetworkReply* r);
         void onReplyFinished(QNetworkReply* r);
+        /// 只中止在途请求、**不置取消标记**（2026-11-20）：
+        /// 分片失败降级整包重下时必须用这个，不能用 abort()——
+        /// abort() 会置 m_aborted，而 finishAll 的降级条件与 startSingle 的取消短路
+        /// 都以 m_aborted 判"用户取消"，一置就永远降不了级（旧实现正是这样成为死代码）。
+        void abortInFlightReplies();
         friend class HttpClient;
         QVector<QNetworkReply*> m_replies;
         mutable QMutex m_mutex;
@@ -155,7 +160,8 @@ private:
                      std::function<void(qint64, qint64)> progress,
                      std::function<void(bool, const QString&)> done,
                      qint64 resumeFrom, qint64 expectedSize,
-                     const QString& expectedSha1, DownloadHandle* handle);
+                     const QString& expectedSha1, DownloadHandle* handle,
+                     bool noMirror = false);
 
     // 分片下载入口：探测（Range 判定 + 307 预解析）→ 分片并行 → 合并
     void startChunked(const QString& url, const QString& savePath,

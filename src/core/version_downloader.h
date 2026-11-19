@@ -145,7 +145,10 @@ private:
     static QString formatSize(qint64 bytes);
 
     // --- Mirror fallback ---
-    void retryWithNextMirror();
+    /// badPaths：完整性校验明确判坏（缺失 / SHA1 不符）的文件。
+    /// 切镜像重下时据此清掉这些 assets，否则 AssetDownloader 的缓存预检查
+    /// 会按「存在 + 尺寸一致」判命中，坏文件永远不会被重新拉取（2026-11-20）。
+    void retryWithNextMirror(const QStringList& badPaths = QStringList());
 
     // --- Cross-downloader coordination ---
     void checkBothDownloadersDone();
