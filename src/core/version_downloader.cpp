@@ -1836,7 +1836,11 @@ void VersionDownloader::AsyncVerifyWorker::process() {
         }
         // 主循环只负责报进度（每 100ms 一次），不参与校验本身
         while (!pool.waitForDone(100)) {
-            emit progressChecked(doneCount.loadRelaxed(), n);
+            // 2026-11-20：进度封顶 99%。100% 只在 finished 到来时由步骤态给出。
+            // 旧实现直接报 n/n：用户看到「校验游戏文件 100%」却还在转圈（步骤要等
+            // finished 才标绿），反直觉。现在最多 99%，跳绿那一刻才是真 100%。
+            const int shown = qMin(doneCount.loadRelaxed(), n > 0 ? n - 1 : 0);
+            emit progressChecked(shown, n);
             if (m_cancelled.loadAcquire()) break;
         }
         pool.waitForDone();
@@ -1855,7 +1859,8 @@ void VersionDownloader::AsyncVerifyWorker::process() {
             m_failedPaths.append(badPaths[i]);
         }
     }
-    emit progressChecked(n, n);
+    // 同上：不在这里报 100%，避免「100% 还转圈」
+    emit progressChecked(n > 0 ? n - 1 : 0, n);
     qCInfo(logDownload) << QStringLiteral("[校验] %1 个文件 %2 线程耗时 %3ms，失败 %4")
                                .arg(n).arg(nThreads).arg(total.elapsed()).arg(m_failed);
 

@@ -166,6 +166,11 @@ private:
     /// 终态已开始（fail/failPartial/finishCancelled/completeImport 任一已进入）：
     /// 用于挡住"失败时同步 cancel 下载器 → 重入 onDownloadAllFinished → 反而走完成"的路径。
     bool m_finalizing = false;
+    // 2026-11-20：卡片 MC 区定时同步（原来只在开始/结束各同步一次，
+    // Forge 阶段卡片上的步骤全灰 = 看起来「全部没激活」）
+    QTimer* m_cardSyncTimer = nullptr;
+    // 2026-11-20：模组列表刷新节流（422 个文件逐个 emit 会卡死 UI）
+    bool m_modItemsPending = false;
 
     // ── 并行汇合状态 ──
     bool m_modsDone = false;     // 模组路完成

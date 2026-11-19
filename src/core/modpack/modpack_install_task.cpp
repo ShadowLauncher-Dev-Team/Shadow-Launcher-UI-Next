@@ -570,7 +570,17 @@ void ModpackInstallTask::runDownload()
             m_cardMods[index] = mm;
             syncCardAttachments();
         }
-        emit modItemsChanged();
+        // 2026-11-20：节流。旧实现每个文件完成都 emit modItemsChanged() 并
+        // syncCardAttachments()，422 个小模组批量收尾时等于几百次全量列表重建，
+        // UI 直接卡住。现在 150ms 合并一次，收尾时再补一次最终态。
+        if (m_cardDone) return;
+        if (!m_modItemsPending) {
+            m_modItemsPending = true;
+            QTimer::singleShot(150, this, [this]() {
+                m_modItemsPending = false;
+                emit modItemsChanged();
+            });
+        }
     });
     connect(m_downloader, &ModpackDownloader::queueProgress, this,
             [this](int completed, int total, int failed) {
@@ -1516,6 +1526,16 @@ void ModpackInstallTask::initTaskCard()
     m_mcSessionId.clear();
     m_cardDone = false;
 
+    // 卡片 MC 区每秒跟一次会话步骤（原实现只在开始/结束同步，Forge 阶段卡片全灰）
+    if (!m_cardSyncTimer) {
+        m_cardSyncTimer = new QTimer(this);
+        m_cardSyncTimer->setInterval(1000);
+        connect(m_cardSyncTimer, &QTimer::timeout, this, [this]() {
+            if (m_cardDone) { m_cardSyncTimer->stop(); return; }
+            syncMcSteps();
+        });
+    }
+    m_cardSyncTimer->start();
     m_vb->setModpackCard(m_cardId, [this]() { cancel(); });   // 卡片原生取消控件转发
     m_vb->addTaskCard(m_cardId, tr("导入整合包"));
     m_vb->updateTaskCardSteps(m_cardId, m_cardSteps);

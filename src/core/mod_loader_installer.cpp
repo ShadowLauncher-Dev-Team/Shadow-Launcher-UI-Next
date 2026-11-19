@@ -15,6 +15,7 @@
 #include <QFileInfo>
 #include <QStandardPaths>
 #include <QProcess>
+#include <QPointer>
 #include <QCoreApplication>
 #include <QThread>
 #include <QLockFile>
@@ -3514,18 +3515,28 @@ void ModLoaderInstaller::runBootstrapperLaunch(const QString& installerJarPath,
         QFuture<BootstrapperResult> future = QtConcurrent::run(
             [javaPath, launchArgsWrapper, launchArgsRaw, hasWrapper,
              installerJarPath, loaderName, oldVersionsSnapshot,
-             versionsDirSnapshot, cancelledFlag = m_bootstrapperCancelled]() -> BootstrapperResult {
+             versionsDirSnapshot, cancelledFlag = m_bootstrapperCancelled,
+             self = QPointer<ModLoaderInstaller>(this)]() -> BootstrapperResult {
+            // 2026-11-20：这里原本两次都传 nullptr，于是 runBootstrapperSync 里
+            // 那整套「安装器输出关键词 → 步骤进度」映射是死代码，Forge 安装进度
+            // 永远 0%（影反馈）。现在把回调接上：worker 线程只转发，emit 回主线程。
+            auto stepCb = [self](int pct) {
+                if (!self) return;
+                QMetaObject::invokeMethod(self.data(), [self, pct]() {
+                    if (self) emit self->stepProgress(3, pct);
+                }, Qt::QueuedConnection);
+            };
             // Attempt 1: with JavaWrapper (if available)
             if (hasWrapper) {
                 BootstrapperResult r = runBootstrapperSync(
                     javaPath, launchArgsWrapper, installerJarPath, loaderName,
-                    oldVersionsSnapshot, versionsDirSnapshot, 180000, nullptr, cancelledFlag);
+                    oldVersionsSnapshot, versionsDirSnapshot, 180000, stepCb, cancelledFlag);
                 if (r.success) return r;
             }
             // Attempt 2: raw Java (fallback)
             return runBootstrapperSync(
                 javaPath, launchArgsRaw, installerJarPath, loaderName,
-                oldVersionsSnapshot, versionsDirSnapshot, 180000, nullptr, cancelledFlag);
+                oldVersionsSnapshot, versionsDirSnapshot, 180000, stepCb, cancelledFlag);
         });
 
         m_bootstrapperWatcher->setFuture(future);

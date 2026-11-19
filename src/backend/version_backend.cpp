@@ -9357,12 +9357,25 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
                 else
                     stepIdx = stepIndexByKey(installId, evMap.installKey);
             }
+            // 2026-11-20：index 找不到时按名字兜底。合并安装的版本是自定义 id，
+            // stepIndexByKey(installKey) 可能返回 -1，于是安装器报上来的百分比被
+            // 静默丢弃 —— 这就是「安装 Forge 恒 0%」的另一半原因（前半是回调恒 nullptr）。
+            if (stepIdx < 0) {
+                for (int i = ds->steps.size() - 1; i >= 0; --i) {
+                    const QString n = ds->steps[i].toMap().value(QStringLiteral("name")).toString();
+                    if (n.startsWith(QStringLiteral("安装 "))) { stepIdx = i; break; }
+                }
+                qCInfo(logVersion) << QStringLiteral("[安装] stepProgress 索引缺失，按名称兜底到 idx=%1（step=%2 pct=%3）")
+                                          .arg(stepIdx).arg(step).arg(percentage);
+            }
             // Don't overwrite already-completed steps (e.g. forgeStep1_verify maps to download step 4)
             if (stepIdx >= 0 && stepIdx < ds->steps.size()) {
                 auto curStep = ds->steps[stepIdx].toMap();
                 if (curStep.value(QStringLiteral("status")).toString() == QStringLiteral("completed"))
                     return;
             }
+            qCInfo(logVersion) << QStringLiteral("[安装] 安装器进度 step=%1 pct=%2 → idx=%3")
+                                      .arg(step).arg(percentage).arg(stepIdx);
             updateStep(installId, stepIdx, (percentage >= 100) ? QStringLiteral("completed") : QStringLiteral("active"), percentage);
             if (!ds->isMerged()) {
                 int totalSteps = qMax(ds->steps.size(), 1);
