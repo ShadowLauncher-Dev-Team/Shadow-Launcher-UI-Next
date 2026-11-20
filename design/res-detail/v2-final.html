@@ -1,0 +1,188 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8"><title>资源详情页 · V2 修正版</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1375px;height:900px;overflow:hidden;background:#08090d;color:#e8ebf2;
+  font-family:"Microsoft YaHei UI","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.app{display:flex;width:1375px;height:900px}
+.side{width:208px;flex:none;background:#0a0b0f;border-right:1px solid #14171d;display:flex;flex-direction:column;padding:22px 14px}
+.brand{font-size:15px;font-weight:700;letter-spacing:.14em;color:#dbe3f5;padding:2px 10px 22px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:#98a1ae;font-size:13px;text-decoration:none}
+.nav a.on{background:#12151c;color:#e8ebf2}
+.nav i{width:16px;height:16px;display:block;background:#5d6673;border-radius:3px;opacity:.55}
+.nav a.on i{background:#3b82f6;opacity:1}
+.side .sp{flex:1}
+.side .ver{color:#3f4756;font-size:11px;padding:0 10px}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.top{height:52px;flex:none;display:flex;align-items:center;gap:6px;padding:0 28px;border-bottom:1px solid #14171d}
+.tab{font-size:13px;color:#98a1ae;padding:6px 12px;border-radius:8px}
+.tab.on{background:#161a22;color:#fff;font-weight:600}
+.ret{height:44px;flex:none;display:flex;align-items:center;padding:0 28px}
+.back{font-size:12px;color:#98a1ae;border:1px solid #262b35;border-radius:8px;padding:5px 12px}
+.body{flex:1;min-height:0;padding:0 28px 20px;display:flex;gap:16px;align-items:stretch}
+.cover{width:96px;height:96px;border-radius:10px;background:#12161c;border:1px solid #1b2029;display:flex;align-items:center;justify-content:center}
+.pill{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;gap:6px;font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid #262b35;color:#98a1ae;white-space:nowrap}
+.pill.mr{color:#4ade80;border-color:#1d3a2a;background:#0d1a13}
+.pill.cf{color:#f59e0b;border-color:#3a2d15;background:#1a1409}
+.h1{font-size:26px;font-weight:700;line-height:1.2}
+.h2{font-size:15px;font-weight:600;color:#e8ebf2}
+.sub{font-size:12px;color:#5d6673}
+.txt{font-size:12px;color:#98a1ae;line-height:1.6}
+.card{background:#0b0e13;border:1px solid #14171d;border-radius:12px}
+.stat{background:#0b0e13;border:1px solid #14171d;border-radius:10px;padding:10px 12px;min-width:0}
+.stat .k{font-size:10px;color:#5d6673;margin-bottom:3px}
+.stat .v{font-size:17px;font-weight:600}
+.th{font-size:11px;color:#5d6673;font-weight:400}
+.td{font-size:11px;color:#98a1ae}
+.row{display:flex;align-items:center}
+.g4{gap:4px}.g6{gap:6px}.g8{gap:8px}.g10{gap:10px}.g12{gap:12px}.g16{gap:16px}
+.mt4{margin-top:4px}.mt6{margin-top:6px}.mt8{margin-top:8px}.mt10{margin-top:10px}.mt12{margin-top:12px}
+.mt16{margin-top:16px}.mt18{margin-top:18px}.mt20{margin-top:20px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;border-radius:10px;
+  background:linear-gradient(180deg,#4b8cf7,#2563eb);color:#fff;font-size:13px;font-weight:600;border:0}
+.btn.ghost{background:transparent;border:1px solid #262b35;color:#98a1ae;font-weight:400}
+.divider{height:1px;background:#14171d}
+.tilerow{display:flex;align-items:center;height:34px;border-radius:8px;padding:0 10px}
+.tilerow:hover{background:#0f141b}
+.mono{font-variant-numeric:tabular-nums}
+.bar{height:3px;border-radius:2px;background:#3b82f6}
+
+.sel{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:8px;
+  background:#0d1016;border:1px solid #262b35;font-size:12px;color:#e8ebf2}
+.sel .k{color:#5d6673;font-size:11px}
+.sel .arrow{width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid #5d6673}
+.chk{width:15px;height:15px;border-radius:4px;border:1px solid #2c3a4f;background:#101720;display:flex;align-items:center;justify-content:center}
+.chk.on{background:#3b82f6;border-color:#3b82f6}
+.chk.on:after{content:"";width:7px;height:4px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translateY(-1px)}
+.dep{display:flex;align-items:center;gap:10px;height:44px;padding:0 12px;border-radius:10px;background:#0b0e13;border:1px solid #14171d}
+.tag{font-size:10px;padding:2px 7px;border-radius:999px}
+.tag.req{color:#f59e0b;background:#1a1409;border:1px solid #3a2d15}
+.tag.opt{color:#5d6673;background:#0d1016;border:1px solid #1f242d}
+.collapse{display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border-radius:10px;
+  background:#0b0e13;border:1px solid #14171d;color:#98a1ae;font-size:12px}
+</style></head><body><div class="app">
+<aside class="side"><div class="brand">SHADOW</div><nav class="nav">
+<a><i></i>启动</a><a class="on"><i></i>下载</a><a><i></i>联机</a><a><i></i>统计</a><a><i></i>设置</a>
+</nav><div class="sp"></div><div class="ver">v1.0.4</div></aside>
+<main class="main">
+<div class="top"><span class="tab">MC 版本</span><span class="tab on">Mod</span><span class="tab">光影</span>
+<span class="tab">资源包</span><span class="tab">整合包</span><span class="tab">数据包</span><span class="tab">Java</span></div>
+
+<div class="ret"><span class="back">返回列表</span></div>
+<div class="body" style="flex-direction:column;gap:12px">
+
+  <!-- 头部横幅 -->
+  <div class="card" style="display:flex;gap:18px;padding:16px 20px;background:linear-gradient(120deg,#0d1220,#0b0e13 55%)">
+    <div class="cover" style="width:84px;height:84px"></div>
+    <div style="flex:1;min-width:0">
+      <div class="row g8"><span class="h1" style="font-size:24px">Fabric API</span><span class="pill mr">Modrinth</span></div>
+      <div class="txt mt6" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Lightweight and modular API providing common hooks and intercompatibility measures used by mods using the Fabric toolchain.</div>
+      <div class="row g16 mt10">
+        <div style="font-size:12px;color:#98a1ae">下载量 <b style="color:#e8ebf2">2.8 亿</b></div>
+        <div style="font-size:12px;color:#98a1ae">版本 <b style="color:#e8ebf2">1295</b></div>
+        <div style="font-size:12px;color:#98a1ae">更新 <b style="color:#e8ebf2">2026-11-03</b></div>
+      </div>
+    </div>
+    <div style="width:224px;flex:none">
+      <button class="btn" style="width:100%">下载并安装</button>
+      <div class="sub mt6" style="text-align:center;font-size:10px">安装到 .minecraft/mods</div>
+    </div>
+  </div>
+
+  <!-- 选择器行 -->
+  <div class="row g10">
+    <span class="sel"><span class="k">游戏版本</span>1.21<span class="arrow"></span></span>
+    <span class="sel"><span class="k">加载器</span>Fabric<span class="arrow"></span></span>
+    <div style="flex:1"></div>
+    <span class="sub" style="font-size:11px">选项来自该项目全部可用版本，不是写死的列表</span>
+  </div>
+
+  <div class="row g16" style="flex:1;min-height:0;align-items:flex-start">
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">
+
+      <!-- 可下载版本 -->
+      <div class="card" style="padding:14px 16px">
+        <div class="row g8"><span class="h2">可下载版本</span>
+          <span class="pill" style="font-size:10px">该组合最新</span>
+          <div style="flex:1"></div>
+          <span class="sub" style="font-size:11px">2026-11-03 发布 · 2.2 MB</span></div>
+        <div class="row g10 mt10">
+          <div class="mono" style="font-size:13px;color:#e8ebf2">fabric-api-0.100.7+1.21.jar</div>
+          <div style="flex:1"></div>
+          <span class="pill" style="font-size:10px">Fabric</span>
+          <span class="pill" style="font-size:10px">1.21</span>
+          <button class="btn" style="height:32px;padding:0 18px;font-size:12px">下载</button>
+        </div>
+      </div>
+
+      <!-- 旧版本折叠 -->
+      <div class="collapse">
+        <span style="width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid #5d6673"></span>
+        该组合下还有 <b style="color:#e8ebf2;margin:0 4px">12</b> 个旧版本（点击展开）
+      </div>
+
+      <!-- 前置模组 -->
+      <div class="card" style="padding:14px 16px">
+        <div class="row g8">
+          <span class="h2">此版本要求的前置模组</span>
+          <span class="sub" style="font-size:11px">2 个必需 · 1 个可选</span>
+          <div style="flex:1"></div>
+          <button class="btn ghost" style="height:30px;padding:0 14px;font-size:12px">一键安装全部必需项</button>
+        </div>
+
+        <div class="row g10 mt10">
+          <div class="chk on"></div>
+          <div class="dep" style="flex:1">
+            <div style="width:26px;height:26px;border-radius:6px;background:#12161c;border:1px solid #1b2029"></div>
+            <div style="font-size:12px;color:#e8ebf2">Fabric Language Kotlin</div>
+            <div class="sub" style="font-size:11px">1.13.0+kotlin.2.0.21</div>
+            <div style="flex:1"></div><span class="tag req">必需</span>
+            <button class="btn ghost" style="height:26px;padding:0 12px;font-size:11px">下载</button>
+          </div>
+        </div>
+
+        <div class="row g10 mt8">
+          <div class="chk on"></div>
+          <div class="dep" style="flex:1">
+            <div style="width:26px;height:26px;border-radius:6px;background:#12161c;border:1px solid #1b2029"></div>
+            <div style="font-size:12px;color:#e8ebf2">Fabric Loader</div>
+            <div class="sub" style="font-size:11px">0.16.9</div>
+            <div style="flex:1"></div><span class="tag req">必需</span>
+            <button class="btn ghost" style="height:26px;padding:0 12px;font-size:11px">下载</button>
+          </div>
+        </div>
+
+        <div class="row g10 mt8">
+          <div class="chk"></div>
+          <div class="dep" style="flex:1">
+            <div style="width:26px;height:26px;border-radius:6px;background:#12161c;border:1px solid #1b2029"></div>
+            <div style="font-size:12px;color:#e8ebf2">Mod Menu</div>
+            <div class="sub" style="font-size:11px">11.0.3</div>
+            <div style="flex:1"></div><span class="tag opt">可选</span>
+            <button class="btn ghost" style="height:26px;padding:0 12px;font-size:11px">下载</button>
+          </div>
+        </div>
+
+        <div class="sub mt10" style="font-size:10px">前置版本取自该模组版本的 dependencies，不是项目最新版；切换下方版本会自动重新解析。</div>
+      </div>
+    </div>
+
+    <!-- 右栏 -->
+    <div style="width:296px;flex:none;display:flex;flex-direction:column;gap:12px">
+      <div class="card" style="padding:14px">
+        <div class="h2" style="font-size:13px">安装</div>
+        <div class="sub mt6" style="font-size:11px">已选 fabric-api-0.100.7+1.21</div>
+        <div class="divider mt10"></div>
+        <div class="txt mt10" style="font-size:11px">安装位置<br><span style="color:#e8ebf2">D:/Minecraft/.minecraft/mods</span></div>
+        <div class="row g8 mt10">
+          <button class="btn" style="flex:1;height:34px;font-size:12px">下载并安装</button>
+        </div>
+        <button class="btn ghost mt8" style="width:100%;height:30px;font-size:12px">打开文件夹</button>
+      </div>
+      <div class="card" style="padding:14px">
+        <div class="h2" style="font-size:13px">说明</div>
+        <div class="txt mt6" style="font-size:11px">后端没有「已安装 / 可更新」数据，安装态只有 未安装 / 下载中 / 失败。</div>
+      </div>
+    </div>
+  </div>
+</div></main></div></body></html>

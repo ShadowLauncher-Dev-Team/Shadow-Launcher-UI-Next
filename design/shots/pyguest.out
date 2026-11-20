@@ -1,0 +1,22 @@
+connected to 127.0.0.1 26015
+sent player_ping ts=1794104616325
+  response len=94 b'{"machine_id":"ffffffffffffffffffffffffffffffff","server_ts":1794104616325,"ts":'
+  request c:player_ping len=68
+   -> pong echoed
+sent player_ping ts=1794104618051
+  response len=94 b'{"machine_id":"ffffffffffffffffffffffffffffffff","server_ts":1794104618050,"ts":'
+  request c:player_ping len=68
+   -> pong echoed
+sent player_ping ts=1794104619803
+  response len=94 b'{"machine_id":"ffffffffffffffffffffffffffffffff","server_ts":1794104619803,"ts":'
+sent player_ping ts=1794104621359
+  response len=94 b'{"machine_id":"ffffffffffffffffffffffffffffffff","server_ts":1794104621359,"ts":'
+  request c:player_ping len=68
+   -> pong echoed
+sent player_ping ts=1794104623115
+  response len=94 b'{"machine_id":"ffffffffffffffffffffffffffffffff","server_ts":1794104623506,"ts":'
+sent player_ping ts=1794104624752
+  response len=94 b'{"machine_id":"ffffffffffffffffffffffffffffffff","server_ts":1794104624753,"ts":'
+  request c:player_ping len=68
+   -> pong echoed
+done

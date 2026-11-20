@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>更新卡片 · 设计稿（按真实流程）</title>
+<style>
+:root{
+  --bg:#08090d; --bgRaised:#12151c; --bgHover:#151a23;
+  --line:#14171d; --line2:#262b35; --fg:#e8ebf2; --fg2:#98a1ae; --fg3:#5d6673;
+  --accent:#3b82f6; --accentText:#a9c8ff; --ok:#4ade80;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.5 "Microsoft YaHei UI","Segoe UI",system-ui,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:38px 32px 70px}
+h1{font-size:20px;font-weight:600;margin:0 0 6px}
+.sub{color:var(--fg2);font-size:13px;margin-bottom:22px}
+.facts{background:var(--bgRaised);border:1px solid var(--line2);border-radius:12px;
+  padding:14px 18px;margin-bottom:30px;font-size:12.5px;color:var(--fg2);line-height:1.9}
+.facts b{color:var(--fg);font-weight:600}
+code{background:#0b0e14;border:1px solid var(--line);border-radius:5px;
+  padding:1px 6px;font:12px/1.4 Consolas,monospace;color:var(--accentText)}
+h2{font-size:15px;font-weight:600;margin:34px 0 4px}
+.note{color:var(--fg3);font-size:12px;margin-bottom:14px}
+.stage{background:radial-gradient(1000px 340px at 25% -10%, #12172a 0%, transparent 62%),
+  linear-gradient(#0b0d12,#08090d);border:1px solid var(--line);border-radius:16px;
+  padding:30px;display:flex;flex-wrap:wrap;gap:26px;align-items:center}
+.state{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.cap{color:var(--fg3);font-size:11px;letter-spacing:.06em}
+.logo{width:30px;height:30px;border-radius:8px;object-fit:cover;
+  background:#0b0e14;border:1px solid var(--line2);flex:0 0 auto}
+
+/* A：单行胶囊（对齐 DeepSeek Harness 那条） */
+.a{display:flex;align-items:center;gap:13px;padding:12px 20px 12px 13px;
+  background:var(--bgRaised);border:1px solid var(--line2);border-radius:13px;
+  box-shadow:0 10px 30px rgba(0,0,0,.45);min-width:372px}
+.a .t1{font-size:14px;font-weight:600}
+.a .t2{font-size:12.5px;color:var(--fg2);margin-top:1px}
+.a .spacer{flex:1}
+.a .pct{font-size:12.5px;color:var(--accentText);font-variant-numeric:tabular-nums}
+.a .go{font-size:12.5px;color:var(--fg);background:var(--bgHover);
+  border:1px solid var(--line2);border-radius:8px;padding:5px 11px;white-space:nowrap}
+
+/* B：双行 + 底部细进度条 */
+.b{width:392px;padding:14px 16px 12px;background:var(--bgRaised);
+  border:1px solid var(--line2);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.5)}
+.b .top{display:flex;align-items:center;gap:12px}
+.b .t1{font-size:14px;font-weight:600}
+.b .t2{font-size:12.5px;color:var(--fg2);margin-top:2px}
+.b .track{height:3px;border-radius:3px;background:#1b2029;margin-top:13px;overflow:hidden}
+.b .fill{height:100%;background:linear-gradient(90deg,#2563eb,#4b8cf7);width:62%}
+.b .meta{display:flex;justify-content:space-between;margin-top:7px;font-size:11.5px;color:var(--fg3)}
+.b .meta b{color:var(--fg2);font-weight:500}
+</style></head><body><div class="wrap">
+<h1>启动器 · 更新卡片设计稿（严格按 UpdateManager 真实状态）</h1>
+<div class="sub">左侧统一用启动器图标 resources/app.ico；不新增后端不存在的信息。</div>
+
+<div class="facts">
+<b>代码里真实存在的、能出卡片的状态只有两个：</b><br>
+1. <b>Downloading</b> —— 由 <code>downloadProgress(received, total)</code> 驱动。全项目<u>没有</u>速度、没有剩余时间信号，所以卡片里只能出现「百分比 + 已下载/总计」。<br>
+2. <b>Ready</b> —— 由 <code>updateReadyForRestart(version)</code> 驱动（现为常驻可点 toast，点了走 <code>quitForUpdate()</code>）。<br>
+<u>不做卡片的状态</u>：检查中（瞬时）、已是最新、检查失败、下载失败 —— 这些后端已经用 <code>toastMessage</code> 播报，再做一个卡片就是多余。
+</div>
+
+<h2>方案 A · 单行胶囊（最接近参考图）</h2>
+<div class="note">一行说完状态；右侧只放真实数据（百分比 / 一个动作）。高度约 54px，最省版面。</div>
+<div class="stage">
+  <div class="state"><span class="cap">Downloading · downloadProgress</span>
+    <div class="a">
+      <img class="logo" src="../resources/app.ico" alt="">
+      <div><div class="t1">正在安装更新</div><div class="t2">更新完成后将自动重启应用</div></div>
+      <div class="spacer"></div><span class="pct">62%</span>
+    </div>
+  </div>
+  <div class="state"><span class="cap">Ready · updateReadyForRestart</span>
+    <div class="a">
+      <img class="logo" src="../resources/app.ico" alt="">
+      <div><div class="t1">更新已就绪 v1.0.5</div><div class="t2">重启以完成安装</div></div>
+      <div class="spacer"></div><span class="go">重启</span>
+    </div>
+  </div>
+</div>
+
+<h2>方案 B · 双行 + 底部细进度条</h2>
+<div class="note">进度条只用 received/total；下面的副行写「已下载 / 总计」，不写速度与剩余时间（后端没有这两个数）。</div>
+<div class="stage">
+  <div class="state"><span class="cap">Downloading</span>
+    <div class="b">
+      <div class="top">
+        <img class="logo" src="../resources/app.ico" alt="">
+        <div><div class="t1">正在安装更新</div><div class="t2">更新完成后将自动重启应用</div></div>
+      </div>
+      <div class="track"><div class="fill"></div></div>
+      <div class="meta"><span><b>62%</b></span><span>18.6 MB / 30.0 MB</span></div>
+    </div>
+  </div>
+  <div class="state"><span class="cap">Ready</span>
+    <div class="b" style="width:392px">
+      <div class="top">
+        <img class="logo" src="../../resources/app.ico" alt="">
+        <div><div class="t1">更新已就绪 v1.0.5</div><div class="t2">重启以完成安装</div></div>
+        <div style="flex:1"></div>
+        <span class="go" style="font-size:12.5px;background:var(--bgHover);border:1px solid var(--line2);border-radius:8px;padding:5px 11px">重启</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="facts" style="margin-top:26px">
+<b>两版共同的实现约束（照代码走）：</b><br>
+· Downloading 期间不发 toast，只在卡片里走百分比 → 避免「一边 toast 一边卡片」重复播报；<br>
+· Ready 时卡片替换成可点状态（沿用现有 <code>updateReadyForRestart</code> 的点击行为 = <code>quitForUpdate()</code>）；<br>
+· 失败 / 已是最新仍用现有 <code>toastMessage</code>，不进卡片；<br>
+· 图标固定 app.ico，不按状态换图标（状态用文案表达，减少视觉噪音）。
+</div>
+</div></body></html>

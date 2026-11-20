@@ -1145,6 +1145,26 @@ Item {
         }
     }
 
+    // ── 协议同意 → 主界面的「交接遮罩」（2026-11-20）──
+    // 旧行为：门禁 reveal 淡到 0 的那一帧，下面的主界面才第一次完整绘制
+    // （壁纸 + 侧栏 + 启动页 + 版本列表同时出现），观感就是「硬切 + 闪一下」。
+    // 现在交接瞬间压一层纯色遮罩（在门禁之下、主界面之上），等主界面画出
+    // 第一帧后再淡出；两层淡变叠加 = 干净的交叉溶解，也盖掉了首次布局的跳动。
+    Rectangle {
+        id: handoffVeil
+        anchors.fill: parent
+        z: 950
+        color: Theme.bg
+        opacity: 0
+        visible: opacity > 0.001
+        Behavior on opacity { NumberAnimation { duration: Theme.durPage; easing.type: Theme.easeExit } }
+    }
+    Timer {
+        id: handoffTimer
+        interval: 90
+        onTriggered: handoffVeil.opacity = 0
+    }
+
     // 协议门禁：未同意前盖住整个界面（连侧栏和窗口按钮一起）。
     // 必须**最后声明**：同 z 时后声明者在上；上面那排窗口按钮 z:900，本层 z:1000 仍压住它。
     AgreementGate {
@@ -1152,5 +1172,12 @@ Item {
         anchors.fill: parent
         b: root.b
         hostWindow: root.hostWindow
+
+        // 用户点「同意」→ 立刻压交接遮罩，等主界面画完再淡出（durPage ≈ 90ms 后开始）
+        onClosingChanged: {
+            if (!agreementGate.closing) return
+            handoffVeil.opacity = 1
+            handoffTimer.restart()
+        }
     }
 }
