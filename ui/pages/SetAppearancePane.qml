@@ -568,6 +568,8 @@ Item {
                         cropX: pane.viewCx
                         cropY: pane.viewCy
                         interactive: true
+                        // 动图在这里也播（改取景时能看到真实动态），窗口不在前台就暂停
+                        playing: Window.window ? Window.window.active : true
                         onViewChanged: (z, cx, cy) => {
                             pane.viewZoom = z
                             pane.viewCx = cx
