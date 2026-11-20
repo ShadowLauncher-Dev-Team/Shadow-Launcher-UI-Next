@@ -795,7 +795,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int)
             swprintf_s(dump, L"%s\\card_%d_%d.png", dir.c_str(), i, seq[i] < 0 ? -1 : seq[i]);
             dumpCardToPng(dump);
             const DWORD t0 = GetTickCount();
-            while (GetTickCount() - t0 < 900) { pumpMessages(); Sleep(8); }
+            while (GetTickCount() - t0 < 1800) { pumpMessages(); Sleep(8); }
         }
         DestroyWindow(g_hwnd);
         return 0;
@@ -911,6 +911,21 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int)
     // 800ms 而不是 300ms：卡片要让人看清"完成"这一帧（300ms 基本一闪而过）
     setPhase(L"更新完成，正在启动…", 100);
     Sleep(800);
+    // 2026-11-20：目标目录里没有 Qt 运行库时不要硬起 —— CreateProcessW 会成功，
+    // 但进程在加载阶段失败并弹出系统的「找不到 Qt6Qml.dll，无法继续执行代码」原生对话框，
+    // 用户完全看不懂，还以为更新把启动器弄坏了。这里先体检，给人话提示。
+    if (GetFileAttributesW((appDirW + L"\\Qt6Qml.dll").c_str()) == INVALID_FILE_ATTRIBUTES) {
+        logMsg(L"[SLUpdater] 目标目录缺少 Qt6Qml.dll，跳过自动启动 dir=%s", appDirW.c_str());
+        setPhase(L"更新完成，请手动启动", 100);
+        Sleep(1500);
+        MessageBoxW(nullptr,
+            L"更新已写入，但这个目录里缺少 Qt 运行库（Qt6Qml.dll），无法自动启动。\n"
+            L"请重新安装完整版本，或把完整包里的 DLL 补回该目录。",
+            L"Shadow Launcher 更新", MB_ICONWARNING);
+        DestroyWindow(g_hwnd);
+        return 0;
+    }
+
     STARTUPINFOW si = { sizeof(si) };
     PROCESS_INFORMATION pi = {};
     if (!CreateProcessW(oldExePath.c_str(), nullptr, nullptr, nullptr, FALSE,
