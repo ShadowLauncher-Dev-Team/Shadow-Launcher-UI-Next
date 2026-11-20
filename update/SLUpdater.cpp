@@ -24,21 +24,42 @@
 #include <shellapi.h>
 #include <commctrl.h>
 #include <tlhelp32.h>   // 2026-08-15：枚举/结束 helper 进程（easytier/wv2login 可能锁文件）
+#include <gdiplus.h>    // 2026-11-20：卡片式进度窗口（自绘圆角/阴影/进度条）
 #include <string>
 #include <cstdio>
 #include <cstdarg>
 
 #pragma comment(lib, "comctl32.lib")
+#pragma comment(lib, "gdiplus.lib")
 
 static HWND g_hwnd = nullptr;
-static HWND g_hTitle = nullptr;
-static HWND g_hPhase = nullptr;
-static HWND g_hProgress = nullptr;
-static HBRUSH g_bgBrush = nullptr;
-static HFONT g_titleFont = nullptr;
-static HFONT g_phaseFont = nullptr;
-
 static const wchar_t* kWinClass = L"ShadowUpdateWindow";
+
+// ══ 2026-11-20 改版：无边框圆角卡片（方案 A）═════════════════════════
+// 旧实现是 WS_OVERLAPPED 带系统标题栏的 420x150 窗口 + 两个 STATIC + PROGRESS_CLASS，
+// 和启动器自己的卡片风格完全是两套视觉。现在改成一张悬浮卡：
+//   · UpdateLayeredWindow + 32bpp 位图 → 圆角/阴影/3px 进度条全部抗锯齿，
+//     而且不依赖 DWM 圆角（Win10 上也是圆的）
+//   · GDI+ 自绘：启动器图标 + 标题 + 一句说明 + 进度条 + 「阶段 / 百分比」小字
+//   · 阶段文字没丢，只是缩成 11px 灰字放在进度条下方 —— 否则 92%~100% 那段看不出在干什么
+static const int kCardW  = 360;   // 逻辑像素（96dpi 基准），实际按屏幕 DPI 缩放
+static const int kCardH  = 96;
+static const int kShadow = 14;    // 卡片四周留给阴影的透明边距
+
+static ULONG_PTR g_gdiplus = 0;
+static HDC     g_memDC = nullptr;
+static HBITMAP g_dib = nullptr;
+static HGDIOBJ g_oldBmp = nullptr;
+static void*   g_dibBits = nullptr;
+static int     g_sw = 0, g_sh = 0, g_stride = 0;
+static float   g_scale = 1.0f;
+static HICON   g_icon = nullptr;
+static int     g_progress = -1;                       // -1 = 跑马灯；0..100 = 百分比
+static std::wstring g_phase = L"正在准备更新…";
+static std::wstring g_title = L"正在安装更新";
+static std::wstring g_sub   = L"更新完成后将自动重启应用";
+static DWORD   g_lastRender = 0;
+static bool    g_timerOn = false;
 
 // ── 消息泵：长任务期间保持窗口响应 ──
 static void pumpMessages()
@@ -50,18 +71,347 @@ static void pumpMessages()
     }
 }
 
+static void logMsg(const wchar_t* fmt, ...);       // 定义在文件后段
+
+// ── GDI+ 绘图小工具 ──
+static Gdiplus::Color rgba(BYTE r, BYTE g, BYTE b, BYTE a = 255)
+{
+    return Gdiplus::Color(a, r, g, b);
+}
+
+static Gdiplus::FontFamily& uiFamily()
+{
+    static Gdiplus::FontFamily yahei(L"Microsoft YaHei UI");
+    static Gdiplus::FontFamily segoe(L"Segoe UI");
+    if (yahei.GetLastStatus() == Gdiplus::Ok) return yahei;
+    return segoe;
+}
+
+static void roundRectPath(Gdiplus::GraphicsPath& p, const Gdiplus::RectF& r, float rad)
+{
+    const float d = rad * 2.0f;
+    if (d <= 0.5f) { p.AddRectangle(r); return; }
+    p.AddArc(r.X, r.Y, d, d, 180.0f, 90.0f);
+    p.AddArc(r.GetRight() - d, r.Y, d, d, 270.0f, 90.0f);
+    p.AddArc(r.GetRight() - d, r.GetBottom() - d, d, d, 0.0f, 90.0f);
+    p.AddArc(r.X, r.GetBottom() - d, d, d, 90.0f, 90.0f);
+    p.CloseFigure();
+}
+
+// ── 32bpp 位图表面（分层窗口的绘制目标）──
+static bool ensureSurface(int w, int h)
+{
+    if (!g_memDC) g_memDC = CreateCompatibleDC(nullptr);
+    if (!g_memDC) return false;
+    if (g_dib && g_sw == w && g_sh == h) return true;
+    if (g_dib) {
+        if (g_oldBmp) { SelectObject(g_memDC, g_oldBmp); g_oldBmp = nullptr; }
+        DeleteObject(g_dib);
+        g_dib = nullptr;
+        g_dibBits = nullptr;
+    }
+    BITMAPINFO bi = {};
+    bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bi.bmiHeader.biWidth = w;
+    bi.bmiHeader.biHeight = -h;          // 负数 = 自上而下，行序与屏幕一致
+    bi.bmiHeader.biPlanes = 1;
+    bi.bmiHeader.biBitCount = 32;
+    bi.bmiHeader.biCompression = BI_RGB;
+    g_dib = CreateDIBSection(g_memDC, &bi, DIB_RGB_COLORS, &g_dibBits, nullptr, 0);
+    if (!g_dib || !g_dibBits) return false;
+    g_oldBmp = SelectObject(g_memDC, g_dib);
+    g_sw = w; g_sh = h; g_stride = w * 4;
+    return true;
+}
+
+static Gdiplus::Bitmap* iconToBitmap(HICON ic)
+{
+    if (!ic) return nullptr;
+    ICONINFO ii = {};
+    if (!GetIconInfo(ic, &ii)) return nullptr;
+    Gdiplus::Bitmap* b = nullptr;
+    if (ii.hbmColor) b = Gdiplus::Bitmap::FromHBITMAP(ii.hbmColor, nullptr);
+    if (ii.hbmColor) DeleteObject(ii.hbmColor);
+    if (ii.hbmMask) DeleteObject(ii.hbmMask);
+    if (b && b->GetLastStatus() != Gdiplus::Ok) { delete b; return nullptr; }
+    return b;
+}
+
+// ── 圆角/阴影用解析式 alpha 遮罩生成 ──
+// 之前用"一圈圈同心圆角矩形叠阴影 + GDI+ 抗锯齿路径"，结果一是阴影有环带，
+// 二是文字走 GDI+ 在 32bpp+alpha 表面上会退化成灰度 AA，深底浅字小字号直接笔画断裂
+// （影的原话："分辨率极低，文字、图标甚至有锯齿"）。
+// 现在：卡面/进度条用 GDI+ 画、文字用 GDI ClearType 画、圆角与阴影由下面这个
+// 逐像素遮罩生成 —— 边缘是真正 1px 抗锯齿，阴影是平滑衰减，没有环带。
+static inline float clamp01(float v) { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }
+
+// 圆角矩形的有符号距离（<0 在内部）
+static float sdRoundRect(float px, float py, float x, float y, float w, float h, float r)
+{
+    const float cx = x + w * 0.5f, cy = y + h * 0.5f;
+    const float hx = w * 0.5f - r, hy = h * 0.5f - r;
+    const float dx = fabsf(px - cx) - hx;
+    const float dy = fabsf(py - cy) - hy;
+    const float ox = dx > 0.0f ? dx : 0.0f;
+    const float oy = dy > 0.0f ? dy : 0.0f;
+    const float outside = sqrtf(ox * ox + oy * oy);
+    const float inside = (dx > dy ? dx : dy);
+    return outside + (inside > 0.0f ? 0.0f : inside) - r;
+}
+
+static long g_opaquePixels = 0;
+static void applyCardMask(int w, int h, float x, float y, float cw, float ch, float rad,
+                          float margin, float shadowOffY)
+{
+    g_opaquePixels = 0;
+    BYTE* px = static_cast<BYTE*>(g_dibBits);
+    for (int yy = 0; yy < h; ++yy) {
+        const float fy = static_cast<float>(yy) + 0.5f;
+        BYTE* row = px + static_cast<size_t>(yy) * static_cast<size_t>(g_stride);
+        for (int xx = 0; xx < w; ++xx) {
+            const float fx = static_cast<float>(xx) + 0.5f;
+            const float d = sdRoundRect(fx, fy, x, y, cw, ch, rad);
+            const float cover = clamp01(0.5f - d);          // 卡片覆盖率（1px 过渡）
+            float a = cover;
+            if (cover < 1.0f) {
+                const float ds = sdRoundRect(fx, fy - shadowOffY, x, y, cw, ch, rad);
+                float sa = 0.0f;
+                if (ds > 0.0f && ds < margin) {
+                    const float t = 1.0f - ds / margin;
+                    sa = 0.58f * t * t * t;                 // 三次衰减，越远越淡
+                }
+                a = cover + sa * (1.0f - cover);
+                if (a > 1.0f) a = 1.0f;
+            }
+            BYTE* q = row + static_cast<size_t>(xx) * 4;
+            const BYTE av = static_cast<BYTE>(a * 255.0f + 0.5f);
+            if (a >= 0.999f) ++g_opaquePixels;
+            q[3] = av;
+            if (av == 0) {
+                q[0] = q[1] = q[2] = 0;
+            } else if (av < 255) {                          // 预乘 alpha（分层窗口要求）
+                q[0] = static_cast<BYTE>(q[0] * av / 255);
+                q[1] = static_cast<BYTE>(q[1] * av / 255);
+                q[2] = static_cast<BYTE>(q[2] * av / 255);
+            }
+        }
+    }
+}
+
+// GDI + ClearType 写字（不透明底上才清楚）
+static void drawTextGdi(HDC dc, const std::wstring& text, int x, int y, int w, int h,
+                        int px, int weight, COLORREF color, UINT fmt)
+{
+    HFONT f = CreateFontW(-px, 0, 0, 0, weight, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                          OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+                          DEFAULT_PITCH | FF_DONTCARE, L"Microsoft YaHei UI");
+    HGDIOBJ old = SelectObject(dc, f);
+    SetBkMode(dc, TRANSPARENT);
+    SetTextColor(dc, color);
+    RECT r = { x, y, x + w, y + h };
+    DrawTextW(dc, text.c_str(), static_cast<int>(text.size()), &r,
+              fmt | DT_SINGLELINE | DT_NOPREFIX | DT_VCENTER);
+    SelectObject(dc, old);
+    DeleteObject(f);
+}
+
+// 取 PNG 编码器 CLSID
+static int pngEncoderClsid(CLSID* clsid)
+{
+    UINT num = 0, size = 0;
+    Gdiplus::GetImageEncodersSize(&num, &size);
+    if (size == 0) return -1;
+    Gdiplus::ImageCodecInfo* info = (Gdiplus::ImageCodecInfo*)malloc(size);
+    if (!info) return -1;
+    Gdiplus::GetImageEncoders(num, size, info);
+    int found = -1;
+    for (UINT i = 0; i < num; ++i) {
+        if (wcscmp(info[i].MimeType, L"image/png") == 0) { *clsid = info[i].Clsid; found = 0; break; }
+    }
+    free(info);
+    return found;
+}
+
+// 把当前位图导出成 PNG（反预乘回直通 alpha）——开发模式用来核对真实像素
+static void dumpCardToPng(const std::wstring& path)
+{
+    if (!g_dibBits || g_sw <= 0 || g_sh <= 0) return;
+    Gdiplus::Bitmap out(g_sw, g_sh, PixelFormat32bppARGB);
+    Gdiplus::Rect r(0, 0, g_sw, g_sh);
+    Gdiplus::BitmapData bd;
+    if (out.LockBits(&r, Gdiplus::ImageLockModeWrite, PixelFormat32bppARGB, &bd) != Gdiplus::Ok)
+        return;
+    BYTE* dst = static_cast<BYTE*>(bd.Scan0);
+    const BYTE* src = static_cast<const BYTE*>(g_dibBits);
+    for (int y = 0; y < g_sh; ++y) {
+        for (int x = 0; x < g_sw; ++x) {
+            const BYTE* sp = src + static_cast<size_t>(y) * g_stride + x * 4;
+            BYTE* dp = dst + static_cast<size_t>(y) * bd.Stride + x * 4;
+            const BYTE a = sp[3];
+            dp[3] = a;
+            if (a == 0) { dp[0] = dp[1] = dp[2] = 0; continue; }
+            for (int k = 0; k < 3; ++k) {
+                const int v = sp[k] * 255 / a;
+                dp[k] = static_cast<BYTE>(v > 255 ? 255 : v);
+            }
+        }
+    }
+    out.UnlockBits(&bd);
+    CLSID png;
+    if (pngEncoderClsid(&png) >= 0)
+        out.Save(path.c_str(), &png, nullptr);
+}
+
+// ── 整卡重绘（只在阶段/百分比变化时调用；用节流避免每复制一个文件就重绘）──
+static void renderCard()
+{
+    if (!g_hwnd) return;
+    const int winW = g_sw, winH = g_sh;
+    if (winW <= 0 || winH <= 0) return;
+    if (!ensureSurface(winW, winH)) return;
+
+    const float s = g_scale;
+    const float m = static_cast<float>(kShadow) * s;          // 阴影边距
+    const float cw = static_cast<float>(winW) - m * 2.0f;      // 卡片宽高
+    const float chh = static_cast<float>(winH) - m * 2.0f;
+    const float rad = 14.0f * s;
+    const float pad = 16.0f * s;
+    const float isz = 30.0f * s;
+    const float ix = m + pad, iy = m + pad;
+    const float tx = ix + isz + 13.0f * s;
+    const float textW = (m + cw - pad) - tx;
+    const float trackW = cw - pad * 2.0f;
+    const float th = (3.0f * s < 2.0f) ? 2.0f : 3.0f * s;
+    const float ty = iy + isz + 12.0f * s;
+    const float my = ty + th + 8.0f * s;
+
+    memset(g_dibBits, 0, static_cast<size_t>(g_stride) * static_cast<size_t>(winH));
+
+    {
+        Gdiplus::Graphics gfx(g_memDC);
+        gfx.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+        gfx.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+        gfx.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+
+        // 卡面底色：多铺 1px 保证抗锯齿边缘不漏底（圆角由 alpha 遮罩裁）
+        Gdiplus::SolidBrush bg(rgba(0x14, 0x1A, 0x24));
+        gfx.FillRectangle(&bg, Gdiplus::RectF(m - 1.0f, m - 1.0f, cw + 2.0f, chh + 2.0f));
+
+        // 1px 描边
+        Gdiplus::GraphicsPath edge;
+        roundRectPath(edge, Gdiplus::RectF(m + 0.5f, m + 0.5f, cw - 1.0f, chh - 1.0f), rad);
+        Gdiplus::Pen pen(rgba(0x26, 0x2B, 0x35), 1.0f);
+        gfx.DrawPath(&pen, &edge);
+
+        // 启动器图标（圆角裁切）
+        if (Gdiplus::Bitmap* ib = iconToBitmap(g_icon)) {
+            Gdiplus::GraphicsPath clip;
+            roundRectPath(clip, Gdiplus::RectF(ix, iy, isz, isz), 8.0f * s);
+            gfx.SetClip(&clip);
+            gfx.DrawImage(ib, Gdiplus::RectF(ix, iy, isz, isz));
+            gfx.ResetClip();
+            delete ib;
+        }
+
+        // 进度条（3px 圆头）
+        Gdiplus::GraphicsPath trackPath;
+        roundRectPath(trackPath, Gdiplus::RectF(ix, ty, trackW, th), th * 0.5f);
+        Gdiplus::SolidBrush trackBr(rgba(0x1B, 0x20, 0x29));
+        gfx.FillPath(&trackBr, &trackPath);
+
+        gfx.SetClip(&trackPath);
+        if (g_progress < 0) {
+            const float segW = trackW * 0.35f;
+            const float span = trackW + segW;
+            const double ph = static_cast<double>(GetTickCount() % 1500) / 1500.0;
+            const float x0 = static_cast<float>(ph * span) - segW;
+            Gdiplus::GraphicsPath fp;
+            roundRectPath(fp, Gdiplus::RectF(ix + x0, ty, segW, th), th * 0.5f);
+            Gdiplus::LinearGradientBrush gb(Gdiplus::PointF(ix + x0, ty),
+                                            Gdiplus::PointF(ix + x0 + segW, ty),
+                                            rgba(0x25, 0x63, 0xEB), rgba(0x4B, 0x8C, 0xF7));
+            gfx.FillPath(&gb, &fp);
+        } else if (g_progress > 0) {
+            const float fw = trackW * static_cast<float>(g_progress) / 100.0f;
+            if (fw > th * 0.5f) {
+                Gdiplus::GraphicsPath fp;
+                roundRectPath(fp, Gdiplus::RectF(ix, ty, fw, th), th * 0.5f);
+                Gdiplus::LinearGradientBrush gb(Gdiplus::PointF(ix, ty),
+                                                Gdiplus::PointF(ix + trackW, ty),
+                                                rgba(0x25, 0x63, 0xEB), rgba(0x4B, 0x8C, 0xF7));
+                gfx.FillPath(&gb, &fp);
+            }
+        }
+        gfx.ResetClip();
+    }   // ← GDI+ 先析构，再用 GDI 写字，两套绘制不交错
+
+    {
+        const int titlePx = static_cast<int>(14.0f * s + 0.5f);
+        const int subPx   = static_cast<int>(12.0f * s + 0.5f);
+        const int metaPx  = static_cast<int>(11.0f * s + 0.5f);
+        const int titleY  = static_cast<int>(iy - 3.0f * s);
+        const int titleH  = static_cast<int>(19.0f * s);
+        const int subY    = static_cast<int>(iy + 19.0f * s);
+        const int subH    = static_cast<int>(16.0f * s);
+        const int metaY   = static_cast<int>(my - 1.0f * s);
+        const int metaH   = static_cast<int>(15.0f * s);
+
+        drawTextGdi(g_memDC, g_title, static_cast<int>(tx), titleY, static_cast<int>(textW), titleH,
+                    titlePx, FW_SEMIBOLD, RGB(0xE8, 0xEB, 0xF2), DT_LEFT);
+        drawTextGdi(g_memDC, g_sub, static_cast<int>(tx), subY, static_cast<int>(textW), subH,
+                    subPx, FW_NORMAL, RGB(0x98, 0xA1, 0xAE), DT_LEFT);
+        drawTextGdi(g_memDC, g_phase, static_cast<int>(ix), metaY,
+                    static_cast<int>(trackW - 52.0f * s), metaH,
+                    metaPx, FW_NORMAL, RGB(0x5D, 0x66, 0x73), DT_LEFT | DT_END_ELLIPSIS);
+
+        const std::wstring pct = (g_progress < 0) ? std::wstring(L"…")
+                               : (g_progress >= 100 ? std::wstring(L"完成")
+                                                    : (std::to_wstring(g_progress) + L"%"));
+        drawTextGdi(g_memDC, pct, static_cast<int>(ix), metaY, static_cast<int>(trackW), metaH,
+                    metaPx, FW_NORMAL, RGB(0x98, 0xA1, 0xAE), DT_RIGHT);
+    }
+
+    applyCardMask(winW, winH, m, m, cw, chh, rad, m - 1.0f, 2.0f * s);
+
+    RECT wr = { 0, 0, 0, 0 };
+    GetWindowRect(g_hwnd, &wr);
+    POINT ptDst = { wr.left, wr.top };
+    POINT ptSrc = { 0, 0 };
+    SIZE  sz = { winW, winH };
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+    const BOOL ulwOk = UpdateLayeredWindow(g_hwnd, nullptr, &ptDst, &sz, g_memDC,
+                                           &ptSrc, 0, &bf, ULW_ALPHA);
+    if (!ulwOk)
+        logMsg(L"[SLUpdater] UpdateLayeredWindow 失败 err=%lu", GetLastError());
+}
+
 // ── 阶段推进：percent < 0 = 跑马灯（不定进度）──
 static void setPhase(const wchar_t* text, int percent)
 {
-    if (g_hPhase) SetWindowTextW(g_hPhase, text);
-    if (g_hProgress) {
-        if (percent < 0) {
-            SendMessageW(g_hProgress, PBM_SETMARQUEE, TRUE, 40);
-        } else {
-            SendMessageW(g_hProgress, PBM_SETMARQUEE, FALSE, 0);
-            SendMessageW(g_hProgress, PBM_SETPOS, percent, 0);
-        }
+    bool changed = false;
+    if (g_phase != text) { g_phase = text; changed = true; }
+
+    if (percent >= 100) {
+        // 收尾：文案切到「正在启动新版本」（卡片上的最后 0.3 秒）
+        if (g_title != L"正在启动新版本") { g_title = L"正在启动新版本"; changed = true; }
+        if (g_sub != L"即将自动回到启动器") { g_sub = L"即将自动回到启动器"; changed = true; }
     }
+    if (g_progress != percent) { g_progress = percent; changed = true; }
+
+    // 跑马灯需要一个定时器推进；有真实百分比就不需要
+    if (percent < 0) {
+        if (!g_timerOn && g_hwnd) { SetTimer(g_hwnd, 1, 40, nullptr); g_timerOn = true; }
+    } else {
+        if (g_timerOn && g_hwnd) { KillTimer(g_hwnd, 1); g_timerOn = false; }
+    }
+
+    // 节流：复制阶段每个文件都会调一次，不能每次都整卡重绘（GDI+ 文字代价不小）
+    const DWORD now = GetTickCount();
+    if (changed && (percent < 0 || percent >= 100 || now - g_lastRender >= 50)) {
+        renderCard();
+        g_lastRender = now;
+    }
+    if (changed) logMsg(L"[SLUpdater] 阶段: %s (%d%%)", text, percent);
     pumpMessages();
 }
 
@@ -103,77 +453,84 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
     switch (msg) {
     case WM_CLOSE:
         return 0;   // 更新进行中禁止关闭（关闭=残缺安装）
-    case WM_CTLCOLORSTATIC: {
-        HDC hdc = reinterpret_cast<HDC>(wp);
-        SetTextColor(hdc, RGB(0xE6, 0xE8, 0xEE));
-        SetBkColor(hdc, RGB(0x14, 0x1A, 0x24));
-        return reinterpret_cast<LRESULT>(g_bgBrush);
+    case WM_LBUTTONDOWN:
+        // 无标题栏：整张卡都可以拖动
+        ReleaseCapture();
+        SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+        return 0;
+    case WM_TIMER:
+        if (wp == 1) renderCard();     // 跑马灯动画
+        return 0;
+    case WM_DPICHANGED: {
+        g_scale = static_cast<float>(HIWORD(wp)) / 96.0f;
+        const int nw = static_cast<int>((kCardW + 2 * kShadow) * g_scale + 0.5f);
+        const int nh = static_cast<int>((kCardH + 2 * kShadow) * g_scale + 0.5f);
+        const RECT* r = reinterpret_cast<const RECT*>(lp);
+        SetWindowPos(hwnd, nullptr, r->left, r->top, nw, nh,
+                     SWP_NOZORDER | SWP_NOACTIVATE);
+        renderCard();
+        return 0;
     }
-    case WM_ERASEBKGND:
-        if (g_bgBrush) {
-            RECT rc;
-            GetClientRect(hwnd, &rc);
-            FillRect(reinterpret_cast<HDC>(wp), &rc, g_bgBrush);
-            return 1;
-        }
-        break;
     }
     return DefWindowProcW(hwnd, msg, wp, lp);
 }
 
-// ── 深色小窗口（对齐启动器卡片风格）──
-static void createProgressWindow(HINSTANCE hInst)
+// ── 卡片式进度窗口 ──
+static HICON loadLauncherIcon(const std::wstring& exePath)
 {
-    g_bgBrush = CreateSolidBrush(RGB(0x14, 0x1A, 0x24));
+    // 优先要 64x64（卡面按 30 逻辑像素画，125%/150% 缩放时需要更大源图才不糊）
+    typedef UINT (WINAPI* PFN_PEI)(LPCWSTR, int, int, int, HICON*, UINT*, UINT, UINT);
+    PFN_PEI pei = reinterpret_cast<PFN_PEI>(
+        GetProcAddress(GetModuleHandleW(L"user32.dll"), "PrivateExtractIconsW"));
+    if (pei) {
+        HICON ic = nullptr;
+        if (pei(exePath.c_str(), 0, 256, 256, &ic, nullptr, 1, 0) && ic) return ic;
+        if (pei(exePath.c_str(), 0, 64, 64, &ic, nullptr, 1, 0) && ic) return ic;
+    }
+    HICON big = nullptr;
+    if (ExtractIconExW(exePath.c_str(), 0, &big, nullptr, 1) > 0) return big;
+    return nullptr;
+}
 
+static void createProgressWindow(HINSTANCE hInst, const std::wstring& launcherExe)
+{
     WNDCLASSEXW wc = {};
     wc.cbSize = sizeof(wc);
     wc.lpfnWndProc = wndProc;
     wc.hInstance = hInst;
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    wc.hbrBackground = g_bgBrush;
     wc.lpszClassName = kWinClass;
     RegisterClassExW(&wc);
 
-    constexpr int kClientW = 420, kClientH = 150;
-    RECT rc = { 0, 0, kClientW, kClientH };
-    AdjustWindowRectEx(&rc, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, FALSE, 0);
-    const int w = rc.right - rc.left, h = rc.bottom - rc.top;
-    const int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
+    g_icon = loadLauncherIcon(launcherExe);
 
-    g_hwnd = CreateWindowExW(0, kWinClass, L"Shadow Launcher 更新中",
-        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
-        (sw - w) / 2, (sh - h) / 2, w, h,
-        nullptr, nullptr, hInst, nullptr);
+    const int winW = static_cast<int>((kCardW + 2 * kShadow) * g_scale + 0.5f);
+    const int winH = static_cast<int>((kCardH + 2 * kShadow) * g_scale + 0.5f);
 
-    // 禁用系统菜单的关闭项（灰化）
-    HMENU sys = GetSystemMenu(g_hwnd, FALSE);
-    if (sys) EnableMenuItem(sys, SC_CLOSE, MF_BYCOMMAND | MF_GRAYED);
+    // WS_EX_TOPMOST 必须有：实测普通 z 序下，卡片会被前台窗口（浏览器/聊天）整块盖住，
+    // 用户只看到"启动器关了、什么都没发生"。更新卡片就活几秒，置顶是对的行为。
+    g_hwnd = CreateWindowExW(WS_EX_LAYERED, kWinClass, L"Shadow Launcher 更新中",
+                             WS_POPUP, 0, 0, winW, winH, nullptr, nullptr, hInst, nullptr);
+    if (!g_hwnd)
+        logMsg(L"[SLUpdater] 创建卡片窗口失败 err=%lu", GetLastError());
 
-    // 标题（大号）
-    g_hTitle = CreateWindowExW(0, L"STATIC", L"正在准备更新…",
-        WS_CHILD | WS_VISIBLE | SS_CENTER, 0, 18, kClientW, 28,
-        g_hwnd, nullptr, hInst, nullptr);
-    g_titleFont = CreateFontW(20, 0, 0, 0, FW_SEMIBOLD, 0, 0, 0,
-        DEFAULT_CHARSET, 0, 0, ANTIALIASED_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
-    SendMessageW(g_hTitle, WM_SETFONT, reinterpret_cast<WPARAM>(g_titleFont), TRUE);
+    // 工作区居中（避开任务栏）
+    RECT wa = { 0, 0, 1920, 1080 };
+    SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0);
+    SetWindowPos(g_hwnd, HWND_TOPMOST,
+                 wa.left + (wa.right - wa.left - winW) / 2,
+                 wa.top + (wa.bottom - wa.top - winH) / 2,
+                 winW, winH, SWP_SHOWWINDOW | SWP_NOACTIVATE);
 
-    // 阶段文字
-    g_hPhase = CreateWindowExW(0, L"STATIC", L"…",
-        WS_CHILD | WS_VISIBLE | SS_CENTER, 0, 56, kClientW, 22,
-        g_hwnd, nullptr, hInst, nullptr);
-    g_phaseFont = CreateFontW(15, 0, 0, 0, FW_NORMAL, 0, 0, 0,
-        DEFAULT_CHARSET, 0, 0, ANTIALIASED_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
-    SendMessageW(g_hPhase, WM_SETFONT, reinterpret_cast<WPARAM>(g_phaseFont), TRUE);
-
-    // 进度条
-    g_hProgress = CreateWindowExW(0, PROGRESS_CLASSW, L"",
-        WS_CHILD | WS_VISIBLE | PBS_SMOOTH | PBS_MARQUEE, 40, 94, kClientW - 80, 16,
-        g_hwnd, nullptr, hInst, nullptr);
-    SendMessageW(g_hProgress, PBM_SETMARQUEE, FALSE, 0);
-
-    ShowWindow(g_hwnd, SW_SHOW);
+    ensureSurface(winW, winH);
+    renderCard();
     UpdateWindow(g_hwnd);
+    // 画完再抬一次 z 序（不激活）：只带 SWP_SHOWWINDOW 的置顶在某些情况下
+    // 仍会被前台窗口压住，这里补一次显式 topmost 抬升。
+    // 卡片是"正在替换启动器"的唯一可视反馈，必须真的在最前面：
+    // 置顶（不抢焦点，避免打断开着游戏的用户）
+    SetWindowPos(g_hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE);
     pumpMessages();
 }
 
@@ -275,6 +632,10 @@ static bool copyFileOverwrite(const std::wstring& src, const std::wstring& dst,
                               std::wstring* failPath = nullptr)
 {
     for (int attempt = 0; attempt < 8; ++attempt) {
+        // 2026-11-20 实测：目标文件带只读属性时 CopyFileW 恒报 ERROR_ACCESS_DENIED(5)，
+        // 后面 DeleteFileW 也删不掉 → 8 次重试纯浪费 18 秒，整个更新被迫中止。
+        // 覆盖前先把目标属性清成 NORMAL（失败无所谓，只是尽力而为）。
+        SetFileAttributesW(dst.c_str(), FILE_ATTRIBUTE_NORMAL);
         if (CopyFileW(src.c_str(), dst.c_str(), FALSE)) return true;
         const DWORD err = GetLastError();
         DeleteFileW(dst.c_str());
@@ -365,11 +726,80 @@ static void deleteStaleFiles(const std::wstring& appDir, const std::wstring& kee
     FindClose(hFind);
 }
 
+// ── 2026-11-20：进程级 DPI 感知（卡片按物理像素自绘，不感知会整体发虚）──
+static void enableDpiAwareness()
+{
+    typedef BOOL (WINAPI* PFN_SETCTX)(HANDLE);
+    auto p = reinterpret_cast<PFN_SETCTX>(
+        GetProcAddress(GetModuleHandleW(L"user32.dll"), "SetProcessDpiAwarenessContext"));
+    // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 == (HANDLE)-4
+    if (p && p(reinterpret_cast<HANDLE>(static_cast<INT_PTR>(-4)))) return;
+    SetProcessDPIAware();   // Win7/8 兜底
+}
+
+static UINT systemDpi()
+{
+    typedef UINT (WINAPI* PFN_GETDPI)(void);
+    auto p = reinterpret_cast<PFN_GETDPI>(
+        GetProcAddress(GetModuleHandleW(L"user32.dll"), "GetDpiForSystem"));
+    if (p) {
+        const UINT d = p();
+        if (d >= 48 && d <= 480) return d;
+    }
+    HDC dc = GetDC(nullptr);
+    const UINT d = dc ? static_cast<UINT>(GetDeviceCaps(dc, LOGPIXELSY)) : 96u;
+    if (dc) ReleaseDC(nullptr, dc);
+    return d ? d : 96u;
+}
+
 int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int)
 {
+    enableDpiAwareness();
+    {
+        Gdiplus::GdiplusStartupInput gi;
+        if (Gdiplus::GdiplusStartup(&g_gdiplus, &gi, nullptr) != Gdiplus::Ok)
+            g_gdiplus = 0;
+        g_scale = static_cast<float>(systemDpi()) / 96.0f;
+        if (g_scale < 0.75f) g_scale = 1.0f;
+    }
+
     // 2026-08-11 修复：wWinMain 的 lpCmdLine 不含程序名，必须用 GetCommandLineW()
     int argc = 0;
     LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+
+    // ── 开发用：--card-test 只把卡片显示出来并循环几档进度（不碰任何文件）──
+    //    SLUpdater.exe --card-test [top]
+    //    不给 top 就按正式流程的 z 序显示；给 top 则强制置顶，用来区分
+    //    「画不出来」和「被别的窗口挡住」两种看不见。
+    if (argc >= 2 && _wcsicmp(argv[1], L"--card-test") == 0) {
+        const bool forcedTop = (argc >= 3 && _wcsicmp(argv[2], L"top") == 0);
+        wchar_t self[MAX_PATH] = { 0 };
+        GetModuleFileNameW(nullptr, self, MAX_PATH);
+        std::wstring selfPath = self;
+        const size_t slash = selfPath.find_last_of(L"\\/");
+        const std::wstring dir = (slash == std::wstring::npos) ? std::wstring()
+                                                              : selfPath.substr(0, slash);
+        LocalFree(argv);
+        openLog(dir);                       // 诊断日志写到 <dir>\_update\sl_updater.log
+        logMsg(L"[SLUpdater] --card-test 开始 dir=%s top=%d", dir.c_str(), forcedTop ? 1 : 0);
+        createProgressWindow(hInst, dir + L"\\ShadowLauncher.exe");
+        if (forcedTop)
+            SetWindowPos(g_hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                         SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+        const int seq[] = { -1, 8, 25, 62, 87, 100 };
+        const wchar_t* txt[] = { L"正在等待旧版本退出…", L"正在更新文件…", L"正在更新文件…",
+                                 L"正在更新文件…", L"正在更新文件…", L"更新完成，正在启动…" };
+        for (int i = 0; i < 6; ++i) {
+            setPhase(txt[i], seq[i]);
+            wchar_t dump[MAX_PATH] = { 0 };
+            swprintf_s(dump, L"%s\\card_%d_%d.png", dir.c_str(), i, seq[i] < 0 ? -1 : seq[i]);
+            dumpCardToPng(dump);
+            const DWORD t0 = GetTickCount();
+            while (GetTickCount() - t0 < 900) { pumpMessages(); Sleep(8); }
+        }
+        DestroyWindow(g_hwnd);
+        return 0;
+    }
 
     if (argc < 4) {
         MessageBoxW(nullptr,
@@ -397,8 +827,8 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int)
     std::wstring appDirW = oldExePath.substr(0, oldExePath.find_last_of(L"\\/"));
     const bool isFull = !fullExtractDir.empty();
 
-    // ── 1. 进度窗口 ──
-    createProgressWindow(hInst);
+    // ── 1. 进度窗口（图标取自启动器 exe）──
+    createProgressWindow(hInst, oldExePath);
     setPhase(L"正在等待旧版本退出…", -1);
 
     // ── 2. 等旧进程退出（30s 超时强制终止）──
@@ -421,6 +851,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int)
     if (isFull) {
         openLog(appDirW);
         logMsg(L"[SLUpdater] 全量更新开始 oldPid=%lu isFull=1", oldPid);
+        logMsg(L"[SLUpdater] dpi=%u scale=%.2f 窗口=%dx%d（物理像素）", systemDpi(), g_scale, g_sw, g_sh);
         setPhase(L"正在更新文件…", 5);
         DWORD total = countFilesRecursive(fullExtractDir);
         DWORD done = 0;
@@ -477,8 +908,9 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int)
     pumpMessages();
 
     // ── 6. 重启新版本 ──
+    // 800ms 而不是 300ms：卡片要让人看清"完成"这一帧（300ms 基本一闪而过）
     setPhase(L"更新完成，正在启动…", 100);
-    Sleep(300);
+    Sleep(800);
     STARTUPINFOW si = { sizeof(si) };
     PROCESS_INFORMATION pi = {};
     if (!CreateProcessW(oldExePath.c_str(), nullptr, nullptr, nullptr, FALSE,

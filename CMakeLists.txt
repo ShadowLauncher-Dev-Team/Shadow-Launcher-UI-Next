@@ -967,7 +967,8 @@ target_compile_options(SLUpdater PRIVATE /utf-8 /MT)
 # 覆盖复制该 DLL 恒报 error 32（实测 _update/sl_updater.log 8 次重试全失败）
 target_link_libraries(SLUpdater PRIVATE
     shell32
-    comctl32    # 2026-08-15：进度条控件 PROGRESS_CLASS
+    comctl32    # 2026-08-15：进度条控件 PROGRESS_CLASS（2026-11-20 已改自绘，保留不影响）
+    gdiplus     # 2026-11-20：卡片式进度窗口自绘（圆角/阴影/抗锯齿文字）
 )
 
 # ============================================================

@@ -10,6 +10,8 @@
 >
 > 更新日志见文末「文档更新记录」。
 
+> 2026-11-20 变更：`ui/AgreementGate.qml` 的所有"铺满整窗"层（背景实底/壁纸/顶部渐变）改为绑 `gate.reveal`（入场用 `backdropAlpha` 恒 1），退场改 durPage + OutCubic —— 修「同意协议后硬切+闪一下」。`ui/StageShell.qml` 的交接遮罩已移除（它自己会造成压黑脉冲）。
+
 ---
 
 ## 〇、速查：按功能找文件
