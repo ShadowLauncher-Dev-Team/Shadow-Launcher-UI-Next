@@ -31,6 +31,10 @@ Item {
     readonly property bool forceShow: Qt.application.arguments.indexOf("--ui-gate") >= 0
     readonly property bool needed: gate.forceShow || (gate.b ? !gate.b.agreementAccepted : false)
     property bool closing: false
+    property double _t0: 0
+    // 铺满整窗的底衬：入场恒为 1（否则启动瞬间会先露出下面的主界面，又是一次闪），
+    // 只有退场时才跟着 reveal 一起淡到 0。
+    readonly property real backdropAlpha: gate.closing ? gate.reveal : 1
     property bool dismissed: false
     visible: (gate.needed || gate.closing) && !gate.dismissed
     z: 1000
@@ -74,8 +78,10 @@ Item {
     function accept() {
         if (gate.closing || !gate.agree) return
         gate.closing = true
+        gate._t0 = Date.now()
         // 先写同意记录：写盘失败也照样放行（不能让用户卡在门禁上）
         if (gate.b) gate.b.markAgreed = true
+        console.info("[门禁] 同意，开始退场（" + Theme.durPage + "ms 淡出）")
         exitAnim.restart()
     }
 
@@ -84,7 +90,10 @@ Item {
         else Qt.quit()
     }
 
-    Component.onCompleted: if (gate.visible) gate.startEnter()
+    Component.onCompleted: {
+        console.info("[门禁] AgreementGate v2 载入（整层淡出）")
+        if (gate.visible) gate.startEnter()
+    }
     onVisibleChanged: if (gate.visible) gate.startEnter()
 
     NumberAnimation {
@@ -93,12 +102,18 @@ Item {
         from: 0; to: 1
         duration: Theme.durPage; easing.type: Theme.easeEnter
     }
+    // 退场：InCubic（easeExit）前段几乎不动、末尾猛地收完 —— 肉眼就是「几毫秒的过渡 + 一下闪没」。
+    // 淡出要"立刻有反馈 + 尾巴够长"，所以用 durPage + OutCubic（与启动页入场同一口径）。
     NumberAnimation {
         id: exitAnim
         target: gate; property: "reveal"
         from: 1; to: 0
-        duration: Theme.durBase; easing.type: Theme.easeExit
-        onStopped: if (gate.closing) gate.dismissed = true
+        duration: Theme.durPage; easing.type: Theme.easeStandard
+        onStopped: {
+            if (!gate.closing) return
+            gate.dismissed = true
+            console.info("[门禁] 退场结束，用时 " + (Date.now() - gate._t0) + "ms")
+        }
     }
     NumberAnimation {
         id: docFadeAnim
@@ -114,9 +129,13 @@ Item {
     }
 
     // ══ 背景：壁纸 + 压暗 ══
+    // 2026-11-20：所有"铺满整窗"的层都必须绑 reveal。
+    // 这里原来没有任何 opacity —— 卡片和压暗在淡出，这层实底却全程不透明，
+    // 直到 visible 翻 false 才在一帧里整块消失：用户看到的就是「先几毫秒、然后闪一下硬切」。
     Rectangle {
         anchors.fill: parent
         color: Theme.pBg
+        opacity: gate.backdropAlpha
     }
 
     SBgImage {
@@ -128,6 +147,7 @@ Item {
         cropX: (gate.b && gate.b.cropX !== undefined) ? gate.b.cropX : 0.5
         cropY: (gate.b && gate.b.cropY !== undefined) ? gate.b.cropY : 0.5
         fallbackColor: Theme.pBg
+        opacity: gate.backdropAlpha
     }
 
     // 压暗：比启动页更重，保证卡片是画面上唯一的焦点
@@ -148,6 +168,7 @@ Item {
             GradientStop { position: 0.55; color: Theme.imageScrim1 }
             GradientStop { position: 1.00; color: "transparent" }
         }
+        opacity: gate.backdropAlpha
     }
 
     // 吃掉所有落在门禁上的点击：门禁之后的东西一律不能被点到
