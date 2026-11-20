@@ -294,7 +294,7 @@ static void renderCard()
         gfx.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
 
         // 卡面底色：多铺 1px 保证抗锯齿边缘不漏底（圆角由 alpha 遮罩裁）
-        Gdiplus::SolidBrush bg(rgba(0x14, 0x1A, 0x24));
+        Gdiplus::SolidBrush bg(rgba(0x12, 0x15, 0x1C));
         gfx.FillRectangle(&bg, Gdiplus::RectF(m - 1.0f, m - 1.0f, cw + 2.0f, chh + 2.0f));
 
         // 1px 描边
@@ -302,6 +302,16 @@ static void renderCard()
         roundRectPath(edge, Gdiplus::RectF(m + 0.5f, m + 0.5f, cw - 1.0f, chh - 1.0f), rad);
         Gdiplus::Pen pen(rgba(0x26, 0x2B, 0x35), 1.0f);
         gfx.DrawPath(&pen, &edge);
+
+        // 图标底框（与 QML 版一致：8px 圆角 + 1px 描边）
+        {
+            Gdiplus::GraphicsPath boxPath;
+            roundRectPath(boxPath, Gdiplus::RectF(ix, iy, isz, isz), 8.0f * s);
+            Gdiplus::SolidBrush boxBg(rgba(0x08, 0x09, 0x0D));
+            gfx.FillPath(&boxBg, &boxPath);
+            Gdiplus::Pen boxPen(rgba(0x26, 0x2B, 0x35), 1.0f);
+            gfx.DrawPath(&boxPen, &boxPath);
+        }
 
         // 启动器图标（圆角裁切）
         if (Gdiplus::Bitmap* ib = iconToBitmap(g_icon)) {
@@ -316,7 +326,7 @@ static void renderCard()
         // 进度条（3px 圆头）
         Gdiplus::GraphicsPath trackPath;
         roundRectPath(trackPath, Gdiplus::RectF(ix, ty, trackW, th), th * 0.5f);
-        Gdiplus::SolidBrush trackBr(rgba(0x1B, 0x20, 0x29));
+        Gdiplus::SolidBrush trackBr(rgba(0x26, 0x2B, 0x35));
         gfx.FillPath(&trackBr, &trackPath);
 
         gfx.SetClip(&trackPath);
@@ -349,10 +359,11 @@ static void renderCard()
         const int titlePx = static_cast<int>(14.0f * s + 0.5f);
         const int subPx   = static_cast<int>(12.0f * s + 0.5f);
         const int metaPx  = static_cast<int>(11.0f * s + 0.5f);
-        const int titleY  = static_cast<int>(iy - 3.0f * s);
-        const int titleH  = static_cast<int>(19.0f * s);
-        const int subY    = static_cast<int>(iy + 19.0f * s);
-        const int subH    = static_cast<int>(16.0f * s);
+        // 行位与 QML 版（ui/UpdateCardWindow.qml）逐像素对齐：标题 y=11、副行 y=32
+        const int titleY  = static_cast<int>(iy - 5.0f * s);
+        const int titleH  = static_cast<int>(20.0f * s);
+        const int subY    = static_cast<int>(iy + 16.0f * s);
+        const int subH    = static_cast<int>(17.0f * s);
         const int metaY   = static_cast<int>(my - 1.0f * s);
         const int metaH   = static_cast<int>(15.0f * s);
 
