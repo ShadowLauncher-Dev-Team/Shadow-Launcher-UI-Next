@@ -386,7 +386,8 @@ Item {
     Component.onCompleted: {
         page.rev++
         page.shownId = page.pendingId
-        if (page.mcFolder) page.mcFolder.refreshFolders()
+        // refreshFolders() 不再在这里无条件调用：页面不可见时它只是白扫盘（启动时必走一次），
+        // 而 onPageShown()（可见时触发）里已经有同一句。见 startup-perf-audit 条目 F。
         // 调试/截图用：--ui-folder-menu 直接展开文件夹选择面板
         if (Qt.application.arguments.indexOf("--ui-folder-menu") >= 0)
             page.folderMenuOpen = true

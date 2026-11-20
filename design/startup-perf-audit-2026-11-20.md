@@ -103,3 +103,26 @@
 否则 800ms 的抖动会被误读成回归。
 
 剩余未做：C/D（Java 相关延后）、E（页面创建时机，需先加页级计时）、F（VersionPage 扫盘时机）。
+
+## 七、第二批（C / D / F）与 E 的结论
+
+| 项 | 改动 | 实测 |
+|---|---|---|
+| C | JavaBackend 构造不再请求 Adoptium；新增 ensureVersionsLoaded()（幂等、失败可重试），Java 页可见时才拉 | 启动时 Adoptium 请求 1 → 0 |
+| D | JavaPage 构造不再无条件扫系统 Java，只有页面本就可见才扫，否则等 onVisibleChanged | 启动时 java -version 探测 5 → 0 |
+| F | VersionPage 构造不再 refreshFolders()（onPageShown 里本来就有同一句） | 启动少一次盘扫描 |
+
+**验证方式**：`--ui-java-step 2` 打开 Java 页，日志按需出现「刷新Java版本列表」与 Adoptium 各级 GET；
+正常启动的日志里 `Adoptium|检测到 Java|前置检测` 命中数 = 0。功能没有变化。
+
+**E 的结论：不做页面惰性化**。先按计划加了页级计时，结果打翻了原来的假设：
+
+- 8 个页面的 `Component.onCompleted` 在 **同一毫秒**（+868~871ms）全部触发 —— QML 把子组件的完成回调推迟到外层组件创建结束，所以页级 onCompleted 不能用来归因；
+- 改用「临时移除一页 + A/B」实测：去掉 AccountPage（98KB，最大的一页），QML 加载 1780ms → 1704/1734ms，即 **一个页面只占 ~70ms**；
+- 也就是说 QML 那 1.4~1.8s 的大头不在页面实例化，而在引擎/外壳/启动浮层/首次 polish。
+
+结论：E 的前提不成立，不值得为它改 Loader（会引入页面状态、visible 时机、--ui-pane 钩子一串回归风险）。
+页级计时探针已撤（它给出的是「最外层创建结束时刻」，留着会误导后来人）。
+
+**度量教训**：这台机器上 QML 加载时间在 1.4s~2.9s 之间漂移（同一份代码、连跑 5 次），
+绝对值不能拿来做结论；只有「同一时段内的 A/B」和「事件计数（请求数/进程数）」是可信的。

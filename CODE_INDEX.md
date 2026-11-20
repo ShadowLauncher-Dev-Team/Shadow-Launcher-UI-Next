@@ -9,6 +9,8 @@
 > 3. 本文档不含敏感信息（密钥/令牌/地址均为机制描述），可安全提交仓库。
 >
 > 更新日志见文末「文档更新记录」。
+> 2026-11-20（启动优化第二批）：C — `JavaBackend` 构造不再请求 Adoptium，新增 `ensureVersionsLoaded()` 按需拉（启动请求 1→0）；D — `JavaPage` 构造不再无条件 `scanSystemJavas()`，只在页面可见时扫（启动 spawn 5→0）；F — `VersionPage` 构造去掉多余的 `refreshFolders()`（`onPageShown` 已有）。**E（页面惰性化）经实测否决**：页级 `Component.onCompleted` 全部同时触发（不能归因），用「临时移除 AccountPage + A/B」测得单页只占 ~70ms，QML 大头的成本不在页面实例化。
+>
 > 2026-11-20（P0/P2 落地，实测首帧 2224→1812ms）：A `resource_backend.cpp:30 normTitle` 的 `QRegularExpression` 改 `static const`（每次调用重编译 → 只编译一次，`ResourceBackend` 构造 577→100ms）；G `main_release.cpp` 的 ScreenshotServer 改为默认不启动，需 `--ui-screenshots` 或 `SHADOW_SS_PORT` 才开（注释原称「NDEBUG stubs it out」，实际 release 一直监听 127.0.0.1:9999）。
 >
 > 2026-11-20（启动性能清点）：新增 `design/startup-perf-audit-2026-11-20.md` —— 用日志 `[后端启动 +Nms]` + Qt6Core benchmark 实测出启动各段成本，定位到最大单点是 `ResourceBackend` 构造 577ms，其中约 407ms 来自 `normTitle()` 每次调用都新建 `QRegularExpression`（28k 次调用实测）。清单共 14 条，含建议与优先级（P0 正则改 static / P1 页面惰性化 + Java 延后 / P2 release 关 ScreenshotServer）。
