@@ -332,6 +332,15 @@ Item {
         if (selOS.length === 0) return qsTr("选择操作系统")
         return qsTr("选一个文件即可开始")
     }
+    // 推荐档：只用来"轻轻提亮"，不再加角标（角标会和副标题的「推荐」重复）
+    function isRecommended(s, v) {
+        if (s === 0) return String(v) === "21"
+        if (s === 1) return String(v) === "jdk"
+        if (s === 2) return java && String(v) === String(java.cpuArch)
+        if (s === 3) return String(v) === "windows"
+        return false
+    }
+
     readonly property int optCount: optionsForStep(step).length
     readonly property int optCols: Math.max(1, Math.min(4, optCount))
 
@@ -612,15 +621,20 @@ Item {
                             delegate: Rectangle {
                                 id: tile
                                 readonly property bool picked: page.isPicked(page.step, modelData)
+                                readonly property bool rec: page.isRecommended(page.step, modelData)
                                 property bool hovered: false
                                 readonly property real tileW: Math.max(120, (cardCol.width - (page.optCols - 1) * 11) / page.optCols)
                                 width: tileW
                                 height: 76
                                 radius: 10
-                                color: picked ? page.nPick : (hovered ? page.nHover : page.nFill2)
+                                color: picked ? page.nPick
+                                              : rec ? "#161d29"
+                                              : (hovered ? page.nHover : page.nFill2)
                                 border.width: 1
                                 border.color: picked
                                               ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.55)
+                                              : rec ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.30)
+                                              : hovered ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.28)
                                               : page.nStroke2
                                 Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                                 Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
@@ -654,7 +668,7 @@ Item {
                                     Text {
                                         width: parent.width
                                         text: page.optionSub(page.step, modelData)
-                                        color: page.nText3
+                                        color: tile.rec ? Theme.accentText : page.nText3
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
                                         elide: Text.ElideRight
