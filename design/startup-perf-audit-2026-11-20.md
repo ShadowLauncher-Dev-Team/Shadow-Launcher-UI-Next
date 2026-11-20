@@ -83,3 +83,23 @@
 
 **另外**：真正该先做的是 A（`normTitle`，400ms，1 行）与 G（ScreenshotServer，安全项），
 这两个不涉及任何时序改造，零回归风险。页面时机改造放在页级数据之后。
+
+## 六、已落地（2026-11-20 第一批）
+
+| 项 | 改动 | 实测 |
+|---|---|---|
+| A | normTitle 的 QRegularExpression 改 static const | ResourceBackend 构造 577ms 降到 100ms |
+| G | ScreenshotServer 默认不启动（需 --ui-screenshots 或 SHADOW_SS_PORT） | 9999 端口确认无监听 |
+
+**首帧对比（同机、同构建、热启动）**：
+
+| 指标 | 改前 | 改后 |
+|---|---|---|
+| 首帧渲染完成 | 2224ms | **1812ms** |
+| total startup（到事件循环） | 2197ms | **1781ms** |
+| ResourceBackend 构造 | 577ms | **100ms** |
+
+冷启动第一次跑出 2626ms（磁盘缓存未热），第二次回到 1781ms。看这个指标要固定冷/热条件，
+否则 800ms 的抖动会被误读成回归。
+
+剩余未做：C/D（Java 相关延后）、E（页面创建时机，需先加页级计时）、F（VersionPage 扫盘时机）。
