@@ -87,26 +87,38 @@ Item {
         }
     }
 
-    // 时长一律走 Theme 的动效 token（ui 合同检查会拦裸数字，这也让启动动画和其他界面同一个节奏感）
+    // 时长一律走 Theme 的动效 token（ui 合同检查会拦裸数字）。
+    //
+    // 2026-11-20 改：原来 800ms（停留 120 + 光晕 180 + 落定 320 + 让开 180），
+    // 实测等于在加载完之后**再让用户多等 0.8 秒**——加载期本来就有 1.5s，加了就是 2.4s。
+    // 现在三段并行压到 240ms：光晕和落定同时开始，底板在 120ms 后接上。
+    // 效果还在（看得出是同一块字标落进侧栏），但不再是一段"要等它演完"的短片。
+    // 注意：ScriptAction 不能直接挂在 ParallelAnimation 下 —— 并行条目的 ScriptAction 在 t=0
+    // 就会执行，动画等于一帧演完（2026-11-20 实测踩到：logs 里"结尾字标"出现在首帧同一毫秒）。
+    // 所以外面包一层 SequentialAnimation，收尾动作只在整个并行段结束后跑。
     SequentialAnimation {
         id: boot
-        PauseAnimation { duration: Theme.durFast }
-        NumberAnimation {
-            target: intro; property: "halo"; from: 1; to: 0
-            duration: Theme.durBase; easing.type: Theme.easeStandard
-        }
-        NumberAnimation {
-            target: intro; property: "shrink"; from: 0; to: 1
-            duration: Theme.durPage; easing.type: Theme.easeEnter
-        }
         ParallelAnimation {
             NumberAnimation {
-                target: intro; property: "veil"; from: 1; to: 0
-                duration: Theme.durBase; easing.type: Theme.easeStandard
+                target: intro; property: "halo"; from: 1; to: 0
+                duration: Theme.durFast; easing.type: Theme.easeStandard
             }
             NumberAnimation {
-                target: intro; property: "labelFade"; from: 1; to: 0
-                duration: Theme.durBase; easing.type: Theme.easeStandard
+                target: intro; property: "shrink"; from: 0; to: 1
+                duration: Theme.durFast; easing.type: Theme.easeEnter
+            }
+            SequentialAnimation {
+                PauseAnimation { duration: Theme.durFast }
+                ParallelAnimation {
+                    NumberAnimation {
+                        target: intro; property: "veil"; from: 1; to: 0
+                        duration: Theme.durFast; easing.type: Theme.easeStandard
+                    }
+                    NumberAnimation {
+                        target: intro; property: "labelFade"; from: 1; to: 0
+                        duration: Theme.durFast; easing.type: Theme.easeStandard
+                    }
+                }
             }
         }
         ScriptAction {

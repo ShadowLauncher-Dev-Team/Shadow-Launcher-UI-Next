@@ -588,6 +588,11 @@ int main(int argc, char *argv[])
             introEnabled = false;   // 系统"减少动画"开着就别演
     }
 #endif
+    // 决策本身也要留痕：当初 --no-intro 是否生效没法从日志看出来，只有截图能看出来 —— 这不行。
+    qCInfo(logApp) << QStringLiteral("[启动动画] enabled=%1 (args 里 no-intro=%2, screenshot=%3)")
+                          .arg(introEnabled ? QStringLiteral("true") : QStringLiteral("false"))
+                          .arg(app.arguments().contains(QStringLiteral("--no-intro")) ? 1 : 0)
+                          .arg(app.arguments().contains(QStringLiteral("--screenshot")) ? 1 : 0);
     SplashWindow *splash = nullptr;
     if (introEnabled) {
         splash = new SplashWindow();
@@ -871,9 +876,10 @@ int main(int argc, char *argv[])
                     // 启动动画必须等到这一刻才开演：首帧之前 QML 还在同步构建，
                     // 那时候启动动画会被卡在半路，等窗口出来时已经演完了。
                     if (obj) obj->setProperty("firstFrame", true);
-                    // 封面窗和主窗口此刻是同一画面，隔一帧再淡出，避免同帧抢画面。
+                    // 封面窗直接关，不做淡出：此时 StartupIntro 的底板是不透明的，两画面一致，
+                    // 关掉看不出变化；反过来做淡出，会在界面已经显形之后留一团半透明的字标浮在上面。
                     if (splash)
-                        QTimer::singleShot(50, splash, [splash]() { splash->beginFinish(); });
+                        QTimer::singleShot(30, splash, [splash]() { splash->close(); });
                 }, Qt::SingleShotConnection);
         }, Qt::QueuedConnection);
 

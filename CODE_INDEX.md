@@ -9,7 +9,10 @@
 > 3. 本文档不含敏感信息（密钥/令牌/地址均为机制描述），可安全提交仓库。
 >
 > 更新日志见文末「文档更新记录」。
-> 2026-11-20（启动动画 A 落地）：`src/ui_splash.{h,cpp}` 静态封面窗 + `ui/StartupIntro.qml` 落定动画 + `ui/StartupIntroHalo.qml` 光晕（MultiEffect，Loader 隔离）。
+> 2026-11-20（启动动画压到 245ms）：实测「加载 1.5s + 动画 0.8s」= 用户多等一半时间，故把 800ms 压成 245ms（光晕/落定并行 120ms，底板再 120ms）。
+> 两个坑：① `ScriptAction` 挂在 `ParallelAnimation` 下会在 t=0 就执行（动画一帧演完）——必须外套 `SequentialAnimation`；② 封面窗用窗口淡出会在界面显形后留下半透明的大字标浮层——改成首帧后 30ms 直接 close。
+> 决策留痕：`[启动动画] enabled=true/false (args 里 no-intro=… screenshot=…)`，`--no-intro` 之前从未被验证过生效（测试脚本用了 PowerShell 自动变量 `$args`，参数根本没传进去）。
+>> 2026-11-20（启动动画 A 落地）：`src/ui_splash.{h,cpp}` 静态封面窗 + `ui/StartupIntro.qml` 落定动画 + `ui/StartupIntroHalo.qml` 光晕（MultiEffect，Loader 隔离）。
 > 关键约束：QML 加载同步堵住主线程 1.4~1.8s，动画只能在首帧后演；封面窗与 StartupIntro 第 0 帧必须逐像素一致（同字体/同字号/同光晕/同位置）。
 > 几何自检日志：`[启动动画] 封面窗 rect=`、`[启动动画] 主窗口 rect=`、`[启动动画] 侧栏字标 scene`、`[启动动画] 结尾字标 scene` —— 四条对齐才算过关。
 > 关闭方式：`--no-intro`、`--screenshot`、系统「减少动画」、QSettings `general/startupIntro=false`；QML 侧另有 4s 兜底 Timer 防永久黑屏。
