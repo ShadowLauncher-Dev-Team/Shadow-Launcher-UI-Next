@@ -9,7 +9,11 @@
 > 3. 本文档不含敏感信息（密钥/令牌/地址均为机制描述），可安全提交仓库。
 >
 > 更新日志见文末「文档更新记录」。
-> 2026-11-20（启动动画设计稿）：新增 `design/startup-intro.html` —— 单文件 HTML 三版对照（影子落定 / 一条线裂成界面 / 真进度），按真实窗口 1100×720、侧栏 208px、字标 14px/字距 2.2 复刻；可播放/暂停/拖时间轴/逐帧（?c=A&t=520）/显示标注。字标用**同一个 DOM 节点**从 44px 缩到 14px 落进侧栏，验证「交接是同一元素」这个思路。
+> 2026-11-20（启动动画 A 落地）：`src/ui_splash.{h,cpp}` 静态封面窗 + `ui/StartupIntro.qml` 落定动画 + `ui/StartupIntroHalo.qml` 光晕（MultiEffect，Loader 隔离）。
+> 关键约束：QML 加载同步堵住主线程 1.4~1.8s，动画只能在首帧后演；封面窗与 StartupIntro 第 0 帧必须逐像素一致（同字体/同字号/同光晕/同位置）。
+> 几何自检日志：`[启动动画] 封面窗 rect=`、`[启动动画] 主窗口 rect=`、`[启动动画] 侧栏字标 scene`、`[启动动画] 结尾字标 scene` —— 四条对齐才算过关。
+> 关闭方式：`--no-intro`、`--screenshot`、系统「减少动画」、QSettings `general/startupIntro=false`；QML 侧另有 4s 兜底 Timer 防永久黑屏。
+>> 2026-11-20（启动动画设计稿）：新增 `design/startup-intro.html` —— 单文件 HTML 三版对照（影子落定 / 一条线裂成界面 / 真进度），按真实窗口 1100×720、侧栏 208px、字标 14px/字距 2.2 复刻；可播放/暂停/拖时间轴/逐帧（?c=A&t=520）/显示标注。字标用**同一个 DOM 节点**从 44px 缩到 14px 落进侧栏，验证「交接是同一元素」这个思路。
 >
 > 2026-11-20（启动优化第二批）：C — `JavaBackend` 构造不再请求 Adoptium，新增 `ensureVersionsLoaded()` 按需拉（启动请求 1→0）；D — `JavaPage` 构造不再无条件 `scanSystemJavas()`，只在页面可见时扫（启动 spawn 5→0）；F — `VersionPage` 构造去掉多余的 `refreshFolders()`（`onPageShown` 已有）。**E（页面惰性化）经实测否决**：页级 `Component.onCompleted` 全部同时触发（不能归因），用「临时移除 AccountPage + A/B」测得单页只占 ~70ms，QML 大头的成本不在页面实例化。
 >

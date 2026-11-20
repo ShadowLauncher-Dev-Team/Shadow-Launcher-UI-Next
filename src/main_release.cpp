@@ -105,6 +105,7 @@ private:
 #include "core/http_client.h"
 
 #include "core/screenshot_server.h"
+#include "ui_splash.h"
 #include <cstdio>
 #include "core/modpack/zip_archive.h"
 #include <QFile>
@@ -570,6 +571,38 @@ int main(int argc, char *argv[])
                        " (https://github.com/xiaole1173/Shadow-Launcher-UI-Next)")
             .arg(QString::fromLatin1(SHADOW_DISPLAY_VERSION)));
 
+    // ── 启动封面窗（启动动画方案 A 的静态那一半）────────────────────────────
+    // 位置：backend 之前、QApplication 之后。这一段是"进程起来了但窗口还没有"的黑屏期。
+    // 它只画一张静止画面 —— QML 加载会同步堵住主线程 1.4~1.8s，这期间动画跑不动，
+    // 所以动效全部放在加载完成后的 StartupIntro.qml 里，这里只负责别让用户看见黑屏。
+    //
+    // 关掉的条件：--no-intro / --screenshot（截图要干净）/ 系统关掉了窗口动画 /
+    //             设置里 general/startupIntro = false。
+    bool introEnabled = !app.arguments().contains(QStringLiteral("--no-intro"))
+                        && !app.arguments().contains(QStringLiteral("--screenshot"))
+                        && QSettings().value(QStringLiteral("general/startupIntro"), true).toBool();
+#ifdef Q_OS_WIN
+    if (introEnabled) {
+        BOOL sysAnim = TRUE;
+        if (SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &sysAnim, 0) && !sysAnim)
+            introEnabled = false;   // 系统"减少动画"开着就别演
+    }
+#endif
+    SplashWindow *splash = nullptr;
+    if (introEnabled) {
+        splash = new SplashWindow();
+        splash->show();
+        splash->raise();
+        // 立刻同步画完：紧接着 backend 构造 + QML 加载会把事件循环堵死，
+        // 靠 WM_PAINT 排队的话用户只会看见一块没画过的空窗。
+        splash->repaint();
+        // 交接近似度靠这两行日志核：封面窗和主窗口的位置/尺寸/dpr 必须一致。
+        qCInfo(logApp) << QStringLiteral("[启动动画] 封面窗 rect=%1,%2 %3x%4 dpr=%5")
+                              .arg(splash->x()).arg(splash->y())
+                              .arg(splash->width()).arg(splash->height())
+                              .arg(splash->devicePixelRatioF());
+        checkpoint(QStringLiteral("Splash shown"));
+    }
     ShadowBackend* backend = new ShadowBackend(&app);
     checkpoint(QStringLiteral("ShadowBackend constructed"));
 
@@ -758,6 +791,8 @@ int main(int argc, char *argv[])
 
     // Expose backend and data directory to QML
     engine.rootContext()->setContextProperty("backend", backend);
+    // 启动动画开关（标题栏之外唯一一个"启动期"上下文属性）：QML 用它决定要不要演 StartupIntro。
+    engine.rootContext()->setContextProperty("startupIntro", introEnabled);
     engine.rootContext()->setContextProperty("dataDir", dataDir);
     engine.addImportPath(QStringLiteral("qrc:/qt/qml"));
 
@@ -779,9 +814,19 @@ int main(int argc, char *argv[])
     // Set target window + measure first frame render
     QElapsedTimer* pStartupTimer = &startupTimer;
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
-        &app, [taskbarFilter, pStartupTimer, ssServer](QObject* obj, const QUrl&) {
+        &app, [taskbarFilter, pStartupTimer, ssServer, splash](QObject* obj, const QUrl&) {
             QQuickWindow* win = qobject_cast<QQuickWindow*>(obj);
             if (!win) return;
+
+            // ── 和封面窗对齐位置 ──
+            // 主窗口没显式定位时由窗口系统摆，中心和封面窗未必重合；差几像素，
+            // 交接那一刻字标就会「跳一下」。直接搬到封面窗的位置上。
+            if (splash && splash->isVisible())
+                win->setPosition(splash->x(), splash->y());
+            qCInfo(logApp) << QStringLiteral("[启动动画] 主窗口 rect=%1,%2 %3x%4 dpr=%5")
+                                  .arg(win->x()).arg(win->y())
+                                  .arg(win->width()).arg(win->height())
+                                  .arg(win->devicePixelRatio());
 
             // ── 窗口底色：深色实底（曾经设成 transparent 来躲角落白边）──
             // 透明实底在「起页回退动画」的那一两帧会从边缘缝里透出桌面 → 一圈白边。
@@ -821,8 +866,14 @@ int main(int argc, char *argv[])
                 GetWindowLongPtrW(hwnd, GWL_STYLE) | WS_SYSMENU | WS_MINIMIZEBOX);
             // Measure first frame render
             QObject::connect(win, &QQuickWindow::frameSwapped,
-                win, [pStartupTimer]() {
+                win, [pStartupTimer, obj, splash]() {
                     qCInfo(logApp) << QStringLiteral("首帧渲染完成");
+                    // 启动动画必须等到这一刻才开演：首帧之前 QML 还在同步构建，
+                    // 那时候启动动画会被卡在半路，等窗口出来时已经演完了。
+                    if (obj) obj->setProperty("firstFrame", true);
+                    // 封面窗和主窗口此刻是同一画面，隔一帧再淡出，避免同帧抢画面。
+                    if (splash)
+                        QTimer::singleShot(50, splash, [splash]() { splash->beginFinish(); });
                 }, Qt::SingleShotConnection);
         }, Qt::QueuedConnection);
 
@@ -870,10 +921,16 @@ int main(int argc, char *argv[])
     }
     checkpoint(QStringLiteral("QML engine.load() completed"));
 
+    // 封面窗兜底：万一 QML 起不来（首帧永远不到），不能留一张黑窗盖着整个系统。
+    if (splash) {
+        QTimer::singleShot(8000, splash, [splash]() { splash->beginFinish(); });
+    }
+
     // 校验根对象是否加载成功
     if (!loadedBetaDialog) {
         if (engine.rootObjects().isEmpty()) {
             qCCritical(logApp) << QStringLiteral("无法加载任何QML根对象 退出");
+            if (splash) splash->close();
             return -1;
         }
         checkpoint(QStringLiteral("Root objects verified"));

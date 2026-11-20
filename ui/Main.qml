@@ -17,6 +17,10 @@ Window {
     // 换成深色实底后，同样的缝露的是自己的底色，肉眼不可见；圆角仍由 DWM 裁，不受影响。
     color: "#08090d"
 
+    // 首帧渲染完成由 C++ 置 true（main_release 的 frameSwapped）——
+    // 启动动画必须等这一刻才开演，否则会在 QML 同步构建期间被"快进"掉。
+    property bool firstFrame: false
+
     // 窗口尺寸：默认就是设计稿的 1100x720，不按屏幕缩。
     // 曾经为了"导出条不被裁到屏幕外"在这里做了 min(720, 屏高-40)，结果整台机器一进来窗口就矮了 69px，
     // 影直接发现了——这是拿全局默认尺寸去补一个局部问题，代价太大，撤掉。
@@ -58,6 +62,15 @@ Window {
     StageShell {
         anchors.fill: parent
         hostWindow: appWindow
+    }
+
+    // 启动动画（方案 A）。盖在外壳上面，首帧上屏后自己演完、自己隐藏。
+    // 关掉的条件（--no-intro / 系统减少动画 / 设置项）在 C++ 那边统一判定，这里只看 startupIntro。
+    StartupIntro {
+        anchors.fill: parent
+        hostWindow: appWindow
+        enabled: startupIntro
+        firstFrame: appWindow.firstFrame
     }
 
     // 更新卡片预览（--ui-update-card）：独立置顶透明窗口，与真实安装卡片同形态。

@@ -53,6 +53,7 @@ target_include_directories(nlohmann_json INTERFACE src/third_party/nlohmann)
 
 set(SOURCES
     src/main_release.cpp
+    src/ui_splash.cpp
 
     # Utilities (Phase 4 鈥?structured logging)
     src/utils/logger.cpp
@@ -121,6 +122,7 @@ set(SOURCES
 )
 
 set(HEADERS
+    src/ui_splash.h
     src/utils/types.h
     src/utils/logger.h
     src/utils/temp_tracker.h
@@ -226,6 +228,8 @@ qt_policy(SET QTP0004 NEW)
 # 新一代 UI（ui/）—— URI ShadowLauncher.Next，入口 Main.qml
 # 说明：旧的 qml-next/ 已废弃并从本仓库移除（Qcoder 第三轮产物）。
 # ============================================================
+set_source_files_properties(ui/StartupIntro.qml PROPERTIES QT_RESOURCE_ALIAS StartupIntro.qml)
+set_source_files_properties(ui/StartupIntroHalo.qml PROPERTIES QT_RESOURCE_ALIAS StartupIntroHalo.qml)
 set_source_files_properties(ui/Main.qml PROPERTIES QT_RESOURCE_ALIAS Main.qml)
 set_source_files_properties(ui/Theme.qml PROPERTIES QT_RESOURCE_ALIAS Theme.qml QT_QML_SINGLETON_TYPE TRUE)
 set_source_files_properties(ui/StageShell.qml PROPERTIES QT_RESOURCE_ALIAS StageShell.qml)
@@ -292,6 +296,8 @@ qt_add_qml_module(ShadowLauncher
     RESOURCE_PREFIX "/qt/qml"
     NO_PLUGIN
     QML_FILES
+        ui/StartupIntro.qml
+        ui/StartupIntroHalo.qml
         ui/Main.qml
         ui/Theme.qml
         ui/StageShell.qml

@@ -102,6 +102,7 @@ Item {
         spacing: 1
 
         Text {
+            id: brandWord
             visible: !root.narrow
             // 品牌名，不翻译（不加 qsTr 是有意的）
             text: "SHADOW"
@@ -112,6 +113,11 @@ Item {
             font.letterSpacing: 2.2
             leftPadding: 10
             Layout.bottomMargin: 18
+            // 启动动画的落点就是这里。打一次场景坐标，供核对（差 1px 交接就抖）。
+            Component.onCompleted: {
+                var p = brandWord.mapToItem(null, 0, 0)
+                console.info("[启动动画] 侧栏字标 scene", p.x, p.y, brandWord.width, brandWord.height)
+            }
         }
         Item { visible: root.narrow; Layout.preferredHeight: 6 }
 
