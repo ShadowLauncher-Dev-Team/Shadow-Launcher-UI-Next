@@ -533,7 +533,35 @@ void FileDownloader::managerTick()
         // 夸父这 9 个文件（共 74MB）永远停在 1~2 条连接上，平均只有 3.8MB/s，
         // 结果「资源 15.8 秒下完，安装却要等到 19.2 秒」。
         // 例外：本文件线程数少于 4 时无条件加分片 —— 大文件本来就该多连接。
-        if (speedEnough && f->threads.size() >= 4) continue;
+        //
+        // ── 2026-11-20（再次校正：4 条/文件把库下载压在 6.5MB/s）──
+        // 冷装实测：126MB 库文件 15.4 秒（6.5MB/s），而同一主机
+        // 4 条并发 Range 实测 11.3MB/s、6 条整文件 GET 实测 33MB/s —— 对端不缺带宽，
+        // 是连接给少了。每文件上限改为「按剩余大小给，每 ~6MB 一条，最多 16 条」；
+        // 全局速度门限只用来挡「已经 4 条以上、且本文件已经很宽裕」的情况。
+        // 速度门限：全局速度足够时不再给已有线程的文件加分片（主流启动器语义）。
+        // ⚠️ 2026-11-18（尾部慢的真凶）：这个门限看的是**整机**速度，不是本文件速度。
+        // 冷装时资源由山海经跑出 33MB/s，于是"速度足够"恒成立 →
+        // 夸父这 9 个文件永远停在 1~2 条连接上，平均只有 3.8MB/s。
+        // 例外：本文件线程数少于 4 时无条件加分片 —— 大文件本来就该多连接。
+        //
+        // ── 2026-11-20 实测定稿 ──
+        // 「只有库要下」的场景（资源全在缓存，链路闲着）连测两轮：
+        //   4 条上限：4.6s / 38.3s（一条慢连接就能把文件拖死，结果呈双峰）
+        //   按剩余大小放到 12 条：4.28s / 4.39s（稳定）
+        // 而冷装（资源与库同时抢链路）时多开连接会把活塞 CDN 的 client.jar 打到
+        // 超时/连接被取消（那个失败在 4 条上限下同样出现，与线程数无关）。
+        // 因此判据取「整机链路是否闲着」：闲（<8MB/s）才给单文件多开连接，
+        // 忙时保持 4 条，避免把对端打到超时。
+        const qint64 undoneForFile = qMax<qint64>(0, f->fileSize - f->totalDone());
+        int perFileCap = 4;
+        if (!f->isUnknownSize) {
+            perFileCap = static_cast<int>(
+                qBound<qint64>(4LL, undoneForFile / (6LL * 1024 * 1024), 12LL));
+        }
+        const bool linkIdle = (m_instantBps < kLinkIdleBps);
+        if (f->threads.size() >= perFileCap) continue;
+        if (!linkIdle && f->threads.size() >= 4) continue;
 
         // Check if preparing threads outnumber downloading threads
         int prep = 0, dl = 0;
@@ -765,6 +793,12 @@ std::shared_ptr<DownloadThread> FileDownloader::trySplitSlowThread(
     // 剩余不足两倍最小粒度（32KB×2）不再切——保证切出的两半都 ≥32KB，
     // 避免无限细分产生碎片分片
     if (undone < 2 * kMinSplitPieceBytes) return nullptr;
+    // ── 2026-11-20：慢速切分的最低粒度提到 512KB ──
+    // 现场：client.jar 被切出 55,733 字节的碎片片（[8429568-8485301]），
+    // 紧接着原连接被 abort → 「Operation canceled」→ 该文件判失败 → 触发整轮修复。
+    // 32KB 的粒度对「慢速切分」太小：切出来的碎片本身没有下载价值，
+    // 只是把一条能用的连接干掉。大文件切分至少留 512KB 才有意义。
+    if (undone < 2 * 512 * 1024) return nullptr;
     if (m_activeThreads.loadRelaxed() >= m_maxThreads) return nullptr;
 
     // 源选择（同 tryAddThread：顺序 fallback + 镜像禁止分片）
@@ -897,6 +931,7 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
         // 连续「超时且零字节进展」次数（2026-11-19）：用于快速换源，
         // 见下方守卫注释（旧守卫要求 elapsed<5500，而一次超时就有 12s，永不成立）。
         int consecutiveTimeouts = 0;
+        int slowAbortCount = 0;   // 本线程「龟速」放弃次数（2026-11-20）
         for (int attempt = 0; attempt < attemptLimit && !sourceOk; ++attempt) {
             if (m_cancelled.loadRelaxed()) goto cleanup;
             waitWhilePaused();
@@ -984,6 +1019,15 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 req.setRawHeader("Range", QString("bytes=%1-%2").arg(start).arg(end).toUtf8());
             }
 
+            // ── 2026-11-20：单次尝试的「最低吞吐」兜底计时 ──
+            // 现场：修复阶段从 bmclapi 下 client.jar，单次 attempt 跑了 129 秒只收
+            // 1.5MB（11KB/s），另一次 145 秒收 0 字节才超时。原因是空闲超时
+            // （QTimer 与 Qt 的 transferTimeout）都被 readyRead 续命——
+            // 只要对端偶发滴一个字节，就永远不会判超时；而镜像源在
+            // trySplitSlowThread 里被显式排除（isMirrorUrl → return nullptr），
+            // 连尾程看门狗都不会来救。结果就是「看起来卡死、其实在龟速滴」。
+            const qint64 attStart = getElapsedMs();
+            bool slowAbort = false;
             QNetworkReply* reply = mgr.get(req);
 
             QEventLoop loop;
@@ -1130,9 +1174,38 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                     watchdogAbortedThisAttempt = true;
                     reply->abort();
                     loop.quit();
-                } else {
-                    watchdogPoll.start(500);
+                    return;
                 }
+                // ── 2026-11-20：单次尝试的最低吞吐兜底 ──
+                // 必须挂在**定时器**上，不能挂在 downloadProgress 里：
+                // 现场 fastutil-8.5.18.jar 静默 115 秒（11:18:48 → 11:20:43）才完成，
+                // 期间既没有超时也没有进度回调——挂在数据回调上的检查永远不会被触发。
+                // 判据：本次尝试已过 20 秒且平均 < 24KB/s → 放弃这次连接。
+                // 这样「偶发滴一个字节续命空闲超时」的连接也会被掐掉换源。
+                const qint64 el = getElapsedMs() - attStart;
+                // 只统计**本次尝试**已收到的字节（reply 未读缓冲单调增长，
+                // 不掺 downloadDone，避免跨 attempt 记账污染判据）
+                const qint64 gotNow = reply->bytesAvailable();
+                // ① 起步就停：20 秒还没收到 4MB 且均值 <24KB/s → 掐掉换连接。
+                //    4MB 门槛保证「慢但真在跑」的连接（1MB/s 时 20s 已有 20MB）不被误杀。
+                //    ⚠️ 现场：bmclapi 的 client.jar 单次 attempt 跑到 141 秒、已收 0B，
+                //    空闲超时被 302 重定向的 readyRead 反复续命 → 必须有这条兜底。
+                const bool stalledStart = (el >= kSlowAttemptWindowMs
+                                           && gotNow < 4LL * 1024 * 1024
+                                           && gotNow * 1000 / qMax<qint64>(1, el) < kSlowAttemptMinBps);
+                // ② 单次尝试硬上限：超过 45 秒一律放弃（我们有续传，重来不亏）
+                const bool overWall = (el >= kMaxAttemptWallMs);
+                if (stalledStart || overWall) {
+                    slowAbort = true;
+                    qCWarning(logDownload)
+                        << QStringLiteral("[夸父] 放弃本次尝试（%1）文件=%2 收=%3B 用时=%4ms")
+                               .arg(overWall ? QStringLiteral("超过单次上限") : QStringLiteral("龟速"))
+                               .arg(file->localName).arg(gotNow).arg(el);
+                    reply->abort();
+                    loop.quit();
+                    return;
+                }
+                watchdogPoll.start(500);
             });
             watchdogPoll.start(500);
 
@@ -1216,6 +1289,22 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                     --attempt;   // 限流不消耗尝试次数（否则高峰期 6 次重试全打在限流上）
                     continue;
                 }
+            }
+
+            // 慢速中止：不算对端失败，但每次消耗预算；超预算直接换源（否则
+            // 「滴 bytes」的源会把整个下载拖成几分钟）。
+            if (slowAbort && !rangeFilled) {
+                reply->abort();
+                reply->deleteLater();
+                th->downloadDone = 0;
+                if (++slowAbortCount > kMaxSlowAborts) {
+                    qCWarning(logDownload) << QStringLiteral("[夸父] 源持续龟速，放弃本源 文件=%1")
+                        .arg(file->localName);
+                    if (sourceIdx < file->sourceFailCounts.size())
+                        file->sourceFailCounts[sourceIdx] = 5;
+                    break;
+                }
+                continue;
             }
 
             // 超额止损（2026-08-07）：主动 abort 不算失败——数据已收满本线程范围，

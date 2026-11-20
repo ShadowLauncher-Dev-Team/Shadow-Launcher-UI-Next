@@ -153,6 +153,12 @@ Item {
                 }
                 continue
             }
+            // ── 2026-11-20（影报：同一版本第二次下载不再弹「下载完成」）──
+            // _doneAt 以 iid 为键，而版版本卡片的 iid 就是版本号（26.2）。
+            // 第一次完成时写进去以后没人清 → 第二次同版本下载完成时被当成
+            // 「已经播报过」直接吞掉，toast 再也不出现。
+            // 卡片回到未完成态就清掉标记，下次完成能重新弹。
+            if (page._doneAt[r.iid]) delete page._doneAt[r.iid]
             // 失败 / 取消的卡片**自动退场**。
             // 原来这里只移除「成功完成」的卡片（done → continue），
             // 失败卡片会永久堆在列表里（影报过两次）。
@@ -212,7 +218,11 @@ Item {
             }
         }
         for (var d = cardModel.count - 1; d >= 0; --d) {
-            if (!seenIds[cardModel.get(d).iid]) cardModel.remove(d)
+            var goneIid = cardModel.get(d).iid
+            if (!seenIds[goneIid]) {
+                cardModel.remove(d)
+                delete page._doneAt[goneIid]   // 卡片退场后清标记，防止下次同 id 被吞
+            }
         }
         page.totalSpeed = sp
         page.totalProgress = prog

@@ -1033,6 +1033,40 @@ void VersionBackend::installVersion(const QString& versionId)
 
 
 
+            // ── 2026-11-20：修复阶段的进度 ──
+            // 校验判坏后（镜像回退重下）原本步骤冻结在 99% 长达 105 秒（实测
+            // 10:52:24→10:54:11），用户以为卡死。这里把修复进度投到同一步骤上：
+            // 先把步骤退回 pending（updateStep 对 active 的百分比有防回退契约，
+            // 不回退就永远显示 99%），再用 done/total 推进到 99 封顶。
+            connect(downloader, &VersionDownloader::repairProgress, this,
+                    [this, versionId](int done, int total) {
+                if (total <= 0) return;
+                int verifyIdx = -1;
+                auto* d = dlSession(versionId);
+                if (d && d->isMerged()) {
+                    for (auto sit = m_downloadSessions.begin(); sit != m_downloadSessions.end(); ++sit) {
+                        auto* dm = dlSession(sit.key());
+                        if (dm && dm->isMerged() && dm->mcVersion == versionId) {
+                            verifyIdx = stepIndexByKey(sit.key(), StepKeys::baseVerify());
+                            if (verifyIdx >= 0) {
+                                if (done <= 0) updateStep(sit.key(), verifyIdx, QStringLiteral("pending"), 0);
+                                updateStep(sit.key(), verifyIdx, QStringLiteral("active"),
+                                           qMin(99, done * 99 / qMax(1, total)));
+                            }
+                            break;
+                        }
+                    }
+                    return;
+                }
+                if (!d || d->isMerged() || d->steps.size() < 4) return;
+                verifyIdx = 3;
+                if (done <= 0) updateStep(versionId, verifyIdx, QStringLiteral("pending"), 0);
+                updateStep(versionId, verifyIdx, QStringLiteral("active"),
+                           qMin(99, done * 99 / qMax(1, total)));
+                qCInfo(logVersion) << QStringLiteral("[校验] 修复进度 %1/%2 版本=%3")
+                                          .arg(done).arg(total).arg(versionId);
+            });
+
             connect(downloader,
 
                     &VersionDownloader::verifyProgressChanged, this,

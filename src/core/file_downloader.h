@@ -280,6 +280,14 @@ private:
     // 低于期望速度就分片（官方多连接补偿单连接慢），速度到 4MB/s 自然停
     //（per-host/线程上限仍防爆）。
     static constexpr qint64 kSpeedLimitLowBps = 4LL * 1024 * 1024;
+    // 链路「闲着」的判据：整机瞬时速度低于此值才允许给单个文件多开连接（2026-11-20）
+    static constexpr qint64 kLinkIdleBps = 8LL * 1024 * 1024;
+    // 单次尝试的最低吞吐兜底（2026-11-20）：解决「滴字节」连接永不超时的问题
+    static constexpr qint64 kSlowAttemptWindowMs = 20000;
+    static constexpr qint64 kSlowAttemptMinBps    = 24LL * 1024;
+    static constexpr int    kMaxSlowAborts       = 2;
+    // 单次连接尝试的墙钟上限（2026-11-20）：有续传，重来不亏；杜绝 141 秒的尝试
+    static constexpr qint64 kMaxAttemptWallMs    = 45000;
     // 降级封锁的时长（2026-11-19）。到期自动放行一次试探性重连，
     // 否则「降级后不允许发请求 → 永远无法成功 3 次 → 永远降级」= 进程内永久拉黑。
     static constexpr qint64 kDegradeHoldMs = 30 * 1000;

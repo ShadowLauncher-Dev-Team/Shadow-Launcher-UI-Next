@@ -1704,6 +1704,8 @@ void VersionDownloader::onVerifyFinished(bool allPassed,
     int totalItems = m_totalFiles.loadRelaxed() > 0
                      ? m_totalFiles.loadRelaxed() : m_completedFiles.loadRelaxed();
     emit verifyProgressChanged(totalItems, totalItems);
+    // 修复轮跑通：把「修复中」的进度收尾，避免步骤停在 99%
+    if (m_fallbackIndex > 0) emit repairProgress(1, 1);
 
     if (m_downloadFailedCount > 0) {
         emit logMessage(QStringLiteral("[盘古] [警告] %1 个文件下载失败，但已通过完整性校验").arg(m_downloadFailedCount));

@@ -104,6 +104,10 @@ signals:
     /// Emitted during integrity verification phase only.
     /// Does NOT overlap with downloadProgress — verify has its own signal.
     void verifyProgressChanged(int checked, int total);
+    /// 校验判坏后走「换镜像重下」的修复阶段进度（done/total = 本轮重下的文件数）。
+    /// 2026-11-20：修复期间上层步骤原本停在 99% 一动不动（实测 105 秒），
+    /// 用户以为卡死；有这个信号就能显示「修复中 x/y」并在跑完时收尾。
+    void repairProgress(int done, int total);
 
     void logMessage(const QString& msg);
     void downloadFinished(bool success, const QString& errorMsg);
@@ -223,7 +227,10 @@ public slots:
     void process();
 
 signals:
-    void progressChecked(int checked, int total);
+        void progressChecked(int checked, int total);
+    /// 校验判坏后走「换镜像重下」的修复阶段进度（done/total = 本轮重下的文件数）。
+    /// 2026-11-20：修复期间上层步骤原本停在 99% 一动不动（实测 105 秒），
+    /// 用户以为卡死；有这个信号就能显示「修复中 x/y」并在跑完时收尾。
     void cancelled(int checked, int total);
     void finished(bool allPassed, const QStringList& missedLabels,
                   const QStringList& missedPaths);
