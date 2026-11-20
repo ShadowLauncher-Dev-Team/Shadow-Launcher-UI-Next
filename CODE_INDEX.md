@@ -10,6 +10,8 @@
 >
 > 更新日志见文末「文档更新记录」。
 
+> 2026-11-20（补充）：新增 `ui/UpdateCardWindow.qml` —— 更新卡片的**解耦预览窗口**，入口 `ShadowLauncher.exe --ui-update-card`（独立置顶无边框透明窗、六档假进度、不触发更新）。与更新流程完全无关，仅用于界面验收。
+
 > 2026-11-20：`update/SLUpdater.cpp` 的进度窗口改为卡片式（方案 A）：无边框圆角 360x96、UpdateLayeredWindow 分层位图、GDI+ 画卡面 + GDI ClearType 画字、SDF 遮罩生成圆角与阴影、WS_EX_TOPMOST 置顶；新增 `--card-test` 开发预览模式（`dumpCardToPng` 可导出位图 PNG）。同时修 `copyFileOverwrite` 未清只读属性导致 error 5 重试无效。设计稿与成品图见 `design/update-card/`。
 
 > 2026-11-20 变更：`ui/AgreementGate.qml` 的所有"铺满整窗"层（背景实底/壁纸/顶部渐变）改为绑 `gate.reveal`（入场用 `backdropAlpha` 恒 1），退场改 durPage + OutCubic —— 修「同意协议后硬切+闪一下」。`ui/StageShell.qml` 的交接遮罩已移除（它自己会造成压黑脉冲）。
