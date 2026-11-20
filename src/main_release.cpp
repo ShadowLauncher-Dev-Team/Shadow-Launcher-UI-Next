@@ -891,6 +891,9 @@ int main(int argc, char *argv[])
     checkpoint(QStringLiteral("Loading QML (precompiled qrc)..."));
     // 旧 UI（qml/）已于 2026-11-10 整体移除，只剩新 UI
     url = QUrl(QStringLiteral("qrc:/qt/qml/ShadowLauncher/Next/Main.qml"));
+    // 诊断：--ui-min-root 只加载一个空窗口，用来量 QML 加载的固定开销
+    if (app.arguments().contains(QStringLiteral("--ui-min-root")))
+        url = QUrl(QStringLiteral("qrc:/qt/qml/ShadowLauncher/Next/MinRoot.qml"));
 
     // ── Beta key gate（内测闸门）──
     // 公测版（默认）不定义 SHADOW_ENABLE_BETA_GATE → 直接加载主界面。

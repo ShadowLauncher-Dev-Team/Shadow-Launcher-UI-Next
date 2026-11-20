@@ -228,6 +228,7 @@ qt_policy(SET QTP0004 NEW)
 # 新一代 UI（ui/）—— URI ShadowLauncher.Next，入口 Main.qml
 # 说明：旧的 qml-next/ 已废弃并从本仓库移除（Qcoder 第三轮产物）。
 # ============================================================
+set_source_files_properties(ui/MinRoot.qml PROPERTIES QT_RESOURCE_ALIAS MinRoot.qml)
 set_source_files_properties(ui/StartupIntro.qml PROPERTIES QT_RESOURCE_ALIAS StartupIntro.qml)
 set_source_files_properties(ui/StartupIntroHalo.qml PROPERTIES QT_RESOURCE_ALIAS StartupIntroHalo.qml)
 set_source_files_properties(ui/Main.qml PROPERTIES QT_RESOURCE_ALIAS Main.qml)
@@ -296,6 +297,7 @@ qt_add_qml_module(ShadowLauncher
     RESOURCE_PREFIX "/qt/qml"
     NO_PLUGIN
     QML_FILES
+        ui/MinRoot.qml
         ui/StartupIntro.qml
         ui/StartupIntroHalo.qml
         ui/Main.qml
