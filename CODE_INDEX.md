@@ -9,6 +9,7 @@
 > 3. 本文档不含敏感信息（密钥/令牌/地址均为机制描述），可安全提交仓库。
 >
 > 更新日志见文末「文档更新记录」。
+> 2026-11-20（启动页支持 GIF 动图背景）：`ui/controls/SBgImage.qml` 按扩展名分流——`.gif` 走 `AnimatedImage`（Qt 自带，用部署里的 `imageformats/qgif.dll`，**零新增依赖**），静态图仍走 `Image`；两者的取景几何完全共用（cover×zoom×crop），所以外观页预览与启动页一致。新增 `playing` 开关：`StagePage` 绑定 `page.visible && hostWindow.active`，最小化/切后台/切页即暂停，避免一直解码。动图用 `cache: false` 逐帧解码（1080p/上百帧全缓存要几百 MB）。`shadow_backend.cpp` 的 `pickBackgroundImage` 对话框加 `*.gif`，并加了 64 MB 上限（超过直接拒绝并写日志）。**视频（mp4）仍不支持**：Qt 6.8.3 套件没装 Multimedia 模块，要加需装模块 + 约 80 MB ffmpeg。
 
 > 2026-11-20（启动页左缘融合带，定稿）：侧栏 `Theme.sidebar` 是实底、背景图侧即使压了遮罩仍剩约 28% 亮度，交界处是一条明暗直立分界线。**融合带放在 `StageShell.qml`**（声明在页面容器之后，才盖在图上）：`anchors.left: sideBar.right` 宽 88px，`Theme.sidebar` 四档（1.0 / 0.62 / 0.24 / 0.0）往图片方向渐隐，等于「侧栏长出去」。只在启动页显示（`!stageHost.shifted && !root.sideCollapsed`），其它页面是实底、渗过去会在左缘留暗带。**不要把这种渐变写进 `StagePage.qml` 的图片侧**——影明确否掉了那种做法（视觉上是把图片左边吃掉一截）；同时 `ui/SideBar.qml` 的 1px `Theme.line` 右缘分隔线已删除（有融合带就不需要它了）。
 

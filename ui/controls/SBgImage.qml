@@ -24,10 +24,19 @@ Item {
     // 图片没加载出来时的底色（避免闪白/黑块）
     property color fallbackColor: Theme.bgCard2
 
+    // ── 动图（GIF）──
+    // 判据只看扩展名：与后端 importBgFile 的规则一致，不嗅探文件内容。
+    // 静态图仍走 Image；动图走 AnimatedImage（Qt 自带，用的就是部署里的 imageformats/qgif.dll）。
+    readonly property bool animatedSource: /\.gif$/i.test(root.source)
+    // 是否播放。启动页在最小化/切到后台时由上层关掉 —— 动图每帧都要解码，不能一直烧。
+    property bool playing: true
+    // 已播到第几帧（只用于日志/排查：看不出动画时，先看这个有没有在变）
+    property int framesShown: 0
+
     signal viewChanged(real zoom, real cx, real cy)
 
-    readonly property real natW: img.imageWidth
-    readonly property real natH: img.imageHeight
+    readonly property real natW: root.animatedSource ? anim.implicitWidth : img.imageWidth
+    readonly property real natH: root.animatedSource ? anim.implicitHeight : img.imageHeight
     readonly property real coverScale: (natW > 0 && natH > 0 && width > 0 && height > 0)
         ? Math.max(width / natW, height / natH) : 1
     readonly property real drawW: natW * coverScale * Math.max(1.0, root.zoom)
@@ -44,7 +53,9 @@ Item {
         // sourceSize 在异步加载完成前是 0，首帧会算不出布局。
         readonly property real imageWidth: implicitWidth
         readonly property real imageHeight: implicitHeight
-        source: root.source
+        visible: !root.animatedSource
+        // 动图时清空 source：两个加载器同时读同一个文件会白占一份解码内存
+        source: root.animatedSource ? "" : root.source
         asynchronous: true
         smooth: true
         // 几何由我们自己算（保持比例），所以这里必须用 Stretch ——
@@ -55,6 +66,30 @@ Item {
         height: Math.max(root.height, root.drawH)
         x: (root.width - width) * Math.max(0, Math.min(1, root.cropX))
         y: (root.height - height) * Math.max(0, Math.min(1, root.cropY))
+    }
+
+    AnimatedImage {
+        id: anim
+        visible: root.animatedSource
+        source: root.animatedSource ? root.source : ""
+        // 不整段缓存帧：1080p、上百帧的 GIF 全缓存要几百 MB 内存。
+        // 背景动图通常 480p~720p，逐帧解码足够，且内存恒定。
+        cache: false
+        paused: !root.playing
+        smooth: true
+        // 与 Image 同样必须用 Stretch：几何是我们自己算的（见文件头公式）
+        fillMode: Image.Stretch
+        width: img.width
+        height: img.height
+        x: img.x
+        y: img.y
+        onFrameChanged: {
+            root.framesShown++
+            // 只在开头和每隔一段时间记一笔：动图每秒十几帧，逐帧打日志会把日志淹掉
+            if (root.framesShown === 1 || root.framesShown % 300 === 1) {
+                console.info("[背景] 动图帧", root.framesShown, "共", anim.frameCount, "帧，播放中=" + root.playing)
+            }
+        }
     }
 
     // ── 交互：拖动平移 + 滚轮缩放 ──

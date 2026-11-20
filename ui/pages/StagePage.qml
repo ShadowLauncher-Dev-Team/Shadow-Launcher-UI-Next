@@ -127,6 +127,9 @@ Item {
     // 取景（缩放/平移）由 SBgImage 统一计算，与外观页预览共用同一套公式。
     SBgImage {
         anchors.fill: parent
+        // 动图只在"启动页可见 + 窗口是前台"时播放：
+        // 最小化/切到后台/切到别的页面时停掉，否则一张 GIF 会一直解码烧 CPU 和电。
+        playing: page.visible && (!page.hostWindow || page.hostWindow.active)
         source: (page.b && page.b.customBgUrl && page.b.customBgUrl.length > 0)
                 ? page.b.customBgUrl
                 : "qrc:/ui/stage-aurora.jpg"

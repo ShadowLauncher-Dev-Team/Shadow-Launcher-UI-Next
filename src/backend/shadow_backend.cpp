@@ -1323,10 +1323,19 @@ QString ShadowBackend::colorScheme() const { return m_settings->colorScheme(); }
 void ShadowBackend::setColorScheme(const QString& scheme) { m_settings->setColorScheme(scheme); }
 
 QString ShadowBackend::pickBackgroundImage() {
+    // 支持动图：gif 走 QML 的 AnimatedImage（Qt 自带 qgif 插件，无需额外依赖）。
     const QString path = QFileDialog::getOpenFileName(nullptr,
-        QString::fromUtf8("选择背景图片"), QString(),
-        QString::fromUtf8("图片文件 (*.png *.jpg *.jpeg *.bmp *.webp);;所有文件 (*)"));
+        QString::fromUtf8("选择背景图片或动图"), QString(),
+        QString::fromUtf8("图片与动图 (*.png *.jpg *.jpeg *.bmp *.webp *.gif);;所有文件 (*)"));
     if (path.isEmpty()) return QString();
+
+    // 上限 64 MB：动图会被整份读进内存逐帧解码，几百 MB 的 GIF 等于让启动器卡死。
+    const qint64 kBgMaxBytes = 64LL * 1024 * 1024;
+    if (QFileInfo(path).size() > kBgMaxBytes) {
+        qCWarning(logUI) << QStringLiteral("[外观] 背景文件过大（>%1 MB），已拒绝: %2")
+                             .arg(kBgMaxBytes / (1024 * 1024)).arg(path);
+        return QString();
+    }
 
     // 复制与登记都交给图库（按内容 sha1 去重，同一张图重复选不会占两份），
     // 这里**不再清空目录** —— 旧实现每换一次图就把之前所有图删掉，是丢图的主因。
