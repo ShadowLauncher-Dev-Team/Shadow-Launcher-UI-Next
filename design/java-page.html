@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>Java 下载页 · 三版设计稿</title>
+<style>
+:root{
+  --bg:#08090d; --sidebar:#0a0b0f; --card2:#0b0d12; --card:#0d1016; --input:#0f131a;
+  --hover:#151a23; --raised:#12151c;
+  --line:#14171d; --line2:#262b35; --line3:#333a47;
+  --fg:#e8ebf2; --fg2:#98a1ae; --fg3:#5d6673; --fg4:#3f4753;
+  --accent:#3b82f6; --accentTop:#4b8cf7; --accentBot:#2563eb;
+  --soft:#132340; --accentText:#a9c8ff;
+  --ok:#4ade80; --warn:#f59e0b; --danger:#ef4444;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#050609;color:var(--fg);
+  font:13px/1.5 "Microsoft YaHei UI","Segoe UI",system-ui,sans-serif}
+.page{max-width:1180px;margin:0 auto;padding:36px 24px 90px}
+h1{font-size:20px;font-weight:600;margin:0 0 6px}
+.sub{color:var(--fg2);font-size:13px;margin-bottom:8px}
+.facts{background:var(--card2);border:1px solid var(--line2);border-radius:12px;
+  padding:14px 18px;margin:18px 0 34px;font-size:12.5px;color:var(--fg2);line-height:1.95}
+.facts b{color:var(--fg);font-weight:600}
+code{background:#0b0e14;border:1px solid var(--line);border-radius:5px;padding:1px 6px;
+  font:12px/1.4 Consolas,monospace;color:var(--accentText)}
+h2{font-size:16px;font-weight:600;margin:44px 0 4px}
+h2 .tag{font-size:11px;font-weight:500;color:var(--accentText);background:var(--soft);
+  border:1px solid #1b3560;border-radius:6px;padding:2px 8px;margin-left:10px;vertical-align:2px}
+.note{color:var(--fg3);font-size:12px;margin:0 0 16px}
+
+/* ── 启动器窗口框 ── */
+.win{width:1100px;height:720px;background:var(--bg);border:1px solid var(--line2);
+  border-radius:12px;overflow:hidden;display:flex;box-shadow:0 30px 80px rgba(0,0,0,.6);
+  transform-origin:top left}
+.side{width:208px;flex:0 0 208px;background:var(--sidebar);border-right:1px solid var(--line);
+  padding:22px 12px;display:flex;flex-direction:column;gap:4px}
+.brand{font-size:12px;letter-spacing:.22em;color:var(--fg2);padding:4px 10px 22px;font-weight:600}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;
+  color:var(--fg2);font-size:13px}
+.nav.on{background:var(--hover);color:var(--fg)}
+.nav .dot{width:14px;height:14px;border-radius:4px;background:#1b2230;flex:0 0 auto}
+.nav.on .dot{background:var(--accent)}
+.spacer{flex:1}
+.main{flex:1;padding:26px 30px 22px;display:flex;flex-direction:column;min-width:0}
+
+/* ── 通用 ── */
+.head{display:flex;align-items:flex-start;gap:16px;margin-bottom:20px}
+.head h3{margin:0;font-size:19px;font-weight:600;letter-spacing:.01em}
+.head p{margin:5px 0 0;font-size:12.5px;color:var(--fg2)}
+.ghost{margin-left:auto;font-size:12px;color:var(--accent);border:1px solid var(--line2);
+  border-radius:7px;padding:6px 12px;background:var(--card2);white-space:nowrap;cursor:pointer}
+.primary{background:linear-gradient(180deg,var(--accentTop),var(--accentBot));color:#fff;border:0;
+  border-radius:9px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;
+  box-shadow:0 8px 22px rgba(37,99,235,.35)}
+.card{background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:18px 20px}
+.kicker{font-size:10.5px;letter-spacing:.13em;color:var(--fg3);font-weight:600}
+.stage{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0}
+.lead{font-size:12.5px;color:var(--fg2);line-height:1.7;margin-bottom:16px}
+.picked{display:flex;align-items:center;gap:10px;margin-top:auto;padding-top:16px;
+  border-top:1px solid var(--line);font-size:12.5px}
+.picked .pk{font-size:10.5px;letter-spacing:.12em;color:var(--accentText);
+  background:var(--soft);border:1px solid #1b3560;border-radius:5px;padding:2px 7px;font-weight:600}
+.picked b{color:var(--fg);font-weight:600}
+.picked .pk2{color:var(--fg3);font-size:11.5px;margin-left:12px}
+
+/* ── 方案 A 步骤行 ── */
+.rail{display:flex;align-items:center;gap:0;margin-bottom:16px}
+.rail .st{display:flex;align-items:center;gap:9px;cursor:pointer;flex:0 0 auto}
+.rail .num{width:22px;height:22px;border-radius:11px;border:1px solid var(--line3);
+  display:grid;place-items:center;font-size:11px;color:var(--fg3);background:transparent}
+.rail .st.done .num{background:var(--accent);border-color:var(--accent);color:#fff}
+.rail .st.on .num{background:var(--card);border-color:var(--accent);color:var(--accentText);
+  box-shadow:0 0 0 3px rgba(59,130,246,.14)}
+.rail .lbl{font-size:12.5px;color:var(--fg3)}
+.rail .st.on .lbl{color:var(--fg);font-weight:600}
+.rail .st.done .lbl{color:var(--fg2)}
+.rail .wire{flex:1 1 auto;height:1px;background:var(--line2);margin:0 14px;min-width:18px}
+.rail .wire.done{background:var(--accent);opacity:.55}
+
+/* 选项块 */
+.opts{display:grid;gap:12px}
+.tiles4{grid-template-columns:repeat(4,1fr)}
+.tiles3{grid-template-columns:repeat(3,1fr)}
+.tiles2{grid-template-columns:repeat(2,1fr)}
+.tile{background:var(--card);border:1px solid var(--line2);border-radius:10px;padding:14px 16px;
+  cursor:pointer;position:relative;transition:background .14s,border-color .14s,transform .14s}
+.tile:hover{background:var(--hover);border-color:var(--line3)}
+.tile:active{transform:scale(.985)}
+.tile.pick{background:var(--soft);border-color:var(--accent)}
+.tile .big{font-size:20px;font-weight:600;letter-spacing:.01em}
+.tile.pick .big{color:#fff}
+.tile .sm{font-size:11.5px;color:var(--fg3);margin-top:3px}
+.tile.pick .sm{color:var(--accentText)}
+.tile .badge{position:absolute;top:10px;right:10px;font-size:10px;padding:1px 7px;border-radius:20px;
+  background:#172033;color:var(--accentText);border:1px solid #1f3a63}
+.hint{font-size:11.5px;color:var(--fg3);margin-top:14px;line-height:1.65}
+.rowline{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line2);
+  border-radius:10px;padding:13px 15px;cursor:pointer;transition:background .14s,border-color .14s}
+.rowline:hover{background:var(--hover)}
+.rowline.pick{background:var(--soft);border-color:var(--accent)}
+.ext{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-size:10px;
+  font-weight:600;background:#12161f;border:1px solid var(--line2);color:var(--fg2);flex:0 0 auto}
+.rowline.pick .ext{background:#10203a;border-color:#1f3a63;color:var(--accentText)}
+.rowline .nm{font-size:12.5px;color:var(--fg)}
+.rowline .ds{font-size:11px;color:var(--fg3);margin-top:2px}
+.rowline .go{margin-left:auto;font-size:12px;color:var(--accentText);white-space:nowrap}
+
+/* 本机已检测到 */
+.local{margin-top:auto;background:var(--card2);border:1px solid var(--line2);border-radius:12px;
+  padding:13px 16px}
+.local .top{display:flex;align-items:center;gap:9px;font-size:11.5px}
+.local .top b{color:var(--accentText);font-weight:600;letter-spacing:.03em}
+.local .top span{color:var(--fg3)}
+.local .top .ghost{margin-left:auto;padding:4px 10px;font-size:11px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.chip{font-size:11px;padding:4px 10px;border-radius:7px;background:var(--card);
+  border:1px solid var(--line2);color:var(--fg2)}
+.chip.mine{border-color:#1f3a63;color:var(--accentText);background:#101b2e}
+
+/* 进度条 */
+.prog{height:3px;border-radius:3px;background:#1b2029;overflow:hidden;margin-top:11px}
+.prog i{display:block;height:100%;border-radius:3px;
+  background:linear-gradient(90deg,var(--accentBot),var(--accentTop))}
+
+/* ── 方案 B 左摘要 ── */
+.split{display:flex;gap:24px;flex:1;min-height:0}
+.summary{width:236px;flex:0 0 236px;display:flex;flex-direction:column;gap:2px}
+.sumfoot{margin-top:auto;padding-top:16px;border-top:1px solid var(--line)}
+.sumfoot .lbl2{font-size:10.5px;letter-spacing:.12em;color:var(--fg4);font-weight:600}
+.sumfoot .combo{font-size:12.5px;color:var(--fg);font-weight:600;margin-top:6px}
+.sumfoot .bar{height:3px;border-radius:3px;background:#1b2029;margin-top:12px;overflow:hidden}
+.sumfoot .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accentBot),var(--accentTop))}
+.sumfoot .small{font-size:11px;color:var(--fg3);margin-top:8px}
+.srow{display:flex;align-items:center;gap:11px;padding:12px 13px;border-radius:9px;cursor:pointer}
+.srow .n{width:20px;height:20px;border-radius:10px;border:1px solid var(--line3);display:grid;
+  place-items:center;font-size:10.5px;color:var(--fg3);flex:0 0 auto}
+.srow.on{background:var(--hover)}
+.srow.on .n{border-color:var(--accent);color:var(--accentText);background:#101b2e}
+.srow.done .n{background:var(--accent);border-color:var(--accent);color:#fff}
+.srow .k{font-size:12px;color:var(--fg3)}
+.srow.on .k{color:var(--fg)}
+.srow .v{margin-left:auto;font-size:12px;color:var(--fg);font-weight:600;max-width:96px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srow:not(.done) .v{color:var(--fg4);font-weight:400}
+.bigopt{display:flex;gap:14px;padding:18px;border-radius:11px;background:var(--card);
+  border:1px solid var(--line2);cursor:pointer;transition:background .14s,border-color .14s}
+.bigopt:hover{background:var(--hover);border-color:var(--line3)}
+.bigopt.pick{background:var(--soft);border-color:var(--accent)}
+.bigopt .ico{width:40px;height:40px;border-radius:10px;background:#12161f;border:1px solid var(--line2);
+  display:grid;place-items:center;font-size:11px;font-weight:600;color:var(--fg2);flex:0 0 auto}
+.bigopt.pick .ico{background:#10203a;border-color:#1f3a63;color:var(--accentText)}
+.bigopt h4{margin:0 0 4px;font-size:13.5px;font-weight:600}
+.bigopt p{margin:0;font-size:11.5px;color:var(--fg3);line-height:1.6}
+
+/* ── 方案 C 推荐 ── */
+.hero{background:linear-gradient(120deg,#0f1b2e 0%,#0b0f17 58%);border:1px solid #1c3054;
+  border-radius:14px;padding:24px 26px;display:flex;align-items:center;gap:20px}
+.hero .ico{width:52px;height:52px;border-radius:13px;background:#0b1220;border:1px solid #1f3a63;
+  display:grid;place-items:center;font-size:15px;font-weight:700;color:var(--accentText);flex:0 0 auto}
+.hero h3{margin:0;font-size:17px;font-weight:600}
+.hero p{margin:5px 0 0;font-size:12px;color:var(--fg2)}
+.hero .why{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+.hero .why span{font-size:11px;color:var(--fg3);border:1px solid var(--line2);border-radius:6px;
+  padding:2px 8px;background:rgba(11,13,18,.6)}
+.adv{margin-top:18px}
+.adv summary{cursor:pointer;font-size:12.5px;color:var(--fg2);list-style:none;
+  display:flex;align-items:center;gap:8px}
+.adv summary::-webkit-details-marker{display:none}
+.adv summary::before{content:"";width:6px;height:6px;border-right:1.5px solid var(--fg3);
+  border-bottom:1.5px solid var(--fg3);transform:rotate(-45deg);margin-right:2px;transition:transform .16s}
+.adv[open] summary::before{transform:rotate(45deg)}
+</style></head>
+<body><div class="page">
+<h1>下载页 · Java 运行时 —— 三版重做方案</h1>
+<div class="sub">全部按真实数据与真实流程画：8 个主版本 / JDK·JRE / x64·x32·aarch64 / 仅 Windows / ZIP·MSI 两包。</div>
+
+<div class="facts">
+<b>为什么现在难看（对着 JavaPage.qml 说的）：</b><br>
+· 顶部五个圆圈 + 细线，下面又是 5 张卡片各自重复一遍「STEP 1 / Java 版本」——<b>同一套步骤信息画了两遍</b>，还把 700px 高度切成 132+10 的碎块。<br>
+· 选项只是 34px 高的 pill，<b>主值和副标签挤在同一行</b>（25 最新、17 主流），扫读时全靠小字，鼠标悬停也几乎没有反馈。<br>
+· 已选步骤收成 56px 的一行，但「STEP 3」「CPU 架构」「x64」三块并排 + 一个「修改」按钮，<b>一行里四个样式</b>，视线没有落点。<br>
+· 第 5 步的文件卡固定 88px、扩展名做成方块图标，<b>ZIP / MSI 的差别只写在 11px 小字里</b>。
+</div>
+
+<!-- ══════════ 方案 A ══════════ -->
+<h2>方案 A · 横向步骤 + 单一内容区<span class="tag">推荐</span></h2>
+<p class="note">顶部一行走完 5 步（已选直接显示成值），下方只有一个内容区。信息不再重复，纵向空间让给选项本身。
+点步骤行可以切进去看不同步骤的样子。</p>
+
+<div class="win">
+  <div class="side">
+    <div class="brand">SHADOW</div>
+    <div class="nav"><span class="dot"></span>启动</div>
+    <div class="nav on"><span class="dot"></span>下载</div>
+    <div class="nav"><span class="dot"></span>联机</div>
+    <div class="nav"><span class="dot"></span>设置</div>
+    <div class="spacer"></div>
+    <div class="nav"><span class="dot"></span>下载进度</div>
+    <div class="nav"><span class="dot"></span>帮助文档</div>
+  </div>
+  <div class="main">
+    <div class="head">
+      <div>
+        <h3>Java 运行时</h3>
+        <p>选一个版本就够了，其余我们会按本机情况预选好。</p>
+      </div>
+      <div class="ghost">重新扫描本机</div>
+    </div>
+
+    <div class="rail" id="railA">
+      <div class="st on" data-i="0"><span class="num">1</span><span class="lbl">版本</span></div>
+      <div class="wire"></div>
+      <div class="st" data-i="1"><span class="num">2</span><span class="lbl">JRE / JDK</span></div>
+      <div class="wire"></div>
+      <div class="st" data-i="2"><span class="num">3</span><span class="lbl">CPU 架构</span></div>
+      <div class="wire"></div>
+      <div class="st" data-i="3"><span class="num">4</span><span class="lbl">操作系统</span></div>
+      <div class="wire"></div>
+      <div class="st" data-i="4"><span class="num">5</span><span class="lbl">分发形式</span></div>
+    </div>
+
+    <div class="stage"><div class="card">
+      <div class="lead" id="hA">启动器目前只支持 Windows，这里通常不用动。</div>
+      <div class="opts" id="bodyA"></div>
+      <div class="picked">
+        <span class="pk">已选</span><b id="sumA">21 · JDK · x64 · Windows</b>
+        <span class="pk2" id="sumTipA">下一步：选择分发形式</span>
+        <button class="primary" style="margin-left:auto">继续</button>
+      </div>
+    </div></div>
+
+    <div class="local">
+      <div class="top"><b>本机已检测到</b><span>5 个运行时 · 你可能并不需要下载</span>
+        <div class="ghost">重新扫描</div></div>
+      <div class="chips">
+        <div class="chip">17 · 17.0.20 JDK</div>
+        <div class="chip">25 · 25.0.1 JDK</div>
+        <div class="chip">8 · 1.8.0_432 JRE</div>
+        <div class="chip mine">21 · 启动器托管 JDK</div>
+        <div class="chip mine">17 · 启动器托管 JDK</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 方案 B ══════════ -->
+<h2>方案 B · 左侧进度摘要 + 右侧选项</h2>
+<p class="note">五步竖排在左，每一步永远占一行（已选直接显示值），右边专注当前步的选择。
+适合以后步骤还会增加（比如 JDK 发行商）的情况，纵向扩展不会挤爆页面。</p>
+
+<div class="win">
+  <div class="side">
+    <div class="brand">SHADOW</div>
+    <div class="nav"><span class="dot"></span>启动</div>
+    <div class="nav on"><span class="dot"></span>下载</div>
+    <div class="nav"><span class="dot"></span>联机</div>
+    <div class="nav"><span class="dot"></span>设置</div>
+    <div class="spacer"></div>
+    <div class="nav"><span class="dot"></span>下载进度</div>
+    <div class="nav"><span class="dot"></span>帮助文档</div>
+  </div>
+  <div class="main">
+    <div class="head">
+      <div><h3>Java 运行时</h3><p>需要哪一版，点左边任意一步可以回头改。</p></div>
+      <div class="ghost">重新扫描本机</div>
+    </div>
+    <div class="split">
+      <div class="summary">
+        <div class="srow done"><span class="n">1</span><span class="k">版本</span><span class="v">21</span></div>
+        <div class="srow done"><span class="n">2</span><span class="k">类型</span><span class="v">JDK</span></div>
+        <div class="srow done"><span class="n">3</span><span class="k">架构</span><span class="v">x64</span></div>
+        <div class="srow done"><span class="n">4</span><span class="k">系统</span><span class="v">Windows</span></div>
+        <div class="srow on"><span class="n">5</span><span class="k">分发形式</span><span class="v">待选</span></div>
+        <div class="sumfoot">
+          <div class="lbl2">当前组合</div>
+          <div class="combo">21 · JDK · x64 · Windows · <span style="color:var(--fg4)">待选</span></div>
+          <div class="bar"><i style="width:80%"></i></div>
+          <div class="small">还差最后一步</div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <div class="lead" style="margin-bottom:10px">便携版（ZIP）由启动器托管，不写注册表；安装版（MSI）写入系统并配置 PATH / JAVA_HOME。</div>
+        <div style="font-size:11px;color:var(--fg4);margin-bottom:12px;letter-spacing:.06em">2 个文件 · 来自 mirrors.tuna.tsinghua.edu.cn</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="rowline pick">
+            <div class="ext">ZIP</div>
+            <div>
+              <div class="nm">OpenJDK21U-jdk_x64_windows_hotspot_21.0.5_11.zip</div>
+              <div class="ds">便携版 · 186.4 MiB · 解压后由启动器托管，不写注册表</div>
+            </div>
+            <div class="go">下载并安装</div>
+          </div>
+          <div class="rowline">
+            <div class="ext">MSI</div>
+            <div>
+              <div class="nm">OpenJDK21U-jdk_x64_windows_hotspot_21.0.5_11.msi</div>
+              <div class="ds">安装版 · 168.2 MiB · 写入系统目录与 PATH / JAVA_HOME，需管理员权限</div>
+            </div>
+            <div class="go">另存为…</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:auto;padding:14px 16px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="font-size:12.5px;color:var(--fg)">正在下载 <span style="color:var(--fg3);font-size:11.5px">OpenJDK21U-jdk_x64_windows_hotspot_21.0.5_11.zip</span></div>
+            <div style="margin-left:auto;font-size:11.5px;color:var(--fg2)">62% · 4.8 MB/s</div>
+          </div>
+          <div class="prog"><i style="width:62%"></i></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--fg3);margin-top:8px">
+            <span>115.6 / 186.4 MiB</span><span>剩余约 15 秒</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="local" style="margin-top:16px">
+      <div class="top"><b>本机已检测到</b><span>5 个运行时</span><div class="ghost">重新扫描</div></div>
+      <div class="chips">
+        <div class="chip">17 · 17.0.20 JDK</div><div class="chip">25 · 25.0.1 JDK</div>
+        <div class="chip">8 · 1.8.0_432 JRE</div><div class="chip mine">21 · 启动器托管 JDK</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 方案 C ══════════ -->
+<h2>方案 C · 推荐优先（默认不用选）</h2>
+<p class="note">九成用户只需要「装一个能用的」。把推荐配置做成一张主卡，一键下载；手动五步收进折叠区。
+代价是要新增一条「一键推荐」的逻辑，且要能覆盖用户手动改过的选择。</p>
+
+<div class="win">
+  <div class="side">
+    <div class="brand">SHADOW</div>
+    <div class="nav"><span class="dot"></span>启动</div>
+    <div class="nav on"><span class="dot"></span>下载</div>
+    <div class="nav"><span class="dot"></span>联机</div>
+    <div class="nav"><span class="dot"></span>设置</div>
+    <div class="spacer"></div>
+    <div class="nav"><span class="dot"></span>下载进度</div>
+    <div class="nav"><span class="dot"></span>帮助文档</div>
+  </div>
+  <div class="main">
+    <div class="head">
+      <div><h3>Java 运行时</h3><p>本机已有 5 个运行时；如果只是想确保能玩，用下面的推荐就行。</p></div>
+    </div>
+
+    <div class="hero">
+      <div class="ico">21</div>
+      <div style="flex:1">
+        <h3>Java 21 · JDK · x64 · 便携版</h3>
+        <p>由启动器托管，不写注册表，卸载只需删目录。</p>
+        <div class="why">
+          <span>覆盖 1.20.5 及以上</span><span>Forge / NeoForge 可用</span><span>186.4 MiB</span>
+        </div>
+      </div>
+      <button class="primary">下载并安装</button>
+    </div>
+
+    <details class="adv">
+      <summary>手动选择版本 / 类型 / 架构 / 系统 / 分发形式</summary>
+      <div class="card" style="margin-top:14px">
+        <div class="lead">拿不准就选 17 或 21 —— 覆盖目前绝大多数整合包与 Forge。</div>
+        <div class="opts tiles4">
+          <div class="tile"><span class="badge">最新</span><div class="big">25</div><div class="sm">当前 LTS 之后</div></div>
+          <div class="tile pick"><span class="badge">推荐</span><div class="big">21</div><div class="sm">1.20.5 及以上</div></div>
+          <div class="tile"><div class="big">17</div><div class="sm">主流 · Forge 首选</div></div>
+          <div class="tile"><div class="big">8</div><div class="sm">旧版整合包</div></div>
+        </div>
+      </div>
+    </details>
+
+    <div class="card" style="margin-top:16px">
+      <div class="kicker" style="margin-bottom:12px">为什么是 21</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        <div><div style="font-size:12.5px;color:var(--fg);font-weight:600">覆盖最广</div>
+          <div style="font-size:11.5px;color:var(--fg3);margin-top:4px;line-height:1.6">1.20.5 及以上全部版本都需要 21 起。</div></div>
+        <div><div style="font-size:12.5px;color:var(--fg);font-weight:600">加载器齐全</div>
+          <div style="font-size:11.5px;color:var(--fg3);margin-top:4px;line-height:1.6">Forge / NeoForge / Fabric 都有对应版本。</div></div>
+        <div><div style="font-size:12.5px;color:var(--fg);font-weight:600">JDK 而非 JRE</div>
+          <div style="font-size:11.5px;color:var(--fg3);margin-top:4px;line-height:1.6">JRE 缺 jdk.crypto.ec，部分加载器会崩。</div></div>
+      </div>
+    </div>
+    <div class="local" style="margin-top:auto">
+      <div class="top"><b>本机已检测到</b><span>5 个运行时 · 你可能并不需要下载</span><div class="ghost">重新扫描</div></div>
+      <div class="chips">
+        <div class="chip">17 · 17.0.20 JDK</div><div class="chip">25 · 25.0.1 JDK</div>
+        <div class="chip">8 · 1.8.0_432 JRE</div><div class="chip mine">21 · 启动器托管 JDK</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="facts" style="margin-top:34px">
+<b>三版共同的取舍（都是真实约束，不是设计自由度）：</b><br>
+· 步骤仍然是 5 步、级联重置（改版本会清掉类型/架构/系统），这条后端逻辑不动；<br>
+· 选项值只有真实存在的那些：版本取镜像目录、架构只留 x64/x32/aarch64、系统只有 windows；<br>
+· 「本机已检测到」必须常驻贴底 —— 它的作用是劝退（已经装了就别再下），不能藏进滚动区；<br>
+· 下载/安装状态都在当前上下文里就地显示，不跳页。
+</div>
+</div>
+
+<script>
+// 方案 A：步骤行可点，内容跟着换（真实数据）
+var A = [
+  { k:"STEP 1 / 5", t:"选择 Java 版本", h:"拿不准就选 17 或 21——覆盖目前绝大多数整合包与 Forge。",
+    tiles:[[ "25","当前 LTS 之后",""],["21","1.20.5 及以上","推荐"],["17","主流 · Forge 首选",""],["8","旧版整合包",""]] },
+  { k:"STEP 2 / 5", t:"JRE 还是 JDK", h:"JDK 含 JRE 与编译工具。启动器一键安装用 JDK——JRE 缺少 jdk.crypto.ec，部分加载器会崩。",
+    tiles:[["JDK","含编译工具 · 推荐",""],["JRE","只有运行环境",""]] },
+  { k:"STEP 3 / 5", t:"选择 CPU 架构", h:"绝大多数机器是 x64。32 位系统选 x32；Java 21 及以上没有 32 位版本。",
+    tiles:[["x64","已识别",""],["x32","32 位系统",""],["aarch64","ARM 设备",""]] },
+  { k:"STEP 4 / 5", t:"选择操作系统", h:"启动器目前只支持 Windows，这里通常不用动。",
+    tiles:[["Windows","Windows 10 / 11","已识别"]] },
+  { k:"STEP 5 / 5", t:"选择分发形式", h:"便携版（ZIP）由启动器托管，不写注册表；安装版（MSI）写入系统并配置 PATH / JAVA_HOME。",
+    rows:true }
+];
+function renderA(i){
+  var d = A[i];
+  document.getElementById('hA').textContent = d.h;
+  var combos = ['21','JDK','x64','Windows','ZIP'];
+  var nextTip = ['下一步：JRE 还是 JDK','下一步：CPU 架构','下一步：操作系统','下一步：分发形式','下一步：开始下载'];
+  var shown = [];
+  for (var c = 0; c < i && c < 4; c++) shown.push(combos[c]);
+  for (var r = i; r < 4; r++) shown.push('—');
+  document.getElementById('sumA').textContent = '21' + (i > 0 ? shown.slice(1).join(' · ') : '');
+  document.getElementById('sumTipA').textContent = nextTip[i];
+  var body = document.getElementById('bodyA');
+  if (d.rows) {
+    body.className = 'opts';
+    body.innerHTML =
+      '<div class="rowline pick"><div class="ext">ZIP</div><div>'+
+      '<div class="nm">OpenJDK21U-jdk_x64_windows_hotspot_21.0.5_11.zip</div>'+
+      '<div class="ds">便携版 · 186.4 MiB · 解压后由启动器托管</div></div>'+
+      '<div class="go">下载并安装</div></div>'+
+      '<div class="rowline"><div class="ext">MSI</div><div>'+
+      '<div class="nm">OpenJDK21U-jdk_x64_windows_hotspot_21.0.5_11.msi</div>'+
+      '<div class="ds">安装版 · 168.2 MiB · 需管理员权限</div></div>'+
+      '<div class="go">另存为…</div></div>';
+  } else {
+    body.className = 'opts ' + (d.tiles.length === 4 ? 'tiles4' : (d.tiles.length === 3 ? 'tiles3' : 'tiles2'));
+    var out = '';
+    for (var n = 0; n < d.tiles.length; n++) {
+      var it = d.tiles[n];
+      var pick = (i === 3) ? ' pick' : '';
+      out += '<div class="tile'+pick+'">' + (it[2] ? '<span class="badge">'+it[2]+'</span>' : '') +
+             '<div class="big">'+it[0]+'</div><div class="sm">'+it[1]+'</div></div>';
+    }
+    body.innerHTML = out;
+  }
+  var sts = document.querySelectorAll('#railA .st');
+  var wires = document.querySelectorAll('#railA .wire');
+  var names = ['版本','JRE / JDK','CPU 架构','操作系统','分发形式'];
+  var vals  = ['21','JDK','x64','Windows','ZIP'];
+  for (var s = 0; s < sts.length; s++) {
+    sts[s].className = 'st' + (s < i ? ' done' : (s === i ? ' on' : ''));
+    var lb = sts[s].querySelector('.lbl');
+    if (lb) lb.textContent = (s < i) ? vals[s] : names[s];
+    if (wires[s]) wires[s].className = 'wire' + (s < i ? ' done' : '');
+  }
+}
+document.getElementById('railA').addEventListener('click', function(e){
+  var st = e.target.closest('.st'); if (!st) return;
+  renderA(parseInt(st.getAttribute('data-i'), 10));
+});
+renderA(0);
+</script>
+</body></html>
