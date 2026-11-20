@@ -764,8 +764,13 @@ int main(int argc, char *argv[])
     // Pass engine reference for language hot-switch
     backend->setEngine(&engine);
 
-    // ── Screenshot Server (Debug/Dev only; NDEBUG stubs it out) ──
-    ScreenshotServer* ssServer = new ScreenshotServer(&engine, &app);
+    // ── Screenshot Server（仅开发期，release 默认不开）──
+    // 注释原本写着「NDEBUG stubs it out」，实际并没有任何条件编译 —— release 包一直在
+    // 127.0.0.1:9999 对外提供画面。它是验收/截图工具，不是产品功能，默认关掉。
+    // 显式需要时：--ui-screenshots 参数，或设环境变量 SHADOW_SS_PORT=<端口>。
+    const bool ssEnabled = app.arguments().contains(QStringLiteral("--ui-screenshots"))
+                           || qEnvironmentVariableIsSet("SHADOW_SS_PORT");
+    ScreenshotServer* ssServer = ssEnabled ? new ScreenshotServer(&engine, &app) : nullptr;
 
     // ── Taskbar minimize: install native event filter ──
     TaskbarMinimizeFilter* taskbarFilter = new TaskbarMinimizeFilter();
@@ -895,8 +900,8 @@ int main(int argc, char *argv[])
     qCInfo(logApp) << QStringLiteral("事件循环已启动")
                    << "— total startup:" << startupTimer.elapsed() << "ms";
 
-    // ── Start screenshot server ──
-    {
+    // ── Start screenshot server（见上方 ssEnabled：默认不启动）──
+    if (ssServer) {
         quint16 ssPort = static_cast<quint16>(qEnvironmentVariableIntValue("SHADOW_SS_PORT"));
         if (ssPort == 0) ssPort = 9999;
         ssServer->start(ssPort);

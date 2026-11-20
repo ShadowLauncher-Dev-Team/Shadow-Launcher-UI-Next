@@ -29,8 +29,11 @@ namespace ShadowLauncher {
 // Modrinth×2.5 可达到前 10 约 5/5 均衡混合（×1.5 CF 霸榜、×3 Modrinth 反霸、×5 完全淹没 CF）
 static QString normTitle(const QString& s)
 {
+    // 正则必须只编译一次：QRegularExpression 在构造时编译，放函数体里等于每次调用重编译。
+    // 启动时 loadMcmodMap + loadModTranslations 会调它 2.8 万次，实测 407ms -> 27ms（2026-11-20 启动性能清点）。
+    static const QRegularExpression re(QStringLiteral("[^a-z0-9]"));
     QString n = s.toLower();
-    n.remove(QRegularExpression(QStringLiteral("[^a-z0-9]")));
+    n.remove(re);
     return n;
 }
 
