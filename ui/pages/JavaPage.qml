@@ -358,42 +358,20 @@ Item {
             opacity: page.enter
             transform: Translate { y: (1 - page.enter) * 8 }
 
-            // ── 页头 ──
+            // ── 步骤行：同时充当标题与页头（tab 已经写着 Java，不再重复一遍页面标题）──
             Item {
-                id: headerItem
+                id: railRow
                 width: parent.width
-                height: headerCol.implicitHeight
+                height: 42
 
-                Column {
-                    id: headerCol
-                    anchors.left: parent.left
-                    anchors.right: rescanBtn.left
-                    anchors.rightMargin: 16
-                    spacing: 5
-                    Text {
-                        text: qsTr("Java 运行时")
-                        color: page.nText
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 19
-                        font.weight: Font.DemiBold
-                    }
-                    Text {
-                        width: parent.width
-                        text: qsTr("选一个版本就够了，其余按本机情况预选。")
-                        color: page.nText2
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 12
-                        wrapMode: Text.WordWrap
-                    }
-                }
-
+                // 重新扫描放在步骤行右端：不额外占高度，也不必滚动到底部去找
                 Rectangle {
-                    id: rescanBtn
+                    id: rescanTop
                     anchors.right: parent.right
-                    anchors.top: parent.top
+                    anchors.verticalCenter: parent.verticalCenter
                     property bool hovered: false
-                    height: 30
-                    width: rescanTopText.implicitWidth + 24
+                    height: 28
+                    width: rescanTopText.implicitWidth + 22
                     radius: 7
                     color: hovered ? page.nHover : "transparent"
                     border.width: 1
@@ -403,16 +381,16 @@ Item {
                         id: rescanTopText
                         anchors.centerIn: parent
                         text: page.scanning ? qsTr("扫描中…") : qsTr("重新扫描本机")
-                        color: page.scanning ? page.nText3 : page.nText2
+                        color: page.scanning ? page.nText4 : page.nText2
                         font.family: Theme.fontFamily
-                        font.pixelSize: 12
+                        font.pixelSize: 11
                     }
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: page.scanning ? Qt.ArrowCursor : Qt.PointingHandCursor
                         hoverEnabled: true
-                        onEntered: rescanBtn.hovered = true
-                        onExited: rescanBtn.hovered = false
+                        onEntered: rescanTop.hovered = true
+                        onExited: rescanTop.hovered = false
                         onClicked: {
                             if (page.scanning) return
                             page.scanToastPending = true
@@ -420,12 +398,13 @@ Item {
                         }
                     }
                 }
-            }
 
-            // ── 步骤行：同时充当标题，内容区不再重复步骤名 ──
-            Item {
+                Item {
                 id: rail
-                width: parent.width
+                anchors.left: parent.left
+                anchors.right: rescanTop.left
+                anchors.rightMargin: 18
+                anchors.verticalCenter: parent.verticalCenter
                 height: 42
 
                 Row {
@@ -502,6 +481,7 @@ Item {
                             }
                         }
                     }
+                }
                 }
             }
 
@@ -595,10 +575,9 @@ Item {
                 id: stepCard
                 width: parent.width
                 visible: page.step < 4
-                // 最小高度 = 视口减去页头与步骤行：内容少时卡片自己撑开，
-                // 空白落在卡面内（看起来是"这块面板就这么大"），而不是页面中间裂一道缝。
-                readonly property real minH: Math.min(460, Math.max(240, scrollArea.height - headerItem.height - rail.height - 32))
-                height: page.step < 4 ? Math.max(cardCol.implicitHeight + 40, minH) : 0
+                // 高度随内容：卡片被撑满会在下半截留一大片空白，比"内容到顶、下方留呼吸区"难看。
+                // +80 = 上下内边距 40 + 底部状态行 24 + 与内容之间的缝 16
+                height: page.step < 4 ? (cardCol.implicitHeight + 80) : 0
                 radius: 12
                 color: page.nFill
                 border.width: 1
@@ -744,7 +723,7 @@ Item {
                 id: filesCard
                 width: parent.width
                 visible: page.step === 4
-                height: Math.max(filesCol.implicitHeight + 40, stepCard.minH)
+                height: filesCol.implicitHeight + 40
                 radius: 12
                 color: page.nFill
                 border.width: 1
