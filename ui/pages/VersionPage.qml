@@ -985,11 +985,12 @@ Item {
                 height: page.coverH
                 clip: true
 
-                Image {
+                SBgImage {
                     anchors.fill: parent
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                    source: "qrc:/ui/stage-aurora.jpg"
+                    source: Theme.bgUrl(page.b)
+                    zoom: (page.b && page.b.bgZoom) ? page.b.bgZoom : 1.0
+                    cropX: (page.b && page.b.cropX !== undefined) ? page.b.cropX : 0.5
+                    cropY: (page.b && page.b.cropY !== undefined) ? page.b.cropY : 0.5
                 }
                 Rectangle {
                     anchors.fill: parent

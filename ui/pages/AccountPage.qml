@@ -503,13 +503,18 @@ Item {
     // ---------- 底色 ----------
     // 用「同一张壁纸 + 深色压暗层」，而不是半透明透出下层：
     // 直接透下层会把启动页的大标题、按钮一起透出来，两层 UI 叠着更乱。
-    Image {
+    // 必须和启动页同一张图、同一套取景：
+    // 旧写法读 b.customBgPath 自己拼 file:///，内置预设背景时 path 为空 → 掉回默认图，
+    // 于是「启动页是一张、设置页是另一张」。现在只走 Theme.bgUrl()。
+    SBgImage {
         anchors.fill: parent
-        fillMode: Image.PreserveAspectCrop
-        asynchronous: true
-        source: (b && b.customBgPath && b.customBgPath.length > 0)
-                ? ("file:///" + b.customBgPath)
-                : "qrc:/ui/stage-aurora.jpg"
+        source: Theme.bgUrl(b)
+        zoom: (b && b.bgZoom) ? b.bgZoom : 1.0
+        cropX: (b && b.cropX !== undefined) ? b.cropX : 0.5
+        cropY: (b && b.cropY !== undefined) ? b.cropY : 0.5
+        playing: page.visible
+        // 自检：和启动页打同一行格式的日志。两边 URL 不一致就是有页面又自己拼 URL 了。
+        Component.onCompleted: console.info("[背景] 账户页", Theme.bgUrl(b))
     }
     // 压暗：0xd9 ≈ 85%，壁纸隐约可见，正文对比度仍然够
     Rectangle { anchors.fill: parent; color: "#d908090d" }

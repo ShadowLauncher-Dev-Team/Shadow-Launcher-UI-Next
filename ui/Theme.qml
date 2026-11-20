@@ -102,6 +102,15 @@ QtObject {
     // 字体
     readonly property string fontFamily: "Microsoft YaHei UI"
 
+    // ── 背景壁纸：唯一真源 ─────────────────────────────────
+    // 之前启动页/账户页/版本页各写一遍 URL 规则，结果账户页读的是 customBgPath，
+    // 内置预设背景时 path 为空 → 掉回默认极光图，和启动页不是同一张（用户实测截图）。
+    // 现在所有页面只能走 bgUrl(b)：想换背景只改这里。
+    readonly property string bgFallbackUrl: "qrc:/ui/stage-aurora.jpg"
+    function bgUrl(b) {
+        return (b && b.customBgUrl && b.customBgUrl.length > 0) ? b.customBgUrl : bgFallbackUrl
+    }
+
     // ── 动效 ────────────────────────────────────────────────
     // 唯一真源。禁止在别处写裸 duration 数字（构建期契约检查会拦）。
     // 语义分工：

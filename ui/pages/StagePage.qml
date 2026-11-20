@@ -130,9 +130,8 @@ Item {
         // 动图只在"启动页可见 + 窗口是前台"时播放：
         // 最小化/切到后台/切到别的页面时停掉，否则一张 GIF 会一直解码烧 CPU 和电。
         playing: page.visible && (!page.hostWindow || page.hostWindow.active)
-        source: (page.b && page.b.customBgUrl && page.b.customBgUrl.length > 0)
-                ? page.b.customBgUrl
-                : "qrc:/ui/stage-aurora.jpg"
+        source: Theme.bgUrl(page.b)
+        Component.onCompleted: console.info("[背景] 启动页", Theme.bgUrl(page.b))
         zoom: (page.b && page.b.bgZoom) ? page.b.bgZoom : 1.0
         cropX: (page.b && page.b.cropX !== undefined) ? page.b.cropX : 0.5
         cropY: (page.b && page.b.cropY !== undefined) ? page.b.cropY : 0.5
