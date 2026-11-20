@@ -598,9 +598,15 @@ int main(int argc, char *argv[])
         splash = new SplashWindow();
         splash->show();
         splash->raise();
-        // 立刻同步画完：紧接着 backend 构造 + QML 加载会把事件循环堵死，
-        // 靠 WM_PAINT 排队的话用户只会看见一块没画过的空窗。
+        // 关键（2026-11-21 实测纠正）：只 show()+repaint() 是不够的 ——
+        // 窗口要等 WM_SHOWWINDOW / 首帧提交被处理后才真正出现在屏幕上，
+        // 而紧接着的 backend 构造 + engine.load() 会把事件循环堵死 1.2s，
+        // 结果封面窗直到加载快结束时才被合成上屏（实测 show 到可见差 1.29s）。
+        // 所以在进入阻塞之前必须**主动转一圈事件循环**，让窗口真正上屏。
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
         splash->repaint();
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 30);
+        qCInfo(logApp) << QStringLiteral("[启动动画] 封面窗已上屏（阻塞前主动 pump 事件）");
         // 交接近似度靠这两行日志核：封面窗和主窗口的位置/尺寸/dpr 必须一致。
         qCInfo(logApp) << QStringLiteral("[启动动画] 封面窗 rect=%1,%2 %3x%4 dpr=%5")
                               .arg(splash->x()).arg(splash->y())
