@@ -596,8 +596,8 @@ int main(int argc, char *argv[])
     SplashWindow *splash = nullptr;
     if (introEnabled) {
         splash = new SplashWindow();
-        splash->show();
-        splash->raise();
+        // 淡入 140ms（内部自己泵事件循环）——show() 满不透明会让 SHADOW 硬蹦出来
+        splash->fadeInAndShow(220);
         // 关键（2026-11-21 实测纠正）：只 show()+repaint() 是不够的 ——
         // 窗口要等 WM_SHOWWINDOW / 首帧提交被处理后才真正出现在屏幕上，
         // 而紧接着的 backend 构造 + engine.load() 会把事件循环堵死 1.2s，

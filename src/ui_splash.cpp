@@ -8,6 +8,9 @@
 #include <QTimer>
 #include <QFont>
 #include <QFontMetricsF>
+#include <QCoreApplication>
+#include <QElapsedTimer>
+#include <QThread>
 #include <cmath>
 #include <vector>
 
@@ -108,6 +111,32 @@ SplashWindow::SplashWindow(QWidget *parent)
     }
     boxBlurAlpha(img, kHaloR);
     m_halo = img;
+}
+
+void SplashWindow::fadeInAndShow(int ms)
+{
+    // 之前的写法是 show() 直接满不透明 —— 屏幕上是桌面，然后「啪」一下变成
+    // #08090d + SHADOW，这就是「硬出现」。窗口淡入只能自己泵事件循环做，
+    // 因为紧接着的 QML 加载会把主线程堵死，任何 QTimer 都不会走。
+    setWindowOpacity(0.0);
+    show();
+    raise();
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+
+    QElapsedTimer clock;
+    clock.start();
+    for (;;) {
+        const qreal k = qBound(0.0, clock.elapsed() / qreal(ms), 1.0);
+        // smoothstep（3k²-2k³）：两端缓、中间匀。用 easeOut 会让头 40ms 就冲到 78%，
+        // 观感还是「啪」一下 —— 实测采样只有 2 个中间帧，等于没柔化。
+        const qreal e = k * k * (3.0 - 2.0 * k);
+        setWindowOpacity(0.02 + 0.98 * e);
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 8);
+        if (k >= 1.0) break;
+        QThread::msleep(12);
+    }
+    setWindowOpacity(1.0);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 8);
 }
 
 void SplashWindow::beginFinish()

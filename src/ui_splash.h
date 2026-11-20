@@ -21,6 +21,10 @@ class SplashWindow : public QWidget
 public:
     explicit SplashWindow(QWidget *parent = nullptr);
 
+    // 上屏并淡入（ms 毫秒）：show() 之后主线程马上会被 QML 加载堵死，
+    // 所以淡入必须在这里自己泵事件循环完成，不能交给 QTimer。
+    void fadeInAndShow(int ms = 220);
+
     // 主窗口首帧已上屏：淡出并自己 deleteLater
     void beginFinish();
 
