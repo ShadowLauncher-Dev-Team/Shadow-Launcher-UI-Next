@@ -304,17 +304,17 @@ Item {
     // 为什么不在 Theme 里改：影要求只改 Java 下载页，其它页面保持现状。
     // 这里蓝色只出现三处 —— 主按钮、进度条、当前步骤的下划线；其余全部走中性灰，
     // 深蓝底 + 浅蓝小字在这套字号下会发灰发脏（上一版一屏 7 处蓝，等于没有强调）。
-    readonly property color nFill:    "#121214"
-    readonly property color nFill2:   "#0e0e10"
-    readonly property color nPick:    "#191a1d"
-    readonly property color nHover:   "#1a1a1d"
-    readonly property color nStroke:  "#212124"
-    readonly property color nStroke2: "#2b2b30"
-    readonly property color nStroke3: "#3a3a40"
-    readonly property color nText:    "#f0f1f3"
-    readonly property color nText2:   "#a0a4ad"
-    readonly property color nText3:   "#6d7178"
-    readonly property color nText4:   "#4a4d53"
+    readonly property color nFill:    "#141519"   // 卡面（比页面亮一档，才不像糊在一起）
+    readonly property color nFill2:   "#191a1f"   // 卡内的块（比卡面再亮一点 = 凸起）
+    readonly property color nPick:    "#1c2330"   // 选中：轻微偏蓝，让强调线读得出来
+    readonly property color nHover:   "#202128"
+    readonly property color nStroke:  "#232429"
+    readonly property color nStroke2: "#2c2d34"
+    readonly property color nStroke3: "#3d3f48"
+    readonly property color nText:    "#f2f3f5"
+    readonly property color nText2:   "#b9bdc6"
+    readonly property color nText3:   "#8a8f99"
+    readonly property color nText4:   "#62666e"
 
     // 已选组合：底部状态行用（空项不出现）
     function comboText() {
@@ -428,15 +428,16 @@ Item {
                                     Rectangle {
                                         width: 18; height: 18; radius: 9
                                         anchors.verticalCenter: parent.verticalCenter
-                                        color: "transparent"
+                                        color: active ? Theme.accent : "transparent"
                                         border.width: 1
-                                        border.color: active ? page.nText2
+                                        border.color: active ? Theme.accent
                                                     : done ? page.nStroke3 : page.nStroke2
+                                        Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                                         Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                                         Text {
                                             anchors.centerIn: parent
                                             text: (index + 1)
-                                            color: active ? page.nText : done ? page.nText3 : page.nText4
+                                            color: active ? "#ffffff" : done ? page.nText3 : page.nText4
                                             font.family: Theme.fontFamily
                                             font.pixelSize: 10
                                             Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
@@ -618,13 +619,16 @@ Item {
                                 radius: 10
                                 color: picked ? page.nPick : (hovered ? page.nHover : page.nFill2)
                                 border.width: 1
-                                border.color: picked ? page.nStroke3 : page.nStroke2
+                                border.color: picked
+                                              ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.55)
+                                              : page.nStroke2
                                 Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                                 Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
 
                                 Rectangle {
                                     visible: tile.picked
-                                    width: 2
+                                    width: 3
+                                    radius: 2
                                     x: 0
                                     anchors.top: parent.top
                                     anchors.bottom: parent.bottom
