@@ -296,6 +296,7 @@ qt_add_qml_module(ShadowLauncher
         ui/Theme.qml
         ui/StageShell.qml
         ui/SideBar.qml
+        ui/UpdateCardWindow.qml
         ui/pages/StagePage.qml
         ui/pages/VersionPage.qml
         ui/pages/AccountPage.qml
@@ -367,6 +368,7 @@ qt6_add_resources(ShadowLauncher "ui_stage_assets"
     PREFIX "/ui"
     BASE "ui/assets"
     FILES
+        ui/assets/app-icon.png
         ui/assets/stage-aurora.jpg
         ui/assets/stage-fangcun.jpg
         ui/assets/stage-shanhe.jpg

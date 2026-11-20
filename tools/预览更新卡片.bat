@@ -1,10 +1,9 @@
 @echo off
 chcp 65001 >nul
-title 预览更新卡片（不影响任何文件）
-echo 正在显示更新卡片：会依次走 等待/8%/25%/62%/87%/100% 六档，约 5 秒后自动关闭。
-echo 这个模式只画窗口，不读写任何更新文件。
+title 更新卡片预览
+echo 正在打开更新卡片预览窗口（假进度，6 档循环，不会触发任何更新）
+echo 卡片是独立置顶窗口，出现在屏幕中央；关掉启动器窗口即可结束预览。
 echo.
-"%~dp0SLUpdater.exe" --card-test
-echo.
-echo 已结束。
-pause
+start "" "%~dp0ShadowLauncher.exe" --ui-update-card
+timeout /t 2 >nul
+exit

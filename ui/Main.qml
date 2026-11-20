@@ -59,4 +59,11 @@ Window {
         anchors.fill: parent
         hostWindow: appWindow
     }
+
+    // 更新卡片预览（--ui-update-card）：独立置顶透明窗口，与真实安装卡片同形态。
+    // 必须直接实例化同模块类型：用 Loader { source: "UpdateCardWindow.qml" } 会报
+    // "No such file or directory"（qrc 模块内相对 URL 不按文件路径解析，实测 15:57）。
+    UpdateCardWindow {
+        mode: Qt.application.arguments.indexOf("--ui-update-card") >= 0
+    }
 }
