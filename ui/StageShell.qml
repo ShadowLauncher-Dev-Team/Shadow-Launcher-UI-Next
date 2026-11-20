@@ -689,6 +689,26 @@ Item {
         }
     }
 
+    // 侧栏右缘「长出去」的融合带（影：渐变要加在侧栏侧，不要压暗图片那一侧）
+    // 做法是让侧栏的底色从它的右边界继续往图片方向渗 88px，
+    // 而不是在页面里叠一层遮罩 —— 后者等于把图片的左边吃掉一截。
+    // 只在启动页显示：其它页面是实底，渗过去会在左边缘留一道暗带。
+    // 声明在页面容器之后，才盖在图片上；宽度 88px 时启动页内容（左边距 ~80px）已在渐隐末端，不受影响。
+    Rectangle {
+        anchors.left: sideBar.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: 88
+        visible: !stageHost.shifted && !root.sideCollapsed
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0.00; color: Theme.sidebar }
+            GradientStop { position: 0.26; color: Qt.rgba(Theme.sidebar.r, Theme.sidebar.g, Theme.sidebar.b, 0.62) }
+            GradientStop { position: 0.58; color: Qt.rgba(Theme.sidebar.r, Theme.sidebar.g, Theme.sidebar.b, 0.24) }
+            GradientStop { position: 1.00; color: Qt.rgba(Theme.sidebar.r, Theme.sidebar.g, Theme.sidebar.b, 0.0) }
+        }
+    }
+
     // 启动浮层（页面内，不新开窗口）；启动中压住一切
     LaunchOverlay {
         anchors.left: sideBar.right

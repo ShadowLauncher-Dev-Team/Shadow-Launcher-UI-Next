@@ -51,13 +51,6 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: Theme.sidebar
-        Rectangle {
-            width: 1
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            color: Theme.line
-        }
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton

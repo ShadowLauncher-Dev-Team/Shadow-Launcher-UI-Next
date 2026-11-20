@@ -172,25 +172,6 @@ Item {
         }
     }
 
-    // ---------- 左缘融合带 ----------
-    // 页面左边界紧贴侧栏右缘，背景图在这里是被硬切的：侧栏是 #0a0b0f 实底，
-    // 图片侧即使压了遮罩也还剩约 28% 亮度 —— 交界处会出现一条明显的明暗直立分界线。
-    // 用一条"侧栏底色 → 透明"的窄渐变把图片左边溶进侧栏（不是给侧栏加渐变，
-    // 侧栏那边本来就是实底，加渐变会和 1px 分隔线打架）。
-    Rectangle {
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        width: 88
-        gradient: Gradient {
-            orientation: Gradient.Horizontal
-            GradientStop { position: 0.00; color: Theme.sidebar }
-            GradientStop { position: 0.30; color: Qt.rgba(Theme.sidebar.r, Theme.sidebar.g, Theme.sidebar.b, 0.55) }
-            GradientStop { position: 0.62; color: Qt.rgba(Theme.sidebar.r, Theme.sidebar.g, Theme.sidebar.b, 0.22) }
-            GradientStop { position: 1.00; color: Qt.rgba(Theme.sidebar.r, Theme.sidebar.g, Theme.sidebar.b, 0.0) }
-        }
-    }
-
     // ---------- 拖动带 ----------
     // 启动页没有系统标题栏，顶部这条空白区是用户唯一顺手的"抓手"。
     // 声明在账户胶囊/按钮之前 —— 后声明的控件盖在上面，所以点胶囊照旧点得到，
