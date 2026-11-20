@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Shadow Launcher">
+  <!--
+    Shadow Launcher 图标（矢量版）。
+    几何由 resources/icons/app-256.png 逐像素拟合得出（PIL 4x 超采样、1px 容差比对），
+    与 256px 位图的对称差 = 109 / 65536 像素（0.17%）。
+    · 白色圆角方块：256×256，圆角 42
+    · 黑色圆角六边形：尖顶，中心 (128,127.5)，半高 66.75，半宽 58，圆角 16
+    · 两条白色短线：round linecap，线宽 5
+  -->
+  <rect x="0" y="0" width="256" height="256" rx="42" ry="42" fill="#ffffff"/>
+  <path fill="#000000" d="M 119.99 65.36 A 16 16 0 0 1 136.01 65.36 L 177.99 89.52 A 16 16 0 0 1 186 103.36 L 186 151.64 A 16 16 0 0 1 177.99 165.48 L 136.01 189.64 A 16 16 0 0 1 119.99 189.64 L 78.01 165.48 A 16 16 0 0 1 70 151.64 L 70 103.36 A 16 16 0 0 1 78.01 89.52 L 119.99 65.36 Z"/>
+  <g stroke="#ffffff" stroke-width="5" stroke-linecap="round">
+    <line x1="135.5" y1="156.5" x2="144.5" y2="151.5"/>
+    <line x1="165.5" y1="136.5" x2="173.5" y2="130.5"/>
+  </g>
+</svg>
