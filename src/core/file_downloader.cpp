@@ -788,6 +788,12 @@ std::shared_ptr<DownloadThread> FileDownloader::trySplitSlowThread(
     std::shared_ptr<FileDownload> file, std::shared_ptr<DownloadThread> th)
 {
     if (file->fileSize <= 0 || file->isNoSplit || file->threads.isEmpty()) return nullptr;
+    // ── 2026-11-20：慢速切分也必须守「每文件 4 条」上限 ──
+    // 现场（client.jar 37MB）：managerTick 的加分片有 4 条上限，慢速切分却没有，
+    // 于是每秒切一次 → 文件被切成 7~8 段；每次切分都 abort 一条正在用的连接，
+    // 最后合并出的 jar SHA1 不符 → 13/14 → 触发一整轮修复；对端也被突发的
+    // 多条 Range 连接搞得直接 Connection closed。
+    if (file->threads.size() >= 4) return nullptr;
     if (th->state != 2) return nullptr;
     const qint64 undone = th->downloadUndone();
     // 剩余不足两倍最小粒度（32KB×2）不再切——保证切出的两半都 ≥32KB，
@@ -1806,25 +1812,114 @@ cleanup:
         // （响应头=无、已收 0B），这些段 state=4；旧代码在非模组模式直接
         // 「anyFailed → 不合并 → 文件判失败」→ 13/14 → 触发整轮修复（+30 秒）。
         // 单片网络抖动不该让 37MB 的文件报废，MC 库文件同样需要「丢弃失败分片重下」。
-        if (anyFailed) {
-            bool launchedRetry = false;
+        // ── 2026-11-20：合并前的「覆盖率闸门」+ 多次分片重下 ──
+        // 旧实现只允许每个分片重下一次（t->retried 一次性旗标），第二次还撞上
+        // 对端断连就把整个文件判失败（实测 client.jar 13/14）。而且**没有校验
+        // 各段字节是否凑齐就合并**，缺段的文件会先被写出来再被 SHA1 判坏。
+        // 现在：按实际落盘字节判断覆盖，缺的当作失败分片，给足 kMaxShardRetries 次机会。
+        if (!anyFailed && th->state != 4 && file->fileSize > 0 && !file->isUnknownSize) {
+            qint64 covered = 0;
             {
                 QMutexLocker lock(&m_filesMutex);
                 for (auto& t : file->threads) {
-                    if (t->state == 4 && !t->retried) {
+                    if (t->state == 3) {
+                        const qint64 want = t->downloadEnd - t->downloadStart;
+                        qint64 got = QFileInfo(t->tempPath).size();
+                        if (got != want && got < want) {
+                            // 段是「完成」态但字节不够 → 当作失败分片重下
+                            t->state = 4;
+                            anyFailed = true;
+                        }
+                        covered += qMin(got, want);
+                    }
+                }
+            }
+            if (!anyFailed && covered < file->fileSize) {
+                qCWarning(logDownload)
+                    << QStringLiteral("[夸父] 分段覆盖不足 文件=%1 已覆盖=%2B 期望=%3B")
+                           .arg(file->localName).arg(covered).arg(file->fileSize);
+                anyFailed = true;
+            }
+        }
+
+        // ── 2026-11-20：分段「必须严丝合缝铺满 [0,fileSize)」──
+        // 现场（client.jar）：切分/范围缩小交替后出现重叠段，Σ字节 ≈ 文件大小
+        // 但中间有洞 → 合并出来的 jar SHA1 必然不符 → 整个文件判失败 → 一轮修复。
+        // 单纯「求和」判不出这种洞，必须按区间首尾相接来验。
+        if (!anyFailed && th->state != 4 && file->fileSize > 0 && !file->isUnknownSize) {
+            QVector<QPair<qint64, qint64>> ranges;
+            {
+                QMutexLocker lock(&m_filesMutex);
+                for (auto& t : file->threads)
+                    if (t->state == 3) ranges.append(qMakePair(t->downloadStart, t->downloadEnd));
+            }
+            std::sort(ranges.begin(), ranges.end());
+            qint64 expect = 0;
+            bool tiled = !ranges.isEmpty();
+            for (const auto& r : ranges) {
+                if (r.first != expect) { tiled = false; break; }
+                expect = r.second;
+            }
+            if (tiled && expect != file->fileSize) tiled = false;
+            if (!tiled) {
+                qCWarning(logDownload)
+                    << QStringLiteral("[夸父] 分段未铺满文件（重叠/空洞）文件=%1 段数=%2 覆盖到=%3 期望=%4")
+                           .arg(file->localName).arg(ranges.size()).arg(expect).arg(file->fileSize);
+                // 兜底：整文件单连接重下一次（本机实测单连接 GET 11~15MB/s，
+                // 比拼一堆相互重叠的分片更可靠）。只兜底一次，避免死循环。
+                if (!file->singleFallbackUsed) {
+                    file->singleFallbackUsed = true;
+                    file->isNoSplit = true;
+                    {
+                        QMutexLocker lock(&m_filesMutex);
+                        for (auto& t : file->threads) {
+                            if (!t->tempPath.isEmpty()) QFile::remove(t->tempPath);
+                            t->tempPath.clear();
+                            t->downloadDone = 0;
+                            t->state = 5;      // 旧分片全部作废，不再参与合并
+                            t->rangeShrunk.storeRelaxed(0);
+                        }
+                        auto fresh = std::make_shared<DownloadThread>();
+                        fresh->uuid = m_nextUuid.fetchAndAddRelaxed(1);
+                        fresh->downloadStart = 0;
+                        fresh->downloadEnd = file->fileSize;
+                        fresh->sourceUrl = file->orderedSources.value(0);
+                        file->threads.clear();
+                        file->threads.append(fresh);
+                        file->state = 1;
+                        m_activeThreads.fetchAndAddRelaxed(1);
+                        qCWarning(logDownload) << QStringLiteral("[夸父] 改用整文件单连接重下 文件=%1")
+                            .arg(file->localName);
+                        launchWorker(fresh, file);
+                    }
+                    return;
+                }
+                anyFailed = true;
+            }
+        }
+
+        if (anyFailed) {
+            bool launchedRetry = false;
+            int retried = 0;
+            {
+                QMutexLocker lock(&m_filesMutex);
+                for (auto& t : file->threads) {
+                    if (t->state == 4 && t->retryCount < 3) {
+                        t->retryCount++;
                         t->retried = true;
                         t->state = 0;
                         t->downloadDone = 0;
                         if (!t->tempPath.isEmpty()) QFile::remove(t->tempPath);
                         t->tempPath.clear();
                         launchedRetry = true;
+                        ++retried;
                         m_activeThreads.fetchAndAddRelaxed(1);
                         launchWorker(t, file);   // 重新下载该分片 range（源会重新选择）
                     }
                 }
             }
             if (launchedRetry) {
-                qCInfo(logDownload) << QStringLiteral("[夸父] 分片失败重下 %1").arg(file->localName);
+                qCInfo(logDownload) << QStringLiteral("[夸父] 分片失败重下 %1 段数=%2").arg(file->localName).arg(retried);
                 return;   // 等重试分片完成
             }
         }

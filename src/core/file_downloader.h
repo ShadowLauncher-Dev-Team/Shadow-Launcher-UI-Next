@@ -45,7 +45,9 @@ struct DownloadThread {
     QString tempPath;
     qint64 lastReceiveTime = 0;
     int state = 0;  // 0=waiting,1=connecting,2=downloading,3=finished,4=failed
-    bool retried = false;   // 分片失败已重试（模组专项：丢弃失败分片重下）
+    bool retried = false;   // 分片失败已重试（保留旧字段，兼容既有判断）
+    int  retryCount = 0;    // 2026-11-20：分片重下次数（最多 kMaxShardRetries）
+    qint64 segDone() const { return downloadDone; }
     bool isFullFile = false;  // 服务器返回全文件（忽略 Range）→ 整文件数据，合并优先用
 
     // ── 尾程慢速检测（2026-08-05）──
@@ -76,7 +78,9 @@ struct FileDownload {
     bool targetWritten = false;
     /// 已通过校验/合并并成功收尾（取消时不得删除）
     bool committed = false;
-    bool isNoSplit = false;    // files < 50MB, single range
+    bool isNoSplit = false;
+    // 2026-11-20：分片覆盖不连续时的一次「整文件单连接」兜底（已用过 = true，防无限循环）
+    bool singleFallbackUsed = false;    // files < 50MB, single range
     int state = 0;             // 0=waiting,1=connecting,2=downloading,3=merging,4=finished,5=failed
     QStringList orderedSources;
     QVector<int> sourceFailCounts;   // per-source 失败计数（主流启动器 NetSource.FailCount 语义）
