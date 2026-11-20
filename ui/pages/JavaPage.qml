@@ -210,6 +210,11 @@ Item {
             if (target >= 4) page.pickOs("windows")
             console.info("[JavaPage] --ui-java-step ->", target)
         }
+        // 验收钩子：--ui-java-demo → 1.4s 一步自动循环，用来拍换步过渡的中间帧
+        if (Qt.application.arguments.indexOf("--ui-java-demo") >= 0) {
+            console.info("[JavaPage] --ui-java-demo 已启动")
+            stepDemo.start()
+        }
         // 量一次真实宽度：这一步的瓦片数是按容器宽度算的，宽度不对就会溢出（调试用，可保留）
         Qt.callLater(function() {
             console.info("[JavaPage] 尺寸 page=" + page.width + " scroll=" + scrollArea.width
@@ -232,21 +237,47 @@ Item {
         easing.type: Theme.easeEnter
     }
 
-    // 换步：内容轻轻浮现（从 0.6 起淡入，不从 0 起 —— 从 0 会有 1 帧全透明，观感是"闪一下"）
+    // 换步：新内容淡入 + 顺着方向滑进来。
+    // 曲线用 OutCubic 而不是 OutQuint：OutQuint 在 46% 时长就跑到 95%（实测日志 0.97），
+    // 肉眼只剩 50ms 的可感知变化，看起来就是"硬切"。OutCubic 能把变化摊到整段 260ms。
+    property int stepDir: 1
+    property int lastStep: 0
     onStepChanged: {
+        stepDir = step >= lastStep ? 1 : -1
+        lastStep = step
         stepTick++
-        if (step === 0) { reveal = 1; return }
         cardIn.restart()
+        console.info("[Java页] 换步 ->", step, "方向", stepDir > 0 ? "前进" : "后退")
+        probe.restart()
+    }
+
+    // 换步 120ms 后回报一次 reveal —— 停在 0.15~0.9 之间就说明是"渐进淡入"而不是"直接跳"
+    Timer {
+        id: probe
+        interval: 120
+        onTriggered: console.info("[Java页] 过渡中 reveal =", page.reveal.toFixed(2))
+    }
+
+    Timer {
+        id: stepDemo
+        interval: 1400
+        repeat: true
+        property int seq: 0
+        onTriggered: {
+            var path = [1, 2, 3, 2, 1]
+            page.step = path[seq % path.length]
+            seq++
+        }
     }
 
     NumberAnimation {
         id: cardIn
         target: page
         property: "reveal"
-        from: 0.6
+        from: 0
         to: 1
-        duration: Theme.durBase
-        easing.type: Theme.easeEnter
+        duration: Theme.durSlow
+        easing.type: Theme.easeStandard
     }
 
     Connections {
@@ -409,78 +440,128 @@ Item {
                 }
 
                 Item {
-                id: rail
-                anchors.left: parent.left
-                anchors.right: rescanTop.left
-                anchors.rightMargin: 18
-                anchors.verticalCenter: parent.verticalCenter
-                height: 42
-
-                Row {
+                    id: rail
+                    anchors.left: parent.left
+                    anchors.right: rescanTop.left
+                    anchors.rightMargin: 18
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 0
+                    height: 42
+
+                    // 量一遍步骤名（按"当前步"的字重量，取最宽的一列）。
+                    // 这样整行是【等宽列 + 等长连接线】：换步时列不会左右乱窜，
+                    // 线也永远居两列之间、长度一致（上一版每条线起点跟着文字宽度跑，才长短不一）。
+                    Row {
+                        id: labelMeasure
+                        visible: false
+                        height: 0
+                        Repeater {
+                            model: 5
+                            delegate: Text {
+                                text: page.stepNames[index]
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                            }
+                        }
+                    }
+
+                    readonly property real circle: 18
+                    readonly property real gapCW: 8
+                    readonly property real pad: 12
+                    readonly property real colW: {
+                        var m = 0
+                        for (var i = 0; i < 5; ++i) {
+                            var it = labelMeasure.children[i]
+                            if (it) m = Math.max(m, it.implicitWidth + circle + gapCW)
+                        }
+                        m += pad * 2
+                        return Math.min(m > 0 ? m : 104, (width - 48) / 5)
+                    }
+                    readonly property real wireW: Math.max(12, (width - colW * 5) / 4)
+                    readonly property real dashLen: Math.max(24, Math.min(72, wireW * 0.7))
+                    readonly property real rowY: 8
+                    // 圆点中心：rowY + circle/2；连线对齐到这里（上一版对着整块的高度，所以偏下）
+                    readonly property real wireY: rowY + circle / 2 - 0.5
+                    function colX(i) { return i * (colW + wireW) }
+                    function labelW(i) {
+                        var it = labelMeasure.children[i]
+                        return it ? it.implicitWidth : 44
+                    }
+                    function contentW(i) { return circle + gapCW + labelW(i) }
+
+                    // 连接线：固定长度 + 在两段文字之间居中。
+                    // 列是等宽的，所以"列边界"并不等于"两段文字的中间"；
+                    // 直接铺满列间隙会看起来贴住较长的那一侧。
+                    Repeater {
+                        model: 4
+                        delegate: Rectangle {
+                            readonly property real leftEdge: rail.colX(index) + rail.pad + rail.contentW(index)
+                            readonly property real rightEdge: rail.colX(index + 1) + rail.pad
+                            x: leftEdge + (rightEdge - leftEdge - width) / 2
+                            y: rail.wireY
+                            width: Math.min(rail.dashLen, Math.max(10, rightEdge - leftEdge - 24))
+                            height: 1
+                            color: page.step > index ? page.nStroke3 : page.nStroke2
+                            Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                        }
+                    }
+
+                    // 当前步下划线：一条会滑动的线（换步是"移过去 + 变宽"，不是关一个开一个）
+                    Rectangle {
+                        id: railBar
+                        y: rail.rowY + rail.circle + 7
+                        height: 2
+                        radius: 1
+                        color: Theme.accent
+                        x: rail.colX(page.step) + rail.pad
+                        width: rail.contentW(page.step)
+                        Behavior on x { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+                        Behavior on width { NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeStandard } }
+                    }
+
                     Repeater {
                         model: 5
                         delegate: Item {
                             readonly property bool done: page.step > index
                             readonly property bool active: page.step === index
-                            width: rail.width / 5
-                            height: 34
+                            x: rail.colX(index)
+                            y: 0
+                            width: rail.colW
+                            height: 42
 
-                            Column {
-                                id: stepCol
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 7
-
-                                Row {
-                                    spacing: 8
-                                    Rectangle {
-                                        width: 18; height: 18; radius: 9
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        color: active ? Theme.accent : "transparent"
-                                        border.width: 1
-                                        border.color: active ? Theme.accent
-                                                    : done ? page.nStroke3 : page.nStroke2
-                                        Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-                                        Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: (index + 1)
-                                            color: active ? "#ffffff" : done ? page.nText3 : page.nText4
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: 10
-                                            Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
-                                        }
-                                    }
+                            // 左对齐（不是居中）：走过的步骤名字会缩短成已选值，
+                            // 居中会让序号圆点左右漂；左对齐则圆点永远是同一个位置。
+                            Row {
+                                x: rail.pad
+                                y: rail.rowY
+                                spacing: rail.gapCW
+                                Rectangle {
+                                    width: rail.circle; height: rail.circle; radius: rail.circle / 2
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: active ? Theme.accent : "transparent"
+                                    border.width: 1
+                                    border.color: active ? Theme.accent : done ? page.nStroke3 : page.nStroke2
+                                    Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
+                                    Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                                     Text {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        // 走过的步骤显示已选值，当前步显示步骤名 —— 去掉重复的关键
-                                        text: (page.step > index) ? page.stepValue(index) : page.stepNames[index]
-                                        color: active ? page.nText : (page.step > index) ? page.nText3 : page.nText4
+                                        anchors.centerIn: parent
+                                        text: (index + 1)
+                                        color: active ? "#ffffff" : done ? page.nText3 : page.nText4
                                         font.family: Theme.fontFamily
-                                        font.pixelSize: 12
-                                        font.weight: active ? Font.DemiBold : Font.Normal
+                                        font.pixelSize: 10
                                         Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                                     }
                                 }
-
-                                Rectangle {
-                                    width: stepCol.width
-                                    height: 2
-                                    radius: 1
-                                    color: active ? Theme.accent : "transparent"
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    // 走过的步骤显示已选值，当前步显示步骤名
+                                    text: (page.step > index) ? page.stepValue(index) : page.stepNames[index]
+                                    color: active ? page.nText : (page.step > index) ? page.nText3 : page.nText4
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 12
+                                    font.weight: active ? Font.DemiBold : Font.Normal
                                     Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                                 }
-                            }
-
-                            Rectangle {
-                                visible: index < 4
-                                anchors.verticalCenter: parent.verticalCenter
-                                x: stepCol.width + 14
-                                width: Math.max(10, parent.width - stepCol.width - 26)
-                                height: 1
-                                color: page.step > index ? page.nStroke3 : page.nStroke2
-                                Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                             }
 
                             MouseArea {
@@ -491,7 +572,6 @@ Item {
                             }
                         }
                     }
-                }
                 }
             }
 
@@ -588,6 +668,7 @@ Item {
                 // 高度随内容：卡片被撑满会在下半截留一大片空白，比"内容到顶、下方留呼吸区"难看。
                 // +80 = 上下内边距 40 + 底部状态行 24 + 与内容之间的缝 16
                 height: page.step < 4 ? (cardCol.implicitHeight + 80) : 0
+                Behavior on height { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                 radius: 12
                 color: page.nFill
                 border.width: 1
@@ -601,7 +682,7 @@ Item {
                     anchors.margins: 20
                     spacing: 16
                     opacity: page.reveal
-                    transform: Translate { y: (1 - page.reveal) * 6 }
+                    transform: Translate { y: (1 - page.reveal) * 14 * page.stepDir }
 
                     Text {
                         width: parent.width
@@ -781,7 +862,7 @@ Item {
                         border.color: (busyZip || busyMsi) ? page.nStroke3 : page.nStroke2
                         clip: true
                         opacity: page.reveal
-                        transform: Translate { y: (1 - page.reveal) * 6 }
+                        transform: Translate { y: (1 - page.reveal) * 10 * page.stepDir }
                         Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
                         Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
 
