@@ -10,6 +10,8 @@
 >
 > 更新日志见文末「文档更新记录」。
 
+> 2026-11-20（Java 页重做）：`ui/pages/JavaPage.qml` 按设计稿「A-1 石墨中性」重写布局层（逻辑函数未动）：页面级中性色板 `nFill/nFill2/nPick/nStroke*/nText*`，**蓝色只保留主按钮 / 进度条 / 当前步骤下划线**；步骤行同时充当标题（走过显示已选值）；选项卡 76px 瓦片；状态行贴卡面底部；`minH` 让卡面填满视口。新增验收钩子 `--ui-java-step N`。注意 SButton：kind 0 = 实心、kind 1 = 描边。
+
 > 2026-11-20（定稿）：更新卡片方案 A 已确认。**视觉基准是 `ui/UpdateCardWindow.qml`**（360x96，圆角 14，卡面 Theme.bgRaised，标题 14px/y=11，副行 12px/y=32，进度条 y=58/h=3，底行 11px/y=69）。`update/SLUpdater.cpp` 的 Win32 版按它逐像素同步（#12151C 卡面 / #262B35 轨道），**改一处必须同步另一处**；Win32 版不能换成 QML（安装时 Qt 库正在被替换）。
 
 > 2026-11-20（补充）：新增 `ui/UpdateCardWindow.qml` —— 更新卡片的**解耦预览窗口**，入口 `ShadowLauncher.exe --ui-update-card`（独立置顶无边框透明窗、六档假进度、不触发更新）。与更新流程完全无关，仅用于界面验收。
