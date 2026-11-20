@@ -1079,6 +1079,7 @@ Item {
                     boundsBehavior: Flickable.StopAtBounds
                     // 滚动条沿用 VsExportPane 的样式（细轨道 + bgHover 滑块），保持全项目一致
                     ScrollBar.vertical: ScrollBar {
+                        id: oldBar
                         policy: ScrollBar.AsNeeded
                         width: 6
                         contentItem: Rectangle {
@@ -1089,7 +1090,8 @@ Item {
                     }
                     delegate: Item {
                         id: row   // 下面底色/竖条都要读 row.picked；少了这个 id，绑定求值失败会静默落回白色
-                        width: oldList.width; height: 38
+                        // 覆盖式滚动条不占布局宽度，行宽要让开它，否则行尾内容压在条上
+                        width: oldList.width - oldBar.width - 4; height: 38
                         // 这一行是否就是当前选中项（选中后上方文件卡/右栏都跟着换）
                         readonly property bool picked: page.pickedId === modelData.id
                         Rectangle {

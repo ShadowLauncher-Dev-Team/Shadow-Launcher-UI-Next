@@ -345,6 +345,7 @@ Item {
                 }
 
                 Flickable {
+                    id: treeFlick
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.top: treeHead.bottom
@@ -357,6 +358,7 @@ Item {
                     contentHeight: treeCol.implicitHeight + 12
                     boundsBehavior: Flickable.StopAtBounds
                     ScrollBar.vertical: ScrollBar {
+                        id: treeBar
                         policy: ScrollBar.AsNeeded
                         width: 6
                         contentItem: Rectangle {
@@ -368,7 +370,9 @@ Item {
 
                     Column {
                         id: treeCol
-                        width: parent.width
+                        // 滚动条是覆盖式的（不占布局宽度），内容必须自己让出它，
+                        // 否则右对齐的「已选 N · 收起」会压在滚动条上。
+                        width: treeFlick.width - treeBar.width - 6
                         spacing: 6
 
                         // —— 基础 ——
@@ -917,6 +921,7 @@ Item {
                     boundsBehavior: Flickable.StopAtBounds
 
                     ScrollBar.vertical: ScrollBar {
+                        id: modBar
                         policy: ScrollBar.AsNeeded
                         width: 6
                         contentItem: Rectangle { radius: 3; color: Theme.bgHover; implicitWidth: 6 }
@@ -924,7 +929,8 @@ Item {
 
                     delegate: Item {
                         id: modRow
-                        width: ListView.view ? ListView.view.width : 0
+                        // 同上：行宽要让开覆盖式滚动条，行尾内容/悬停底色不会压到条上
+                        width: ListView.view ? (ListView.view.width - modBar.width - 4) : 0
                         height: 32
 
                         Rectangle {
