@@ -9,6 +9,8 @@
 > 3. 本文档不含敏感信息（密钥/令牌/地址均为机制描述），可安全提交仓库。
 >
 > 更新日志见文末「文档更新记录」。
+> 2026-11-20（启动性能清点）：新增 `design/startup-perf-audit-2026-11-20.md` —— 用日志 `[后端启动 +Nms]` + Qt6Core benchmark 实测出启动各段成本，定位到最大单点是 `ResourceBackend` 构造 577ms，其中约 407ms 来自 `normTitle()` 每次调用都新建 `QRegularExpression`（28k 次调用实测）。清单共 14 条，含建议与优先级（P0 正则改 static / P1 页面惰性化 + Java 延后 / P2 release 关 ScreenshotServer）。
+>
 > 2026-11-20（推送前清理隐私 + 挡垃圾）：仓库里 9 处 `C:\Users\<本机用户名>` 全部换成占位符（`<用户名>` / `张三` / `Player`）；`tests/test_minecraft_layout.cpp` 与 `tests/test_slf4j_real.cpp` 改为从 `SHADOW_TEST_MINECRAFT_DIR` / `SHADOW_TEST_GAMEDIR` 取真实目录（不再把开发机路径写进源码）；`tools/gen_mcmod_*.py`、`trigger-import.ps1`、`verify-card.ps1` 同理改走环境变量。`.gitignore` 新增根目录零散截图、`dist/`、`frames*/`、registry 备份，以及 `tools/` 下一性调试脚本（用 `!` 白名单保留真正入库的 30 个）。推送后 `origin/main` 树内已无用户名、无 `sk-/ghp_/AKIA` 令牌。**注意：历史提交里仍有旧路径**（改不动，除非重写历史）。
 >
 > 2026-11-20（动图在卡片里也播）：`SetAppearancePane.qml` 的两个 `SBgImage`（图库卡片 / 取景大预览）都绑 `playing: Window.window ? Window.window.active : true` —— 窗口切到后台自动暂停，回到前台续播。实测：卡片区帧号 1→301 递增，两张截图差异只落在卡片内（153×44 区域）。
