@@ -1190,11 +1190,14 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 //    4MB 门槛保证「慢但真在跑」的连接（1MB/s 时 20s 已有 20MB）不被误杀。
                 //    ⚠️ 现场：bmclapi 的 client.jar 单次 attempt 跑到 141 秒、已收 0B，
                 //    空闲超时被 302 重定向的 readyRead 反复续命 → 必须有这条兜底。
-                const bool stalledStart = (el >= kSlowAttemptWindowMs
-                                           && gotNow < 4LL * 1024 * 1024
-                                           && gotNow * 1000 / qMax<qint64>(1, el) < kSlowAttemptMinBps);
-                // ② 单次尝试硬上限：超过 45 秒一律放弃（我们有续传，重来不亏）
-                const bool overWall = (el >= kMaxAttemptWallMs);
+                // ⚠️ 判据必须只抓「彻底不动」的连接：冷装时资源用 192 条连接跑满链路，
+                // 库文件被饿到 10KB/s 是**正常竞争**，不是坏连接。第一版按「<4MB 且均值
+                // <24KB/s」判，把 client.jar 的正常慢速连接全掐了 → 该文件判失败 →
+                // 多跑一轮修复（实测总耗时 144s）。现在：
+                //   ① 20 秒**一个字节都没收到**才判定卡死；
+                //   ② 45 秒墙钟上限只对「收 <256KB」的无效尝试生效。
+                const bool stalledStart = (el >= kSlowAttemptWindowMs && gotNow == 0);
+                const bool overWall = (el >= kMaxAttemptWallMs && gotNow < 256 * 1024);
                 if (stalledStart || overWall) {
                     slowAbort = true;
                     qCWarning(logDownload)
@@ -1296,7 +1299,8 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             if (slowAbort && !rangeFilled) {
                 reply->abort();
                 reply->deleteLater();
-                th->downloadDone = 0;
+                // 保留 downloadDone 作为续传基线：已收的字节不重下
+                //（原来是清零，撞上「被饿→掐→重下」就是白扔带宽）
                 if (++slowAbortCount > kMaxSlowAborts) {
                     qCWarning(logDownload) << QStringLiteral("[夸父] 源持续龟速，放弃本源 文件=%1")
                         .arg(file->localName);
@@ -1312,6 +1316,20 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             // 截断写盘逻辑会裁剪到当前范围）。
             if (rangeFilled) {
                 // 数据完整（>= 本线程范围），不重试、不计 FailCount
+            } else if (!timedOut
+                       && reply->error() == QNetworkReply::OperationCanceledError
+                       && !m_cancelled.loadRelaxed()) {
+                // ── 2026-11-20：自己 abort 掉的不算失败 ──
+                // 现场：piston-data 的 client.jar 被「慢速分片」切分后，老连接被我们
+                // 自己 abort → Qt 报 OperationCanceledError → 旧代码走失败分支，
+                // 累计 FailCount 并最终把这个 37MB 的文件判失败 → 触发一整轮修复
+                // （多花 15 秒以上）。取消/切分/看门狗都是我们主动发起的，
+                // 语义上是「换条连接续传」，不是对端出错。保留已收字节（downloadDone
+                // 就是续传基线），直接重发即可。
+                reply->abort();
+                reply->deleteLater();
+                prevWatchdogAbort = true;
+                continue;
             } else if (timedOut || reply->error() != QNetworkReply::NoError) {
                 qCWarning(logDownload) << QStringLiteral("[夸父] 请求失败 URL=%1 错误=%2 重试=%3 | 归因: 响应头=%4 已收=%5B 耗时=%6ms 状态=%7")
                     .arg(url, timedOut ? QStringLiteral("超时") : reply->errorString())
