@@ -9,6 +9,8 @@
 > 3. 本文档不含敏感信息（密钥/令牌/地址均为机制描述），可安全提交仓库。
 >
 > 更新日志见文末「文档更新记录」。
+> 2026-11-20（推送前清理隐私 + 挡垃圾）：仓库里 9 处 `C:\Users\<本机用户名>` 全部换成占位符（`<用户名>` / `张三` / `Player`）；`tests/test_minecraft_layout.cpp` 与 `tests/test_slf4j_real.cpp` 改为从 `SHADOW_TEST_MINECRAFT_DIR` / `SHADOW_TEST_GAMEDIR` 取真实目录（不再把开发机路径写进源码）；`tools/gen_mcmod_*.py`、`trigger-import.ps1`、`verify-card.ps1` 同理改走环境变量。`.gitignore` 新增根目录零散截图、`dist/`、`frames*/`、registry 备份，以及 `tools/` 下一性调试脚本（用 `!` 白名单保留真正入库的 30 个）。推送后 `origin/main` 树内已无用户名、无 `sk-/ghp_/AKIA` 令牌。**注意：历史提交里仍有旧路径**（改不动，除非重写历史）。
+>
 > 2026-11-20（动图在卡片里也播）：`SetAppearancePane.qml` 的两个 `SBgImage`（图库卡片 / 取景大预览）都绑 `playing: Window.window ? Window.window.active : true` —— 窗口切到后台自动暂停，回到前台续播。实测：卡片区帧号 1→301 递增，两张截图差异只落在卡片内（153×44 区域）。
 >
 > 2026-11-20（启动页支持 GIF 动图背景）：`ui/controls/SBgImage.qml` 按扩展名分流——`.gif` 走 `AnimatedImage`（Qt 自带，用部署里的 `imageformats/qgif.dll`，**零新增依赖**），静态图仍走 `Image`；两者的取景几何完全共用（cover×zoom×crop），所以外观页预览与启动页一致。新增 `playing` 开关：`StagePage` 绑定 `page.visible && hostWindow.active`，最小化/切后台/切页即暂停，避免一直解码。动图用 `cache: false` 逐帧解码（1080p/上百帧全缓存要几百 MB）。`shadow_backend.cpp` 的 `pickBackgroundImage` 对话框加 `*.gif`，并加了 64 MB 上限（超过直接拒绝并写日志）。**视频（mp4）仍不支持**：Qt 6.8.3 套件没装 Multimedia 模块，要加需装模块 + 约 80 MB ffmpeg。
