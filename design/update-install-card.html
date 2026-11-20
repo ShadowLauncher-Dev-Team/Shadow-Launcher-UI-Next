@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>更新卡片 · 设计稿 v3（安装窗口）</title>
+<style>
+:root{--bg:#08090d;--card:#141a24;--card2:#12151c;--line2:#262b35;--fg:#e8ebf2;--fg2:#98a1ae;--fg3:#5d6673;
+  --accent:#3b82f6;--accentText:#a9c8ff;--ok:#4ade80}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 "Microsoft YaHei UI","Segoe UI",system-ui,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:36px 32px 70px}
+h1{font-size:20px;font-weight:600;margin:0 0 6px}
+.sub{color:var(--fg2);font-size:13px;margin-bottom:22px}
+.facts{background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:14px 18px;margin-bottom:26px;
+  font-size:12.5px;color:var(--fg2);line-height:1.95}
+.facts b{color:var(--fg);font-weight:600}
+code{background:#0b0e14;border:1px solid #1b2029;border-radius:5px;padding:1px 6px;font:12px/1.4 Consolas,monospace;color:var(--accentText)}
+h2{font-size:15px;font-weight:600;margin:32px 0 4px}
+.note{color:var(--fg3);font-size:12px;margin-bottom:14px}
+.stage{background:radial-gradient(900px 320px at 25% -10%,#12172a 0%,transparent 62%),linear-gradient(#0b0d12,#08090d);
+  border:1px solid #14171d;border-radius:16px;padding:34px;display:flex;flex-wrap:wrap;gap:34px;align-items:center}
+.state{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.cap{color:var(--fg3);font-size:11px;letter-spacing:.06em}
+
+/* 现状：Win32 默认标题栏窗口 420x150 */
+.legacy{width:420px;background:#e8e8e8;border:1px solid #8a8a8a;border-radius:2px;overflow:hidden;font-family:"Microsoft YaHei UI"}
+.legacy .tb{height:26px;background:linear-gradient(#f6f6f6,#e4e4e4);border-bottom:1px solid #cfcfcf;
+  display:flex;align-items:center;padding:0 8px;font-size:12px;color:#333}
+.legacy .bd{height:124px;background:#141a24;color:#e8ebf2;text-align:center;padding-top:16px;font-size:12px}
+.legacy .lt{font-size:14px;font-weight:600;margin-bottom:4px}
+.legacy .lp{font-size:11.5px;color:#98a1ae;margin-bottom:10px}
+.legacy .pb{height:10px;margin:0 22px;background:#2a2f3a;border-radius:2px;overflow:hidden}
+.legacy .pf{height:100%;width:45%;background:#3b82f6}
+
+/* 方案 A：极简卡（无边框 + 圆角 + 图标 + 细进度条） */
+.a{width:360px;padding:16px 18px 14px;background:var(--card);border:1px solid var(--line2);border-radius:14px;
+  box-shadow:0 18px 44px rgba(0,0,0,.55)}
+.a .top{display:flex;align-items:center;gap:12px}
+.a .logo{width:30px;height:30px;border-radius:8px;object-fit:cover;border:1px solid #1f2634;flex:0 0 auto}
+.a .t1{font-size:14px;font-weight:600}
+.a .t2{font-size:12px;color:var(--fg2);margin-top:2px}
+.a .track{height:3px;border-radius:3px;background:#1b2029;margin-top:13px;overflow:hidden}
+.a .fill{height:100%;background:linear-gradient(90deg,#2563eb,#4b8cf7)}
+.a .meta{display:flex;justify-content:space-between;margin-top:7px;font-size:11px;color:var(--fg3)}
+.a .meta b{color:var(--fg2);font-weight:500}
+
+/* 方案 B：卡片 + 真实阶段行 */
+.b{width:360px;padding:15px 18px 13px;background:var(--card);border:1px solid var(--line2);border-radius:14px;
+  box-shadow:0 18px 44px rgba(0,0,0,.55)}
+.b .top{display:flex;align-items:center;gap:12px}
+.b .t1{font-size:14px;font-weight:600}
+.b .t2{font-size:12px;color:var(--fg2);margin-top:2px}
+.b .live{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:11.5px;color:var(--accentText)}
+.b .dot{width:5px;height:5px;border-radius:3px;background:var(--accent)}
+.b .pct{margin-left:auto;color:var(--fg2)}
+.b .track{height:3px;border-radius:3px;background:#1b2029;margin-top:9px;overflow:hidden}
+.b .fill{height:100%;background:linear-gradient(90deg,#2563eb,#4b8cf7)}
+</style></head><body><div class="wrap">
+<h1>更新卡片设计稿 v3 · 卡片指的是「安装窗口」</h1>
+<div class="sub">你的判断成立：下载是启动器内的静默后台行为，安装发生在独立进程 SLUpdater，那里已经有自己的小窗口 —— 卡片要打磨的是它。</div>
+
+<div class="facts">
+<b>代码事实（update/SLUpdater.cpp）：</b><br>
+· 启动器内：<code>checkSilent</code> 发现新版 → 后台静默下载到 <code>_update/</code>（无任何 UI）；下完只发一条 toast「更新已就绪，点击立即重启安装」。<br>
+· 用户点重启 → <code>quitForUpdate()</code> 起新进程，PreInit 见 <code>state.json=Ready</code> → 拉起 <b>SLUpdater</b>（独立 exe，纯 Win32 无 Qt），旧进程退出。<br>
+· SLUpdater 现在已经有一个 <b>420×150 深色窗口</b>：标题「正在准备更新…」20px、阶段文字 15px、进度条（marquee / 真实百分比）。阶段文案是真实存在的六段：<br>
+　<code>正在等待旧版本退出…</code> → <code>正在更新文件… 5%</code> → <code>正在清理旧文件… 92%</code> → <code>正在替换主程序… 95%</code> → <code>正在清理更新缓存… 98%</code> → <code>更新完成，正在启动… 100%</code><br>
+· 最后一步 <b>确实会自动重启</b>新版本 —— 所以参考图那句「更新完成后将自动重启应用」放到这个窗口上是对的；放到启动器内那个"就绪提示"上才是错的（那里必须用户点）。
+</div>
+
+<h2>现状（复刻）</h2>
+<div class="note">Win32 默认标题栏 + 居中三行文字 + 系统进度条：跟启动器自己的卡片风格完全两个世界。</div>
+<div class="stage">
+  <div class="state"><span class="cap">现在</span>
+    <div class="legacy">
+      <div class="tb">Shadow Launcher 更新中</div>
+      <div class="bd">
+        <div class="lt">正在准备更新…</div>
+        <div class="lp">正在更新文件…</div>
+        <div class="pb"><div class="pf"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>方案 A · 极简卡（最接近参考图）</h2>
+<div class="note">360×92，无边框圆角、可拖动。只有两行字 + 一条 3px 进度条；阶段细节不进卡片（写日志即可），认知负担最低。</div>
+<div class="stage">
+  <div class="state"><span class="cap">安装中 · 45%</span>
+    <div class="a">
+      <div class="top">
+        <img class="logo" src="../resources/app.ico" alt="">
+        <div><div class="t1">正在安装更新</div><div class="t2">更新完成后将自动重启应用</div></div>
+      </div>
+      <div class="track"><div class="fill" style="width:45%"></div></div>
+      <div class="meta"><span>v1.0.5</span><span>45%</span></div>
+    </div>
+  </div>
+  <div class="state"><span class="cap">收尾 · 100%</span>
+    <div class="a">
+      <div class="top">
+        <img class="logo" src="../resources/app.ico" alt="">
+        <div><div class="t1">正在启动新版本</div><div class="t2">即将自动回到启动器</div></div>
+      </div>
+      <div class="track"><div class="fill" style="width:100%"></div></div>
+      <div class="meta"><span>v1.0.5</span><span>完成</span></div>
+    </div>
+  </div>
+</div>
+
+<h2>方案 B · 卡片 + 真实阶段行</h2>
+<div class="note">多一行 <code>正在替换主程序…</code>，直接映射 SLUpdater 现有的六个 phase。信息更足，但仍是一张卡。</div>
+<div class="stage">
+  <div class="state"><span class="cap">安装中 · 阶段行</span>
+    <div class="b">
+      <div class="top">
+        <img class="logo" src="../resources/app.ico" alt="">
+        <div><div class="t1">正在安装更新</div><div class="t2">更新完成后将自动重启应用</div></div>
+      </div>
+      <div class="live"><span class="dot"></span>正在替换主程序…<span class="pct">95%</span></div>
+      <div class="track"><div class="fill" style="width:95%"></div></div>
+    </div>
+  </div>
+  <div class="state"><span class="cap">失败 · 需要人看一眼</span>
+    <div class="b">
+      <div class="top">
+        <img class="logo" src="../resources/app.ico" alt="">
+        <div><div class="t1">更新未完成</div><div class="t2">已回滚到旧版本，下次启动会重试</div></div>
+      </div>
+      <div class="live" style="color:#fca5a5"><span class="dot" style="background:#ef4444"></span>替换主程序失败<span class="pct">已回滚</span></div>
+      <div class="track"><div class="fill" style="width:100%;background:#7f1d1d"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="facts" style="margin-top:26px">
+<b>实现代价（提前说清）：</b>SLUpdater 是纯 Win32 无 Qt 进程，要做无边框圆角卡得改窗口样式：<code>WS_POPUP</code> + <code>SetLayeredWindowAttributes</code>（或 DwmSetWindowAttribute 圆角）+ 自绘进度条（现在用的是 PROGRESS_CLASS 系统控件）。工作量集中在一个 <code>createProgressWindow</code> 里，不影响安装逻辑。<br>
+<b>启动器内那侧</b>就不再做任何下载卡片：静默下载 + 完成后一条「已就绪，点击重启」提示，保持现状；要不要改成倒计时自动重启，等你定。
+</div>
+</div></body></html>
