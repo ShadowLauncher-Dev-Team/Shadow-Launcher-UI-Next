@@ -820,7 +820,9 @@ std::shared_ptr<DownloadThread> FileDownloader::trySplitSlowThread(
         const qint64 reqEnd = th->requestedEnd.loadRelaxed();
         if (reqEnd <= th->downloadStart) return nullptr;   // 首个请求还没登记
         if (splitPoint < reqEnd) splitPoint = reqEnd;
-        if (th->downloadEnd - splitPoint < kMinSplitPieceBytes) return nullptr;
+        // 2026-11-20：切出来的**后半段**也要够大。现场切出过 55,733 字节的碎片
+    // （[8429568-8485301]），这种碎片没有下载价值，只会在合并时留下缺口。
+    if (th->downloadEnd - splitPoint < 512 * 1024) return nullptr;
     }
     if (splitPoint <= th->downloadStart) return nullptr;
 
@@ -903,6 +905,9 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
     // 现在改成 thread_local：每个 QThreadPool 线程一个、跨文件复用；线程安全边界不变。
     QNetworkAccessManager& mgr = *workerQnam();
 
+    // 2026-11-20：线程级总时限。慢连接不该「烧完尝试次数就判文件失败」——
+    // 对端会间歇性给出 180KB/s 的连接（curl 同样能复现），换一条新连接往往就 3~11MB/s。
+    const qint64 threadStartMs = getElapsedMs();
     bool sourceOk = false;
     bool modRetriedOnce = false;   // 模组专项：全部源耗尽后重置源列表整体重试一轮（PCL Retried 同款）
     for (int sourceIdx = 0; sourceIdx < file->orderedSources.size() && !sourceOk; ++sourceIdx) {
@@ -1301,13 +1306,23 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 reply->deleteLater();
                 // 保留 downloadDone 作为续传基线：已收的字节不重下
                 //（原来是清零，撞上「被饿→掐→重下」就是白扔带宽）
-                if (++slowAbortCount > kMaxSlowAborts) {
-                    qCWarning(logDownload) << QStringLiteral("[夸父] 源持续龟速，放弃本源 文件=%1")
-                        .arg(file->localName);
+                ++slowAbortCount;
+                const qint64 spent = getElapsedMs() - threadStartMs;
+                if (spent >= kMaxThreadTotalMs) {
+                    qCWarning(logDownload)
+                        << QStringLiteral("[夸父] 线程总时限到，放弃本源 文件=%1 慢连接=%2 次 用时=%3ms")
+                               .arg(file->localName).arg(slowAbortCount).arg(spent);
                     if (sourceIdx < file->sourceFailCounts.size())
                         file->sourceFailCounts[sourceIdx] = 5;
                     break;
                 }
+                // ── 关键：**不**禁用源、**不**烧尝试次数 ──
+                // 现场：client.jar 连续两次撞上龟速连接 → 旧逻辑把整个源判死 → 换镜像
+                // （bmclapi 同样间歇龟速）→ 文件 13/14 判失败 → 触发整轮修复。
+                // 而对端其实随时能给 3~11MB/s（curl 实测），换条新连接就好。
+                // 所以这里清掉连接池（强制新 TLS 连接）后原地重试，额度由线程总时限兜底。
+                mgr.clearConnectionCache();
+                --attempt;
                 continue;
             }
 
@@ -1786,7 +1801,12 @@ cleanup:
         // 24 路并发下单片网络抖动不应导致整个大文件报废：
         // 失败分片（state=4 且未重试过）重置后重新下载其 range，
         // allDone 会因 state=0 重新计算，重试完成后再进入合并/终判。
-        if (m_modpackMode && anyFailed) {
+        // ── 2026-11-20：失败分片重下不再只限模组模式 ──
+        // 现场（client.jar 37MB / 8 段）：对端把 4 条 Range 连接直接 Connection closed
+        // （响应头=无、已收 0B），这些段 state=4；旧代码在非模组模式直接
+        // 「anyFailed → 不合并 → 文件判失败」→ 13/14 → 触发整轮修复（+30 秒）。
+        // 单片网络抖动不该让 37MB 的文件报废，MC 库文件同样需要「丢弃失败分片重下」。
+        if (anyFailed) {
             bool launchedRetry = false;
             {
                 QMutexLocker lock(&m_filesMutex);

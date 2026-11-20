@@ -288,6 +288,8 @@ private:
     static constexpr int    kMaxSlowAborts       = 2;
     // 单次连接尝试的墙钟上限（2026-11-20）：有续传，重来不亏；杜绝 141 秒的尝试
     static constexpr qint64 kMaxAttemptWallMs    = 45000;
+    // 单线程总时限（2026-11-20）：慢连接可以换连接重试，但总时长要有个尽头
+    static constexpr qint64 kMaxThreadTotalMs    = 180000;
     // 降级封锁的时长（2026-11-19）。到期自动放行一次试探性重连，
     // 否则「降级后不允许发请求 → 永远无法成功 3 次 → 永远降级」= 进程内永久拉黑。
     static constexpr qint64 kDegradeHoldMs = 30 * 1000;
