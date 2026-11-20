@@ -28,6 +28,7 @@ Item {
     property var cached: []
     property bool scanning: false
     property bool scanToastPending: false
+    property bool scannedOnce: false   // 本会话是否已扫过系统 Java（启动时不扫，见 Component.onCompleted）
 
     // ── 下载/安装状态 ──
     property string installingMajor: ""
@@ -65,6 +66,8 @@ Item {
     function refreshLocal() {
         if (!java) return
         if (scanning) return
+        scannedOnce = true
+        if (java.ensureVersionsLoaded) java.ensureVersionsLoaded()
         scanning = true
         // 扫描是异步的（内部并发探测每个 java.exe），完成时 emit systemJavaScanFinished
         detected = java.scanSystemJavas()
@@ -198,11 +201,16 @@ Item {
     }
 
     Component.onCompleted: {
-        refreshLocal()
+        // 启动时不扫描系统 Java（会 spawn 5+ 个 java -version，实测 1.4s）：
+        // 只有这个 tab 本来就是可见的（--ui-download 直落 Java tab 等）才扫，
+        // 否则等 onVisibleChanged 真正切过来再扫。见 design/startup-perf-audit-2026-11-20.md 条目 D。
+        if (page.visible) refreshLocal()
         // 验收钩子（与 --ui-download / --ui-dl-tab 同一套做法）：直接走到第 N 步，
         // 用真实后端取数（21 → JDK → 本机架构 → windows），不伪造任何列表。
         var si = Qt.application.arguments.indexOf("--ui-java-step")
         if (si >= 0 && si + 1 < Qt.application.arguments.length) {
+            // 验收钩子要立刻取数：这里显式触发一次（页面此刻通常还没 visible）
+            if (java && java.ensureVersionsLoaded) java.ensureVersionsLoaded()
             var target = parseInt(Qt.application.arguments[si + 1], 10) || 1
             page.pickVersion("21")
             if (target >= 2) page.pickType("jdk")
@@ -223,8 +231,14 @@ Item {
     }
 
     // 进入 Java 页：整页淡入 + 8px 上浮，内容不抢在边框之前出现
+    // 同时把「系统 Java 扫描」和「Adoptium 版本列表」这两件启动时不做的事补上。
     onVisibleChanged: {
-        if (visible) { enter = 0; pageIn.restart() }
+        if (visible) {
+            enter = 0
+            pageIn.restart()
+            if (!page.scannedOnce) page.refreshLocal()
+            if (page.java) page.java.ensureVersionsLoaded()
+        }
     }
 
     NumberAnimation {

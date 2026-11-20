@@ -21,7 +21,9 @@ JavaBackend::JavaBackend(QObject *parent)
     , m_runtimeInstaller(new JavaRuntimeInstaller(this))
 {
     qCInfo(logJava) << QStringLiteral("Java后端初始化");
-    refreshVersions();
+    // 不再在构造时就去请求 Adoptium 目录：启动时没人看这张列表，
+    // 推迟到用户真的打开「下载 → Java」时（QML 调 ensureVersionsLoaded）。
+    // 见 design/startup-perf-audit-2026-11-20.md 条目 C。
 
     // ── 转发一键安装信号 ──
     connect(m_runtimeInstaller, &JavaRuntimeInstaller::javaInstalled,
@@ -92,9 +94,18 @@ void JavaBackend::setSelectedOS(const QString &o) {
 
 // ── Fetch methods ──
 
+// 按需加载：首次进入 Java 页才请求一次；已有列表或在途请求时直接返回（可重复调用）。
+void JavaBackend::ensureVersionsLoaded()
+{
+    if (!m_versions.isEmpty() || m_versionsFetching) return;
+    m_versionsFetching = true;
+    refreshVersions();
+}
+
 void JavaBackend::refreshVersions() {
     qCInfo(logJava) << QStringLiteral("刷新Java版本列表");
     fetchUrl(m_baseUrl + "/", [this](const QStringList &dirs) {
+        m_versionsFetching = false;
         m_versions.clear();
         for (const auto &d : dirs) {
             // Only numeric version directories
@@ -107,6 +118,10 @@ void JavaBackend::refreshVersions() {
         });
         qCInfo(logJava) << QStringLiteral("版本列表刷新完成 共%1个").arg(m_versions.size());
         emit javaVersionsChanged();
+    }, [this](int code, const QString &err) {
+        // 失败要复位：否则 ensureVersionsLoaded 会一直以为「请求在途」，用户下次进页面也不会重试
+        m_versionsFetching = false;
+        qCWarning(logJava) << QStringLiteral("版本列表刷新失败 code=%1 %2").arg(code).arg(err);
     });
 }
 

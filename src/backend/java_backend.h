@@ -63,6 +63,8 @@ public:
     void setSelectedOS(const QString &o);
 
     Q_INVOKABLE void refreshVersions();
+    /// 按需加载版本列表（启动时不请求 Adoptium；用户打开 Java 页时由 QML 调）
+    Q_INVOKABLE void ensureVersionsLoaded();
     Q_INVOKABLE void fetchTypes();
     Q_INVOKABLE void fetchArchs();
     Q_INVOKABLE void fetchOSes();
@@ -142,6 +144,7 @@ private:
     QNetworkAccessManager *m_nam;
     ShadowDownloader::FileDownloader *m_downloader = nullptr;
 
+    bool m_versionsFetching = false;   // 版本列表请求在途（ensureVersionsLoaded 去重）
     QStringList m_versions;
     QStringList m_types;
     QStringList m_archs;
