@@ -277,7 +277,7 @@ int main(int argc, char *argv[])
                     return atoi(&json[pos]);
                 };
 
-                // state.json 是 UTF-8；逐字节拷贝宽字符会把中文路径（C:\Users\<用户名>\...）变成乱码
+                // state.json 是 UTF-8；逐字节拷贝宽字符会把中文路径（如 C:\Users\张三\...）变成乱码
                 // → GetFileAttributesW 失败 → 更新静默跳过。必须按 UTF-8 正确转宽字符。
                 auto utf8ToWide = [](const std::string& s) -> std::wstring {
                     if (s.empty()) return std::wstring();

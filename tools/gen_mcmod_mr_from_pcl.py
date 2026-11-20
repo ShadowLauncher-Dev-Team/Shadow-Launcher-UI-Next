@@ -12,7 +12,8 @@
 """
 import io, json, os, shutil, datetime
 
-PCL_TXT = r"C:\Users\<用户名>\Downloads\PCL-main\PCL-main\PCLCS\Resource\WikiEntries.txt"
+# 用环境变量指定，避免把本机路径写进仓库
+PCL_TXT = os.environ.get("PCL_WIKI_ENTRIES_TXT", r"C:\path\to\PCL\PCLCS\Resource\WikiEntries.txt")
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "qml", "mcmod_map.json")
 
 def parse_pcl_mr(path):

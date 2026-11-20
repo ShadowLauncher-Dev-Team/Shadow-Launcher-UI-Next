@@ -1,4 +1,4 @@
-// 用真实 1.20.6-neoforge JSON 验证 slf4j 去重（指向用户真实游戏目录）
+// 用真实 1.20.6-neoforge JSON 验证 slf4j 去重（游戏目录由 SHADOW_TEST_GAMEDIR 指定）
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -19,8 +19,12 @@ int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
 
-    // 真实游戏目录（用户提供）
-    const QString gameDir = QStringLiteral("C:/Users/<用户名>/Downloads/ShadowLauncher_v1.0.0 (1)/.minecraft");
+    // 真实游戏目录由环境变量提供（不把开发机的路径写进仓库）
+    const QString gameDir = qEnvironmentVariable("SHADOW_TEST_GAMEDIR");
+    if (gameDir.isEmpty()) {
+        fprintf(stderr, "跳过：需要环境变量 SHADOW_TEST_GAMEDIR 指向真实 .minecraft\n");
+        return 0;
+    }
     const QString versionId = QStringLiteral("1.20.6-neoforge-20.6.139");
 
     // 假 Java（避免依赖真实 JVM 探测；脚本组装不依赖 Java 版本对 slf4j 的影响）

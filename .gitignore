@@ -110,3 +110,59 @@ design/res-ui/*/_*.html
 design/res-ui/*/_check.js
 i18n/_work/
 i18n/_oldui_backup/
+
+# ── 本地临时产物（开发期的截图/调试脚本/备份，一律不入库）──
+# 根目录下的零散截图（a1_1.png / sw_a.png / fin10.png …）与临时文本
+/*.png
+/*.jpg
+/*.txt
+/.tmp_*
+/tmp_*
+/frames*/
+/tmp_verify/
+/k1
+/v1
+/pgen*
+/p_*
+/registry-memory-backup-*.reg
+# 发布产物（windeployqt 打出来的 150MB 目录）
+/dist/
+# 一次性调试脚本：tools/ 下只保留明确入库的几个，其余本地脚本不进仓库
+/tools/*.ps1
+!/tools/barshot3.ps1
+!/tools/barshot4.ps1
+!/tools/barshot5.ps1
+!/tools/burst2.ps1
+!/tools/cap2.ps1
+!/tools/capture.ps1
+!/tools/check-ui-contract.ps1
+!/tools/clickburst.ps1
+!/tools/clickcap.ps1
+!/tools/concurrency-test.ps1
+!/tools/fastshot.ps1
+!/tools/overlay-demo.ps1
+!/tools/pack-release.ps1
+!/tools/res_probe.ps1
+!/tools/res_probe2.ps1
+!/tools/screencap.ps1
+!/tools/trigger-import.ps1
+!/tools/ui_click.ps1
+!/tools/ui_click_msg.ps1
+!/tools/ui_detail_flow.ps1
+!/tools/ui_detail_tabs.ps1
+!/tools/ui_drive.ps1
+!/tools/ui_empty_flow.ps1
+!/tools/ui_flow.ps1
+!/tools/ui_focus.ps1
+!/tools/ui_install_test.ps1
+!/tools/ui_packdp.ps1
+!/tools/ui_resize_click.ps1
+!/tools/ui_tabs_flow.ps1
+!/tools/ui_tabs_new.ps1
+!/tools/verify-card.ps1
+!/tools/verify-memory.ps1
+!/tools/verify-precheck.ps1
+
+# 临时对比截图（连拍验证留下的）
+/screenshots/_tmp_*
+/design/update-card/onscreen-explorer.png

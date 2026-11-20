@@ -209,9 +209,10 @@ int main(int argc, char** argv)
     // 8) 真实 PCL2 / HMCL 目录探测（存在才跑，只读）
     // ════════════════════════════════════════════════════════════
     {
+        // 本机的真实目录走环境变量，不把开发机的用户名/路径写进仓库
         const QStringList real = {
             QStringLiteral("D:/Minecraft/.minecraft"),
-            QStringLiteral("C:/Users/<用户名>/Downloads/.minecraft"),
+            qEnvironmentVariable("SHADOW_TEST_MINECRAFT_DIR"),
         };
         fprintf(stderr, "\n[8] 真实目录探测（存在才跑）\n");
         for (const QString& p : real) {
