@@ -10,6 +10,8 @@
 >
 > 更新日志见文末「文档更新记录」。
 
+> 2026-11-20（定稿）：更新卡片方案 A 已确认。**视觉基准是 `ui/UpdateCardWindow.qml`**（360x96，圆角 14，卡面 Theme.bgRaised，标题 14px/y=11，副行 12px/y=32，进度条 y=58/h=3，底行 11px/y=69）。`update/SLUpdater.cpp` 的 Win32 版按它逐像素同步（#12151C 卡面 / #262B35 轨道），**改一处必须同步另一处**；Win32 版不能换成 QML（安装时 Qt 库正在被替换）。
+
 > 2026-11-20（补充）：新增 `ui/UpdateCardWindow.qml` —— 更新卡片的**解耦预览窗口**，入口 `ShadowLauncher.exe --ui-update-card`（独立置顶无边框透明窗、六档假进度、不触发更新）。与更新流程完全无关，仅用于界面验收。
 
 > 2026-11-20：`update/SLUpdater.cpp` 的进度窗口改为卡片式（方案 A）：无边框圆角 360x96、UpdateLayeredWindow 分层位图、GDI+ 画卡面 + GDI ClearType 画字、SDF 遮罩生成圆角与阴影、WS_EX_TOPMOST 置顶；新增 `--card-test` 开发预览模式（`dumpCardToPng` 可导出位图 PNG）。同时修 `copyFileOverwrite` 未清只读属性导致 error 5 重试无效。设计稿与成品图见 `design/update-card/`。
