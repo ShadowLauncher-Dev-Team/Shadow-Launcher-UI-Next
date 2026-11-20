@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>Java 下载页 · 方案 A 配色修订</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:#070708;color:#e9eaec;
+  font:13px/1.55 "Microsoft YaHei UI","Segoe UI",system-ui,sans-serif}
+.page{max-width:1180px;margin:0 auto;padding:34px 24px 80px}
+h1{font-size:20px;font-weight:600;margin:0 0 6px;letter-spacing:0}
+.sub{color:#9a9ea6;font-size:13px;margin-bottom:16px}
+.diag{background:#101012;border:1px solid #232326;border-radius:12px;padding:14px 18px;
+  margin:0 0 30px;font-size:12.5px;color:#a8acb4;line-height:1.9}
+.diag b{color:#f0f1f3}
+h2{font-size:15.5px;font-weight:600;margin:34px 0 4px}
+.note{color:#71757d;font-size:12px;margin:0 0 14px}
+
+/* ══ 三套调色板：只换 CSS 变量，布局完全一样 ══ */
+.p-graphite{
+  --bg:#0b0b0c; --side:#0a0a0b; --card:#121214; --card2:#0e0e10; --hover:#1a1a1d;
+  --line:#212124; --line2:#2b2b30; --line3:#3a3a40;
+  --fg:#f0f1f3; --fg2:#a0a4ad; --fg3:#6d7178; --fg4:#4a4d53;
+  --accent:#3b82f6; --accentTop:#4b8cf7; --accentBot:#2563eb;
+  --pick:#191a1d; --pickLine:#4a4d53; --onAccent:#fff;
+}
+.p-cool{
+  --bg:#090b0e; --side:#080a0c; --card:#10141a; --card2:#0c0f14; --hover:#171c24;
+  --line:#1b2028; --line2:#262c36; --line3:#333b47;
+  --fg:#eef1f6; --fg2:#9aa3b0; --fg3:#69727e; --fg4:#474e58;
+  --accent:#4d8df6; --accentTop:#5c99f8; --accentBot:#2f6fe0;
+  --pick:#151b24; --pickLine:#3d4a5c; --onAccent:#fff;
+}
+.p-warm{
+  --bg:#0c0b0a; --side:#0a0908; --card:#151311; --card2:#100e0d; --hover:#1d1a17;
+  --line:#242019; --line2:#2f2a23; --line3:#3d372e;
+  --fg:#f3f0ea; --fg2:#a9a49b; --fg3:#77726a; --fg4:#524e48;
+  --accent:#d9d4c9; --accentTop:#efeae0; --accentBot:#cfc9bc;
+  --pick:#1d1a16; --pickLine:#4a443a; --onAccent:#151311;
+}
+
+/* ── 窗口 ── */
+.win{width:1100px;height:720px;background:var(--bg);border:1px solid var(--line2);
+  border-radius:12px;overflow:hidden;display:flex;box-shadow:0 26px 70px rgba(0,0,0,.55)}
+.side{width:208px;flex:0 0 208px;background:var(--side);border-right:1px solid var(--line);
+  padding:22px 12px;display:flex;flex-direction:column;gap:3px}
+.brand{font-size:11.5px;letter-spacing:.22em;color:var(--fg3);padding:4px 10px 22px;font-weight:600}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;
+  color:var(--fg2);font-size:13px}
+.nav.on{background:var(--hover);color:var(--fg)}
+.nav .dot{width:13px;height:13px;border-radius:4px;background:var(--line2);flex:0 0 auto}
+.nav.on .dot{background:var(--fg2)}
+.spacer{flex:1}
+.main{flex:1;padding:26px 30px 22px;display:flex;flex-direction:column;min-width:0}
+
+/* ── 页头 ── */
+.head{display:flex;align-items:flex-start;gap:16px;margin-bottom:22px}
+.head h3{margin:0;font-size:19px;font-weight:600;letter-spacing:.01em;color:var(--fg)}
+.head p{margin:5px 0 0;font-size:12.5px;color:var(--fg2)}
+.ghost{margin-left:auto;font-size:12px;color:var(--fg2);border:1px solid var(--line2);
+  border-radius:7px;padding:6px 12px;background:transparent;white-space:nowrap;cursor:pointer}
+.ghost:hover{background:var(--hover);color:var(--fg)}
+
+/* ── 步骤行：中性，只有一个当前位 ── */
+.rail{display:flex;align-items:flex-start;margin-bottom:20px}
+.step{flex:0 0 auto;display:flex;flex-direction:column;gap:7px;cursor:pointer;padding-right:2px}
+.step .row{display:flex;align-items:center;gap:8px}
+.step .num{width:18px;height:18px;border-radius:9px;border:1px solid var(--line3);
+  display:grid;place-items:center;font-size:10px;color:var(--fg4);background:transparent;
+  transition:all .15s}
+.step .lbl{font-size:12.5px;color:var(--fg4);white-space:nowrap;transition:color .15s}
+.step.done .num{color:var(--fg3);border-color:var(--line3)}
+.step.done .lbl{color:var(--fg3)}
+.step.on .num{border-color:var(--fg2);color:var(--fg)}
+.step.on .lbl{color:var(--fg);font-weight:600}
+.step.on .under{height:2px;border-radius:2px;background:var(--accent);width:100%;
+  animation:grow .22s ease-out both}
+@keyframes grow{from{transform:scaleX(.2);opacity:0}to{transform:scaleX(1);opacity:1}}
+.step:not(.on) .under{height:2px;background:transparent}
+.step .under{height:2px;transition:background .15s}
+.wire{flex:1 1 auto;height:1px;background:var(--line2);margin:9px 14px 0;min-width:16px}
+.wire.done{background:var(--line3)}
+
+/* ── 内容卡 ── */
+.stage{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0}
+.card{background:var(--card);border:1px solid var(--line2);border-radius:12px;padding:20px 22px}
+.lead{font-size:12.5px;color:var(--fg2);line-height:1.7;margin-bottom:16px}
+.opts{display:grid;gap:11px}
+.tiles4{grid-template-columns:repeat(4,1fr)}
+.tiles3{grid-template-columns:repeat(3,1fr)}
+.tiles2{grid-template-columns:repeat(2,1fr)}
+.tile{background:var(--card2);border:1px solid var(--line2);border-radius:10px;padding:15px 16px;
+  cursor:pointer;position:relative;transition:background .13s,border-color .13s}
+.tile:hover{background:var(--hover);border-color:var(--line3)}
+.tile.pick{background:var(--pick);border-color:var(--pickLine)}
+.tile.pick::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:2px;
+  border-radius:2px;background:var(--accent)}
+.tile .big{font-size:19px;font-weight:600;color:var(--fg);letter-spacing:.01em}
+.tile .sm{font-size:11.5px;color:var(--fg3);margin-top:4px}
+.tile .badge{position:absolute;top:11px;right:12px;font-size:10px;padding:1px 7px;border-radius:20px;
+  color:var(--fg3);border:1px solid var(--line3);background:transparent}
+
+/* 文件行 */
+.file{display:flex;align-items:center;gap:14px;background:var(--card2);border:1px solid var(--line2);
+  border-radius:10px;padding:14px 16px;cursor:pointer;position:relative;
+  transition:background .13s,border-color .13s}
+.file:hover{background:var(--hover);border-color:var(--line3)}
+.file.pick{background:var(--pick);border-color:var(--pickLine)}
+.file.pick::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:2px;
+  border-radius:2px;background:var(--accent)}
+.ext{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;font-size:9.5px;
+  font-weight:600;letter-spacing:.04em;background:transparent;border:1px solid var(--line3);
+  color:var(--fg3);flex:0 0 auto}
+.file.pick .ext{color:var(--fg2);border-color:var(--line3)}
+.file .nm{font-size:12.5px;color:var(--fg)}
+.file .ds{font-size:11px;color:var(--fg3);margin-top:3px}
+
+/* 按钮：整个页面只有一个实心主按钮 */
+.primary{background:var(--accent);color:var(--onAccent);border:0;border-radius:8px;
+  padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.primary:hover{filter:brightness(1.07)}
+.linkbtn{color:var(--fg2);font-size:12px;border:1px solid var(--line2);border-radius:7px;
+  padding:7px 11px;background:transparent;cursor:pointer;white-space:nowrap}
+.linkbtn:hover{background:var(--hover);color:var(--fg)}
+
+.picked{display:flex;align-items:center;gap:12px;margin-top:18px;padding-top:15px;
+  border-top:1px solid var(--line);font-size:12.5px;color:var(--fg3)}
+.picked b{color:var(--fg);font-weight:600}
+.picked .next{color:var(--fg4);margin-left:2px}
+
+/* 本机已检测到 */
+.local{margin-top:16px;background:var(--card2);border:1px solid var(--line2);border-radius:12px;
+  padding:13px 16px}
+.local .top{display:flex;align-items:center;gap:9px;font-size:11.5px}
+.local .top b{color:var(--fg2);font-weight:600;letter-spacing:.02em}
+.local .top span{color:var(--fg4)}
+.local .top .linkbtn{margin-left:auto;padding:4px 10px;font-size:11px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.chip{font-size:11px;padding:4px 10px;border-radius:7px;background:transparent;
+  border:1px solid var(--line2);color:var(--fg2);display:flex;align-items:center;gap:6px}
+.chip i{width:5px;height:5px;border-radius:3px;background:var(--fg4)}
+.chip.mine i{background:var(--accent)}
+.chip.mine{color:var(--fg3)}
+</style></head>
+<body><div class="page">
+<h1>Java 下载页 · 方案 A 配色修订</h1>
+<div class="sub">同一个布局，只换调色与字体观感。蓝色从「到处都是」收回到三个位置：主按钮、进度条、当前步骤的下划线。</div>
+
+<div class="diag">
+<b>上一版为什么"蓝不拉几"：</b>选中态是蓝底 + 蓝边（#132340 / #1f3a63），副文案和"已选/下一步"用浅蓝（#a9c8ff），
+步骤圆圈、扩展名方块、"启动器托管"小卡也全是蓝的 —— 一屏里出现 <b>7 处蓝</b>，强调就等于没有强调，
+而且深蓝底上的浅蓝小字在雅黑下会显得发灰、发脏。<br>
+<b>这一版：</b>选中态改成中性提亮 + 左侧 2px 蓝条；所有次要文字降到中性灰（不带蓝）；
+蓝色只剩主按钮、进度填充、当前步骤下划线；步骤圆圈用灰阶区分完成 / 进行中。
+</div>
+
+<h2>方案 A-1 · 石墨中性（推荐）</h2>
+<p class="note">纯中性灰，接近 Linear / Vercel 的深色底。蓝色只做信号，不铺面。</p>
+<div class="p-graphite" id="slot1"></div>
+
+<h2>方案 A-2 · 冷灰克制</h2>
+<p class="note">保留一点冷调（跟启动器现有 Theme 一致），但取消蓝底与浅蓝小字。</p>
+<div class="p-cool" id="slot2"></div>
+
+<h2>方案 A-3 · 暖灰无蓝</h2>
+<p class="note">完全不用蓝色：主按钮改成暖白实心、黑字，进度条同色。整体更"工具"、更沉。</p>
+<div class="p-warm" id="slot3"></div>
+
+</div>
+
+<template id="tpl">
+  <div class="win">
+    <div class="side">
+      <div class="brand">SHADOW</div>
+      <div class="nav"><span class="dot"></span>启动</div>
+      <div class="nav on"><span class="dot"></span>下载</div>
+      <div class="nav"><span class="dot"></span>联机</div>
+      <div class="nav"><span class="dot"></span>设置</div>
+      <div class="spacer"></div>
+      <div class="nav"><span class="dot"></span>下载进度</div>
+      <div class="nav"><span class="dot"></span>帮助文档</div>
+    </div>
+    <div class="main">
+      <div class="head">
+        <div>
+          <h3>Java 运行时</h3>
+          <p>选一个版本就够了，其余按本机情况预选。</p>
+        </div>
+        <button class="ghost">重新扫描本机</button>
+      </div>
+
+      <div class="rail">
+        <div class="step done"><div class="row"><span class="num">1</span><span class="lbl">21</span></div><div class="under"></div></div>
+        <div class="wire done"></div>
+        <div class="step done"><div class="row"><span class="num">2</span><span class="lbl">JDK</span></div><div class="under"></div></div>
+        <div class="wire done"></div>
+        <div class="step done"><div class="row"><span class="num">3</span><span class="lbl">x64</span></div><div class="under"></div></div>
+        <div class="wire done"></div>
+        <div class="step done"><div class="row"><span class="num">4</span><span class="lbl">Windows</span></div><div class="under"></div></div>
+        <div class="wire done"></div>
+        <div class="step on"><div class="row"><span class="num">5</span><span class="lbl">分发形式</span></div><div class="under"></div></div>
+      </div>
+
+      <div class="stage">
+        <div class="card">
+          <div class="lead">便携版由启动器托管、不写注册表；安装版会写进系统目录并配置 PATH / JAVA_HOME。</div>
+          <div class="opts">
+            <div class="file pick">
+              <div class="ext">ZIP</div>
+              <div>
+                <div class="nm">OpenJDK21U-jdk_x64_windows_hotspot_21.0.5_11.zip</div>
+                <div class="ds">便携版 · 186.4 MiB · 解压后由启动器托管</div>
+              </div>
+              <button class="primary" style="margin-left:auto">下载并安装</button>
+            </div>
+            <div class="file">
+              <div class="ext">MSI</div>
+              <div>
+                <div class="nm">OpenJDK21U-jdk_x64_windows_hotspot_21.0.5_11.msi</div>
+                <div class="ds">安装版 · 168.2 MiB · 需要管理员权限</div>
+              </div>
+              <button class="linkbtn" style="margin-left:auto">另存为…</button>
+            </div>
+          </div>
+          <div class="picked">
+            <span>已选</span><b>21 · JDK · x64 · Windows</b>
+            <span class="next">下一步：选一个文件</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="local">
+        <div class="top"><b>本机已检测到</b><span>5 个运行时 · 你可能并不需要下载</span>
+          <button class="linkbtn">重新扫描</button></div>
+        <div class="chips">
+          <span class="chip">17 · 17.0.20 JDK</span>
+          <span class="chip">25 · 25.0.1 JDK</span>
+          <span class="chip">8 · 1.8.0_432 JRE</span>
+          <span class="chip mine"><i></i>21 · 启动器托管 JDK</span>
+          <span class="chip mine"><i></i>17 · 启动器托管 JDK</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+var tpl = document.getElementById('tpl');
+for (var i = 1; i <= 3; i++) {
+  document.getElementById('slot' + i).appendChild(tpl.content.cloneNode(true));
+}
+</script>
+</body></html>
