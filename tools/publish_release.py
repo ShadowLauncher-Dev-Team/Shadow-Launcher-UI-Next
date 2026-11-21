@@ -23,8 +23,8 @@ compat.json 生成），本工具只负责把产物组织成自建服务器所�
 配置：本目录 publish_config.json（git 忽略，由 publish_config.example.json 复制改值）：
   {
     "base_url":  "https://shadowlauncher.cn/downloads",   # 服务器上放置资产的目录
-    "dist_dir":  "D:/latest-code/cpp/dist",                # pack.ps1 产物目录
-    "output_dir": "D:/latest-code/publish"                 # latest.json 输出目录
+    "dist_dir":  "<打包产物目录>",                          # pack.ps1 产物目录（dist/）
+    "output_dir": "<发布输出目录>"                          # latest.json 输出目录
   }
 
 发布流程（三步）：
