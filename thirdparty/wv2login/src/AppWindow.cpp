@@ -122,6 +122,22 @@ void AppWindow::CreateWebView2() {
                             }
                             m_controller = controller;
                             controller->get_CoreWebView2(&m_webView);
+
+                            // ── 页面自己的「关闭」按钮 ────────────────────────────
+                            // Microsoft 的登录页在嵌入式布局下会画一个自己的关闭按钮，
+                            // 点它执行的是 window.close()。WebView2 收到后只发
+                            // WindowCloseRequested 事件，**不会**替我们关窗 ——
+                            // 不订阅就等于点了没反应，用户只能去点标题栏的 X（实测如此）。
+                            m_webView->add_WindowCloseRequested(
+                                Callback<ICoreWebView2WindowCloseRequestedEventHandler>(
+                                    [this](ICoreWebView2*, IUnknown*) -> HRESULT {
+                                        if (m_window && !m_closingForGood) {
+                                            m_closingForGood = true;
+                                            PostMessageW(m_window, WM_CLOSE, 0, 0);
+                                        }
+                                        return S_OK;
+                                    }).Get(),
+                                &m_closeToken);
                             RECT r{};
                             GetClientRect(m_window, &r);
                             m_controller->put_Bounds(r);

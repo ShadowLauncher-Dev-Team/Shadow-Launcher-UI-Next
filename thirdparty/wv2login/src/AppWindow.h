@@ -27,9 +27,11 @@ private:
     wil::com_ptr<ICoreWebView2Controller> m_controller;
     wil::com_ptr<ICoreWebView2> m_webView;
     EventRegistrationToken m_navToken{};
+    EventRegistrationToken m_closeToken{};
 
     std::wstring m_clientId;
     std::wstring m_outputFile;
     std::wstring m_userDataFolder;
     bool m_finished = false;
+    bool m_closingForGood = false;   // 已经在走关闭流程，别重复投递 WM_CLOSE
 };

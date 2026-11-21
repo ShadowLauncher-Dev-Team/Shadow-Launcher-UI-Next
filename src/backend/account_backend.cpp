@@ -125,6 +125,7 @@ AccountBackend::AccountBackend(QObject *parent)
         m_loggedIn = true;
         m_isOnline = true;
         m_msStatus.clear();
+        emit microsoftLoginProgress(QString(), QString());
         m_msTokenObtainedAt = QDateTime::currentSecsSinceEpoch();
         m_msTokenExpiresIn = expiresIn;  // from Mojang API response
         qCInfo(logAccount) << QStringLiteral("正版登录成功: ") << username << uuid
@@ -167,7 +168,11 @@ AccountBackend::AccountBackend(QObject *parent)
         emit microsoftLoginBusyChanged();
     });
     connect(m_msAuth, &MicrosoftAuth::loginFailed, this, [this](const QString& error) {
+        // 清掉进度文案后**必须发通知**：msStatus 的 NOTIFY 就是 microsoftLoginProgress，
+        // 只 clear 不发信号 → QML 的「登录状态」永远停在最后一步
+        // （内嵌登录中途关闭窗口后一直显示「正在加载登录页面」，要重启才消失）。
         m_msStatus.clear();
+        emit microsoftLoginProgress(QString(), QString());
         if (m_refreshingToken) {
             m_refreshingToken = false;
             m_refreshStartedAtMs = 0;

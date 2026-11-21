@@ -9,6 +9,15 @@
 > 3. 本文档不含敏感信息（密钥/令牌/地址均为机制描述），可安全提交仓库。
 >
 > 更新日志见文末「文档更新记录」。
+>> 2026-11-21（内嵌正版登录两个问题）：
+> ① **点页面里的关闭按钮没反应**：Microsoft 登录页在嵌入式布局下自带一个关闭按钮，它执行的是 `window.close()`；
+>    WebView2 收到后只发 `WindowCloseRequested` 事件，**不会替宿主关窗** —— 不订阅就等于点了没反应，用户只能去点标题栏 X。
+>    修法：`thirdparty/wv2login/src/AppWindow.cpp` 在创建 controller 后 `add_WindowCloseRequested` → `PostMessageW(m_window, WM_CLOSE)`，
+>    并加 `m_closingForGood` 防重复投递。注意 SDK 里该 handler 的 `Invoke` 第二参是 **`IUnknown*`**（不是 `...EventArgs*`，写错编译报 C2061）。
+> ② **中途关窗后「登录状态」一直挂着**：`AccountBackend::loginFailed` 里 `m_msStatus.clear()` 后**没发通知**，
+>    而 `msStatus` 的 NOTIFY 是 `microsoftLoginProgress` —— 只 clear 不发信号，QML 永远停在最后一步（「正在加载登录页面」），要重启才消失。
+>    修法：clear 之后补 `emit microsoftLoginProgress(QString(), QString())`（登录成功路径同样补上）。
+> 日志里对应：`[wv2login] 未完成登录（窗口关闭/失败），按取消处理` → `登录失败: 登录被用户手动取消`。
 >> 2026-11-21（外观页拖动取景卡顿、松手一秒才退出预览）：两个原因叠加。
 > ① `setActiveView()` 每写一次取景都 `emit customBgChanged()`（拖动时约 12 次/秒），QML 收到就 `bgRev++` → 整排缩略图 delegate（含圆角遮罩层 + MultiEffect）**每次全部销毁重建**；
 > ② 松手后 `previewHold` 还要走完 900ms + 180ms 淡出，共约 1.1s 才退出「只剩预览」。
