@@ -24,6 +24,17 @@ Item {
     // 图片没加载出来时的底色（避免闪白/黑块）
     property color fallbackColor: Theme.bgCard2
 
+    // ── 解码分辨率上限（0 = 不限制，用原图分辨率）──────────────────
+    // 不设 sourceSize 时，Qt 会把原图整张解进内存，哪怕只显示成 176×104 的卡片。
+    // 内置壁纸是 2737×1532，一张约 16 MB —— 外观页 14 张缩略图就是 224 MB，
+    // 这正是"打开外观页内存飙升"的原因（实测 +292 MB）。
+    //
+    // 只给**缩略图**用：把它设成「卡片边长 × 最大缩放 × dpr」这样的方形值。
+    // 方形与图片朝向无关（Stretch 下等比装进框内，不会拉伸）；
+    // 超过原图时 Qt 不会反向放大，所以启动页不设它 → 仍然拿原图分辨率。
+    // 刻意不做自动推导：窗口拖动缩放时 sourceSize 一变就要重解码，会卡。
+    property int decodeSide: 0
+
     // ── 动图（GIF）──
     // 判据只看扩展名：与后端 importBgFile 的规则一致，不嗅探文件内容。
     // 静态图仍走 Image；动图走 AnimatedImage（Qt 自带，用的就是部署里的 imageformats/qgif.dll）。
@@ -58,6 +69,9 @@ Item {
         source: root.animatedSource ? "" : root.source
         asynchronous: true
         smooth: true
+        // 解码分辨率上限（0 = 不缩放，见文件上方 decodeSide 的说明）
+        sourceSize.width: root.decodeSide
+        sourceSize.height: root.decodeSide
         // 几何由我们自己算（保持比例），所以这里必须用 Stretch ——
         // 用 Image.Pad 的话 Qt 会按**原始像素尺寸**绘制、忽略我们设的宽高，
         // 默认极光图就变成"放大后裁切"（用户实测报的缩放不对）。
@@ -77,6 +91,9 @@ Item {
         cache: false
         paused: !root.playing
         smooth: true
+        // 与静态图同一套解码上限：整帧缓存已经关掉，尺寸也要一起收
+        sourceSize.width: root.decodeSide
+        sourceSize.height: root.decodeSide
         // 与 Image 同样必须用 Stretch：几何是我们自己算的（见文件头公式）
         fillMode: Image.Stretch
         width: img.width

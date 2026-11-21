@@ -314,6 +314,13 @@ Item {
                                         fillMode: Image.PreserveAspectCrop
                                         asynchronous: true
                                         opacity: 0.92
+                                        // 缩略图只有 176×104，不设 sourceSize 的话 Qt 会把
+                                        // 2737×1532 的原图整张解进内存：14 张内置壁纸 = 224 MB
+                                        // （实测打开外观页内存 +292 MB 的元凶）。
+                                        // 写死卡片尺寸的 2 倍，不用 width（首帧 width 还是 0，
+                                        // 那样第一下仍会按原图解码，白闪一次 16 MB）。
+                                        sourceSize.width: Math.ceil(176 * 2 * (Screen.devicePixelRatio || 1))
+                                        sourceSize.height: Math.ceil(104 * 2 * (Screen.devicePixelRatio || 1))
                                     }
 
                                     // 名字条：从透明渐隐到深色，白字永远压得住（不再是一块灰白条）
@@ -404,6 +411,9 @@ Item {
                                         zoom: modelData.zoom
                                         cropX: modelData.cropX
                                         cropY: modelData.cropY
+                                        // 缩略图按「卡片边长 × 最大缩放 × dpr」解码，
+                                        // 不然每张导入的原图都会整张进内存（4K 图一张 33 MB）
+                                        decodeSide: Math.ceil(176 * maxZoom * (Screen.devicePixelRatio || 1))
                                     }
 
                                     // 名字条：透明 → 深色渐隐，白字永远压得住
