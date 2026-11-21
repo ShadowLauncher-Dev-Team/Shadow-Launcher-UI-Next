@@ -4,7 +4,8 @@
 // 2026-08-02 v2：大文件自动 Range 多线程分片 + 307 预解析 + 停滞检测推广 + SHA1/大小校验内建
 // 设计要点：
 //   1. API 请求（get/post/getRaw/put/deleteResource）保持单连接，零变化
-//   2. 文件传输（download/downloadWithReply）> 4MB 自动分片（实测 8 连接收益最佳）
+//   2. 文件传输（download/downloadWithReply）> 4MB 自动分片（分片数 = clamp(total/2MB, 4, 4)；
+//      8 连接虽然 curl 实测更快，但 Qt 并发 8 会在 Modrinth 高峰被限流，故定稿 4）
 //   3. 分片前先探测：Range 支持判定 + 307 重定向预解析（直接打最终 URL，省每片一次重定向）
 //   4. 停滞检测/片级重试/校验统一内建
 

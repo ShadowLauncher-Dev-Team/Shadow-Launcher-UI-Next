@@ -42,9 +42,6 @@ class AccountBackend : public QObject {
     Q_PROPERTY(bool capesLoading READ capesLoading NOTIFY capesLoadingChanged)
     // 是否已经向服务器问过披风。没问过就不能说「此账号没有可用披风」。
     Q_PROPERTY(bool capesAsked READ capesAsked NOTIFY capesAskedChanged)
-    // 整个「身份装载」过程：切号 → 令牌链 → MC 档案 → 披风下载。
-    // 只从档案请求开始算是不够的：令牌链那几秒里界面同样是空白的（实测切到正版后
-    // 要 3~4 秒才发档案请求，这段时间披风区就是空的，用户看不到任何反馈）。
     // 原始皮肤纹理（整张 64/128）。UI 自己裁脸用：renderHead3D 对部分皮肤会渲染出
     // 错误的头部图（2026-11-04 实测某皮肤渲染成紫色竖条），所以不能只依赖 skinPath。
     Q_PROPERTY(QString skinTexturePath READ skinTexturePath NOTIFY skinReady)
@@ -54,7 +51,7 @@ class AccountBackend : public QObject {
     Q_PROPERTY(QString skinVariant READ skinVariant NOTIFY skinVariantChanged)
     Q_PROPERTY(QStringList offlineUsernames READ offlineUsernames NOTIFY offlineHistoryChanged)
     // ── 多账号列表（2026-11-04）──
-    // 结构：[{mode:0/1/2, name, uuid, current:bool, typeText}]
+    // 结构：[{index, mode:0/1/2, name, uuid, typeText, current:bool, needsRelogin:bool, avatar}]
     // 只有当前账号有真实皮肤/令牌，其余条目只存"身份"，切换时才装载。
     Q_PROPERTY(QVariantList accounts READ accounts NOTIFY accountsChanged)
     Q_PROPERTY(int currentAccount READ currentAccount NOTIFY accountsChanged)

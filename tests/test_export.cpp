@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// 整合包导出测试：ModpackExportTest <gameDir> <versionId> [outPath] [format]
+// 整合包导出测试：ModpackExportTest <gameDir> <versionId> [outPath] [format] [includeJava] [onlyMods]
 // 导出后校验包结构（mrpack: modrinth.index.json + files[]/overrides；
 // zip: manifest.json + overrides），并用 ZipArchive 读回验证可解析。
 #include <QCoreApplication>

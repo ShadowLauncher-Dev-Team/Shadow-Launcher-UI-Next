@@ -115,8 +115,8 @@ static QVariantList mergeDedupSorted(const QVariantList& mrItems, const QVariant
 static bool sourceIsMrOnly(const QString& s) { return s == QLatin1String("modrinth"); }
 static bool sourceIsCfOnly(const QString& s) { return s == QLatin1String("curseforge"); }
 
-// 冻结区 + 候选区合并：已显示的前 shownCount 条永不重排（防滚动/切页闪动），
-// 仅未显示的候选区随新数据重排（对用户无感知）。四个池子（Mod/光影/资源包/整合包）共用。
+// 冻结区 + 候选区合并（旧方案，已废弃）：五个池子现都直接用 mergeDedupSorted 全池重排，
+// 本函数已无调用点，保留待清理。
 static QVariantList mergePoolFreezeZone(const QVariantList& pool,
                                         const QVariantList& mrAll,
                                         const QVariantList& cfAll,
@@ -828,9 +828,6 @@ void ResourceBackend::onModSourceDone(int gen)
     if (m_modPending > 0) --m_modPending;  // 归还计数（可为 0：超时兜底已清零）
     m_modMgr->setBusy(false);
 
-    // ═══ 冻结区 + 候选区：已显示的前 shownCount 条永不重排 ═══
-    // 已显示部分（QML 已渲染的页）保持原序 → 滚动/切页不闪动；
-    // 只有未显示的候选区会因新数据重排（用户看不到变化，无感知）。
     // 2026-11-06：取消"冻结区"，改为全池全局排序。
     // 原因：双源速度差极大（实测 Modrinth 1.0s / CurseForge 5.2s）。旧逻辑在第一源回来时就把
     // 前 N 条冻结，CF 的头部高下载项只能落到冻结区之后 → 第 2/3 页出现"比第 1 页下载量还高"的条目，
@@ -841,7 +838,7 @@ void ResourceBackend::onModSourceDone(int gen)
     m_modPool = mergedPool;
     emit logMessage(tr("[池子] Mod 合并: 冻结 %1 + 候选 %2 → 池 %3 条")
                         .arg(frozenCount).arg(m_modPool.size() - frozenCount).arg(m_modPool.size()));
-    // 池已够目标页（或双源耗尽）→ 立刻发；慢源回包稍后静默并入候选区再发一次，
+    // 池已够目标页（或双源耗尽）→ 立刻发；慢源回包稍后静默并入池子再发一次，
     // 不再「等两个源都回」（旧行为：慢源把首屏拖到 8s 兜底才显示）。
     const int need = (m_modSearchPage + 1) * m_modSearchLimit;
     if (m_modPool.size() >= need || (!m_modMrMore && !m_modCfMore)) {
@@ -857,7 +854,7 @@ void ResourceBackend::onModSourceDone(int gen)
 void ResourceBackend::emitModPool()
 {
     m_modMgr->setBusy(false);
-    // 推进冻结边界：当前请求页已展示 → 前 (page+1)*limit 条冻结
+    // 记录已展示条数（冻结区已取消，这个值现在只用于 resourcePoolState 的 shown 回报）
     const int shown = (m_modSearchPage + 1) * m_modSearchLimit;
     if (shown > m_modShownCount)
         m_modShownCount = qMin(shown, m_modPool.size());
@@ -1291,7 +1288,6 @@ void ResourceBackend::onShaderSourceDone(int gen)
     if (gen != m_shaderGen) return;
     if (m_shaderPending > 0) --m_shaderPending;
     m_modMgr->setBusy(false);
-    // 冻结区 + 候选区（防滚动闪动）
     // 2026-11-06：取消"冻结区"，改为全池全局排序。
     // 原因：双源速度差极大（实测 Modrinth 1.0s / CurseForge 5.2s）。旧逻辑在第一源回来时就把
     // 前 N 条冻结，CF 的头部高下载项只能落到冻结区之后 → 第 2/3 页出现"比第 1 页下载量还高"的条目，
@@ -1304,7 +1300,7 @@ void ResourceBackend::onShaderSourceDone(int gen)
                         .arg(frozenCount).arg(m_shaderPool.size() - frozenCount).arg(m_shaderPool.size()));
     const int need = (m_shaderSearchPage + 1) * m_shaderSearchLimit;
     if (m_shaderPool.size() >= need || (!m_shaderMrMore && !m_shaderCfMore)) {
-        // 已够当前页（或双源耗尽）→ 立刻发；慢源的回包稍后会静默并入候选区再发一次，
+        // 已够当前页（或双源耗尽）→ 立刻发；慢源的回包稍后会静默并入池子再发一次，
         // 不再"等两个源都回"（旧行为：慢源把首屏拖到 8s 兜底才显示）。
         emitShaderPool();
         return;
@@ -1572,7 +1568,6 @@ void ResourceBackend::onRpSourceDone(int gen)
     if (gen != m_rpGen) return;
     if (m_rpPending > 0) --m_rpPending;
     m_modMgr->setBusy(false);
-    // 冻结区 + 候选区（防滚动闪动）
     // 2026-11-06：取消"冻结区"，改为全池全局排序。
     // 原因：双源速度差极大（实测 Modrinth 1.0s / CurseForge 5.2s）。旧逻辑在第一源回来时就把
     // 前 N 条冻结，CF 的头部高下载项只能落到冻结区之后 → 第 2/3 页出现"比第 1 页下载量还高"的条目，
@@ -1585,7 +1580,7 @@ void ResourceBackend::onRpSourceDone(int gen)
                         .arg(frozenCount).arg(m_rpPool.size() - frozenCount).arg(m_rpPool.size()));
     const int need = (m_rpSearchPage + 1) * m_rpSearchLimit;
     if (m_rpPool.size() >= need || (!m_rpMrMore && !m_rpCfMore)) {
-        // 已够当前页（或双源耗尽）→ 立刻发；慢源的回包稍后会静默并入候选区再发一次，
+        // 已够当前页（或双源耗尽）→ 立刻发；慢源的回包稍后会静默并入池子再发一次，
         // 不再"等两个源都回"（旧行为：慢源把首屏拖到 8s 兜底才显示）。
         emitRpPool();
         return;
@@ -1607,7 +1602,7 @@ void ResourceBackend::emitRpPool()
 // ═══════════════════════════════════════════════════════════
 // 整合包双源搜索（Modrinth project_type:modpack + CF classId=4471）
 // 池子架构与 Mod/Shader/RP 完全一致：双源累积成池 → 去重加权混排 →
-// QML 按页切片；冻结区 + 候选区防滚动闪动。
+// QML 按页切片；每次合并都对全池按同一加权规则重排。
 // ═══════════════════════════════════════════════════════════
 
 void ResourceBackend::searchModpacksEx(const QString& query, const QString& loader,
@@ -1831,7 +1826,7 @@ void ResourceBackend::onPackSourceDone(int gen)
                         .arg(frozenCount).arg(m_packPool.size() - frozenCount).arg(m_packPool.size()));
     const int need = (m_packSearchPage + 1) * m_packSearchLimit;
     if (m_packPool.size() >= need || (!m_packMrMore && !m_packCfMore)) {
-        // 已够当前页（或双源耗尽）→ 立刻发；慢源的回包稍后会静默并入候选区再发一次，
+        // 已够当前页（或双源耗尽）→ 立刻发；慢源的回包稍后会静默并入池子再发一次，
         // 不再"等两个源都回"（旧行为：慢源把首屏拖到 8s 兜底才显示）。
         emitPackPool();
         return;
@@ -2138,7 +2133,7 @@ void ResourceBackend::onDpSourceDone(int gen)
                         .arg(frozenCount).arg(m_dpPool.size() - frozenCount).arg(m_dpPool.size()));
     const int need = (m_dpSearchPage + 1) * m_dpSearchLimit;
     if (m_dpPool.size() >= need || (!m_dpMrMore && !m_dpCfMore)) {
-        // 已够当前页（或双源耗尽）→ 立刻发；慢源的回包稍后会静默并入候选区再发一次，
+        // 已够当前页（或双源耗尽）→ 立刻发；慢源的回包稍后会静默并入池子再发一次，
         // 不再"等两个源都回"（旧行为：慢源把首屏拖到 8s 兜底才显示）。
         emitDpPool();
         return;

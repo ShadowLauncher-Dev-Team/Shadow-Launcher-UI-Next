@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
         {"Java 25", "https://mirrors.tuna.tsinghua.edu.cn/Adoptium/25/jdk/x64/windows/OpenJDK25U-jdk_x64_windows_hotspot_25.0.3_9.zip", 141131903},
     };
 
-    // Test all three
+    // 只测其中一个（当前取 Java 25）；其余两项留作手动改下标
     const auto& java = javas[2]; // Start with Java 25 (smallest)
 
     QString outDir = QCoreApplication::applicationDirPath() + "/java_dl_test";

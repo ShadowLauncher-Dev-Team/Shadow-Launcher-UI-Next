@@ -52,7 +52,7 @@ struct Account {
 enum class DownloadSourcePolicy : int {
     PreferMirror   = 0,  // BMCLAPI primary, fall back to Mojang
     PreferOfficial = 1,  // Mojang primary, fall back to BMCLAPI
-    AutoSwitch     = 2   // 按区域择优（2026-11-18 实测：官方源比镜像快 5 倍，故国内也先官方）
+    AutoSwitch     = 2   // 自动 = 官方优先、镜像兜底（实测官方吞吐更高；与区域无关，见 source_policy.h）
 };
 
 /// 默认并发：核数 ×12，夹取 [32, 192]。
@@ -69,7 +69,7 @@ inline int defaultDownloadConcurrency() {
 }
 
 struct DownloadConfig {
-    int maxWorkers = defaultDownloadConcurrency();   // 并发上限 192（settings 层夹取），精卫固定 12
+    int maxWorkers = defaultDownloadConcurrency();   // 默认核数×12（夹取 [32,192]）；settings 上限 512，精卫默认 12
     double speedLimitMB = -1;
     DownloadSourcePolicy fileSource = DownloadSourcePolicy::PreferOfficial;   // 全局 MC 下载策略
     DownloadSourcePolicy listSource = DownloadSourcePolicy::PreferOfficial;

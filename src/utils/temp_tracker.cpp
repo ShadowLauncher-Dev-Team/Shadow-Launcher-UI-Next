@@ -16,7 +16,7 @@ Q_LOGGING_CATEGORY(logTracker, "Shadow.TempTracker")
 namespace {
 
     /// 从 tempDir 路径生成一个稳定的 tracking 文件名
-    /// 使用 UUID 片段 + 时间戳，确保在极端并发下也不冲突
+    /// 直接用临时目录名（含 UUID）保证唯一；空名时回退到路径 hash
     QString fileNameFor(const QString& tempDir) {
         // 从路径末尾提取 UUID（如 shadow-merged-{uuid}）
         QString base = QFileInfo(tempDir).fileName();

@@ -49,7 +49,7 @@ HttpClient::HttpClient()
     qCInfo(logDownload) << engineBanner("yidao");
     m_manager = new QNetworkAccessManager(this);
     m_manager->setTransferTimeout(m_config.totalTimeoutMs);
-    // 分片双 QNAM 轮询（对齐山海经 2×QNAM 验证结论：避免单 manager 队列拥塞）
+    // 分片双 QNAM 轮询（避免单 manager 队列拥塞）
     m_manager2 = new QNetworkAccessManager(this);
     m_manager2->setTransferTimeout(m_config.totalTimeoutMs);
 

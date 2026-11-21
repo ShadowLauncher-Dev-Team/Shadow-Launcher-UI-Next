@@ -8,7 +8,7 @@
 //     · 私有 QSGNode 派生节点，几何在 updatePaintNode() 里重建
 //     · 时间由 item 自己的定时器推进，只调 update()，QML 里零逐帧绑定
 //
-// 为什么不用 QML 动画：下载卡片每 400ms 用 ListModel::set() 刷新一次数据，
+// 为什么不用 QML 动画：下载卡片每 200ms 轮询 cardData() 刷新一次数据，
 // delegate 里的 Image/Sprite/NumberAnimation 会被重置，表现为"转一下回跳"。
 // 相位存在 C++ 对象里，数据怎么刷新都打断不了。
 #pragma once

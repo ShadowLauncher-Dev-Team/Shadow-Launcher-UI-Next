@@ -28,11 +28,12 @@ Q_DECLARE_LOGGING_CATEGORY(logMgr)  // legacy, maps to Shadow.Mod
 
 /// One-time logger initialisation. Must be called once at process start
 /// before any qCDebug/qCInfo/qCWarning/qCCritical calls.
-/// Creates: {exeDir}/logs/shadow_launcher_{yyyy-MM-dd}.log
+/// Creates: {exeDir}/logs/shadow_launcher_<yyyy-MM-dd_HH-mm-ss>.log (one per launch)
 void initLogger(const QString& exeDir);
 
-/// Install a Qt message handler that writes to both the log file and the
-/// debug console (qDebug/qWarning/qCritical). Called by initLogger().
+/// Install a Qt message handler that writes to the log file and, when a
+/// debugger is attached or SHADOW_DEBUG_OUTPUT is set, to the debug output.
+/// Called by initLogger().
 void installFileLogger(const QString& exeDir);
 
 /// Check SHADOW_SUPPRESS_URL_LOG env var — suppress download URL logging

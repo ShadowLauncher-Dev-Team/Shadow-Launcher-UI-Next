@@ -30,7 +30,7 @@ const QString kCfOfficialBase = QStringLiteral("https://api.curseforge.com/v1");
 
 namespace {
 
-// ── CF 分类静态表（2026-08-01 API 实测提取；classId=6/12/6552/4471）──
+// ── CF 分类静态表（API 实测提取；classId=6/12/6552/6945/4471）──
 struct CfCategory { int classId; int id; const char* name; };
 const CfCategory kCfCategories[] = {
     // Mods (6)

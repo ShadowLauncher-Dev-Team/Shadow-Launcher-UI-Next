@@ -28,7 +28,7 @@ Item {
     readonly property int autoMB: (pane.b && pane.versionId.length > 0)
                                    ? pane.b.recommendMemoryForVersion(pane.versionId)
                                    : (pane.mem.recommended ? pane.mem.recommended : 2048)
-    // ── 2026-11-14：「跟随全局」显示的必须是**启动时真正会用的值** ──
+    // ── 「跟随全局」显示的必须是**启动时真正会用的值** ──
     // 全局开着自动分配时，启动走的是 getAutoMemoryForVersion（按模组数），
     // 根本不会用 maxMemoryMB。但界面一直显示后者 ——
     // 用户看到「跟随全局 2048 MB」且被提醒「低于建议」，以为自动配置也这么低。

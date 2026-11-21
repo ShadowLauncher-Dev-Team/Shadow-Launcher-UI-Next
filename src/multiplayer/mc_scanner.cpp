@@ -90,7 +90,7 @@ void McScanner::start(std::function<bool(const QString&)> motdFilter)
         m_socketV4->setSocketOption(QAbstractSocket::MulticastTtlOption, 4);
     }
 
-    // Cleanup timer: every 1s, remove expired entries (aligns with Terracotta's 500ms loop)
+    // Cleanup timer: 每 1s 清一次过期条目（Terracotta 自己的循环是 500ms，不必对齐）
     m_cleanupTimer = new QTimer(this);
     m_cleanupTimer->setInterval(1000);
     connect(m_cleanupTimer, &QTimer::timeout, this, &McScanner::onCleanupTick);

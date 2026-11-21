@@ -22,15 +22,11 @@ Window {
     property bool firstFrame: false
 
     // 窗口尺寸：默认就是设计稿的 1100x720，不按屏幕缩。
-    // 曾经为了"导出条不被裁到屏幕外"在这里做了 min(720, 屏高-40)，结果整台机器一进来窗口就矮了 69px，
-    // 影直接发现了——这是拿全局默认尺寸去补一个局部问题，代价太大，撤掉。
-    // 只有屏幕小到明显放不下（逻辑高 < 640 / 宽 < 1000）时才收口，避免小屏笔记本完全不可用。
+    // 只有屏幕明显放不下（逻辑高 < 640 / 宽 < 1000）时才收口，避免小屏笔记本不可用；
+    // 不要为了个别元素被裁就改全局默认尺寸。
     //
     // 注意：Qt 6 里 Screen.width / Screen.height 已经是**逻辑像素**（device-independent），
-    // 这里绝对不能再除一次 devicePixelRatio。之前就是除了——等于把屏幕缩了两遍：
-    // 1440p@150%（逻辑宽 1280）被算成 853，直接落进下面的收口，于是那些机器每次启动都是小窗，
-    // 再叠上当时的侧栏图标轨道模式，看起来就像"启动器被缩成一小块"。
-    // 本机实测：dpr 1.25、Screen.width 1536（= 1920 / 1.25），正是逻辑值。
+    // 绝对不能再除一次 devicePixelRatio——那会把屏幕缩两遍，1440p@150% 的机器会永远开小窗。
     Component.onCompleted: {
         var scr = appWindow.screen
         var dpr = (scr && scr.devicePixelRatio) ? scr.devicePixelRatio : 1
@@ -75,7 +71,7 @@ Window {
 
     // 更新卡片预览（--ui-update-card）：独立置顶透明窗口，与真实安装卡片同形态。
     // 必须直接实例化同模块类型：用 Loader { source: "UpdateCardWindow.qml" } 会报
-    // "No such file or directory"（qrc 模块内相对 URL 不按文件路径解析，实测 15:57）。
+    // "No such file or directory"（qrc 模块内相对 URL 不按文件路径解析）。
     UpdateCardWindow {
         mode: Qt.application.arguments.indexOf("--ui-update-card") >= 0
     }

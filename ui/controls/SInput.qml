@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// 普通单行输入：34 高、底 #0d1016、聚焦蓝边。不是搜索框（搜索用 SField）
+// 普通单行输入：34 高、底 bgCard2、聚焦蓝边。不是搜索框（搜索用 SField）
 import QtQuick
 import ShadowLauncher.Next
 

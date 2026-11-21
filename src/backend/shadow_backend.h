@@ -95,7 +95,6 @@ class ShadowBackend : public QObject {
     Q_PROPERTY(int maxMemoryMb READ maxMemoryMb NOTIFY memorySettingsChanged)
     Q_PROPERTY(bool isolationEnabled READ isolationEnabled NOTIFY isolationChanged)
     Q_PROPERTY(bool embeddedLoginEnabled READ embeddedLoginEnabled WRITE setEmbeddedLoginEnabled NOTIFY embeddedLoginChanged)
-    // 2026-08-15：实验性——版本悬停前置依赖 tooltip（可能卡顿/信息有误）
     Q_PROPERTY(QVariantList availableJavaList READ availableJavaList NOTIFY javaPathChanged)
 
     // ── Version ──
@@ -203,7 +202,7 @@ class ShadowBackend : public QObject {
     Q_PROPERTY(QVariantList downloadQueue READ downloadQueue NOTIFY downloadQueueChanged)
     Q_PROPERTY(QVariantList activeDownloads READ activeDownloads NOTIFY downloadQueueChanged)
 
-    // ── Game info（2026-08-07 清理：版本文件夹卡片已删，gameDirInfo/gameDirectories/diskFree/diskPercent 随左侧卡片移除）──
+    // ── Game info ──
     Q_PROPERTY(bool autoMemoryEnabled READ autoMemoryEnabled NOTIFY memorySettingsChanged)
     Q_PROPERTY(QVariantMap systemMemoryInfo READ systemMemoryInfo NOTIFY memorySettingsChanged)
     Q_PROPERTY(QVariantList availableCapes READ availableCapes CONSTANT)
@@ -455,11 +454,6 @@ public:
     QString resolvedPreLaunchCommand(const QString& versionId) const;
     /// 解析后的退出后命令（版本级优先）
     QString resolvedPostExitCommand(const QString& versionId) const;
-    // ── 设置导入导出（转发 SettingsBackend）──
-    
-    
-    
-
     // ── Language hot-switch ──
     void setEngine(QQmlEngine* engine) { m_engine = engine; }
     void writeLanguageFile(int index) const;
@@ -543,25 +537,6 @@ public:
                        int maxMemory, const QString& jvmArgs, const QString& gameArgs,
                        bool highPerfGpu);
     Q_INVOKABLE void killGameProcess();
-    // 仅用于开发核对「准备运行环境」卡片排版（--ui-demo-repair 也走这个）
-
-    /// 下载基线自检（离线、无网络）：步骤词表一致性 + StepNode 状态机/百分比钳制。
-    /// 返回 "PASS ..." 或 "FAIL: ..." 字符串；供 /eval 与人工验收使用。
-
-    /// 源策略现状摘要（供人工验收）：四项下载设置当前值 + 版本清单实际会用的主源/兜底源。
-
-    /// 下载探针（仅本地验证用，不参与业务路径）：
-    /// 用真实 FileDownloader 下载一个 URL，返回 bytes/file/ms/平均 MBps。
-    /// limitKBps<=0 表示不限速。用于验证限速、取消、失败语义是否真的生效。
-
-    /// 取消验证：跑 cancelAfterMs 后 cancel()，再观察 600ms 字节是否继续增长。
-    /// 期望：cancelled 后 bytes 不再变化（契约 §5：取消必须中止在途请求）。
-
-    /// 多文件探针：同一 URL 下 count 个文件（不同落盘路径），用于验收 QNAM 复用
-    /// （创建次数应 ≈ 线程数，而不是 ≈ 文件数）。
-
-    /// 取消残留诊断：取消后统计"目标文件 / .shadow_temp 分片 / 目录"是否还留东西。
-    /// 不自动删除，交给验收者看；用于证明"取消能否完全清干净"。
     Q_INVOKABLE void killGameByPid(qint64 pid);
     Q_INVOKABLE QVariantList runningGames();
     Q_INVOKABLE void searchModsEx(const QString& query, const QString& loader,
@@ -570,7 +545,6 @@ public:
         int offset, int limit, const QString& source = {});
     /// 池子运行时状态（诊断 / 分页 hasMore）：kind = mod | shader | resourcepack | modpack | datapack
     Q_INVOKABLE QVariantMap resourcePoolState(const QString& kind) const;
-    // CurseForge 分类静态表（QML 叠加下拉用）
     Q_INVOKABLE void searchShadersEx(const QString& query, const QStringList& gameVersions,
         const QStringList& categories, const QStringList& performance,
         const QStringList& loader, int offset, int limit, const QString& source = {});
@@ -601,9 +575,6 @@ public:
         int offset, int limit, const QString& source = {});
     // 整合包详情版本列表（Modrinth slug / CF 数字 id 自动路由，复用 modVersionsPartial）
     Q_INVOKABLE void fetchModpackVersions(const QString& slug, const QString& gameVersion = {}, const QString& loader = {});
-    /// 整合包压缩包下载：静默下载到 {gameDir}/downloads/，完成后自动走导入流程
-    /// 返回 dlId（卡片通道 mod:N）；versionName=用户指定版本名（注册名），actualName=整合包实际名
-    /// 整合包任务是否占用中（下载中 或 导入中）→ 同一时间只允许一个整合包任务（下载或导入）
     Q_INVOKABLE void fetchResourcepackVersions(const QStringList& slugs);  // batch-fetch game_versions
     Q_INVOKABLE void fetchModVersions(const QStringList& slugs);
     Q_INVOKABLE void fetchShaderVersions(const QStringList& slugs);
@@ -611,7 +582,6 @@ public:
     Q_INVOKABLE void fetchModVersionsCf(const QString& modId, const QString& gameVersion = {}, const QString& loader = {});
     Q_INVOKABLE void fetchShaderVersionsCf(const QString& modId, const QString& gameVersion = {}, const QString& loader = {});
     Q_INVOKABLE void fetchResourcepackVersionsCf(const QString& modId, const QString& gameVersion = {}, const QString& loader = {});
-    /// CF 详情页前置依赖解析（Modrinth 优先映射），结果经 cfDependenciesResolved 回传
     /// 汉化反查：英文名 → 中文名（依赖卡用），转发 resource 层
     Q_INVOKABLE QString resolveModZh(const QString& title) const;
     /// 详情页「转到 XX / 复制链接」统一链接解析（转发 resource 层），返回 { mrUrl, cfUrl, mcmodUrl }
@@ -650,7 +620,6 @@ public:
     Q_INVOKABLE void queryOptifineVersions(const QString& mcVersion);
     Q_INVOKABLE void queryFabricApiVersions(const QString& mcVersion);
 
-    // Cancel all in-flight mod-loader version queries (called when install starts)
 
     // Cache Forge installer SHA1 from version list (avoids extra network fetch for verification)
     QString getForgeInstallerSha1(const QString& mcVer, const QString& forgeVer) const;
@@ -718,8 +687,6 @@ public:
     Q_INVOKABLE void setGameArgs(const QString& args);
     Q_INVOKABLE void setHighPerfGpu(bool v);
     Q_INVOKABLE void copyToClipboard(const QString& text);
-
-    // ── Q_INVOKABLE versions of Q_PROPERTY-only getters ──
 
     // ── Path/document stubs ──
     Q_INVOKABLE void openJavaFileDialog() { browseJava(); }
@@ -972,9 +939,6 @@ public:
     AccountBackend* account() const { return m_account; }
     QObject* yggdrasil() const { return m_yggdrasil; }
     Q_INVOKABLE SettingsBackend* settings() const { return m_settings; }
-    // Auto-language mode helpers (bypass backend.settings.* QML chain issues in Loaders)
-    // ── UI 一次性标记（QSettings 持久化；2026-08-24 v1.0.1 一次性启动公告 toast 用）──
-    // 更新后首次启动判定（蓝色"更新内容"toast 仅更新用户弹出；一次性消费；2026-08-25）
     CheckBackend* check() const { return m_check; }
     VersionBackend* version() const { return m_version; }
     LaunchBackend* launchBackend() const { return m_launch; }
@@ -1002,7 +966,7 @@ public:
     // 资源拉取引擎访问器（ResourceBackend 搜索接入用）
     ResourceFetchEngine* fetchEngine() const { return m_fetchEngine; }
 
-    // ── Icon cache (QML-callable methods: mod / shader / rp) ──
+    // ── 原生文件夹选择（图标 URL 解析见下方 resolveIconUrl）──
     // 原生"选择文件夹"对话框（Win32 IFileOpenDialog + FOS_PICKFOLDERS）。
     // 为什么不用 Qt 的 FolderDialog：本程序未链接 QtWidgets，FolderDialog.open() 会静默失败，
     // 既不显示窗口、还会把后续的 SaveFile 对话框一起卡住。

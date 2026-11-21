@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// 启动浮层：主界面中央，总进度条（上）+ 启动阶段节点清单（下）
+// 启动浮层：总进度条 + 准备运行环境 + 阶段节点清单；失败时原地切换为诊断面板
 // 节点数量/名称/顺序全部来自后端 launchStepRows，QML 不写死任何节点。
-// 契约：design-2026-11-04/LAUNCH_OVERLAY_SPEC.md
+// 契约：2026-11-04 启动浮层设计稿（面板直角 / 方点节点 / 阶段级总进度）
 //   · 面板 radius 2（视觉直角），内部一律直角，没有嵌套圆角
 //   · 节点 8x8 直角方点，不用圆点
 //   · 总进度是阶段级（已完成节点/可见节点），节点内字节进度只放子行
@@ -403,8 +403,8 @@ Item {
                                         width: parent.width * (modelData.state === 2 ? 1
                                                                : (modelData.state === 3 ? 1
                                                                   : modelData.progress / 100))
-                                        // 细进度条是填充色：完成原色 #4f9d76(绿) 被换成了 fg3(灰)，
-                                        // 进行中原色 #60a5fa(亮蓝) 被换成了 accentText。都改回饱和色。
+                                        // 细进度条是**填充色**：必须用饱和色（ok / accentTop / danger），
+                                        // 不能用给文字用的浅色（fg3 / accentText）。
                                         color: modelData.state === 2 ? Theme.ok
                                                : (modelData.state === 3 ? Theme.danger : Theme.accentTop)
                                         Behavior on color {

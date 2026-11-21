@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright (C) 2025-2026 褰?/ Shadow
+// Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 #include "local_mod_manager.h"
 #include "utils/logger.h"
 
@@ -68,7 +68,7 @@ QString LocalModManager::modsDir(const QString& versionId) const
     return m_gameDir + QStringLiteral("/mods");
 }
 
-// 鈹€鈹€ Public API 鈹€鈹€
+// ── Public API ──
 
 QVariantList LocalModManager::scanMods(const QString& versionId)
 {
@@ -245,7 +245,7 @@ bool LocalModManager::openModsFolder(const QString& versionId)
     return QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }
 
-// 鈹€鈹€ JAR Parsing 鈹€鈹€
+// ── JAR Parsing ──
 
 LocalModEntry LocalModManager::parseJar(const QString& jarPath)
 {
@@ -391,7 +391,7 @@ LocalModEntry LocalModManager::parseNeoForgeToml(const QByteArray& data, const Q
     entry.fileSize = fileSize;
     entry.fileSizeText = formatFileSize(fileSize);
 
-    // Simple TOML parser 鈥?just extract [[mods]] section fields
+    // Simple TOML parser — just extract [[mods]] section fields
     QString text = QString::fromUtf8(data);
 
     QRegularExpression modIdRe(QStringLiteral("modId\\s*=\\s*\"([^\"]+)\""));

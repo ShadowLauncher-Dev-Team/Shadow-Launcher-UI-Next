@@ -5,7 +5,7 @@
 //
 // Key improvements over v8:
 //   - QThreadPool instead of QThread::create (avoids OS thread thrash)
-//   - 2 shared QNAMs with per-request HTTP/1.1 config (connection pooling)
+//   - Per-worker thread-local QNAM with per-request HTTP/1.1 config (QNAM is not thread-safe)
 //   - DNS pre-resolution + IP reliability scoring
 //   - Per-host health tracking (consecutive failures, degraded hosts)
 //   - Phased acceleration: first-thread-for-all → speed-floor-thread-split

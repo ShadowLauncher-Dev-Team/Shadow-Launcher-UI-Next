@@ -7,12 +7,13 @@
 // so that an AI agent can inspect the rendered UI without
 // manual screenshotting or mouse simulation.
 //
-// In Release builds (NDEBUG), start() is a no-op.
+// 没有任何条件编译：是否创建实例由 main_release.cpp 决定
+// （--ui-screenshots 参数或 SHADOW_SS_PORT 环境变量，默认不启动）。
 //
 // Endpoints:
 //   GET  /screenshot          → 200 image/png (window grab)
 //   POST /eval   {"qml":"…"}  → 200 application/json {ok, value}
-//   POST /navigate {…}        → 200 application/json (convenience wrapper)
+//   POST /navigate {qml|page[+tab]|pageName} → 200 application/json (convenience wrapper)
 
 #ifndef SHADOW_SCREENSHOT_SERVER_H
 #define SHADOW_SCREENSHOT_SERVER_H
@@ -38,8 +39,8 @@ public:
     explicit ScreenshotServer(QQmlApplicationEngine* engine, QObject* parent = nullptr);
     ~ScreenshotServer() override;
 
-    /// Start listening on the given port. No-op in Release builds.
-    /// Returns true on success (always true in Release builds).
+    /// Start listening on the given port (binds 127.0.0.1 only).
+    /// Returns true on success, false when the port is already taken.
     bool start(quint16 port = 9999);
 
     /// Stop the server.

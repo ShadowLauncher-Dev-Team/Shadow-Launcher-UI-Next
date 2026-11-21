@@ -12,7 +12,7 @@ namespace ShadowLauncher {
 
 /// Result of scanning for a crash report
 struct CrashReport {
-    QString type;           // "jvm" or "minecraft" or "log"
+    QString type;           // "jvm" / "minecraft" / "log" / "precheck"（启动前检查失败）
     QString reason;         // Short crash reason (e.g. "java.lang.OutOfMemoryError")
     QString description;    // 1-2 line human-readable summary
     QStringList suspectedMods;  // Mod names extracted from crash report

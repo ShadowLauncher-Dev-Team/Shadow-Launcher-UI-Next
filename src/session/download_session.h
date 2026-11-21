@@ -15,7 +15,7 @@ namespace ShadowLauncher {
 
 // ── DownloadSession — 单个安装实例 ──
 // 管理一个安装任务的生命周期、步骤管线、进度跟踪
-// 目标是逐步替代 version_backend 中现有的 DownloadSession struct
+// VersionBackend 按 installId 持有，安装卡片的进度/速度都从这里导出
 class DownloadSession : public QObject {
     Q_OBJECT
 public:
@@ -126,7 +126,7 @@ public:
     /// 驿道下载主文件阶段 installer 未 running（verify-only），
     /// isModLoaderInstalling() 返回 false → 主文件速度不计入（用户实测）。
     bool loaderDownloadActive = false;
-    qint64 fabSpeed = 0;         // Fabric API 下载速度 (bytes/s, delta/200ms)
+    qint64 fabSpeed = 0;         // Fabric API 下载速度 (bytes/s，按回调时间差计算)
     qint64 fabSpeedLastBytes = 0; // 上次 Fabric API 接收字节
     qint64 fabSpeedLastMs = 0;    // 上次 Fabric API 速度时间戳
 

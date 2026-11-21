@@ -280,7 +280,7 @@ qint64 CheckBackend::getAvailableMemoryMB()
     }
     return -1;
 #else
-    // Linux/Mac: 尝试读取 /proc/meminfo
+    // 非 Windows：读 /proc/meminfo（Linux 专有；macOS 没有 /proc，会走到末尾返回 -1）
     QFile meminfo(QStringLiteral("/proc/meminfo"));
     if (meminfo.open(QIODevice::ReadOnly)) {
         QByteArray content = meminfo.readAll();

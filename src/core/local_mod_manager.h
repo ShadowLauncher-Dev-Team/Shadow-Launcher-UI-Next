@@ -113,8 +113,6 @@ public:
     // Get shaderpacks folder path for a version（与 resourcePacksDir 同一套隔离判定）
     QString shaderPacksDir(const QString& versionId) const;
 
-    // Cache directory for extracted icons
-
 signals:
     void modsChanged(const QString& versionId);
     void importFinished(const QString& fileName, bool success, const QString& error);
@@ -140,7 +138,7 @@ private:
     static QVariantMap rpEntryToMap(const LocalResourcePackEntry& e);
 
     QString m_gameDir;
-    QString m_iconCacheDir;
+    QString m_iconCacheDir;   // 图标解压缓存目录（dataDir/cache/mod_icons，Mod 与资源包共用）
 };
 
 } // namespace ShadowLauncher

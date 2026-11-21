@@ -74,7 +74,7 @@ public:
     void setGcMode(int mode) { m_gcMode = mode; }
     /// 最小堆（-Xms）。不设则沿用旧行为 min(512, max/2)。
     void setMinMemoryMB(int mb) { m_minMemoryMB = mb; }
-    /// 进程优先级：0=低 1=中 2=高（对齐主流启动器实现 LaunchArgumentPriority）
+    /// 进程优先级：0=高（AboveNormal） 1=中（不设置） 2=低（BelowNormal）（对齐主流启动器实现 LaunchArgumentPriority）
     void setProcessPriority(int priority) { m_processPriority = priority; }
     /// 全屏启动（--fullscreen，对齐主流启动器实现 LaunchArgumentWindowType=0）
     void setFullscreen(bool v) { m_fullscreen = v; }
@@ -163,7 +163,7 @@ private:
     // ── 启动细节配置（2026-08-08）──
     int m_gcMode = 0;                 // 0=自动 1=分代ZGC优先 2=仅G1GC 3=不指定
     int m_minMemoryMB = -1;            // -1 = 未设置，走旧公式 min(512, max/2)
-    int m_processPriority = 1;        // 0=低 1=中 2=高
+    int m_processPriority = 1;        // 0=高 1=中 2=低
     bool m_fullscreen = false;        // --fullscreen
     QString m_autoJoinServer;         // host[:port]
     QString m_windowTitleOverride;    // 游戏窗口标题覆盖

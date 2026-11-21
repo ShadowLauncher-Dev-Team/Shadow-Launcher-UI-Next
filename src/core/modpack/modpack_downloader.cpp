@@ -156,7 +156,7 @@ ModpackDownloader::ModpackDownloader(QObject* parent)
     : QObject(parent)
     , m_http(&HttpClient::instance())
 {
-    // 下载阶段停滞看门狗：5s 扫一次，连续 60s 累计字节无增长 → 判失败并复位 m_running。
+    // 下载阶段停滞看门狗：5s 扫一次，连续 240s 累计字节无增长 → 判失败并复位 m_running。
     // （引擎 speedTick 每 100ms 都会发 progressChanged，字节不变也能被采样到 → 不依赖文件事件。）
     m_stallTimer = new QTimer(this);
     m_stallTimer->setInterval(kStallCheckIntervalMs);
@@ -839,7 +839,7 @@ void ModpackDownloader::startEngineDownloads()
         }
     });
 
-    // 停滞看门狗：引擎启动即开始计时（60s 内累计字节无增长 → 判失败）
+    // 停滞看门狗：引擎启动即开始计时（240s 内累计字节无增长 → 判失败）
     m_lastWatchdogBytes = -1;
     m_lastWatchdogMs = QDateTime::currentMSecsSinceEpoch();
     if (m_stallTimer) m_stallTimer->start();
@@ -882,7 +882,7 @@ void ModpackDownloader::onEngineProgress(int completed, int total, qint64 bytes,
 {
     Q_UNUSED(allBytes);
     // 停滞看门狗采样：累计字节一变即视为「有进展」。引擎 speedTick 每 100ms 都会发
-    // progressChanged（即使字节不变），因此 60s 无增长可判定为真停滞（不是没回调）。
+    // progressChanged（即使字节不变），因此 240s 无增长可判定为真停滞（不是没回调）。
     if (m_stallTimer && bytes != m_lastWatchdogBytes) {
         m_lastWatchdogBytes = bytes;
         m_lastWatchdogMs = QDateTime::currentMSecsSinceEpoch();
@@ -985,7 +985,7 @@ void ModpackDownloader::releaseEngineDeferred()
     QTimer::singleShot(kCleanupDelayMs, this, [engine]() { engine->deleteLater(); });
 }
 
-// ── 下载阶段停滞看门狗（契约 §5：60s 无任何字节进展 → 判失败并复位 m_running）──
+// ── 下载阶段停滞看门狗（契约 §5：240s 无任何字节进展 → 判失败并复位 m_running）──
 
 void ModpackDownloader::checkStall()
 {
@@ -1050,8 +1050,8 @@ void ModpackDownloader::cancel()
     }
 
     // 未完成的条目标记为跳过 + 清理可能残留的半截文件
-    // （引擎 isNoSplit 直接写最终路径，abort 中断会留半截；onEngineFileFinished
-    //   被 stopped() 守卫拦截不走正常清理路径，必须在此补删）
+    // （引擎写 localPath.tmp-xxxx，取消时最终路径一般无半截文件，此处兜底清理；
+    //   onEngineFileFinished 被 stopped() 守卫拦截不走正常清理路径，故在此补删）
     for (int i = 0; i < m_total; ++i) {
         if (!m_items[i].finished) {
             if (!m_items[i].savePath.isEmpty())

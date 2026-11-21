@@ -44,7 +44,7 @@ class SettingsBackend : public QObject {
     Q_PROPERTY(int autoLangMode READ autoLangMode WRITE setAutoLangMode NOTIFY autoLangModeChanged)
     // 游戏目录（只读）：设置页「高级」要显示绝对路径
     Q_PROPERTY(QString gameDir READ gameDir NOTIFY gameDirChanged)
-    // ── 启动细节（低垂果实批，2026-08-08：对齐 主流启动器/主流启动器）──
+    // ── 启动细节（对齐主流启动器的同类选项）──
     Q_PROPERTY(int gcMode READ gcMode WRITE setGcMode NOTIFY launchDetailChanged)
     Q_PROPERTY(int processPriority READ processPriority WRITE setProcessPriority NOTIFY launchDetailChanged)
     Q_PROPERTY(bool fullscreenEnabled READ fullscreenEnabled WRITE setFullscreenEnabled NOTIFY launchDetailChanged)
@@ -148,13 +148,6 @@ public:
     // maxMajor>0 时限制在 [requiredMajor, maxMajor] 区间（老版本 Mixin 兼容上限）
     Q_INVOKABLE QString openJavaFileDialog();
     Q_INVOKABLE QString browseJava();          // QML alias
-    // ── 设置导入导出（2026-08-08：主流启动器 CacheExportConfig 对齐）──
-    /// 导出全部启动器设置到指定文件（ini 格式），成功返回 true
-
-    /// 从文件导入设置（合并，覆盖已有值），成功返回 true
-
-    /// 导出的设置内容预览（供 QML 确认弹窗展示）
-
     void setMinecraftDir(const QString& dir);
     Q_INVOKABLE void setIsolationEnabled(bool enabled);
     Q_INVOKABLE void migrateVersionToIsolated(const QString& versionId);
@@ -165,7 +158,6 @@ public:
     Q_INVOKABLE void deleteVersion(const QString& versionId);
     bool embeddedLoginEnabled() const { return m_embeddedLoginEnabled; }
     Q_INVOKABLE void setEmbeddedLoginEnabled(bool v);
-    // ── 2026-08-15：版本悬停前置依赖 tooltip（实验性，可能卡顿/信息有误）──
     int languageIndex() const { return m_languageIndex; }
     Q_INVOKABLE void setLanguageIndex(int idx);
     bool isLanguageChanged() const { return m_languageIndex != m_launchLanguageIndex; }
@@ -274,8 +266,7 @@ public:
     void setIsolationGameDir(const QString& dir);
     VersionIsolation* isolation() const { return m_isolation; }
     QString gameDir() const { return m_gameDir; }
-    // 设置页要显示「游戏目录」的绝对路径。原来只有 C++ 方法、没暴露给 QML，
-    // QML 里读 s.gameDir 会拿到 undefined（日志：Unable to assign [undefined] to QString）。
+    // 设置页要显示「游戏目录」绝对路径：QML 直接读 s.gameDir，缺 Q_PROPERTY 会拿到 undefined。
 
 
 signals:

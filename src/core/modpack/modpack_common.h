@@ -51,7 +51,7 @@ struct ModpackMeta {
     QString versionId;       // 整合包版本号
     QString summary;         // 简介（Modrinth）
     QString mcVersion;       // Minecraft 版本
-    QString loaderType;      // "forge" | "neoforge" | "fabric" | ""（"" = 纯原版）
+    QString loaderType;      // "forge" | "neoforge" | "fabric" | "quilt" | ""（"" = 纯原版）
     QString loaderVersion;   // 加载器版本
     QStringList overrideDirs; // 需解压到游戏目录的覆写目录（CF: ["overrides"]；Modrinth: ["overrides","client-overrides"]；"." 表示整包根）
     QList<ModpackRemoteFile> files;   // 远端下载任务列表

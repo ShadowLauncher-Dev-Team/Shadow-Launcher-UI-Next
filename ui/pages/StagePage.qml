@@ -44,7 +44,7 @@ Item {
         page.runningList = (b && b.runningCount > 0) ? b.runningGames() : []
         if (page.runningList.length === 0) page.procOpen = false
     }
-    // startedAt 是后端新补的字段（epoch 秒）；没有就只显示 PID
+    // startedAt 是 epoch 秒；没有这个字段时只显示 PID
     function uptimeText(row) {
         var st = (row && row.startedAt) ? Number(row.startedAt) : 0
         if (st <= 0) return ""
@@ -300,7 +300,6 @@ Item {
             kind: 1
             text: qsTr("设置")
             iconName: "settings"
-            // 之前这里是 console.info 空实现，点了没反应
             onClicked: page.openSettings(page.b ? page.b.selectedVersion : "")
         }
     }
@@ -485,8 +484,9 @@ Item {
 
     // ---------- 标题上方那一行（kicker） ----------
     // 同一处只放一件事，按优先级取第一个有意义的：
-    //   启动中 → 后端当前阶段原串；游戏中 → 游戏运行中；常态 → 上次游玩（真实记录，没有就不显示）
-    // 绝不显示"准备就绪/加载完成"这类状态噪音（README 第 6 条）；失败原因由浮层负责。
+    //   启动中 → 后端当前阶段原串；游戏中 → 游戏运行中；未登录 → 提示先登录；
+    //   常态 → 上次游玩（真实记录，没有就不显示）
+    // 绝不显示"准备就绪/加载完成"这类状态噪音（CONTRIBUTING「常态不说话」）；失败原因由浮层负责。
     readonly property string lastPlayed: (b && b.lastPlayedLabel) ? b.lastPlayedLabel : ""
     readonly property string kicker: {
         if (page.launching) return page.statusText.length > 0 ? page.statusText : qsTr("正在准备启动")

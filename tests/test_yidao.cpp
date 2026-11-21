@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
-// 驿道 v2 集成测试：实测分片下载（用法: YidaoTest <url> [expectedSize] [outPath]）
+// 驿道 v2 集成测试：实测分片下载（用法: YidaoTest <url> [expectedSize] [outPath] [abort]）
 #include <QCoreApplication>
 #include <QTimer>
 #include <QElapsedTimer>

@@ -141,7 +141,7 @@ int main(int argc, char** argv)
         QDir(gameDir).removeRecursively();
     }
 
-    // ── 2b. buildLaunchScript 全启动选项（2026-08-10）：pre/post 命令、GPU、优先级、窗口标题、token 脱敏 ──
+    // ── 2b. buildLaunchScript 全启动选项（2026-08-10）：pre/post 命令、GPU、优先级、窗口标题、token 保留 ──
     {
         const QString gameDir = QStringLiteral("t_script2");
         QDir().mkpath(gameDir + QStringLiteral("/versions/1.20.4"));

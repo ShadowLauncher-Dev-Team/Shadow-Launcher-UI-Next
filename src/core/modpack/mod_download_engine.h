@@ -8,7 +8,7 @@
 //   - 引擎级共享 QNetworkAccessManager（连接池复用，PCL ThreadClient 语义）；
 //   - 全异步事件驱动（主线程调度，无 QThreadPool 阻塞事件循环 → 杜绝"线程卡死拖队列"）；
 //   - 每源快速失败 → 镜像降级官方 → 全部源单线程兜底一遍（SourcesOnce 式）→ 有限队列轮重试；
-//   - 动态超时：Min(Max(ConnectAvg,15s)*(1+FailCount),30s) + 无数据空闲超时（PCL 同款）；
+//   - 动态超时：Min(Max(ConnectAvg,30s)*(1+FailCount),45s) + 无数据空闲超时（PCL 同款；大文件另放宽到 3 分钟）；
 //   - 镜像限频：MCIM/BMCLAPI 每启一线程间隔 ≥100ms，防镜像限流饿死连接；
 //   - 独立 SpeedMeter：100ms 采样 + 30 条线性加权滑动窗口，停流自然滑落归零；
 //   - SHA1/大小校验 + Accept-Encoding: identity（防 gzip 导致哈希不符）。

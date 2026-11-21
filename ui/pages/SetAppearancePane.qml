@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// 外观：配色方案（黑/白）+ 启动页图片自定义（选图 / 取景 / 恢复默认）
+// 外观：配色方案（当前仅深色）+ 启动页图片自定义（选图 / 取景 / 恢复默认）
 //
 // 数据流（单一真源）：
 //   SettingsBackend   colorScheme / customBgPath / bgZoom / cropX / cropY

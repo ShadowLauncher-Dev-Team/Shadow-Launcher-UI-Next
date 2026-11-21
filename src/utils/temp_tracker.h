@@ -20,13 +20,13 @@ public:
     /// tracking 文件存放目录: %TEMP%/shadow-tracker/
     static QString trackerDir();
 
-    /// 记录一个临时目录路径。写入 UUID 命名的 tracking 文件。
+    /// 记录一个临时目录路径。tracking 文件以临时目录名（shadow-merged-<uuid>）命名。
     static void record(const QString& tempDir);
 
     /// 移除 tracking 记录（临时目录已正常清理）。
     static void forget(const QString& tempDir);
 
-    /// 扫描所有残留的 tracking 文件，删除对应的临时目录，再删掉 tracking 文件。
+    /// 扫描所有残留的 tracking 文件，删除对应的临时目录（仅 shadow-merged-*），再删掉 tracking 文件。
     /// 应在启动器初始化阶段的早期调用。
     static void cleanupOrphans();
 };

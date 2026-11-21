@@ -85,7 +85,7 @@ static QString toShortPath(const QString& path) { return path; }
 #endif
 
 // ── JVM 参数引号感知拆分（2026-08-17）──
-// 输入形如: -Xmx4G -javaagent:"D:\MC FAN\.minecraft\authlib-injector.jar"=https://...
+// 输入形如: -Xmx4G -javaagent:"C:\Users\<用户名>\.minecraft\authlib-injector.jar"=https://...
 // 规则：
 //   - 空白（空格/制表）分隔参数
 //   - 双引号包裹的部分整体保留（内部空格不拆分），引号本身从参数中剥离
@@ -1517,8 +1517,8 @@ QStringList Launcher::buildArgs(const QString& versionId, int maxMemoryMB,
 
     // Append user-provided custom JVM args (space-separated, may override defaults)
     // ── 2026-08-17：引号感知拆分 ──
-    // 原实现按 \s+ 拆分，含空格的路径（如 -javaagent:"D:\MC FAN\...\authlib-injector.jar"=url）
-    // 会被劈裂成 -javaagent:"D:\MC + FAN\... → JVM 报 "Error opening zip file or JAR
+    // 原实现按 \s+ 拆分，含空格的路径（如 -javaagent:"C:\Users\<用户名>\...\authlib-injector.jar"=url）
+    // 会被劈裂成 -javaagent:"C:\Users\ + <用户名>\... → JVM 报 "Error opening zip file or JAR
     // manifest missing"。改为引号感知 tokenizer："" 内部按字面量保留（含空格），
     // 引号本身从参数中剥离（QProcess 直接收到正确参数，不再二次 shell 解析）。
     if (!m_jvmArgs.isEmpty()) {

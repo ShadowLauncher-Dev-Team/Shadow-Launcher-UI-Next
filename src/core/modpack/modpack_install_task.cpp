@@ -35,12 +35,12 @@ using namespace ShadowLauncher;
 
 namespace {
 
-// 进度权重（主流启动器 ProgressWeight 思路）：解析 5% / 解压 10% / 下载 55% / MC安装 25% / 收尾 5%
+// 进度权重（主流启动器 ProgressWeight 思路）：解析 5% / 解压 10% / 下载 55% / MC安装 25%；收尾直接跳 100%（kFinalizeWeight 未参与合成）
 constexpr qreal kParseWeight = 0.05;
 constexpr qreal kExtractWeight = 0.10;
 constexpr qreal kDownloadWeight = 0.55;
 constexpr qreal kMcInstallWeight = 0.25;
-// 模组路悬挂兜底：MC 路已完成后，若模组路连续 2 分钟字节不动、
+// 模组路悬挂兜底：MC 路已完成后，若模组路连续 4 分钟速度归零、
 // 且 allFinished 迟迟不来，就不能再等下去。实测：单个失败文件在
 // 多源切换 + 重试间隔下能连续折腾六分钟，界面上就是「剩 1 个文件」不动。
 // 2026-11-19：120s 小于精卫自身的最坏自愈预算（单文件 5 轮重试 × (50s 退避 + 多源

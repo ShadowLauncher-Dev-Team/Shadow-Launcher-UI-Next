@@ -489,7 +489,7 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 // ── 卡片式进度窗口 ──
 static HICON loadLauncherIcon(const std::wstring& exePath)
 {
-    // 优先要 64x64（卡面按 30 逻辑像素画，125%/150% 缩放时需要更大源图才不糊）
+    // 优先取大图（256，退回 64）：卡面按 30 逻辑像素画，125%/150% 缩放时需要更大源图才不糊
     typedef UINT (WINAPI* PFN_PEI)(LPCWSTR, int, int, int, HICON*, UINT*, UINT, UINT);
     PFN_PEI pei = reinterpret_cast<PFN_PEI>(
         GetProcAddress(GetModuleHandleW(L"user32.dll"), "PrivateExtractIconsW"));
@@ -518,8 +518,8 @@ static void createProgressWindow(HINSTANCE hInst, const std::wstring& launcherEx
     const int winW = static_cast<int>((kCardW + 2 * kShadow) * g_scale + 0.5f);
     const int winH = static_cast<int>((kCardH + 2 * kShadow) * g_scale + 0.5f);
 
-    // WS_EX_TOPMOST 必须有：实测普通 z 序下，卡片会被前台窗口（浏览器/聊天）整块盖住，
-    // 用户只看到"启动器关了、什么都没发生"。更新卡片就活几秒，置顶是对的行为。
+    // 必须置顶（下面用 SetWindowPos(HWND_TOPMOST)）：实测普通 z 序下，卡片会被前台窗口
+    //（浏览器/聊天）整块盖住，用户只看到"启动器关了、什么都没发生"。更新卡片就活几秒，置顶是对的行为。
     g_hwnd = CreateWindowExW(WS_EX_LAYERED, kWinClass, L"Shadow Launcher 更新中",
                              WS_POPUP, 0, 0, winW, winH, nullptr, nullptr, hInst, nullptr);
     if (!g_hwnd)

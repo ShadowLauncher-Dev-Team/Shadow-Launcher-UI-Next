@@ -2,13 +2,13 @@
 import QtQuick
 import ShadowLauncher.Next
 
-// 外壳：侧栏 + 内容区 + 启动浮层 + 版本页 + 账户页 + 全局窗口按钮
+// 外壳：侧栏 + 启动页/浮层 + 下载/联机/进度/设置/版本/账户/资源详情页 + 全局窗口按钮
 // 版本/账户都是"隶属启动页的全屏页"：打开时侧栏整体收起、页面 anchors.fill 全窗。
 //
 // 动效（2026-11-04）：
-//   · 全屏页进出 = 侧栏宽度收到 0（durPage）+ 页面淡入并从右侧 24px 滑入；返回反向
-//   · 位移放在容器的 transform 上，不动页面自身的 anchors，避免和组件内部布局打架
-//   · 关闭时 visible 要等透明度真正降下去才置 false，否则会硬切
+//   · 全屏页进入 = 侧栏宽度收到 0（durPage）+ 页面从右/下 12~40px 位移并轻微缩放归位；
+//     退出是瞬时硬切（目标页就在下层），不做透明度动画
+//   · 位移放在宿主的 transform/state 上，不动页面自身的 anchors，避免和组件内部布局打架
 Item {
     id: root
     property Window hostWindow: null
@@ -302,7 +302,7 @@ Item {
         if (i >= 0) arr[i] = o; else arr.push(o)
         root.fileDl = arr
     }
-    // 已结束的下载条目 4s 后从列表里移除：卡片消失，进度页不再挂一条"已完成"
+    // 已结束的下载条目数秒后从列表里移除（完成 4s / 失败 6s / 取消 3s）：卡片消失，进度页不再挂一条"已完成"
     // --ui-drop-hint：强制显示拖入遮罩，用来验收"提示文案是否与实际可导内容一致"。
     // 拖动本身没法脚本模拟，但遮罩上的字可以截出来看。
     property bool dropHintForceShow: Qt.application.arguments.indexOf("--ui-drop-hint") >= 0
@@ -334,7 +334,7 @@ Item {
         ignoreUnknownSignals: true
 
         // ── 后端统一反馈通道（2026-11-13 补接线）─────────────────
-        // ShadowBackend::toastMessage 原来没有任何 QML 监听：更新模块的 16 条提示
+        // ShadowBackend::toastMessage 原来没有任何 QML 监听：更新模块、模组安装、版本后端的提示
         // （已是最新版本 / 检查更新失败 / 发现新版本正在后台下载 / 下载失败…）
         // 以及模组安装、版本后端的提示全部石沉大海 —— 用户点「检查更新」只看到
         // 按钮闪一下「检查中」，看不出结果。这里统一接到 ToastHost。
@@ -387,7 +387,7 @@ Item {
             root._dlPatch(downloadId, { state: "fail", error: qsTr("已取消"), speed: 0, hideAt: Date.now() + 3000 })
         }
     }
-    // 验收钩子：--update-check 延迟一点再点「检查更新」，等界面挂好、ToastHost 就绪
+    // 验收钩子：--scheme-flip 延迟 1.5s 切换一次配色（走与外观页相同的 setColorScheme）
     Timer {
         id: schemeFlipTimer
         interval: 1500
@@ -408,8 +408,7 @@ Item {
         }
     }
 
-    // 顶部加载条：登录这类"不知道还要多久"的等待（后续可接更多长任务）
-    // 登录这类不确定等待 + 资源库在途请求，统一走顶部 SLoadingBar
+    // 顶部加载条：登录这类"不知道还要多久"的等待 + 资源库在途请求，统一走顶部 SLoadingBar
     readonly property bool loading: (b ? b.microsoftLoginBusy : false)
         // 同下面两条：只在下载页还开着的时候算它。
         // downloadPage 是常驻对象（不是按需卸载），里面的资源视图扫描不会因为退出而立刻结束，

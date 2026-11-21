@@ -7,7 +7,7 @@
 //   drawW/H    = 图原生尺寸 × coverScale × zoom
 //   x/y        = (框尺寸 - 绘制尺寸) × cropX/cropY   —— crop 0..1 = 取景窗在图片内的位置
 //
-// interactive = true 时支持：拖动平移、滚轮缩放（1.0–4.0）。
+// interactive = true 时支持：拖动平移、Ctrl+滚轮缩放（1.0–4.0）。
 import QtQuick
 import ShadowLauncher.Next
 

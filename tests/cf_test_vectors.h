@@ -1,4 +1,4 @@
-// 自动生成：Python 工具链的互操作测试向量（临时文件，测试后删除）
+// 由 Python 工具链生成的互操作测试向量（勿手改，重新生成会覆盖）
 #pragma once
 
 #define TEST_IKM_HEX    "996153de9c56a15669a61d5a3b48957133d23bb7d29be3cd13ce737a5fe8ce72"

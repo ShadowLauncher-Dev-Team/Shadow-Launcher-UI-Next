@@ -11,8 +11,8 @@ Item {
     property var backend: null
     property string name: ""
     property bool online: false
-    property string skinSource: ""       // 已渲染头部图（兜底）
-    property string rawSkinSource: ""    // 整张皮肤（优先，自己裁脸）
+    property string skinSource: ""       // 已渲染头部图（优先）
+    property string rawSkinSource: ""    // 整张皮肤（兜底：自己裁脸，会缺头发/角）
     property int status: 0          // 0 正常 / 1 需注意（离线、令牌异常）
     signal clicked()
 

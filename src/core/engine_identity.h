@@ -12,6 +12,7 @@
 //   ModDownloadEngine   → 精卫    批量模组小文件下载（衔微石填海，持恒投递）
 //   ModpackDownloader   → 女娲    整合包编排（抟土造人，捏合成完整世界）
 //   HttpClient          → 驿道    HTTP 传输底座（天下驿道，信息干线）
+//   ResourceFetchEngine → 司南    资源拉取引擎（统一调度搜索 API 与图标拉取）
 //
 // 日志规范（防止"名字好看但看不出用途"的花架子）：
 //   1. 所有日志前缀统一为 [<雅名>]，一眼可辨是哪个引擎在干活（2026-08-02 精简：去掉冗长的 [引擎·] 包装）
@@ -43,7 +44,7 @@ inline EngineIdentity engineIdentity(const char* id)
     return { id, id, "未知引擎" };
 }
 
-/// 日志前缀，如 "[盘古] "（2026-08-02 精简：原为 [盘古]）
+/// 日志前缀，如 "[盘古] "
 inline QString engineTag(const char* id)
 {
     return QStringLiteral("[%1] ").arg(QString::fromUtf8(engineIdentity(id).name));

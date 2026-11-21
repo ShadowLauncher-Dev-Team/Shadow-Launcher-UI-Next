@@ -87,7 +87,7 @@ void YggdrasilSkinFetcher::fetchSkin(const QString &apiRoot, const QString &uuid
     }
 
     // PCL McSkinGetAddress: GET {apiRoot}/sessionserver/session/minecraft/profile/{uuid}
-    // (variant 信息在 profile 返回中，所以先不查缓存，等 onProfileReply 里再查): GET {apiRoot}/sessionserver/session/minecraft/profile/{uuid}
+    // 缓存命中时先按上一轮的 variant 出图，等 profile 返回后再用其中的 model 校正
     m_pendingUuid = uuid;
     m_pendingVariant = 0;
     m_pendingSkinDomains = allowedSkinDomains;

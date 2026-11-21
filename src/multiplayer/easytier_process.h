@@ -9,7 +9,7 @@
 #include <QList>
 #include <QTimer>
 
-// NAT types from EasyTier peer JSON — declared before use
+// EasyTier NAT 类型枚举（值由 easytier-cli peer 文本表格解析，非 JSON）
 enum class EasyTierNatType {
     Unknown,
     OpenInternet,
@@ -61,7 +61,7 @@ public:
     void startViaQProcess(const QString& exe, const QStringList& args,
                           const QByteArray& tomlData);
 
-    // Add relay connector dynamically (no --peers on CLI or env var needed)
+    // 进程存活查询（公共中继写在 TOML peers 里，无动态 connector 接口）
     bool isRunning() const;
 
     QString virtualIp() const { return m_virtualIp; }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// 账户页（全屏）：登录 / 切换 / 退出 / 查看皮肤状态
+// 账户页（全屏）：登录 / 切换 / 移除账号 / 更换皮肤与披风
 // 三种登录方式严格分离（lastLoginMode：0 正版 / 1 离线 / 2 外置），互不复用输入。
-// 头像规则：MC 头像是方形，不用圆形头像，也不给头像加边框或圆角（用户 2026-11-04 明确）。
+// 头像规则：MC 头像是方形，不用圆形头像，也不给头像加边框或圆角（用户明确要求）。
 import QtQuick
 import QtQuick.Layouts
 import ShadowLauncher.Next
@@ -47,8 +47,7 @@ Item {
         onTriggered: {
             if (!page.b) return
             var accx = page.b.accounts
-            // 不要过滤 current：外置账号本来就可能是 current，
-            // 之前加了 !current 条件导致钩子永远选不到它（静默失效）。
+            // 不要过滤 current：外置账号本来就可能是 current。
             for (var k = 0; k < accx.length; ++k) {
                 if (accx[k] && accx[k].mode === 2) {
                     page.b.switchAccount(accx[k].index)
@@ -58,11 +57,8 @@ Item {
         }
     }
 
-    // 披风/皮肤的结果信号由 AccountBackend 发出（不是 ShadowBackend），
-    // 以前挂在 page.b 上 → 永远收不到，所以切换成功/失败都没有任何提示。
-    // 外置登录（yggdrasil）的结果信号以前一条都没接 ——
-    // 后端会正常 emit loginSuccess / loginFailed，但前端没人听，
-    // 所以点「登录」之后界面永远没反应，看起来就是"用不了"。
+    // 结果信号由 AccountBackend / YggdrasilBackend 发出（不是 ShadowBackend）——
+    // 挂错对象就永远收不到提示（切披风无反馈、外置登录点了像"用不了"）。
     Connections {
         target: page.yg
         ignoreUnknownSignals: true
@@ -168,9 +164,8 @@ Item {
     readonly property bool hasOffline: (b && b.offlineUsername) ? b.offlineUsername.length > 0 : false
     readonly property bool hasAccount: hasOnline || hasOffline || hasExternal
     readonly property int accountCount: (b && b.accounts) ? b.accounts.length : 0
-    // 「正在浏览账号」= 有账号且不在登录表单里。
-    // 不能再用 hasAccount 判：hasAccount 只表示「真的登录着」，
-    // 唯一账号失效后它是 false，界面会同时走「无账号」和「有账号列表」两套布局 —— 就是那次 UI 紊乱。
+    // 「正在浏览账号」= 有账号且不在登录表单里。不能用 hasAccount 判：
+    // 它只表示「真的登录着」，唯一账号失效后是 false，界面会同时套用「无账号」和「有账号列表」两套布局。
     readonly property bool browsingAccounts: accountCount > 0 && !loginPanel
     // 点了某个「需重新登录」的账号：右侧改显示重新登录卡片，而不是把他扔进登录页
     property int reloginIdx: -1
@@ -269,8 +264,7 @@ Item {
     }
 
     // ---- 右侧详情的"显示态" ----
-    // 详情原来是直接绑后端实时值的：切换账号时新数据在同一次事件里替换旧数据，
-    // 中间没有任何过渡（用户反馈"右侧信息载入无过渡"）。
+    // 不能直接绑后端实时值：切换账号时新数据在同一次事件里替换旧数据，中间没有任何过渡。
     // 这里和版本页同一套：先淡出 → 完全透明时换快照 → 淡入 + 8px 上浮。
     property var acctView: null
     // 身份键：只有"换了账号"才播过渡动画。
@@ -503,9 +497,8 @@ Item {
     // ---------- 底色 ----------
     // 用「同一张壁纸 + 深色压暗层」，而不是半透明透出下层：
     // 直接透下层会把启动页的大标题、按钮一起透出来，两层 UI 叠着更乱。
-    // 必须和启动页同一张图、同一套取景：
-    // 旧写法读 b.customBgPath 自己拼 file:///，内置预设背景时 path 为空 → 掉回默认图，
-    // 于是「启动页是一张、设置页是另一张」。现在只走 Theme.bgUrl()。
+    // 必须和启动页同一张图、同一套取景：只走 Theme.bgUrl()，不要再自己拼 file:/// ——
+    // 内置预设时 customBgPath 为空会掉回默认图，于是「启动页是一张、设置页是另一张」。
     SBgImage {
         anchors.fill: parent
         source: Theme.bgUrl(b)
@@ -550,8 +543,7 @@ Item {
             dimmed: page.busy
             onClicked: {
                 // 添加账号/换号态下，"返回"先退回账户详情。
-                // 以前无论什么状态都直接 close()，进了添加账号就只剩"回主页"一条路，
-                // 观感上就是"卡死在登录页"。
+                // 无论什么状态都直接 close() 的话，进了添加账号就只剩"回主页"一条路，观感是卡死在登录页。
                 if (page.hasAccount && page.loginPanel) { page.loginPanel = false; return }
                 page.close()
             }
@@ -593,9 +585,8 @@ Item {
                 iconName: "refresh-cw"
                 text: page.refreshBusy ? qsTr("刷新中") : qsTr("刷新状态")
                 busy: page.refreshBusy
-                // 以前这里只对「外置登录」调 validateSession()，正版账号什么都不做，
-                // 却照样提示"已刷新" —— 纯假按钮。
-                // 现在按账号类型做对应的真实刷新（当前账号）：
+    // 「刷新状态」按账号类型做对应的真实刷新（当前账号）：
+    // 不做这条就等于只提示"已刷新"的假按钮：
                 //   正版 -> 强制向 Mojang 重拉皮肤+披风（downloadOnlineSkin(true)）
                 //   外置 -> 校验会话
                 //   离线 -> 重算 UUID 头像
@@ -767,10 +758,9 @@ Item {
                             onClicked: {
                                 var a = acctRow.acct
                                 if (!page.b || !a) return
-                                // 凭据已作废：既不 switchAccount（只会静默失败），
-                                // 也不直接跳登录页（会把左侧撑成「账号列表 + 登录方式」两套布局，
-                                // 影报过的 UI 紊乱）。改为右侧显示该账号的重新登录卡片，
-                                // 由卡片上的「重新登录 / 移除此账号」决定下一步。
+            // 凭据已作废：既不 switchAccount（只会静默失败），也不直接跳登录页
+            // （会把左侧撑成「账号列表 + 登录方式」两套布局）。改为右侧显示重新登录卡片，
+            // 由卡片上的「重新登录 / 移除账号」决定下一步。
                                 if (a.needsRelogin === true) {
                                     page.loginPanel = false
                                     page.reloginIdx = a.index
@@ -784,8 +774,8 @@ Item {
                     }
                 }
 
-                // 添加账号：入口放左侧列表里（右侧不再有"切换账号"——
-                // 那个按钮点下去只是回到登录首屏，语义和"退出登录"撞车）
+            // 添加账号：入口放左侧列表里（右侧不再有"切换账号"——
+            // 那个按钮点下去只是回到登录首屏，语义和"移除账号"撞车，已合并）
                 Item {
                     id: addAccountRow
                     // 只有在"已有账号列表"时才需要这个入口；空列表时下面直接就是登录方式
@@ -903,8 +893,7 @@ Item {
             }
 
             // ---- 当前账号指示条（唯一一根）----
-            // 和版本页同一套：换选中项时从旧行滑到新行。
-            // 以前每行各长一根，切换时只是"这根消失、那根出现"，没有移动感。
+            // 和版本页同一套：换选中项时从旧行滑到新行，而不是"这根消失、那根出现"。
             Item {
                 id: acctSelLayer
                 anchors.left: menu.left
@@ -1129,7 +1118,7 @@ Item {
                         width: parent.width; height: 40
                         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#101319" }
                         Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "UUID"; color: "#6d7684"; font.family: Theme.fontFamily; font.pixelSize: 12 }
-                        // UUID 完整显示（以前截成 8…4，等于看不全），右侧给一键复制
+                        // UUID 完整显示，右侧给一键复制
                         Text {
                             id: uuidValue
                             // 取"显示态"的 UUID：切换账号时它只在动画的透明帧里更新
@@ -1406,8 +1395,7 @@ Item {
                                             asynchronous: true
                                         }
                                     }
-                                    // 名字永远显示（以前选中后名字被「使用中」顶掉，等于看不到选的是哪条），
-                                    // 用蓝框 + 右侧小圆点表示"使用中"，两者并存。
+                                    // 名字永远显示，用蓝框表示"使用中"，两者并存（不要互相顶掉）。
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         anchors.bottom: parent.bottom
@@ -1434,9 +1422,9 @@ Item {
                                     }
                                 }
                             }
-                            // 「卸下」常驻：以前它的 visible 绑在"有 active 披风"上，
+                            // 「卸下」常驻：visible 不能绑在"有 active 披风"上 ——
                             // 一卸下就失去 active → 框自己消失，看着像界面出错。
-                            // 现在只按"有没有披风可选"决定，并区分已卸下状态。
+                            // 这里只按"有没有披风可选"决定，用文案区分已卸下状态。
                             Rectangle {
                                 id: offTile
                                 readonly property bool anyActive: {
@@ -1501,8 +1489,7 @@ Item {
             }
 
             // ---- 需重新登录：右侧就地把「重新登录 / 移除」摆出来 ----
-            // 以前点这类账号会直接跳登录页，左侧于是同时渲染「账号列表」和「登录方式」，
-            // 加上 hasAccount 为 false，整页布局就乱了。现在只切右侧内容。
+            // 不能跳登录页：那样左侧会同时渲染「账号列表」和「登录方式」，加上 hasAccount 为 false，整页布局就乱。
             Column {
                 id: reloginCard
                 visible: page.showRelogin
@@ -1624,9 +1611,8 @@ Item {
                         busy: page.busy
                         onClicked: { if (page.busy) page.cancelMicrosoft(); else page.startMicrosoft() }
                     }
-                    // 登录进度卡：以前是 42px 空盒子塞一行被截断的后端文案，
-                    // 长文案（如"授权个人信息: ..."）只剩半句，看着像没做完的表单。
-                    // 现在拆成「标题 + 明细（最多 3 行换行）」+ 呼吸点，高度随内容。
+                    // 登录进度卡：标题 + 明细（最多 3 行，超出省略）+ 呼吸点，高度随内容。
+                    // 后端长文案（如"授权个人信息: ..."）要完整可见，不能被截成半句。
                     Rectangle {
                         id: statusCard
                         width: parent.width
@@ -1823,9 +1809,8 @@ Item {
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
                         }
-                        // 注册入口就放在站点名旁边：知道是哪个站、想注册，两步是连着的。
-                        // 之前它在下面另起一行，还配了一个和上面一模一样的站点胶囊，
-                        // 看起来像界面把同一句话说两遍。registerUrl 来自 meta，没解析出来就不显示。
+                        // 注册入口就放在站点名旁边：知道是哪个站、想注册，两步是连着的，
+                        // 不必另起一行再配一个一模一样的站点胶囊。registerUrl 来自 meta，没解析出来就不显示。
                         Text {
                             visible: page.yg !== null && page.yg.registerUrl.length > 0
                             anchors.verticalCenter: parent.verticalCenter

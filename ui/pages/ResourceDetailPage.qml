@@ -5,7 +5,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import ShadowLauncher.Next
 
-// 资源详情页（全屏独立页，2026-11-06）
+// 资源详情页（全屏独立页）：选游戏版本 + 加载器 → 展示最新文件与旧版本、前置依赖，支持单文件/批量下载。
 // 交互：① 选游戏版本 → ② 选加载器（只列该版本有文件的）→ 展示该组合最新文件 + 折叠旧版 + 前置
 // 全页独立：打开时侧栏收起（StageShell 里 resDetailOpen 计入 fullOpen），整页 anchors.fill 整窗，
 // 自带不透明底 + 全屏拦截层，不存在"点空白穿透到底层页面"。
@@ -25,7 +25,7 @@ Item {
     readonly property int padL: narrow ? 32 : Theme.padL
     readonly property int padR: narrow ? 32 : Theme.padL
 
-    // ── 外部跳转链接（2026-08-23 后端就有 resolveProjectLinks，新 UI 一直没接）──
+    // ── 外部跳转链接：后端按 slug / 标题解析 Modrinth / CurseForge / MC百科 地址 ──
     // 纯数字 slug = CurseForge id；否则是 Modrinth slug。后端还会按标题查百科 class 页。
     readonly property var projectLinks: {
         if (!page.b || page.slug.length === 0) return ({ mrUrl: "", cfUrl: "", mcmodUrl: "" })
@@ -70,8 +70,7 @@ Item {
     // 前置拿不到下载信息时不能静默丢 —— 这里是「这次实际被跳过」的清单，提交完要报给用户。
     property var missedDeps: []
     // 入场：三段错峰浮现（选择器 → 文件卡 → 右栏），每段间隔 staggerStep。
-    // 之前用一个 bool 在 visible 变化的同一帧里翻 true/false：组件先被打回 0 再抬起来，
-    // 视觉上就是"整页抖一下"。现在用递增的段号，只往上走，不会来回翻。
+    // 用递增段号而不是 bool：bool 在同一帧翻 true/false 会把组件打回 0，视觉上整页抖一下。
     property int revealStep: 0
     function playReveal() {
         page.revealStep = 0
@@ -311,8 +310,8 @@ Item {
                                  file.size || 0, file.sha1 || "", pend.label)
                 }
             } else {
-                // 关键修复：拿不到下载地址时**必须说出来**。
-                // 以前这里什么都不做，前置就这么静默消失了 —— 用户看到「进度跑完了，目录里少一个」。
+                // 关键：拿不到下载地址时**必须说出来**，否则前置静默消失 ——
+                // 用户看到「进度跑完了，目录里少一个」。
                 for (var w2 = 0; w2 < waiting.length; ++w2) {
                     page.missedDeps = page.missedDeps.concat([waiting[w2].label || waiting[w2].filename || ""])
                 }
@@ -362,8 +361,8 @@ Item {
 
     // 本次要下载的全部条目（主文件 + 勾选的前置）。url 为空表示元数据还没解析出来。
     // 后端偶尔给不出 filename（前置按 game_versions + loaders 反查失败时就是这样）。
-    // 以前直接退到 "download.jar"，多个前置全部同名 → 后一个覆盖前一个，
-    // 用户看到的就是「进度跑完了，目录里只剩一个文件」。改成用 slug/project_id + 版本号拼稳定名。
+        // 文件名不能退到 download.jar：多个前置全同名会互相覆盖，最后只剩一个文件。
+        // 用 slug/project_id + 版本号拼稳定名。
     function depFallbackName(d) {
         var base = (d.slug && d.slug.length > 0) ? d.slug
                  : ((d.project_id && d.project_id.length > 0) ? d.project_id : "dependency")
@@ -390,7 +389,7 @@ Item {
                 versionId: d.version_id || "",
                 label: d.version_number || d.project_id || "",
                 url: (cached && cached.url) ? cached.url : (d.url || ""),
-                // 兜底名必须唯一：以前这里是空串，pushJob 再退成 download.jar，多前置互相覆盖
+                // 兜底名必须唯一：空串会退成 download.jar，多前置互相覆盖
                 filename: (cached && cached.filename) ? cached.filename
                           : ((d.filename && d.filename.length > 0) ? d.filename : page.depFallbackName(d)),
                 depId: d.project_id || "",
@@ -434,9 +433,8 @@ Item {
 
     function startPlan() {
         var jobs = page.planJobs || []
-        // 先把整批任务全部压进队列，再统一开跑：
-        // 之前 pushJob 会立刻把"队列长度为 1"的任务发出去，于是第一个文件下载时队列又空了
-        // → finishBatch() 提前触发（跳进度页），后续前置还没入队就被打断。
+        // 先把整批任务全部压进队列，再统一开跑：pushJob 会立刻发出"队列长度为 1"的任务，
+        // 队列又空了 → finishBatch() 提前触发（跳进度页），后续前置还没入队就被打断。
         page.batchFilling = true
         var missing = 0
         for (var i = 0; i < jobs.length; ++i) {
@@ -454,7 +452,7 @@ Item {
                 page.b.fetchVersionFile(j.versionId)
             } else {
                 // 没有 url 也没有 version_id：后端连文件名都没反查出来。
-                // 以前只是 missing++，而且只要队列里还有主文件就完全不给提示 —— 用户以为全都下了。
+                // 这种必须记进 missedDeps 并报给用户，不能只 missing++ —— 否则用户以为全都下了。
                 page.missedDeps = page.missedDeps.concat([j.label || j.filename || ""])
                 missing++
             }
@@ -630,9 +628,8 @@ Item {
             anchors.left: headTitle.right; anchors.leftMargin: 10
             anchors.verticalCenter: headTitle.verticalCenter
             width: srcTxt.implicitWidth + 16; height: 20; radius: 10
-            // 底色用 warnSoft、文字用 warn（墨色）。
-            // 之前底色和文字都取 Theme.warn —— 同色叠加，CF 来源的徽章只剩一个橙色空胶囊，
-            // 文字完全看不见（ResourceTile 上的同名徽章也是这样）。
+            // 底色用 warnSoft、文字用 warn（墨色）：两者都取 Theme.warn 会同色叠加，
+            // CF 徽章只剩一个橙色空胶囊、文字完全看不见（ResourceTile 上的同名徽章同理）。
             color: page.item.source === "CurseForge" ? Theme.warnSoft : Theme.bgCard2
             Text {
                 id: srcTxt
@@ -944,11 +941,9 @@ Item {
                 }
                 Text {
                     id: fileTag
-                    // ── 2026-11-14：不能用写死偏移 ──
-                    // 原来是 anchors.leftMargin: 98，假设标题宽度固定且不超过 80px。
-                    // 中文「可下载版本」正好装得下；英文「Downloadable versions」
-                    // 比 98px 还宽，直接压在标题上（实测截图反馈）。
-                    // 现在锚在标题文字右侧，任何语言都不会重叠。
+                    // ── 不能用写死偏移 ──
+                    // anchors.leftMargin 假设标题宽度固定；英文「Downloadable versions」比中文宽，会直接压在标题上。
+                    // 这里锚在标题文字右侧，任何语言都不会重叠。
                     anchors.left: fileTitle.right; anchors.leftMargin: 8
                     anchors.top: parent.top; anchors.topMargin: 16
                     // 选中旧版时必须说清楚「你现在下的不是最新」——否则用户以为自己在下最新
@@ -1032,7 +1027,6 @@ Item {
                 visible: page.oldCount > 0
                 height: page.oldCount > 0 ? (oldHead.height + (page.showOld ? Math.min(6, page.oldCount) * 38 : 0)) : 0
                 // 展开/收起做高度过渡，内容跟着淡入 —— 与设置页折叠卡片同一套（durSlow + easeEnter）。
-                // 之前是瞬间撑开，下面的前置卡片会硬跳一下。
                 Behavior on height { NumberAnimation { duration: Theme.durSlow; easing.type: Theme.easeEnter } }
 
                 Rectangle {
@@ -1065,9 +1059,7 @@ Item {
                     id: oldList
                     anchors.left: parent.left; anchors.right: parent.right
                     anchors.top: oldHead.bottom; anchors.topMargin: 4
-                    // 固定显示 6 行高度（与 oldBox.height 保持一致），**可滚动**：
-                    // 之前 interactive:false + 写死 min(6) 行，导致「还有 41 个旧版本」却永远只能看到 6 个，
-                    // 第 7 个往后的版本完全选不到 —— 与“能展开就能选”的承诺不符。
+                    // 固定 6 行高度、**可滚动**：不可滚的话第 7 个之后的旧版本就永远选不到。
                     height: page.showOld ? Math.min(6, page.oldCount) * 38 : 0
                     visible: page.showOld
                     clip: true

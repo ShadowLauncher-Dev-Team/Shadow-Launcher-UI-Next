@@ -35,7 +35,7 @@ enum class LauncherSource {
 
 // ── 一次探测的完整结果 ──
 struct MinecraftFolderInfo {
-    bool valid = false;                 // 是否为有效 .minecraft（有 versions/ 且含版本 json）
+    bool valid = false;                 // 是否为有效 .minecraft（有 versions/ 且含版本 json/jar）
     MinecraftLayout layout = MinecraftLayout::Unknown;
     LauncherSource launcher = LauncherSource::Unknown;
     QString root;                       // 规范化后的根目录（末尾无分隔符）
@@ -53,7 +53,8 @@ struct MinecraftFolderInfo {
 /// 根目录是否持有「强」游戏数据标记（用于判定共享/非隔离）。
 /// 刻意排除 resourcepacks/、resources/、config/ —— PCL2 隔离模式下根目录
 /// 仍会存在 resourcepacks/、resources/（全局资源），config/ 可能来自本启动器
-/// 的辅助文件，均不足以证明共享布局。
+/// 的辅助文件，均不足以证明共享布局。logs/ 也排除：本启动器启动时会写
+/// <root>/logs，纯隔离目录的根同样有它。
 bool hasRootGameData(const QString& dir);
 
 /// 版本目录是否自带游戏数据 / 隔离意图（含 PCL/ 与 .hmcl/ 标记）。
@@ -80,9 +81,11 @@ MinecraftFolderInfo probeMinecraftFolder(const QString& root);
 /// 目录逐一核对）：
 ///   1) versions/<id>/game 非空     → 该目录（Shadow 标准隔离 game/ 布局）
 ///   2) versions/<id>/ 自带游戏数据 → 该版本目录（散文件隔离：PCL2/HMCL/Shadow 散装）
+///   2.5) versions/<id>/.isolated 存在 → 该版本目录（本启动器新装标记：共享根里也强制隔离）
 ///   3) 版本目录为空：
 ///        Shared/Mixed 布局 → 根目录（非隔离共享）
-///        Isolated 布局     → 版本目录（隔离：即使未启动，数据也将落在版本目录）
+///        Isolated 布局     → 版本目录（隔离：即使未启动，数据也将落在版本目录；
+///                            Unknown 同样走这条安全侧）
 QString resolveVersionGameDir(const QString& root, const QString& versionId,
                               MinecraftLayout layout);
 

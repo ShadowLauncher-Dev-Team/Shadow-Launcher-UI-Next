@@ -40,7 +40,7 @@ class JavaBackend : public QObject
     Q_PROPERTY(QString installingMajor READ installingMajor NOTIFY javaInstallStateChanged)
     /// 安装阶段文案（"正在下载 Java 17…" / "正在解压 Java 17…"）
     Q_PROPERTY(QString installStatusText READ installStatusText NOTIFY javaInstallStateChanged)
-    /// 已装到 java_cache 的运行时 [{major, version, path, isJdk, size}]
+    /// 已装到 java_cache 的运行时 [{major, version, path, isJdk, complete}]
     Q_PROPERTY(QVariantList javaCacheList READ javaCacheRuntimes NOTIFY javaCacheListChanged)
 
 public:
@@ -94,7 +94,7 @@ public:
     void installJavaForLaunch(int majorVersion,
                               std::function<void(int, const QString&)> onProgress,
                               std::function<void(bool, const QString&, const QString&)> onDone);
-    /// 前置检测：扫描系统已有 Java，返回 [{major, version, path, isJdk}]
+    /// 前置检测：后台线程扫描系统已有 Java，立即返回现有缓存 [{major, version, path, isJdk}]，扫描完成发 systemJavaScanFinished
     Q_INVOKABLE QVariantList scanSystemJavas();
     Q_INVOKABLE QVariantList detectedSystemJavas() const;
     QString cpuArch() const;

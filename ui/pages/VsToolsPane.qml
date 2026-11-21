@@ -2,7 +2,7 @@
 // 版本设置 · 工具与维护（定稿甲：状态优先单列）
 //
 // 这一页只做三件事：看校验状态、修损坏文件、对版本本身动手。
-// 进度（校验/修复的字节进度）不在这里画 —— 归「下载进度」页，与先前定稿一致。
+// 修复/下载的字节进度不在这里画 —— 归「下载进度」页；这里只有已扫描文件数的细进度条。
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Dialogs
@@ -384,7 +384,7 @@ Item {
         closePolicy: Popup.CloseOnEscape
         // 出现动画：淡入 + 96%→100% 归位（与全屏页入场同一套语汇，只是幅度小）。
         // **只做入场、不做退场**：退场动画会让"取消/删除"之后弹窗还挂着播完才消失，
-        // 等于关个弹窗还要等动画——这个坑上一轮已经踩过一次。
+        // 等于关个弹窗还要等动画。
         transformOrigin: Item.Center
         enter: Transition {
             ParallelAnimation {

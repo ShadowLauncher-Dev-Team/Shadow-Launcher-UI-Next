@@ -4,7 +4,7 @@
 // test_modpack.cpp — 整合包模块独立自测（不依赖 GUI）：
 //   1. ZipArchive：构造 CF/MR 压缩包 → 列条目 / 读清单 / 前缀解压 / 路径穿越拒绝
 //   2. ModpackParser：解析 CF manifest.json 与 Modrinth index.json → 统一结构
-//   3. 回滚追踪辅助：覆盖备份逻辑（registerOverwrite 语义）
+//   3. 加载器 ID 解析（parseLoaderId）与 overrides / client-overrides 解压
 //   4. 网络集成（可选，需 SHADOW_TEST_CF_KEY 环境变量）：
 //      CF API 搜索 JEI → fileId → 批量解析下载地址 → 下载 + 大小校验
 //      Modrinth API 取 Sodium 版本 → 下载 + SHA1 校验

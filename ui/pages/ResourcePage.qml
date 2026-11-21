@@ -49,7 +49,7 @@ Item {
 
     signal openDetail(string kind, var item)
 
-    // ══ 拖入导入（2026-11-13 恢复）══
+    // ══ 拖入导入 ══
     // 只在这三类分类里接受拖入：Mod(.jar) / 资源包(.zip) / 光影(.zip)。
     // MC 版本(0)、整合包(4)、数据包(5) 天然不支持（tabIndex 不在集合里就 active=false）；
     // DownloadPage 的 Java(6)/MC 版本(0) 也不会命中，见 DownloadPage 里的 dropEnabled。
@@ -581,8 +581,7 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 32
-            // 分页按钮的间距。原来没显式设，靠 Layout 默认值，
-            // 中文下偶然不重叠，英文下就挤在一起。
+            // 分页按钮间距 8：英文按钮更宽，靠 Layout 默认间距会挤在一起。
             spacing: 8
             visible: listModel.count > 0
             Item { Layout.fillWidth: true }
@@ -592,11 +591,8 @@ Item {
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
             }
-            // ── 2026-11-14：按钮宽度必须随文案自适应 ──
-            // 原来写死 Layout.preferredWidth: 64；中文「上一页」三个字正好装得下，
-            // 但英文「Previous page」比 64px 宽 —— Text 居中后溢出矩形，
-            // 直接压在左侧「1 / 4」上（实测截图反馈）。
-            // 现在按文案 implicitWidth + 左右留白取大，并保留 64px 作为最小宽。
+            // 按钮宽度必须随文案自适应：写死 64 时英文「Previous page」比 64 宽，
+            // Text 居中后会溢出矩形、压到左侧页码。按 implicitWidth + 24 取大，并保留 64 作为最小宽。
             Rectangle {
                 Layout.preferredWidth: Math.max(64, prevLabel.implicitWidth + 24)
                 Layout.preferredHeight: 28

@@ -25,7 +25,7 @@ class VersionIsolation;
 // dismissResult + importFinished），实际流程委托给分层模块：
 //   ModpackParser（解析层）→ ZipArchive（文件工具）→ ModpackDownloader（网络层）
 //   → ModpackInstallTask（任务调度层）
-// 新增信号（logLine / stepChanged / fileProgressChanged）供后续 QML 使用，纯增量。
+// 信号 logLine / stepChanged / fileProgressChanged 供 QML 使用（增量接口）。
 class ModpackImporter : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool busy READ isBusy NOTIFY busyChanged)

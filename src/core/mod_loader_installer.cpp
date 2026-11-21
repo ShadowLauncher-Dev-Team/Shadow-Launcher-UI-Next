@@ -608,8 +608,8 @@ void ModLoaderInstaller::optifineStep2_install(const QByteArray& jarData, const 
     reader.close();
     buffer.close();
 
-    // ── Step B: For MC >= 1.14, OptiFine uses its own class transformer (not LaunchWrapper-only).
-    // 运行安装器 JAR（方式 A）。< 1.14 使用合成方式（方式 B）。
+    // ── Step B: MC >= 1.14 的 OptiFine 安装器带 optifine/Installer.class → 运行安装器（方式 A）；
+    //    没有该类（或 < 1.14）则用合成方式（方式 B，纯 JSON，不需要 Java）。
     bool useInstaller = false;
     {
         QStringList parts = m_mcVersion.split(QLatin1Char('.'));
@@ -4441,8 +4441,7 @@ void ModLoaderInstaller::neoStep2_verify(const QByteArray& jarData) {
 // ============================================================
 // Post-install: rename version folder to user's chosen name
 // ============================================================
-// NeoForge — 现在由 runBootstrapperProcess 处理
-// The old ~870-line manual parser has been removed.
+// NeoForge — 一律由 runBootstrapperProcess 处理；下面的 installNeoForge 重载只兜底异常调用。
 // ============================================================
 
 

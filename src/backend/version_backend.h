@@ -30,7 +30,7 @@
 
 namespace ShadowLauncher {
 
-// --- InstallCard: per-card data struct ---
+// --- InstallCard 数据结构定义在 utils/types.h ---
 
 
 // --- InstallCardModel: QAbstractListModel with explicit role names ---
@@ -80,8 +80,8 @@ public:
     Q_INVOKABLE QVariantMap cardData(int row) const;  // poll 接口：返回整行数据
     const InstallCard* cardAt(int row) const;  // read-only peek
 
-    // ── 2026-08-15：速度"抓取式"改造 ──
-    // QML 每 200ms 轮询 cardData()。速度是轻量值（三个 qint64 相加），
+    // ── 速度"抓取式"改造 ──
+    // QML 每 400ms 轮询 cardDataAt()。速度是轻量值（几个 qint64 相加），
     // 不必走 byteProgress→throttle→updateCardFromSession 回调刷新链：
     // VersionBackend 注入 provider，cardData() 被 poll 时现场读实时会话状态
     // （ds->mlSpeed / m_dlStates / fabSpeed）聚合返回 → 速度永不依赖回调时序。

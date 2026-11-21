@@ -355,7 +355,7 @@ void JavaBackend::downloadJavaFileTo(const QString &filename, const QString &out
     connect(m_downloader, &FileDownloader::progressChanged, this,
             [this](int, int, qint64 dl, qint64 total) {
                 double speed = m_downloader->currentSpeedMBps();
-                // 在下载过程中，线程分裂可能导致临时超量计数，cap 防止爆进度
+                // 进度计数可能短暂超过总量，cap 到 100 防止进度条爆掉
                 int pct = total > 0 ? qMin(100, (int)(dl * 100 / total)) : 0;
                 emit downloadProgress(pct, dl, total, speed);
             });
@@ -388,7 +388,7 @@ void JavaBackend::cancelDownload()
 {
     qCInfo(logJava) << QStringLiteral("取消Java下载");
     if (m_downloader) {
-        // FileDownloader 支持 cancel()：会 abort 在途请求并停止写盘（2026-11-07 起不再只 deleteLater）
+        // 先 cancel 再 deleteLater：cancel 会 abort 在途请求并停止写盘，只 deleteLater 可能留下半个文件
         m_downloader->cancel();
         m_downloader->deleteLater();
         m_downloader = nullptr;
@@ -490,8 +490,8 @@ void JavaBackend::installJavaForLaunch(int majorVersion,
                                        std::function<void(int, const QString&)> onProgress,
                                        std::function<void(bool, const QString&, const QString&)> onDone)
 {
-    // ── 2026-08-17：JDK 替代 JRE ──
-    // JRE 裁剪了 jdk.crypto.ec 等模块，NeoForge 1.21.8+ 启动时
+    // ── 用 JDK 而不是 JRE ──
+    // JRE 裁剪了 jdk.crypto.ec 等模块，NeoForge 1.21.8+ 启动时报
     // "Module jdk.crypto.ec not found" 崩溃。JDK 包含全部模块。
     // 进度：JavaRuntimeInstaller 的 downloadProgressChanged 信号 → onProgress 回调
     auto* conn = new QMetaObject::Connection;

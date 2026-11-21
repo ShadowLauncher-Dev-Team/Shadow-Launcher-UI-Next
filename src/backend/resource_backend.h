@@ -110,7 +110,7 @@ public:
 
     /// 2026-11-06：池子运行时状态（诊断 + 分页 hasMore 判定）。
     /// kind: mod | shader | resourcepack | modpack | datapack
-    /// 返回 { pool, page, limit, shown, pending, mrMore, cfMore, hasMore, mrOffset, cfOffset }
+    /// 返回 { pool, page, limit, shown, pending, mrMore, cfMore, mrOffset, cfOffset, hasMore, dup, sortedDesc }
     /// hasMore = 池里还有下一页 或 任一源仍有未拉完的数据 —— 旧 QML 用
     /// pool.length > (page+1)*limit 判断，池刚好等于 need 时会误判"没有更多"，翻页按钮被禁死。
     Q_INVOKABLE QVariantMap resourcePoolState(const QString& kind) const;
@@ -189,11 +189,11 @@ private:
     ResourceFetchEngine* m_fetchEngine = nullptr;
     CfApi* m_cfApi = nullptr;
 
-    // ── Mod 常用名汉化（qml/mod_zh.json）：英文名 → 中文名；中文名/别名 → 英文名 ──
+    // ── Mod 常用名汉化（assets/data/mod_zh.json）：英文名 → 中文名；中文名/别名 → 英文名 ──
     QHash<QString, QString> m_zhByTitle;   // normalize(en) → zh
     QHash<QString, QString> m_enByZh;      // zh 或 alias → en
 
-    // ── MC 百科 class-id 索引（qml/mcmod_map.json，tools/gen_mcmod_map.py 生成，仅存 id/en/cf/mr 极简映射）──
+    // ── MC 百科 class-id 索引（assets/data/mcmod_map.json，tools/gen_mcmod_map.py 生成，仅存 id/en/cf/mr 极简映射）──
     QHash<QString, int> m_mcmodByEn;    // normalize(en) → classId
     QHash<QString, int> m_mcmodByCf;    // lowercase(cf slug) → classId
     QHash<QString, int> m_mcmodByMr;    // lowercase(mr slug) → classId
@@ -218,7 +218,7 @@ private:
     int m_modPending = 0;
     bool m_modMrMore = true, m_modCfMore = true;
     bool m_modSearchActive = false;
-    int m_modShownCount = 0;   // 已显示条数（冻结区边界：前 N 条永不重排，防滚动闪动）
+    int m_modShownCount = 0;   // 已展示条数（冻结区已取消，仅供 resourcePoolState 回报）
     int m_modSearchPage = 0, m_modSearchLimit = 30;
     QString m_modSearchKey;
     QString m_modSearchQuery, m_modSearchLoader, m_modSearchCategory, m_modSearchEnv, m_modSearchLic;
@@ -232,7 +232,7 @@ private:
     int m_shaderPending = 0;
     bool m_shaderMrMore = true, m_shaderCfMore = true;
     bool m_shaderSearchActive = false;
-    int m_shaderShownCount = 0;   // 冻结区边界
+    int m_shaderShownCount = 0;   // 已展示条数（冻结区已取消）
     int m_shaderSearchPage = 0, m_shaderSearchLimit = 50;
     QString m_shaderSearchKey;
     QString m_shaderSearchQuery, m_shaderSearchSource;
@@ -244,7 +244,7 @@ private:
     int m_rpPending = 0;
     bool m_rpMrMore = true, m_rpCfMore = true;
     bool m_rpSearchActive = false;
-    int m_rpShownCount = 0;   // 冻结区边界
+    int m_rpShownCount = 0;   // 已展示条数（冻结区已取消）
     int m_rpSearchPage = 0, m_rpSearchLimit = 20;
     QString m_rpSearchKey;
     QString m_rpSearchQuery, m_rpSearchVersion, m_rpSearchSource;
@@ -257,7 +257,7 @@ private:
     int m_packPending = 0;
     bool m_packMrMore = true, m_packCfMore = true;
     bool m_packSearchActive = false;
-    int m_packShownCount = 0;   // 冻结区边界
+    int m_packShownCount = 0;   // 已展示条数（冻结区已取消）
     int m_packSearchPage = 0, m_packSearchLimit = 20;
     QString m_packSearchKey;
     QString m_packSearchQuery, m_packSearchLoader, m_packSearchCategory, m_packSearchSource;
@@ -274,7 +274,7 @@ private:
     int m_dpPending = 0;
     bool m_dpMrMore = true, m_dpCfMore = true;
     bool m_dpSearchActive = false;
-    int m_dpShownCount = 0;   // 冻结区边界
+    int m_dpShownCount = 0;   // 已展示条数（冻结区已取消）
     int m_dpSearchPage = 0, m_dpSearchLimit = 20;
     QString m_dpSearchKey;
     QString m_dpSearchQuery, m_dpSearchCategory, m_dpSearchSort, m_dpSearchSource;
@@ -319,9 +319,9 @@ private:
     // Mod/Shader 搜索结果解析（字段与 QML 端约定一致，两路径共用）
     QVariantList parseSearchResponseItems(const QJsonArray& results) const;
 
-    // 汉化：加载 qml/mod_zh.json 并建映射；中文搜索词反推英文名
+    // 汉化：加载 assets/data/mod_zh.json 并建映射；中文搜索词反推英文名
     void loadModTranslations();
-    // MC 百科 class-id 索引：加载 qml/mcmod_map.json；并解析出直达 class 页或搜索链接
+    // MC 百科 class-id 索引：加载 assets/data/mcmod_map.json；并解析出直达 class 页或搜索链接
     void loadMcmodMap();
     QString resolveMcmodUrl(const QString& title, const QString& slug) const;
     QString resolveZhQuery(const QString& query) const;
