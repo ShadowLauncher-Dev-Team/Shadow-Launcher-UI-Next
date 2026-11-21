@@ -78,17 +78,34 @@ Item {
     Connections {
         target: pane.b
         ignoreUnknownSignals: true
-        // 后端改图/恢复默认时把本地取景拉回来（避免预览停在旧图的缩放上）。
-        // 但拖动中我们自己正在写后端，那次信号不能反过来覆盖本地值（会抖）。
-        function onCustomBgChanged() {
+
+        // 图库**结构**变了（导入 / 删除 / 切换当前图）→ 立刻重建缩略图。
+        // 这个信号一次操作只发一次，重建代价可以接受。
+        function onBgLibraryChanged() {
             pane.bgRev++
-            if (preview && preview.dragActive) return
-            pane.syncFromBackend()
         }
+
+        // 取景变化（拖动 / 滚轮 / 重置取景）：**绝不**重建缩略图。
+        // setActiveView 每写一次都发这个信号，拖动时约 12 次/秒；
+        // 之前每次都在这里 bgRev++，等于每秒销毁重建整排 delegate 上百次
+        // （每个 delegate 还带圆角遮罩层 + MultiEffect），拖动和松手都会卡。
+        function onCustomBgChanged() {
+            if (preview && preview.dragActive) return   // 拖动中：本地值优先，别被后端回写覆盖
+            pane.syncFromBackend()
+            thumbRefresh.restart()                      // 缩略图的取景延后合并成一次刷新
+        }
+    }
+
+    // 缩略图取景的延迟刷新：把拖动过程中的上百次信号合并成一次重建
+    Timer {
+        id: thumbRefresh
+        interval: 260
+        onTriggered: pane.bgRev++
     }
 
     Timer {
         id: previewHold
+        // 拖动 / 滚轮期间保持「只剩预览」；松手后由预览图自己把这个值改小
         interval: 900
     }
 
@@ -585,7 +602,20 @@ Item {
                             pane.viewCx = cx
                             pane.viewCy = cy
                             pane.pushView()
-                            previewHold.restart()   // 拖动/滚轮期间与之后 0.9s 保持"只剩预览"的模式
+                            previewHold.interval = 900   // 交互中恢复正常保持时长
+                            previewHold.restart()        // 拖动/滚轮期间与之后 0.9s 保持"只剩预览"的模式
+                        }
+
+                        // 松手就是明确结束：不再干等那 0.9s。
+                        // 之前松手后 0.9s 才退出透明态，加上 180ms 淡出约 1.1s，
+                        // 用户实测就是"松开鼠标还得卡一秒多"。
+                        onDragActiveChanged: {
+                            if (!dragActive) {
+                                previewHold.interval = 200
+                                previewHold.restart()
+                                // 松手后补一次缩略图取景（拖动中刻意不重建，见上面 onCustomBgChanged）
+                                thumbRefresh.restart()
+                            }
                         }
                     }
 

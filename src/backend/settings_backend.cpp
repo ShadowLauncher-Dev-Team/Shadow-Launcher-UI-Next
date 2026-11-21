@@ -1785,6 +1785,7 @@ QString SettingsBackend::importBgFile(const QString& path)
     if (dup >= 0) {
         m_activeBgId = id;
         saveBgLibrary();
+        emit bgLibraryChanged();
         emit customBgChanged();
         qCInfo(logUI) << QStringLiteral("[外观] 复用已导入的背景: %1").arg(path);
         return id;
@@ -1819,6 +1820,7 @@ QString SettingsBackend::importBgFile(const QString& path)
     m_bgImages.append(img);
     m_activeBgId = id;
     saveBgLibrary();
+    emit bgLibraryChanged();
     emit customBgChanged();
     qCInfo(logUI) << QStringLiteral("[外观] 导入背景: %1 -> %2").arg(path, stored);
     return id;
@@ -1855,6 +1857,7 @@ void SettingsBackend::applyBgPreset(const QString& presetId)
     // **只改 active**：不碰任何一张图的 path / 取景，所以切走再切回来还是原样
     m_activeBgId = id;
     saveBgLibrary();
+    emit bgLibraryChanged();
     emit customBgChanged();
     qCInfo(logUI) << QStringLiteral("[外观] 切换背景 -> %1").arg(id);
 }
@@ -1903,6 +1906,7 @@ void SettingsBackend::removeBgImage(const QString& id)
 
     if (m_activeBgId == id) m_activeBgId = m_bgImages.first().id;
     saveBgLibrary();
+    emit bgLibraryChanged();
     emit customBgChanged();
     qCInfo(logUI) << QStringLiteral("[外观] 移除背景: %1").arg(id);
 }
