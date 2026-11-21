@@ -45,7 +45,7 @@ _update/
 *.log
 logs/
 skins/
-assets/
+/design/assets/
 
 # ── Python/scripts ──
 __pycache__/
@@ -57,6 +57,7 @@ src/multiplayer/encrypted_frag_*.cpp
 # Stub for CI/open-source builds — zero placeholder, safe to commit
 !src/multiplayer/encrypted_frag_stub.cpp
 src/multiplayer/encrypted_addr_local.h
+tools/encrypt_addr.py
 cf_api_key_local.h
 
 
