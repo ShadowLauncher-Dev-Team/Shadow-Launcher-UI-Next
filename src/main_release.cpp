@@ -500,8 +500,13 @@ int main(int argc, char *argv[])
 
     app.setApplicationName("Shadow Launcher");
     app.setApplicationVersion(SHADOW_DISPLAY_VERSION);
+    // 组织名：显示用的品牌名见 resources/app.rc 的 CompanyName / LegalCopyright
+    // （ShadowLauncher Dev Team）。这里的 "ShadowTeam" 是**存储键**——QSettings 和
+    // %APPDATA%\ShadowTeam\Shadow Launcher 下的账号令牌/壁纸/日志路径都挂在它上面。
+    // 改它会一次性把老用户的设置与登录态「搬空」（数据还在旧目录，程序读不到），
+    // 所以品牌改名不动它；真要改必须同时做旧目录→新目录的一次性迁移。
     app.setOrganizationName("ShadowTeam");
-    app.setOrganizationDomain("shadowteam.dev");
+    app.setOrganizationDomain("shadowlauncher.cn");
 
     // ── Load saved language ──
     QSettings settings;
