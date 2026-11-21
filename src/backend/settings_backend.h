@@ -291,6 +291,10 @@ signals:
 
     void languageChanged();
     void customBgChanged();
+    // 图库**结构**变化（导入 / 删除 / 切换当前图）。
+    // 与 customBgChanged 分开：后者连「拖动取景」都会发，一次拖动就有上百次；
+    // 外观页收到 customBgChanged 会重建整排缩略图 delegate，用它重建会卡死。
+    void bgLibraryChanged();
     void colorSchemeChanged();
     void downloadSettingsChanged();
     void autoLangModeChanged();

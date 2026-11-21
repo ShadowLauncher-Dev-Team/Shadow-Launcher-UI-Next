@@ -486,6 +486,8 @@ ShadowBackend::ShadowBackend(QObject* parent)
             this, &ShadowBackend::embeddedLoginChanged);
     connect(m_settings, &SettingsBackend::customBgChanged,
             this, &ShadowBackend::customBgChanged);
+    connect(m_settings, &SettingsBackend::bgLibraryChanged,
+            this, &ShadowBackend::bgLibraryChanged);
     connect(m_settings, &SettingsBackend::colorSchemeChanged,
             this, &ShadowBackend::colorSchemeChanged);
     connect(m_settings, &SettingsBackend::logMessage,

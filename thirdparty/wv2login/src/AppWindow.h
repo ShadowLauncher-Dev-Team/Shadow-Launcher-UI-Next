@@ -22,14 +22,23 @@ private:
     // Writes result file (once) and quits the message loop.
     void Finish(int exitCode, const std::wstring& code = L"");
 
+    // 立刻走正常关闭流程（页面里点「关闭」时用）。带防重入。
+    void RequestClose();
+
+    // 调试日志：写到 <output-file>.dbg.log，只在排查登录问题时看
+    void Log(const std::wstring& line);
+
     HWND m_window = nullptr;
     wil::com_ptr<ICoreWebView2Environment> m_environment;
     wil::com_ptr<ICoreWebView2Controller> m_controller;
     wil::com_ptr<ICoreWebView2> m_webView;
     EventRegistrationToken m_navToken{};
+    EventRegistrationToken m_closeToken{};
+    EventRegistrationToken m_msgToken{};
 
     std::wstring m_clientId;
     std::wstring m_outputFile;
     std::wstring m_userDataFolder;
     bool m_finished = false;
+    bool m_closingForGood = false;   // 已经在走关闭流程，别重复投递 WM_CLOSE
 };

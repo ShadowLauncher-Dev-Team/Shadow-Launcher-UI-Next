@@ -917,6 +917,7 @@ signals:
     void agreementAcceptedChanged();
     void loginModeChanged();
     void customBgChanged();
+    void bgLibraryChanged();
     void colorSchemeChanged();
     void logMessage(const QString& msg);
     void skinChanged();

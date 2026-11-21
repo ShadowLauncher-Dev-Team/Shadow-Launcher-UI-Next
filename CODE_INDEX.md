@@ -9,6 +9,36 @@
 > 3. 本文档不含敏感信息（密钥/令牌/地址均为机制描述），可安全提交仓库。
 >
 > 更新日志见文末「文档更新记录」。
+>> 2026-11-21（内嵌登录关闭按钮·第二次修复，真正根因）：上一版只订阅 `WindowCloseRequested` **没用** —— Chromium 规定
+> 「脚本只能关闭由脚本打开的窗口」，普通窗口里页面调 `window.close()` 会被**静默忽略**，事件根本不触发。
+> 现在的做法（`thirdparty/wv2login/src/AppWindow.cpp`）：`AddScriptToExecuteOnDocumentCreated` 注入脚本
+> ① 覆盖 `window.close` → `postMessage('WV2CLOSE:js')`；② 捕获阶段点击监听，按 id/class/aria-label/title 子串命中 close|dismiss|cancel|关闭 → `postMessage('WV2CLOSEBTN:...')`。
+> 宿主 `add_WebMessageReceived` 收到 `WV2CLOSE*` 就 `PostMessage(WM_CLOSE)`；`WindowCloseRequested` 仍保留做第三条路。
+> 同时写了 `<输出文件>.dbg.log` 调试日志（每次点击都记元素链，未命中记 `WV2CLICKANY`），下次再出问题可直接看实据。
+> **两个坑（都靠 node 跑假 DOM 测出来）**：① 正则带 `i` 时 `[^a-z]` 会连大写一起排除，`closeBtn` 这种驼峰匹配不上 → 改子串判断；
+> ② 删正则时漏删一行 `if (re.test(blob))`，`re` 未定义抛错被 try 吞掉 → **一次消息都没发出**，表现为点了完全没反应（和原 bug 一模一样）。
+>> 2026-11-21（内嵌正版登录两个问题）：
+> ① **点页面里的关闭按钮没反应**：Microsoft 登录页在嵌入式布局下自带一个关闭按钮，它执行的是 `window.close()`；
+>    WebView2 收到后只发 `WindowCloseRequested` 事件，**不会替宿主关窗** —— 不订阅就等于点了没反应，用户只能去点标题栏 X。
+>    修法：`thirdparty/wv2login/src/AppWindow.cpp` 在创建 controller 后 `add_WindowCloseRequested` → `PostMessageW(m_window, WM_CLOSE)`，
+>    并加 `m_closingForGood` 防重复投递。注意 SDK 里该 handler 的 `Invoke` 第二参是 **`IUnknown*`**（不是 `...EventArgs*`，写错编译报 C2061）。
+> ② **中途关窗后「登录状态」一直挂着**：`AccountBackend::loginFailed` 里 `m_msStatus.clear()` 后**没发通知**，
+>    而 `msStatus` 的 NOTIFY 是 `microsoftLoginProgress` —— 只 clear 不发信号，QML 永远停在最后一步（「正在加载登录页面」），要重启才消失。
+>    修法：clear 之后补 `emit microsoftLoginProgress(QString(), QString())`（登录成功路径同样补上）。
+> 日志里对应：`[wv2login] 未完成登录（窗口关闭/失败），按取消处理` → `登录失败: 登录被用户手动取消`。
+>> 2026-11-21（外观页拖动取景卡顿、松手一秒才退出预览）：两个原因叠加。
+> ① `setActiveView()` 每写一次取景都 `emit customBgChanged()`（拖动时约 12 次/秒），QML 收到就 `bgRev++` → 整排缩略图 delegate（含圆角遮罩层 + MultiEffect）**每次全部销毁重建**；
+> ② 松手后 `previewHold` 还要走完 900ms + 180ms 淡出，共约 1.1s 才退出「只剩预览」。
+> 修法：后端新增**只表示图库结构变化**的 `bgLibraryChanged()`（导入/删除/切换当前图时发），QML 只在它上面 `bgRev++`；取景变化改为拖动中完全忽略、松手后经 `thumbRefresh`(260ms) 合并成一次重建。松手时 `previewHold` 立刻改成 200ms。
+> 实测：外观页 142.9 MB（未退化，首页 125.6），无 QML 报错。**注意 `bgRev` 千万不能绑回 customBgChanged**，那等于把整排 delegate 的重建挂到鼠标移动上。
+>> 2026-11-21（外观页内存飙升 292 MB）：根因是**缩略图没设 `sourceSize`**——Qt 会把原图整张解进内存，
+> 内置壁纸 14 张 x 2737x1532 x 4B 约 **224 MB**，全被 176x104 的卡片吃掉了。
+> 修法：①`SetAppearancePane` 内置预设缩略图 `sourceSize = 卡片尺寸 x 2 x dpr`（写死 176/104，不用 `width`——首帧 `width` 是 0，那样仍会按原图解码）；
+> ②`SBgImage` 新增 `decodeSide`（默认 0 = 不限制），用户导入图的缩略图按 `176 x maxZoom x dpr` 解码。
+> **启动页刻意不设**：它要全分辨率；且 `sourceSize` 一变就要重解码，窗口拖动会卡，所以不做自动推导。
+> 实测（`QT_QPA_PLATFORM=offscreen` 跑真实 exe，`--ui-prefs --ui-pane appearance`）：外观页 **419.3 -> 144.5 MB**，首页 125.2，增量 **+292 -> +19 MB**，连续三次稳定。
+> **坑**：部署目录只有 `qwindows.dll`，离屏测量前要把 Qt 的 `qoffscreen.dll` 临时拷进 `platforms/`，否则进程静默退出、量到的全是空壳（第一次就量错了）。
+> **Qt 语义**：`sourceSize` 在 `fillMode: Stretch` 下是“等比装进框内”，`PreserveAspectCrop` 下是“铺满框”；给超过原图的尺寸时 Qt **不会反向放大**（4400 -> 2737）。
 > 2026-11-21（图标矢量重绘）：`resources/icons/app.svg`。几何不是目测的，是从 256px 帧**拟合**出来的：
 > PIL 4× 超采样渲染 + 1px 容差比对做网格搜索，最终 白底圆角 42 / 黑色尖顶六边形 中心(128,127.5) 半高66.75 半宽58 圆角16 / 两条 round-cap 白线 粗5。
 > 与位图对称差 109/65536 像素（0.17%）；再经 Edge 渲染回 256 比对，肉眼无差。
