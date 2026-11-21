@@ -18,6 +18,47 @@ constexpr wchar_t kRedirectPrefix[] =
 constexpr wchar_t kRedirectUriEncoded[] =
     L"https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fnativeclient";
 
+// ── 页面内「关闭」按钮的接管脚本 ──────────────────────────────────
+// 背景：这类登录页（嵌入式布局）会画一个自己的关闭 X，点它执行 window.close()。
+// 但 Chromium 规定「脚本只能关闭由脚本打开的窗口」，普通窗口上的 window.close()
+// 会被静默忽略 —— 于是 WindowCloseRequested 根本不触发，宿主什么也收不到
+// （上一版只订阅了那个事件，实测点了没反应）。
+// 所以这里直接覆盖 window.close，把「想关闭」这个意图主动上报给宿主；
+// 再用捕获阶段的点击监听兜底：有些不走 close() 的按钮靠 id/aria-label 识别。
+// 发送的消息以 WV2CLOSE 开头，宿主收到就关窗。
+constexpr wchar_t kCloseHookScript[] = LR"JS(
+(function () {
+  if (window.__shadowWv2Hooked) return;
+  window.__shadowWv2Hooked = true;
+  function post(m) { try { window.chrome.webview.postMessage(m); } catch (e) {} }
+  try {
+    window.close = function () { post('WV2CLOSE:js'); };
+  } catch (e) {}
+  document.addEventListener('click', function (ev) {
+    try {
+      var el = ev.target;
+      var chain = [];
+      var matched = false;
+      for (var i = 0; i < 6 && el; i++, el = el.parentElement) {
+        var tag = (el.tagName || '').toLowerCase();
+        var id = el.id || '';
+        var cls = (typeof el.className === 'string') ? el.className : '';
+        var aria = (el.getAttribute && el.getAttribute('aria-label')) || '';
+        var title = el.title || '';
+        // 用子串判断而不是带 i 的正则：/i 会把 [^a-z] 也变成排除大写，
+        // 于是 closeBtn 这类驼峰 id 匹配不上（实测踩过）。
+        var blob = (id + ' ' + cls + ' ' + aria + ' ' + title).toLowerCase();
+        if (blob.indexOf('close') >= 0 || blob.indexOf('dismiss') >= 0
+            || blob.indexOf('cancel') >= 0 || blob.indexOf('关闭') >= 0) matched = true;
+        chain.push(tag + '#' + id + '.' + cls.slice(0, 40) + '[' + aria + '][' + title + ']');
+      }
+      // 命中「关闭类」标识 → 直接请求关窗；否则只上报，留给日志排查
+      post((matched ? 'WV2CLOSEBTN:' : 'WV2CLICKANY:') + chain.join(' < ').slice(0, 220));
+    } catch (e) {}
+  }, true);
+})();
+)JS";
+
 } // namespace
 
 std::string AppWindow::toUtf8(const std::wstring& w) {
@@ -96,6 +137,7 @@ bool AppWindow::Initialize(HINSTANCE hInstance, int nCmdShow) {
         SHCreateDirectoryExW(nullptr, m_userDataFolder.c_str(), nullptr);
     }
 
+    Log(L"window created");
     CreateWebView2();
     return true;
 }
@@ -122,22 +164,34 @@ void AppWindow::CreateWebView2() {
                             }
                             m_controller = controller;
                             controller->get_CoreWebView2(&m_webView);
+                            Log(L"controller ready");
 
                             // ── 页面自己的「关闭」按钮 ────────────────────────────
-                            // Microsoft 的登录页在嵌入式布局下会画一个自己的关闭按钮，
-                            // 点它执行的是 window.close()。WebView2 收到后只发
-                            // WindowCloseRequested 事件，**不会**替我们关窗 ——
-                            // 不订阅就等于点了没反应，用户只能去点标题栏的 X（实测如此）。
+                            // 两条路都接上，缺一不可（见 kCloseHookScript 上面的说明）：
+                            //   ① WindowCloseRequested —— 正常会由 window.close() 触发；
+                            //   ② 脚本注入 + WebMessageReceived —— close() 被 Chromium 拦掉时的兜底。
                             m_webView->add_WindowCloseRequested(
                                 Callback<ICoreWebView2WindowCloseRequestedEventHandler>(
                                     [this](ICoreWebView2*, IUnknown*) -> HRESULT {
-                                        if (m_window && !m_closingForGood) {
-                                            m_closingForGood = true;
-                                            PostMessageW(m_window, WM_CLOSE, 0, 0);
-                                        }
+                                        Log(L"event: WindowCloseRequested");
+                                        RequestClose();
                                         return S_OK;
                                     }).Get(),
                                 &m_closeToken);
+
+                            m_webView->AddScriptToExecuteOnDocumentCreated(kCloseHookScript, nullptr);
+                            m_webView->add_WebMessageReceived(
+                                Callback<ICoreWebView2WebMessageReceivedEventHandler>(
+                                    [this](ICoreWebView2*, ICoreWebView2WebMessageReceivedEventArgs* args) -> HRESULT {
+                                        wil::unique_cotaskmem_string msg;
+                                        if (SUCCEEDED(args->TryGetWebMessageAsString(&msg)) && msg) {
+                                            const std::wstring s(msg.get());
+                                            Log(L"webmessage: " + s.substr(0, 240));
+                                            if (s.rfind(L"WV2CLOSE", 0) == 0) RequestClose();
+                                        }
+                                        return S_OK;
+                                    }).Get(),
+                                &m_msgToken);
                             RECT r{};
                             GetClientRect(m_window, &r);
                             m_controller->put_Bounds(r);
@@ -196,6 +250,29 @@ void AppWindow::CreateWebView2() {
         MessageBoxW(m_window, L"WebView2 环境创建失败", L"登录", MB_OK);
         Finish(2);
     }
+}
+
+void AppWindow::RequestClose() {
+    if (!m_window || m_closingForGood) return;
+    m_closingForGood = true;
+    Log(L"request close -> WM_CLOSE");
+    PostMessageW(m_window, WM_CLOSE, 0, 0);
+}
+
+void AppWindow::Log(const std::wstring& line) {
+    if (m_outputFile.empty()) return;
+    const std::wstring path = m_outputFile + L".dbg.log";
+    HANDLE h = CreateFileW(path.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, nullptr,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (h == INVALID_HANDLE_VALUE) return;
+    SYSTEMTIME st{};
+    GetLocalTime(&st);
+    wchar_t stamp[32]{};
+    swprintf_s(stamp, L"%02d:%02d:%02d ", st.wHour, st.wMinute, st.wSecond);
+    const std::string utf8 = toUtf8(std::wstring(stamp) + line + L"\r\n");
+    DWORD written = 0;
+    WriteFile(h, utf8.data(), static_cast<DWORD>(utf8.size()), &written, nullptr);
+    CloseHandle(h);
 }
 
 void AppWindow::Finish(int exitCode, const std::wstring& code) {

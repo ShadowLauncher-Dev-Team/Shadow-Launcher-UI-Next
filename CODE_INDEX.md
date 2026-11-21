@@ -9,6 +9,14 @@
 > 3. 本文档不含敏感信息（密钥/令牌/地址均为机制描述），可安全提交仓库。
 >
 > 更新日志见文末「文档更新记录」。
+>> 2026-11-21（内嵌登录关闭按钮·第二次修复，真正根因）：上一版只订阅 `WindowCloseRequested` **没用** —— Chromium 规定
+> 「脚本只能关闭由脚本打开的窗口」，普通窗口里页面调 `window.close()` 会被**静默忽略**，事件根本不触发。
+> 现在的做法（`thirdparty/wv2login/src/AppWindow.cpp`）：`AddScriptToExecuteOnDocumentCreated` 注入脚本
+> ① 覆盖 `window.close` → `postMessage('WV2CLOSE:js')`；② 捕获阶段点击监听，按 id/class/aria-label/title 子串命中 close|dismiss|cancel|关闭 → `postMessage('WV2CLOSEBTN:...')`。
+> 宿主 `add_WebMessageReceived` 收到 `WV2CLOSE*` 就 `PostMessage(WM_CLOSE)`；`WindowCloseRequested` 仍保留做第三条路。
+> 同时写了 `<输出文件>.dbg.log` 调试日志（每次点击都记元素链，未命中记 `WV2CLICKANY`），下次再出问题可直接看实据。
+> **两个坑（都靠 node 跑假 DOM 测出来）**：① 正则带 `i` 时 `[^a-z]` 会连大写一起排除，`closeBtn` 这种驼峰匹配不上 → 改子串判断；
+> ② 删正则时漏删一行 `if (re.test(blob))`，`re` 未定义抛错被 try 吞掉 → **一次消息都没发出**，表现为点了完全没反应（和原 bug 一模一样）。
 >> 2026-11-21（内嵌正版登录两个问题）：
 > ① **点页面里的关闭按钮没反应**：Microsoft 登录页在嵌入式布局下自带一个关闭按钮，它执行的是 `window.close()`；
 >    WebView2 收到后只发 `WindowCloseRequested` 事件，**不会替宿主关窗** —— 不订阅就等于点了没反应，用户只能去点标题栏 X。
