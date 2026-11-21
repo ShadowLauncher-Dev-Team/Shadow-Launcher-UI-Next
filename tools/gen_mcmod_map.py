@@ -11,12 +11,12 @@ gen_mcmod_map.py — 自研脚本：从 MC百科公开 mod 列表生成「class-
     https://www.mcmod.cn/class/{id}.html    —— 页面内嵌 CurseForge / Modrinth 外链
 
 用法：
-    python tools/gen_mcmod_map.py                 # 全量抓取，输出 qml/mcmod_map.json
+    python tools/gen_mcmod_map.py                 # 全量抓取，输出 assets/data/mcmod_map.json
     python tools/gen_mcmod_map.py --limit 200     # 只抓前 200 个（冒烟测试）
     python tools/gen_mcmod_map.py --resume        # 从断点缓存继续（自动）
     python tools/gen_mcmod_map.py --workers 16    # 并发数
 
-输出（qml/mcmod_map.json）：
+输出（assets/data/mcmod_map.json）：
     [ {"id": 564, "en": "Automagy 2", "cf": "automagy"}, ... ]
     字段均可缺省（无英文名则省略 en，无外链则省略 cf/mr）。
 
@@ -39,7 +39,7 @@ import requests
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-OUT_PATH = os.path.join(ROOT, "qml", "mcmod_map.json")
+OUT_PATH = os.path.join(ROOT, "assets", "data", "mcmod_map.json")
 RESUME_PATH = os.path.join(HERE, "_mcmod_map_resume.jsonl")
 
 _TL = threading.local()

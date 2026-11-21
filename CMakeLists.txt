@@ -35,11 +35,11 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
     LinguistTools
 )
 
-# nlohmann/json (header-only 鈥?manually downloaded)
+# nlohmann/json (header-only — manually downloaded)
 add_library(nlohmann_json INTERFACE)
 target_include_directories(nlohmann_json INTERFACE src/third_party/nlohmann)
 
-# cpr (libcurl C++ wrapper) 鈥?TODO: install via vcpkg or manual
+# cpr (libcurl C++ wrapper) — TODO: install via vcpkg or manual
 # For Phase 1 build test, use Qt Network as fallback
 # Uncomment when cpr is available:
 # include(FetchContent)
@@ -55,12 +55,12 @@ set(SOURCES
     src/main_release.cpp
     src/ui_splash.cpp
 
-    # Utilities (Phase 4 鈥?structured logging)
+    # Utilities (Phase 4 — structured logging)
     src/utils/logger.cpp
     src/utils/temp_tracker.cpp
     src/utils/token_crypto.cpp
 
-    # Core services (Phase 2 鈥?added progressively)
+    # Core services (Phase 2 — added progressively)
     src/core/http_client.cpp
     src/core/resource_fetch_engine.cpp
     src/core/cf_api.cpp
@@ -96,7 +96,7 @@ set(SOURCES
     src/core/screenshot_server.cpp
     src/core/step_node.cpp
     src/core/step_pipeline.cpp
-    # Backend (Phase 3 鈥?added progressively)
+    # Backend (Phase 3 — added progressively)
     src/backend/app_backend.cpp
     src/backend/settings_backend.cpp
     src/backend/yggdrasil_backend.cpp
@@ -212,7 +212,7 @@ endif()
 # Target
 # ============================================================
 
-# 鈹€鈹€ App icon (.ico must be next to .rc during rc compilation) 鈹€鈹€
+# ── App icon (.ico must be next to .rc during rc compilation) ──
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/app.ico"
     "${CMAKE_CURRENT_BINARY_DIR}/app.ico"
@@ -411,7 +411,7 @@ qt6_add_resources(ShadowLauncher "anim_resources"
         icons/anim/spin-f.png
 )
 
-# 鈹€鈹€ Lucide icon resources (must mirror dev-mode copy: icons copied into qml/icons/) 鈹€鈹€
+# ── Lucide icon resources (must mirror dev-mode copy: icons copied into qml/icons/) ──
 qt6_add_resources(ShadowLauncher "icon_resources"
     PREFIX "/qt/qml/ShadowLauncher/qml"
     FILES
@@ -521,7 +521,7 @@ qt6_add_resources(ShadowLauncher "icon_resources"
 
 )
 
-# 鈹€鈹€ Agreement HTML resources (embedded for offline access) 鈹€鈹€
+# ── Agreement HTML resources (embedded for offline access) ──
 # 必须用 QT_RESOURCE_ALIAS：否则 PREFIX + 文件相对路径会拼出
 # agreements/assets/agreements/xxx.html（旧实现就是这样多带了一层 qml/agreements），
 # 而 C++ 读的是 /qt/qml/ShadowLauncher/agreements/xxx.html。
@@ -585,7 +585,7 @@ qt6_add_resources(ShadowLauncher "cape_resources"
 )
 
 
-# 鈹€鈹€ Multi-language translations 鈹€鈹€
+# ── Multi-language translations ──
 file(GLOB_RECURSE I18N_QML_SOURCES "${CMAKE_SOURCE_DIR}/ui/*.qml")
 file(GLOB_RECURSE I18N_CPP_SOURCES "${CMAKE_SOURCE_DIR}/src/*.cpp" "${CMAKE_SOURCE_DIR}/src/*.h")
 qt_add_translations(ShadowLauncher
@@ -600,12 +600,12 @@ qt_add_translations(ShadowLauncher
     RESOURCE_PREFIX /i18n
 )
 
-# 鈹€鈹€ libwebp (static, for webp鈫扨NG icon decoding) 鈹€鈹€
+# ── libwebp (static, for webp→PNG icon decoding) ──
 set(WEBP_ROOT "${CMAKE_SOURCE_DIR}/thirdparty/libwebp")
 target_include_directories(ShadowLauncher PRIVATE "${WEBP_ROOT}/include")
 target_link_directories(ShadowLauncher PRIVATE "${WEBP_ROOT}/lib")
 
-# 鈹€鈹€ miniz (public domain, ZIP 解压 — 整合包导入用) 鈹€鈹€
+# ── miniz (public domain, ZIP 解压 — 整合包导入用) ──
 target_include_directories(ShadowLauncher PRIVATE "${CMAKE_SOURCE_DIR}/thirdparty/miniz")
 
 # Define WEBP_STATIC_LINK for static lib (needed on Windows)
@@ -639,7 +639,7 @@ target_link_libraries(ShadowLauncher PRIVATE
     crypt32
 )
 
-# cpr::cpr 鈥?added when libcurl is installed
+# cpr::cpr — added when libcurl is installed
 
 # Windows: hide console window
 if(WIN32)
