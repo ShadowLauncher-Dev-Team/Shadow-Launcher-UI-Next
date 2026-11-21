@@ -115,7 +115,7 @@ void UserDataBackend::doExport(const QString& gameDir, const QString& versionId,
         }
     };
 
-    // 用户数据白名单（对齐导入端 rules；*.jar / *.json / downloads / natives 等版本本体与运行缓存不导出）
+    // 用户数据白名单（对齐导入端 rules；jar/downloads/natives 等版本本体与运行缓存不导出）
     static const QStringList dataNames = {
         QStringLiteral("saves"),          // 存档世界
         QStringLiteral("mods"),           // 模组
@@ -258,7 +258,7 @@ void UserDataBackend::doExport(const QString& gameDir, const QString& versionId,
         }
     };
 
-    addToZip(tempPath, "");  // includes README.txt and game/
+    addToZip(tempPath, "");  // 含 README.txt 与散开的用户数据（无 game/ 包装）
     zip.close();
 
     // Cleanup temp dir happens automatically when QTemporaryDir goes out of scope
@@ -355,7 +355,7 @@ QVector<ImportItemInfo> UserDataBackend::parseArchiveItems(const QString& archiv
         }
     }
 
-    // Classify items inside game/
+    // Classify items（兼容旧包 game/ 前缀与散开的新格式）
     struct RiskRule {
         QString name;
         QString display;

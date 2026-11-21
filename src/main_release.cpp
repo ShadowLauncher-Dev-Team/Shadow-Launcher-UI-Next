@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
-// Shadow Launcher — C++ Entry Point
-// Phase 4: Unified backend + QML UI port
+// Shadow Launcher — 程序入口（窗口 / QML 引擎 / 后端装配 / 命令行开关）
 
 #include <QApplication>
 #include <QWidget>
@@ -569,8 +568,7 @@ int main(int argc, char *argv[])
 
 
 
-    // Modrinth API: uniquely-identifying User-Agent header (mandatory)
-    // Modrinth 要求 UA 能标识调用方；原来是占位符 YOUR_APP + 旧仓库地址
+    // Modrinth 强制要求 UA 能标识调用方（否则限流/拒绝）：带版本号 + 仓库地址。
     HttpClient::instance().setUserAgent(
         QStringLiteral("ShadowLauncher/%1"
                        " (https://github.com/ShadowLauncher-Dev-Team/Shadow-Launcher-UI-Next)")
@@ -791,7 +789,9 @@ int main(int argc, char *argv[])
     // QML engine
     QQmlApplicationEngine engine;
 
-    // Appearance 单例：外观页（待做）会用，当前只是承接 --ui-next-mode/--ui-next-density。
+    // Appearance 单例（QML_SINGLETON，全局外观：配色方案/密度/动效开关）。
+    // 这里先建出来：截图模式要关掉它的持久化，避免调试跑一遍就改写用户的 appearance 设置。
+    // --ui-next-mode / --ui-next-density 在 QML 根对象就绪后才下发（见下方 setMode/setDensity）。
     AppearanceController* appearance = engine.singletonInstance<AppearanceController*>("ShadowLauncher.Next", "Appearance");
     if (appearance)
         appearance->setPersistenceEnabled(!app.arguments().contains(QStringLiteral("--screenshot")));

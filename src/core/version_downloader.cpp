@@ -124,7 +124,7 @@ VersionDownloader::VersionDownloader(QObject* parent)
             this, &VersionDownloader::onAllFinishedV2,
             Qt::QueuedConnection);
 
-    // ── Asset-dedicated downloader v2 (2× HTTP/1.1 QNAMs, adaptive concurrency) ──
+    // ── Asset-dedicated downloader v2 (4× HTTP/1.1 QNAMs, adaptive concurrency) ──
     m_assetDownloader = new AssetDownloader(this);
     m_assetDownloader->setMaxConcurrent(m_maxWorkers);
     if (m_downloadCfg.speedLimitMB > 0)
@@ -197,7 +197,7 @@ void VersionDownloader::setCacheFallbackDir(const QString& dir)
 void VersionDownloader::setDownloadConfig(const DownloadConfig& config)
 {
     m_downloadCfg = config;
-    m_maxWorkers = qBound(1, config.maxWorkers, 512);  // 2026-11-18：上限 64→256（实测 192 为拐点）
+    m_maxWorkers = qBound(1, config.maxWorkers, 512);  // 上限 512（实测 192 为拐点，留余量给用户手调）
     if (m_downloader) {
         m_downloader->setMaxThreads(m_maxWorkers);
         m_downloader->setSpeedLimitMB(config.speedLimitMB);
@@ -423,7 +423,7 @@ void VersionDownloader::downloadVersion(const QJsonObject& versionJson,
                 // 2026-11-19 修：阶段 A 的 QtConcurrent 预检回调没有取消守卫，
                 // 而取消后 start()/startDownload() 会清掉 m_cancelled，于是点取消后
                 // 预检回调照样把任务塞进下载引擎 → 下载「复活」，还会二次触发
-                // downloadFinished。阶段 B（473 行）本来就有这个守卫，这里补齐。
+                // downloadFinished。阶段 B 的 startAssets 开头本来就有这个守卫，这里补齐。
                 // 判据：取消后日志里又出现「[盘古] 缓存预检」/ 引擎重新开始派发。
                 if (m_state == Cancelled) return;
                 // 命中者计入完成（不读盘不排队）
@@ -945,7 +945,7 @@ bool VersionDownloader::isRunning() const
 
 // ═══════════════════════════════════════════════════════════
 // Cross-downloader completion: both FileDownloader (libraries)
-// and AssetDownloader (assets, HTTP/2) must finish before
+// and AssetDownloader (assets, HTTP/1.1 多 QNAM) must finish before
 // proceeding to integrity verification.
 // ═══════════════════════════════════════════════════════════
 

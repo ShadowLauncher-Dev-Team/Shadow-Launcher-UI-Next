@@ -4,13 +4,13 @@ import QtQuick.Window
 import QtQuick.Layouts
 import ShadowLauncher.Next
 
-// 下载页（2026-11-05 重做版）
-// 结构严格对齐旧 UI：
+// 下载页：MC 版本列表（正式/快照/远古/愚人节）+ 安装配置，另含资源库五类与 Java 的 tab。
+// 结构：
 //   · 顶部横向 tab pills（不是侧边导航）
 //   · 带计数的筛选 pills + 最新正式版高亮卡 + 版本卡列表
 //   · 点卡 → 安装配置：返回栏 + MC 版本卡（名称输入/冲突提示）+ 每个加载器一张可展开卡 + 底部固定操作栏
-//   · 进度视图已拆到独立页 ui/pages/ProgressPage.qml（2026-11-05），本页只负责列表与配置
-// 边距照 DESIGN_SPEC：1375 下左右 64；顶栏 52；小窗 28/24
+//   · 进度视图已拆到独立页 ui/pages/ProgressPage.qml，本页只负责列表与配置
+// 边距：宽布局左右 48 / 顶栏 64；小窗 32、28 / 顶栏 56（窄窗 = 窗口宽 < 900）
 Item {
     id: page
     property var toast: null
@@ -18,7 +18,7 @@ Item {
     // 窗口宽度而非自身宽度：侧栏收起/展开时自身宽度会变，用它判断会在动画最后一帧
     // 突然从宽布局切到窄布局（用户看到的「最后一刻震动卡一下」）
     readonly property bool narrow: (Window.window ? Window.window.width : width) < 900
-    // 宽布局边距 72 → 48：1100 窗口下内容区从 748 加到 796，三列卡片才不至于挤成一团
+    // 宽布局左右各 48：1100 窗口下内容区能到 796，三列卡片才不至于挤成一团
     readonly property int padH: narrow ? 32 : 48
     readonly property int padR: narrow ? 28 : 48
     readonly property int topH: narrow ? 56 : 64
@@ -203,13 +203,11 @@ Item {
         page.nameConflict = name.length > 0 && page.isInstalled(name)
     }
 
-    // ── 安装名自动生成（旧 UI 语义）──
+    // ── 安装名自动生成 ──
     // 加载器后缀沿用后端命名约定：OptiFine 的 installName 必须含 "OptiFine_<版本>"，
-    // mod_loader_installer 会从 installName 反解加载器版本（见 installer.cpp 469 行）。
-    // 命名与旧 UI InstallPage.versionSuffix 完全一致：
-    //   <mc>-forge-<ver> / <mc>-neoforge-<ver> / <mc>-fabric-<ver>[-fabric-api-<apiVer>] / <mc>-OptiFine_<ver>
-    // 之前只拼了加载器 key（"26.2-fabric"），既丢了加载器版本，也完全没带 Fabric API，
-    // 所以选中 Fabric API 时名字不动 —— 这就是用户报的那条。
+    // mod_loader_installer 会从 installName 反解加载器版本。
+    // 后缀按加载器拼：<mc>-forge-<ver> / <mc>-neoforge-<ver> / <mc>-fabric-<ver>[-fabric-api-<apiVer>] / <mc>-OptiFine_<ver>
+    // 只拼加载器 key（"26.2-fabric"）会丢加载器版本、也不带 Fabric API，选 API 时名字就不动。
     function loaderSuffix() {
         var parts = []
         if (page.activeLoader === "forge" && page.selectedVersion.length > 0) {
@@ -376,7 +374,7 @@ Item {
         // 这里再同步调一次会让 QML 加载被后端解析阻塞 7 秒（首屏卡死的根因），故不再调用。
         if (Qt.application.arguments.indexOf("--ui-config") >= 0 && page.releaseV.length > 0)
             page.pickVersion(page.releaseV[0])
-        // 调试/验收钩子：--ui-tab N 直接落到指定 tab（0=MC 1=Mod … 5=数据包）
+        // 调试/验收钩子：--ui-tab N 直接落到指定 tab（0=MC 1=Mod … 5=数据包 6=Java）
         var ti = Qt.application.arguments.indexOf("--ui-tab")
         if (ti >= 0 && ti + 1 < Qt.application.arguments.length)
             page.tab = parseInt(Qt.application.arguments[ti + 1]) || 0
@@ -618,7 +616,7 @@ Item {
         anchors.bottomMargin: 24
 
         // 资源库五类（Mod / 光影 / 资源包 / 整合包 / 数据包）：同一页参数化
-        // ── Java Tab（2026-11-07）──
+        // ── Java Tab ──
         JavaPage {
             id: javaView
             anchors.fill: parent

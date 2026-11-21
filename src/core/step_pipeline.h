@@ -41,8 +41,6 @@ public:
     StepNode* stepAt(int index) const;
     int stepCount() const { return m_nodes.size(); }
 
-    // ── 通知 QML 单行/单角色更新 ──
-
 private:
     QVector<StepNode*> m_nodes;  // 非 owning
 };
@@ -79,7 +77,7 @@ public:
 
     // ── 控制 ──
     void start();   // 激活第 0 步
-    bool advance(); // 当前步完成 → 激活下一步
+    bool advance(); // 显式推进：把下一步置为进行中（不再自动触发）
     void cancel();  // 取消所有步骤
 
 signals:

@@ -236,12 +236,6 @@ void MicrosoftAuth::startEmbeddedLogin(const QString& clientId) {
     startWv2LoginProcess(clientId);
 }
 
-// ═══════════════════════════════════════════════════
-// Embedded login (Mode C — standalone wv2login.exe)
-// The WebView2 browser runs in a separate process; the launcher only
-// reads the result file, so closing the login window can never crash us.
-// ═══════════════════════════════════════════════════
-
 void MicrosoftAuth::startWv2LoginProcess(const QString& clientId) {
     m_clientId = clientId.isEmpty() ? kClientId : clientId;
     const QString redirect = u"https://login.microsoftonline.com/common/oauth2/nativeclient"_s;

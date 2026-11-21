@@ -4,13 +4,13 @@
 // Asset-dedicated download engine v2 — speed-adaptive, multi-connection.
 //
 // Design:
-//   - 2 persistent QNAMs (HTTP/1.1, 255 conn/host) avoid HTTP/2 stream limits
+//   - 4 persistent QNAMs (HTTP/1.1, 255 conn/host) avoid HTTP/2 stream limits
 //   - Speed-based adaptive concurrency: monitor throughput, adjust inflight count
 //   - Three-phase acceleration: burst → accelerate → steady
 //   - SHA1+disk I/O offloaded to QThreadPool (non-blocking main thread)
 //   - Per-host health tracking with consecutive-failure detection
 //   - DNS pre-resolution with IP reliability scoring
-//   - Sliding-window speed floor (85 % of weighted peak) prevents over-threading
+//   - Sliding-window speed floor (85 % of weighted average, monotonic) prevents over-threading
 
 #pragma once
 
@@ -151,7 +151,7 @@ private:
     /// 同上，但要求调用方已持有 m_hostMutex（hostCanAccept 内部用，避免二次加锁死锁）
     int  hostLimitLocked(const QString& host) const;
     void adjustHostLimits();
-    void logHostSummary();   // [主机] 每主机 成功/失败/首字均 —— 定量证据，不必再靠外部抓包              // called periodically to tune limits
+    void logHostSummary();   // [主机] 每主机 成功/失败/首字均 —— 定量证据，不必再靠外部抓包
 
     // ── 全源不可用冷却（2026-08-05）──
     // 所有镜像 degraded/限流时：fireNext 每 50ms 扫全队列无意义（锁竞争 + 无日志），
@@ -258,12 +258,10 @@ private:
     /// 空闲槽驱动：把在途的单连接大文件就地切成多段
     void trySplitInFlight();
 
-    // 分片阈值（2026-11-17 实测校准）
-    // ≥2MB 才值得切：assets 最大约 11MB，2MB 以下切出来的段太小、握手开销占比高。
+    // 分片阈值（2026-11-18 实测校准）
+    // 门槛 8MB：实测资产/库绝大多数是 4KB–2MB，2MB 就切只会多出「探测 + 临时文件 +
+    // 合并」开销而无收益；真正需要并发的是几十 MB 的大文件。
     // 每段 ≥512KB：Range 请求头开销可以忽略，且避免产生大量碎片段。
-    // 分片门槛 2026-11-18：2MB → 8MB。实测资产/库绝大多数是 4KB–2MB，
-    // 2MB 就切只会多出「探测 + 临时文件 + 合并」开销而无收益；
-    // 真正需要并发的是几十 MB 的大文件。
     static constexpr qint64 kSegMinBytes    = 8LL * 1024 * 1024;
     static constexpr qint64 kMinShardPiece  = 512 * 1024;
     static constexpr int    kMaxShardPieces = 8;
@@ -323,23 +321,12 @@ private:
     static constexpr int kDispatchPerTick = 24;
     static constexpr int kMaxPerHost = 4;  // max concurrent per host (reduced from 8)
 
-    // ── Network managers (2 × HTTP/1.1 to avoid HTTP/2 stream limits) ──
-    // 2026-11-18：2 → 32 个 QNAM。
-    // 依据：Qt 的 QHttpNetworkConnection 每个「连接对象」默认只有 6 条 channel，
-    // 也就是说**单主机实际并发 = 6 × QNAM 数**。只把 m_maxConcurrent 抬到 192、
-    // QNAM 仍只有 2 个时，线上真实并发只有 12 —— 实测在途=192 但 114 文件/s、
-    // 请求均 1653ms（参考引擎同并发 309 文件/s、190ms）。
-    // 32 × 6 = 192 条真实连接，与目标并发对齐。
-    // 2026-11-18（第二轮）：32 → 4。
-    // 上一版认为「Qt 每个连接对象只 6 条 channel，所以要 32 个 QNAM 才有 192 并发」——
-    // 这个前提是错的：Qt 6.5+ 的 QHttp1Configuration::setNumberOfConnectionsPerHost
-    // 可以给到 1~255（我们每请求都设 128），所以**单个 QNAM 就足够**满足 192 并发。
-    // 32 个 QNAM 的实际代价是 32 条网络线程 + 32 份连接池（每份都要各自重新握手），
-    // 是纯粹的额外开销。留 4 个只是为了让分片/探测/普通请求之间少抢同一把连接锁。
-    // 2026-11-18（第三轮）：4 → 16。
-    // TCP 采样证据：h1 下进程最多 300 条连接，但**前 4 秒只建起 104 条**（约 26 条/秒）。
-    // Qt 的连接建立是在各自的 QNAM 线程上串行完成的，QNAM 越多 → 并行建连越多。
-    // 4 个 QNAM 时这条斜率就是 26/s，16 个理论上 ×4。先量，不猜。
+    // ── Network managers (4 × HTTP/1.1 to avoid HTTP/2 stream limits) ──
+    // 4 个 QNAM 的来历：Qt 的 QHttpNetworkConnection 每个连接对象默认只有 6 条 channel，
+    // 曾误以为「单主机并发 = 6 × QNAM 数」而堆到 32 个；实际上 Qt 6.5+ 的
+    // QHttp1Configuration::setNumberOfConnectionsPerHost 能给到 1~255（本类每请求设 255），
+    // 单个 QNAM 就足够撑满并发。多开只多出网络线程与连接池（各自重新握手）的开销，
+    // 留 4 个是为了让分片/探测/普通请求之间少抢同一把连接锁。
     QNetworkAccessManager* m_nam[4] = {};
     static constexpr int kNamCount = 4;
     int  m_namRoundRobin = 0;              // simple round-robin

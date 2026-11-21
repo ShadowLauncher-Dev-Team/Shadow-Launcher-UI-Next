@@ -20,7 +20,7 @@ Parts generate();
 // Returns nullopt if checksum fails or format is wrong
 std::optional<Parts> parse(const QString& code);
 
-// Extract network name/key without validation (for display)
+// 格式与 base34 校验和校验（parse 的薄封装）；不合法返回 false
 bool isValidFormat(const QString& code);
 
 } // namespace RoomCode

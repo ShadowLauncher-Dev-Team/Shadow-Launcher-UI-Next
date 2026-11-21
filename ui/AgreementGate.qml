@@ -12,7 +12,7 @@
 //   · 切协议 = 面板淡入 + 5px 上浮（durBase / easeEnter），滚动位置归零
 //   · 勾选 = 方框填充 + 对勾 scale 弹入（durFast / easePop）
 //   · 阅读提示 = 「向下滚动」↔「已读完」两条文案交叉淡入淡出
-//   · 同意 = reveal 1→0（durBase / easeExit），动画收完才真正 dismiss
+//   · 同意 = reveal 1→0（durPage / easeStandard），动画收完才真正 dismiss
 //
 // 关键时序：markAgreed 会立刻让 agreementAccepted 变 true，visible 的绑定一并失效。
 // 所以 visible = (needed || closing) && !dismissed —— 退场动画期间靠 closing 撑住，
@@ -102,8 +102,8 @@ Item {
         from: 0; to: 1
         duration: Theme.durPage; easing.type: Theme.easeEnter
     }
-    // 退场：InCubic（easeExit）前段几乎不动、末尾猛地收完 —— 肉眼就是「几毫秒的过渡 + 一下闪没」。
-    // 淡出要"立刻有反馈 + 尾巴够长"，所以用 durPage + OutCubic（与启动页入场同一口径）。
+    // 退场：淡出要"立刻有反馈 + 尾巴够长"，所以用 durPage + OutCubic
+    //（easeStandard，与启动页入场同一口径）。
     NumberAnimation {
         id: exitAnim
         target: gate; property: "reveal"

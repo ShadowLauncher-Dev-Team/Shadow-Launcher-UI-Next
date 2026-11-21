@@ -104,7 +104,7 @@ signals:
 private:
     struct DlItem {
         int index = -1;
-        QStringList urls;      // 尝试顺序：[镜像 CDN, 官方直链, 备用源…] → 引擎 orderedSources
+        QStringList urls;      // 尝试顺序：CF=[官方直链, 镜像分片]，Modrinth=[镜像, 官方直链, 备用源…]
         QString savePath;      // 最终路径
         QString fileName;
         bool finished = false;
@@ -133,7 +133,7 @@ private:
     void startDownloadUrlResolve(int idx);
     void failRemaining(const QString& err);            // 整体失败：把所有未完成条目标失败
     void releaseEngineDeferred();                      // 延迟释放引擎（abort 异步窗口，避免阻塞 UI）
-    void checkStall();                                 // 下载阶段 60s 无字节进展 → 判失败
+    void checkStall();                                 // 下载阶段 240s 无字节进展 → 判失败
 
     // ── 引擎适配层（ShadowDownloader::ModDownloadEngine）──
     void startEngineDownloads();   // 地址就绪 → 构造引擎 + addFile 编排 + 启动
@@ -160,13 +160,13 @@ private:
     bool m_running = false;
     quint64 m_generation = 0;         // 任务代际（start 递增）：延迟定时器/旧回调据此失效
     bool m_cancelled = false;         // 仅表示「用户取消 / 主动中止」
-    bool m_internalFailed = false;    // 内部判失败（批次重试耗尽、60s 停滞）：与用户取消语义分开
+    bool m_internalFailed = false;    // 内部判失败（批次重试耗尽、240s 停滞）：与用户取消语义分开
     QList<int> m_downloadUrlPending;   // 待补解析 download-url 的条目（镜像优先）
     QSet<int> m_downloadUrlInflight;   // 正在补解析的条目（取代旧实现拿 finished 当占用标记）
     QSet<int> m_officialOnlyFileIds;   // 官方补查救回的 fileId（镜像未同步：跳过镜像分片/镜像接口）
     int m_batchRetryStartIndex = -1;   // 批次重试计数绑定的批次起点
     int m_batchRetryCount = 0;         // 当前批次已重试次数
-    QTimer* m_stallTimer = nullptr;    // 下载阶段停滞看门狗（5s 一扫，60s 无字节判失败）
+    QTimer* m_stallTimer = nullptr;    // 下载阶段停滞看门狗（5s 一扫，240s 无字节判失败）
     qint64 m_lastWatchdogBytes = -1;   // 上一次采样到的引擎累计字节
     qint64 m_lastWatchdogMs = 0;       // 最近一次字节增长时刻
     std::function<bool(const QString&)> m_overwriteHook;   // 覆盖旧文件前的回调（true = 已备份/可安全删除）

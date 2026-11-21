@@ -3,8 +3,8 @@ import QtQuick
 import QtQuick.Window
 import ShadowLauncher.Next
 
-// 下载进度（2026-11-05 从 DownloadPage 拆出的独立页）
-// 结构对齐 design/e2 方案 B：顶部标题栏 + 顶部总览条（总进度/总速度/任务/剩余）+ 带步骤的任务卡列表。
+// 下载进度：顶部标题栏 + 总览条（总进度/总速度/任务/剩余）+ 带步骤的任务卡列表（结构对齐 design/e2 方案 B）。
+// 由 DownloadPage 的进度视图拆出；这里也播安装/下载完成的通知。
 // 数据：每 400ms 从 backend.installCardsModel 取快照，按 iid 原地 set/append/remove。
 Item {
     id: page
@@ -104,7 +104,7 @@ Item {
     property string remainText: "—"
     property var _doneAt: ({})
     property var _rowSig: ({})   // iid -> 上次写入的内容签名（内容未变就不 set）
-    // ── 步骤快照（2026-11-18 修 binding loop）──
+    // ── 步骤快照（修 binding loop 用）──
     // steps 是 ListModel 的**数组角色**：每读一次就返回一个新数组，
     // 于是 delegate 里任何「绑定里调用 stepField(steps, ...)」都会被 QML 判成循环
     //（实测一轮整合包导入刷了 368 条 stepDetail binding loop）。
@@ -153,16 +153,10 @@ Item {
                 }
                 continue
             }
-            // ── 2026-11-20（影报：同一版本第二次下载不再弹「下载完成」）──
-            // _doneAt 以 iid 为键，而版版本卡片的 iid 就是版本号（26.2）。
-            // 第一次完成时写进去以后没人清 → 第二次同版本下载完成时被当成
-            // 「已经播报过」直接吞掉，toast 再也不出现。
-            // 卡片回到未完成态就清掉标记，下次完成能重新弹。
+            // 同一版本第二次下载不再弹「下载完成」：_doneAt 以 iid 为键，而版本卡片的 iid 就是版本号，
+            // 第一次完成写进去后没人清，第二次就会被当成「已播报」吞掉。卡片回到未完成态必须清标记。
             if (page._doneAt[r.iid]) delete page._doneAt[r.iid]
-            // 失败 / 取消的卡片**自动退场**。
-            // 原来这里只移除「成功完成」的卡片（done → continue），
-            // 失败卡片会永久堆在列表里（影报过两次）。
-            // 给 3 秒让用户看清终态，然后调 dismissCard 移除；
+            // 失败 / 取消的卡片自动退场：给 3 秒让用户看清终态再 dismissCard；
             // 想立刻关的仍有卡片上的「关闭」按钮。
             var iidKey = String(r.iid)
             if (r.failed) {
@@ -208,11 +202,8 @@ Item {
                 cardModel.append(item)
                 page._rowSig[item.iid] = page.rowSignature(item)
             } else if (page._rowSig[item.iid] !== page.rowSignature(item)) {
-                // 内容没变就不要 set。
-                // steps 是数组角色，每次都重建新数组，而 set()
-                // 会通知全部角色 → delegate 重算 steps 相关绑定。
-                // 旧实现每 400ms 无条件 set 一次，日志里积累了 22912 条
-                // 「binding loop detected for property stepDetail」，界面一直在白白重算。
+                // 内容没变就不要 set：steps 是数组角色，每次 set() 都会通知全部角色、
+                // 让 delegate 重算 steps 相关绑定（曾刷出上万条 stepDetail binding loop）。
                 cardModel.set(row, item)
                 page._rowSig[item.iid] = page.rowSignature(item)
             }
@@ -628,8 +619,8 @@ Item {
                     anchors.topMargin: tcard.isFailed ? 30 : 8
                     spacing: 0
                     Repeater {
-                        // 步骤数必须动态：合并安装 = MC 4 步 + 加载器 3~4 步（旧实现写死 4，
-                        // 加载器/ Fabric API 步骤被整段裁掉，用户只看得到 MC 的四步）。
+                        // 步骤数必须动态：合并安装 = MC 4 步 + 加载器 3~4 步，写死 4 会把
+                        // 加载器 / Fabric API 的步骤整段裁掉。
                         // 步骤数组只在重建步骤时改长度（下载热路径只改字段），delegate 不会反复重建；
                         // 转圈是 C++ 场景图 item，即使重建也不会打断动画。
                         model: page.countStepsRev(stepsRev, cardIid)
@@ -740,11 +731,8 @@ Item {
                         onClicked: if (page.b && page.b.cancelVersionInstall)
                                        page.b.cancelVersionInstall(tcard.cardIid)
                     }
-                    // 失败/取消后的卡片必须能关掉。
-                    // recalc 只移除「成功完成」的卡片（done = !failed && progress>=1），
-                    // 而失败/取消卡片会永久留在列表里；原来又只有
-                    // 「重试」与「取消」两个按钮，于是失败卡片没有任何退场方式。
-                    // 后端本来就有 dismissCard(installId)，只是 UI 从来没接。
+                    // 失败/取消后的卡片必须能关掉：自动退场之外，这里再给一个立即关闭的入口，
+                    // 走后端已有的 dismissCard(installId)。
                     SButton {
                         visible: tcard.isFailed
                         kind: 1

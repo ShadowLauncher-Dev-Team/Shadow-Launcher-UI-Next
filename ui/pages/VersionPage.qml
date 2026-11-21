@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// 版本管理（第一版：主从详情）
+// 版本管理：左列版本列表 + 右侧详情，可打开版本设置。
 // 数据全部来自 backend.versionDetails（后端扫 versions/ 目录得到）：
 //   id / mcVersion / loaderType / loaderVersion / versionType / sizeBytes / modCount
 //   / isModpack / modpackIconPath / releaseTimeMs
 // 上次游玩逐版本来自 backend.lastPlayedLabelFor(id)（只有启动器真起过游戏才有记录）
-// 本页不写死任何版本名，不做动效（等动效系统统一接入）
+// 本页不写死任何版本名；动效统一走 Theme（入场、指示条滑动、详情切换）。
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
@@ -24,9 +24,8 @@ Item {
     property string pendingId: (b && b.selectedVersion) ? b.selectedVersion : ""
     readonly property string currentId: (b && b.selectedVersion) ? b.selectedVersion : ""
     property bool folderMenuOpen: false
-    // ── 2026-11-14：游戏文件夹的命名 / 删除 ──
-    // 原来只能「导入」和「切换」，导入错一个就永远删不掉（后端
-    // renameGameFolder/removeGameFolder 早就写好了，只是没人调）。
+    // ── 游戏文件夹的命名 / 删除 ──
+    // 导入错一个也要能改能删：后端 renameGameFolder / removeGameFolder 已就绪。
     // 注意删除**只删启动器内的登记记录**，不动用户本地文件夹。
     property bool folderNamePop: false
     property string folderNameText: ""
@@ -179,8 +178,8 @@ Item {
     function switchFolder(path, isDefault) {
         if (!page.mcFolder || !page.b) return
         page.folderMenuOpen = false
-        // setActiveFolder 是有返回值的：目录不存在 / 识别不出 .minecraft 会返回 false。
-        // 以前不管成败都提示"已切换"，失败时用户会以为切了但其实没切。
+        // setActiveFolder 有返回值：目录不存在 / 识别不出 .minecraft 会返回 false。
+        // 提示必须按结果走，不能一律说"已切换"（用户会以为切了但其实没切）。
         var ok = true
         if (isDefault) page.mcFolder.revertToDefault()
         else ok = page.mcFolder.setActiveFolder(path)
@@ -296,8 +295,7 @@ Item {
         if (v.versionType === "old") return "qrc:/qt/qml/ShadowLauncher/qml/icons/blocks/CobbleStone.png"
         return "qrc:/qt/qml/ShadowLauncher/qml/icons/blocks/Grass.png"
     }
-    // 反馈统一走 Toast：以前写进顶栏 label，一出现就把右侧按钮挤走（控件错位），
-    // 而且返回启动页后再也看不到"到底刷新了什么"。
+    // 反馈统一走 Toast：写进顶栏 label 会挤走右侧按钮（控件错位），离开启动页后也看不到刷新了什么。
     function flash(msg) { if (page.toast) page.toast.show(msg) }
 
     // ── 刷新：手动 / 自动共用 ──
@@ -489,9 +487,8 @@ Item {
             font.weight: Font.DemiBold
         }
         Text {
-            // ── 2026-11-14：不能用写死偏移 ──
-            // 原来写死 leftMargin 196，假设标题「选择版本」不超过 76px，
-            // 英文「Select version」约 95px → 两个文字直接叠在一起（实测截图）。
+            // ── 不能用写死偏移 ──
+            // 写死 leftMargin 假设标题宽度固定；英文「Select version」更宽，会与相邻文字直接叠在一起。
             // 锚到标题右侧，任何语言都不会重叠。
             anchors.left: titleTxt.right
             anchors.leftMargin: 8
@@ -781,7 +778,7 @@ Item {
                     HoverHandler { id: rowHH }
 
                     // 逐条入场：每行按 index 延迟淡入，滚动时新出现的行也会播一次
-                    // 延迟封顶 120ms，避免长列表把整段拖过 300ms
+                    // 延迟封顶 72ms，避免长列表把整段拖太久
                     opacity: 0
                     Component.onCompleted: {
                         rowDelay.interval = Math.min(index * 16, 72)
@@ -1140,15 +1137,9 @@ Item {
 
         Rectangle {
             id: folderPanel
-            // ── 2026-11-14：下拉面板必须跟着触发它的按钮 ──
-            // 原来是 anchors.right + rightMargin: 24，对齐的是**窗口右边缘**；
-            // 但按钮在右上工具栏里，它的右边缘还要减去
-            // 「导入整合包 / 刷新」两个按钮的宽度。两者没关系，
-            // 所以下拉面板一直偏右、与按钮错开（实测截图反馈）。
-            // 面板**左边缘**贴着按钮左边缘（不是右对齐）。
-            // 下拉菜单的惯例是从触发器左侧开始向右铺开；
-            // 右对齐会让面板整体往左挪，看起来像“不在正下方”。
-            //
+            // ── 下拉面板必须跟着触发它的按钮 ──
+            // 不能锚窗口右边缘 / 固定 rightMargin：按钮在右上工具栏里，右边缘还要减去「导入整合包 / 刷新」两个按钮的宽度。
+            // 面板**左边缘**贴着按钮左边缘（下拉菜单惯例是从触发器左侧向右铺开）。
             // 两个坑（都实测踩过）：
             // 1) 不能 mapToItem(folderPop, ...)。folderPop 在菜单关闭时 visible = false，
             //    对**不可见**项做坐标映射会返回 0，绑定就永远停在 0、面板贴左边。
@@ -1274,10 +1265,8 @@ Item {
                             onClicked: page.switchFolder(folderRow.rowPath, folderRow.rowDefault)
                         }
 
-                        // ── 2026-11-14：重命名 / 移除 ──
-                        // 顺序很重要：整行点击的 MouseArea 必须声明在它**之前**，
-                        // 否则 MouseArea 盖在上面会抢掉这两个按钮的点击
-                        // （原来靠 point.position.x 计算坐标硬绕，很脆）。
+                        // ── 重命名 / 移除 ──
+                        // 整行点击的 MouseArea 必须声明在按钮**之前**，否则会盖住按钮抢掉点击。
                         Row {
                             id: folderOps
                             anchors.right: parent.right
@@ -1386,7 +1375,7 @@ Item {
         }
     }
 
-    // ── 2026-11-14：文件夹命名弹层（新增 + 改名共用）──
+    // ── 文件夹命名弹层（新增 + 改名共用）──
     Popup {
         id: folderNamePop
         parent: page

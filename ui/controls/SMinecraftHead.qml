@@ -10,7 +10,7 @@ import ShadowLauncher.Next
 //      backend.skinPath 提供的 128×128 图是后端 renderHead3D() 渲染好的完整头部，
 //      直接用它才是对的。
 //   2) 清晰度靠最近邻：smooth: false + mipmap: false，且**不要设 sourceSize**
-//      （预缩放到小尺寸再缩放会二次采样变糊）。旧 UI qml/MinecraftHead2D.qml 就是这么写的。
+//      （预缩放到小尺寸再缩放会二次采样变糊）。旧实现就是这么写的。
 //   3) 之前用 smooth: true 显示 → 一张糊成一团，用户明确反馈过。
 Item {
     id: root
@@ -27,7 +27,7 @@ Item {
 
     readonly property string effectiveSource: root.source.length > 0 ? root.source : root.rawSource
 
-    // 首选：后端头图，最近邻铺满（含头发/犄角等外层）
+    // 首选：后端头图，最近邻等比放入（含头发/犄角等外层）
     Image {
         anchors.fill: parent
         visible: root.source.length > 0

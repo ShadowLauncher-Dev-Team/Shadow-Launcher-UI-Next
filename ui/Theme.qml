@@ -11,15 +11,15 @@
 //   line*          边框（line 最浅 → line3 最重）
 //   fg*            文字（fg 主 → fg4 最弱，占位符）
 //   accent*        品牌蓝（两种方案都用同一组蓝，保证按钮文字始终白字可读）
-//   onAccent       蓝底/实心按钮上的文字（永远白，两方案通用）
-//   onImage        图片上的文字（两方案都偏白，配合 imageScrim*）
-//   imageScrim*    图片遮罩（深色方案=暗遮罩，浅色方案=亮遮罩，保证 onImage 永远可读）
+//   accentFg       蓝底/实心按钮上的文字（永远白，两方案通用）
+//   imageFg        图片上的文字（两方案都偏白，配合 imageScrim*）
+//   imageScrim*    图片遮罩（两种方案都用固定暗遮罩，保证 imageFg 永远可读）
 pragma Singleton
 import QtQuick
 
 QtObject {
     // ── 配色方案 ─────────────────────────────────────────────
-    // 由 StageShell 从后端（settings/appearance.scheme）同步过来；
+    // 由 StageShell 从后端（QSettings appearance/scheme）同步过来；
     // 直接写这里也能临时切换（截图/调试）。
     property string scheme: "dark"
     readonly property bool dark: scheme !== "light"
@@ -75,11 +75,8 @@ QtObject {
     readonly property color imageScrimSide0: "#b805080e"
     readonly property color imageScrimSide1: "#2e05080e"
     readonly property color imageScrim: "#05080e"
-    // 通用遮罩（弹层背景 / 图片压暗条）。
-    // 之前 SetAppearancePane 和 MultiplayerPage 都写了 Theme.scrim，但 Theme 里根本没有这个
-    // token —— binding 求值失败后 Rectangle 落回默认色（白），于是图片底部的名字条是白的、
-    // 白字糊在灰白条上（影报的截图）。这里把 token 正式定义出来，两套方案都用深色：
-    // 遮罩的语义是「压暗后面」，浅色方案下用亮色遮罩反而会把内容洗白。
+    // 通用遮罩（弹层背景 / 图片压暗条）。遮罩的语义是「压暗后面」，
+    // 所以两套方案都用深色；浅色方案下用亮色遮罩反而会把内容洗白。
     readonly property color scrim: "#05080e"
     // 照片页（启动页 / 账户页）专用固定暗色：这两页背景是图片，任何配色方案下都保持
     // 暗色文字体系，避免"浅色方案里深色文字压在暗图上"（文字不可见红线）。
@@ -112,7 +109,7 @@ QtObject {
     }
 
     // ── 动效 ────────────────────────────────────────────────
-    // 唯一真源。禁止在别处写裸 duration 数字（构建期契约检查会拦）。
+    // 唯一真源。禁止在别处写裸 duration 数字，统一从这里取。
     // 语义分工：
     //   durFast  120  状态反馈：hover / 颜色 / 图标显隐 / 按压缩放
     //   durBase  180  局部动作：下拉展开、提示条出现、进度条生长

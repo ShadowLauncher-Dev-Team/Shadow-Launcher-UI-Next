@@ -646,10 +646,6 @@ void AccountBackend::resetRefreshState()
 }
 
 // ────────────────────────────────────────────────────────────
-// Skin Cache Path
-// ────────────────────────────────────────────────────────────
-
-// ────────────────────────────────────────────────────────────
 // Generate Offline UUID  (Java Edition compatible)
 // ────────────────────────────────────────────────────────────
 
@@ -1472,8 +1468,8 @@ namespace ShadowLauncher {
 //   mode 0 正版：refreshToken（加密），切回来时用它续期
 //   mode 1 离线：只有名字，切回来直接离线登录
 //   mode 2 外置：apiRoot + accessToken + clientToken，切回来交给 YggdrasilBackend
-// 皮肤/披风不进列表：非当前账号没有真实皮肤，UI 用名字首字母占位，
-// 不拿别人的头像冒充（不造假数据）。
+// 每个账号另存自己的头像/皮肤/披风快照（avatarFile/skinPath/capePath/capesJson），
+// 切回时先摆快照再等网络，绝不用别人的头像冒充（不造假数据）。
 // ════════════════════════════════════════════════════════════
 
 QString AccountBackend::accountsFilePath() const

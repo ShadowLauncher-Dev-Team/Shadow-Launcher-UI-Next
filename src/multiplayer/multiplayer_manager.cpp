@@ -572,8 +572,8 @@ void MultiplayerManager::startHostServer()
         return;
     }
 
-    // Terracotta-aligned: MC port detected solely via LAN multicast scanner.
-    // Removed all fixed-port TCP probes — scanner is the single source of truth.
+    // MC 端口来源有两条通道：LAN 组播扫描（Terracotta set_scanning 同款）
+    // 与启动器 JVM 日志解析（notifyMcLanPort，组播收不到时的可靠兜底）；已移除固定端口 TCP 探测。
     // 2026-08-15：文案改指引式——"等待MC服务器启动"小白看不懂，改为明确操作步骤
     setState(WaitingForMcServer, QStringLiteral("请打开游戏，进入单人世界后按 「Esc → 对局域网开放」"));
     // 玩家常常是“先开 LAN、再来开房”，那时 Launcher 的检测信号已经发过了 →
@@ -963,7 +963,7 @@ void MultiplayerManager::onSocketDisconnected()
     m_heartbeatTimer->stop();
 
     // ── Terracotta-aligned retry: the guest keeps re-opening the session until
-    // fingerprint verification passes (Terracotta loops 60×4s). The easytier
+    // fingerprint verification passes (Terracotta 60×4s；我们上限 20×3s). The easytier
     // tunnel may not be ready the moment we connect (peer still relay(2)), so
     // a single-shot connect dies in ~10s. Retry with backoff until verified.
     if (m_role == Guest && !m_fingerprintVerified && m_connectRetries < kGuestConnectMaxRetries) {
@@ -1803,9 +1803,9 @@ void MultiplayerManager::handleHealthCheckFailure()
 }
 
 
-// ── Scanner-based MC server detection handler ──
-// Aligned with Terracotta set_scanning: real MC server port detected via LAN multicast.
-// Overrides the generated m_mcPort with the real scanner-detected port.
+// ── 「对局域网开放」端口通知通道（来自启动器 JVM 输出解析）──
+// 与组播扫描互为兜底：谁先拿到端口谁走收尾，另一方在此停掉。
+// 端口可能先于/晚于扫描到达，分别按 WaitingForMcServer / WaitingForGuests 处理。
 // ── 「对局域网开放」端口通知（来自启动器 JVM 输出解析）──
 // 为什么需要它：UDP 组播 224.0.2.60:4445 在以下场景会收不到，而 MC 日志一定有这行：
 //   1. 多网卡机器（WLAN + 多个 169.254 虚拟网卡 + EasyTier），组播只在其中一个接口；

@@ -31,7 +31,7 @@ Item {
     Component.onCompleted: {
         refreshJavaList()
         refreshMemory()
-        // 上次关闭时可能还在扫（不会发生，但首次进来列表可能为空且未扫过）
+        // 首次进来时后台可能正在扫：直接读实际状态，别假定空闲
         pane.busy = pane.s ? pane.s.isJavaScanning() : false
     }
 
@@ -78,8 +78,8 @@ Item {
                           ? qsTr("自动选择：启动时按版本需要的 Java 主版本匹配")
                           : (pane.s ? pane.s.javaPath : "")
 
-                    // 版本徽标：高度对齐右侧 32 高的按钮，圆角 6（与项目里其它 badge 一致）。
-                    // 原来是 22 高 + 全圆角，夹在 32 高按钮旁边显得又小又扁。
+                    // 版本徽标：26 高、圆角 6，与项目里其它 badge 一致；旁边是 32 高的按钮，
+                    // 再矮一点夹在中间就显得又小又扁。
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         height: 26
@@ -154,7 +154,7 @@ Item {
                 title: qsTr("Java 选择")
 
                 // 「自动选择」置顶：手动指定过任何一个 Java 之后，
-                // 原来没有任何入口能回到"让启动器自己挑"（影报的第 2 条）。
+                // 仍然要有入口回到"让启动器自己挑"。
                 Item {
                     id: autoRow
                     width: col.width

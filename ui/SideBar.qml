@@ -64,7 +64,7 @@ Item {
         }
     }
 
-    // 选中滑块：位于导航项之下，随 currentLabel 滑动
+    // 选中滑块：位于导航项之下，随 currentKey 滑动
     Item {
         id: selPill
         x: root.rowInset

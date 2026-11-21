@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// 关于：版本 / 许可 / 日志入口 / 鸣谢 / 内测人员
+// 关于：版本 / 许可 / 日志入口 / 鸣谢 / 内测人员 / 赞助支持
 //
-// 鸣谢内容原样搬自旧设置页 qml/SettingsPage.qml（541 行条目组件、675-736 行两张卡），
-// 不是新写的文案。
+// 鸣谢与内测名单的文案沿用旧设置页；改名单只改本文件的 credits 列表与下面的分组。
 import QtQuick
 import ShadowLauncher.Next
 

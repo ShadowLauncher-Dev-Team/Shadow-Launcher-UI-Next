@@ -2,8 +2,7 @@ import QtQuick
 import ShadowLauncher.Next
 
 // 通用「拖入文件」投放区。
-// 三个场景共用：账号页（authlib-injector jar）、版本页（整合包 .zip/.mrpack）、
-// 资源页（mod / 资源包 / 光影）。
+// 当前由 StageShell 在整窗挂唯一一个（页面内不再各挂一个，多个 DropArea 会抢同一个拖拽事件）。
 //
 // 用法：
 //   SDropZone {
@@ -17,7 +16,7 @@ import ShadowLauncher.Next
 //   · 不使用任何 emoji / Unicode 图标，提示文字纯文本；图标用 SIcon
 //   · 动画只用 Theme.dur* / Theme.ease*
 //   · font.pixelSize 用整数
-//   · 不做全局覆盖式投放区：只在目标页面挂载，避免抢走别的页面的 drop
+//   · 只挂一个接收器：多页面各挂一个会互相抢拖拽事件
 //
 // 2026-11-13 踩过的两个坑（都实测过，别再写回去）：
 //   ① 根 Item 写 visible: parent/self 的某个"状态" → 常态不可见时 DropArea 收不到任何

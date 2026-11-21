@@ -5,7 +5,7 @@
 //
 // 业务流程（对齐主流启动器实现 ModModpack.vb）：
 //   选择文件 → 识别 CF/Modrinth → 解析清单 → 解压 overrides 至目标游戏目录
-//   → 批量下载模组并校验 → 安装 MC+加载器（复用 VersionBackend merged 安装）
+//   → 批量下载模组并校验 ∥ 安装 MC+加载器（两路并行、完成后汇合；MC 用 VersionBackend merged 安装）
 //   → 生成/核对 version.json → 注册版本列表 → 完成信号
 //
 // 失败/取消：回滚已生成文件与目录（含覆盖文件备份恢复），不留垃圾残留。

@@ -1,10 +1,10 @@
 // 验证启动细节工程（2026-08-08 低垂果实批）：
-// 1. GC 策略模式（collectGcArgs 四档）——通过 buildLaunchScript/buildArgs 输出检查
+// 1. GC 策略（G1GC / 自动注入）——通过 buildLaunchScript 参数行检查
 // 2. 全屏 --fullscreen 注入
 // 3. 自动进服：新版 --quickPlayMultiplayer / 老版 --server/--port（releaseTime 判定）
 // 4. 设置导入导出（exportSettingsToFile/importSettingsFromFile 往返）
-// 5. launcher_profiles.json 预创建结构（profiles 段 + 离线也写）
-// 6. JVM 补全参数（Java 24/25 --sun-misc-unsafe-memory-access、32位 -Xss）
+// 5. launcher_profiles.json 结构字段（profiles/selectedProfile，等价结构断言）
+// 6. JVM 补全参数（Java 25 --sun-misc-unsafe-memory-access / --add-opens）
 // 注：启动进程类功能（优先级/窗口标题/pre-post 命令）由代码审查 + 主程序日志验证
 #include <QCoreApplication>
 #include <QDir>

@@ -18,7 +18,7 @@ Item {
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     property string currentKey: "quick"
 
-    // ── 换版本 / 重新进入时必须重建分区页（2026-11-14）──
+    // ── 换版本 / 重新进入时必须重建分区页 ──
     // 本页在 StageShell 里是**常驻实例**，打开/关闭只切宿主的 visible，
     // 页面对象和它里面的分区页都不会被销毁。而每个分区页（VsModsPane 等）
     // 只在自己 Component.onCompleted 里加载一次数据 —— 于是从版本列表打开
@@ -43,7 +43,7 @@ Item {
     onVersionIdChanged: page.reloadPanes()
     onOpenedChanged: if (opened) page.reloadPanes()
 
-    // ── 当前版本能开哪些内容区（2026-11-13）──
+    // ── 当前版本能开哪些内容区 ──
     // 原版没有 mods/、shaderpacks/（游戏根本不会去读），这两个入口以前无条件摆着，
     // 点进去永远是空列表 —— 那是错的。这里按版本实际能力过滤。
     // 数据只读自 backend.versionDetails（ShadowBackend::refreshVersionDetails 异步扫 versions/

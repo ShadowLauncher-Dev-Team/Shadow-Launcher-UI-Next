@@ -25,7 +25,7 @@ struct YggdrasilProfile {
 struct YggdrasilMeta {
     QString serverName;
     QString registerUrl;
-    /// 允许承载皮肤纹理的域名白名单（meta.skinDomains）。
+    /// 允许承载皮肤纹理的域名白名单（规范里是根级 skinDomains，meta 内的旧写法也兼容）。
     /// 用于校验 profile 里给出的皮肤 URL 是否来自站点自己信任的域名 ——
     /// 不校验的话，一个被篡改的 profile 可以让启动器去拉任意域名上的图。
     QStringList skinDomains;

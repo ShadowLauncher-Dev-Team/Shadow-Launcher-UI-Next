@@ -406,7 +406,7 @@ void ModDownloadEngine::launchRequest(std::shared_ptr<Item> it)
     it->reply = reply;
     it->launchMs = QDateTime::currentMSecsSinceEpoch();
 
-    // 动态超时：Min(Max(ConnectAvg,15s)*(1+FailCount),30s)（PCL 同款）
+    // 动态超时：Min(Max(ConnectAvg,30s)*(1+FailCount),45s)（PCL 同款；大文件另放宽到 3 分钟）
     const qint64 connectAvg = m_connectCount > 0 ? m_connectTotalMs / m_connectCount : 15000;
     // 下限从 15s 提到 30s：整合包里有 281MB 的模组，
     // TCP 一次拖尾就可能超 15 秒，15s 会把正常下载当卡死砍掉。

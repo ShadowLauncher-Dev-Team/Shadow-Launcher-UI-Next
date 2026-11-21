@@ -9,8 +9,8 @@
 //
 // 注入真实值的方式：
 //   1. 复制本文件为 secrets_local.h
-//   2. 在 secrets_local.h 中定义 SHADOW_AZURE_CLIENT_ID / SHADOW_GITEE_OWNER /
-//      SHADOW_GITEE_REPO 等宏（覆盖本文件的占位符默认值）
+//   2. 在 secrets_local.h 中定义下列宏覆盖本文件占位符：SHADOW_AZURE_CLIENT_ID /
+//      SHADOW_GITEE_OWNER / SHADOW_GITEE_REPO / SHADOW_UPDATE_API_URL
 //   3. 重新编译
 //
 // 生成脚本：tools/gen_secrets_local.py（本地用，不入库）

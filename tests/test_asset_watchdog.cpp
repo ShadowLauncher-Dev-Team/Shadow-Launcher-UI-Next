@@ -41,7 +41,7 @@ int main(int argc, char** argv)
     ShadowLauncher::installFileLogger(QCoreApplication::applicationDirPath());
     int fail = 0;
 
-    // 数据（~500KB）
+    // 数据（~1MB）
     QByteArray data = "hello asset watchdog! 0123456789";
     for (int i = 0; i < 15; ++i) data += data;
     const QString sha1 = sha1Hex(data);

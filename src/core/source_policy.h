@@ -15,16 +15,11 @@ namespace ShadowLauncher {
 namespace SourcePolicy {
 
 /// 是否优先官方源。
-/// ── 2026-11-18 二次修正（推翻同日早上的「按区域择优」）──
-/// 早上我按「单次 curl 首字节」判定镜像更快，于是让国内 AutoSwitch = 镜像优先。
-/// 但那是**单发 curl** 的数据，真实并发下结论相反。用独立参考引擎跑完整 5173 文件量测：
-///   镜像优先 + 64 并发 → 105.7s / 49 文件/s（4.6MB/s）
-///   官方优先 + 128 并发 → 21.5s / 240 文件/s（26.3MB/s）
-///   官方优先 + 192 并发 → 16.7s / 309 文件/s（33.9MB/s）
-/// 原因也查清了：BMCLAPI 不是 CDN，它是 **302 到第三方节点池**
-/// （open-bmcl-api.lunar.cc / hurtmc / sakura.sld.tw / 933.moe 随机分），
-/// 每个文件多一次跳转 + 随机落到跨境小节点，单连接只有 ~70KB/s；
-/// 官方 Azure Front Door 则是稳定的 111ms 首字节 + 单连接满速。
+/// AutoSwitch = 官方优先：按单发 curl 的首字节会选错源，真实并发下官方吞吐高一个量级
+/// （5173 文件量测：镜像优先 64 并发 105.7s，官方优先 192 并发 16.7s）。
+/// 原因：BMCLAPI 不是 CDN，是 **302 到第三方节点池**（open-bmcl-api.lunar.cc / hurtmc /
+/// sakura.sld.tw / 933.moe 随机分），每文件多一次跳转且常落到跨境小节点，单连接仅 ~70KB/s；
+/// 官方 Azure Front Door 是稳定首字节 + 单连接满速。
 /// 结论：**自动 = 官方优先，镜像只做失败兜底**。显式 PreferMirror 仍照办（用户要就给他）。
 inline bool preferOfficial(DownloadSourcePolicy p) {
     switch (p) {
@@ -43,8 +38,8 @@ inline QString mcManifestOfficial() {
 }
 
 // ── 请求类别 → 取源方式（统一决策点）──
-// 结论（2026-11-05 核实）：元数据与大文件的最优策略不同，这不算混乱；
-// 混乱的是"每个调用点自己决定"（3 处 setPreferOfficial(false) 硬编码）。
+// 元数据与大文件的最优策略不同，这不算混乱；
+// 混乱的是"每个调用点自己决定"——取源方式只允许从 routeFor 出。
 //   Metadata：几 KB 的 JSON/HTML，两个源都可能快 → 竞速，先成功者赢（延迟最优）
 //   Artifact：单个 10–20MB 安装器/大文件 → 优先源先发，另一个兜底（吞吐最优，且只需一次失败转移）
 enum class RequestClass {

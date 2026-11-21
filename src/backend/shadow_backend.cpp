@@ -174,7 +174,7 @@ ShadowBackend::ShadowBackend(QObject* parent)
         qCInfo(logApp) << QStringLiteral("[后端启动 +%1ms] %2").arg(bt.elapsed()).arg(label);
     };
 
-    // Create all 7 sub-backends
+    // Create all sub-backends
     m_app = new AppBackend(this);
     bp("AppBackend");
     m_account = new AccountBackend(this);
@@ -2188,7 +2188,7 @@ void ShadowBackend::setHighPerfGpu(bool v) {
     emit highPerfGpuChanged();
 }
 
-// ── 启动细节（低垂果实批，2026-08-08：对齐 主流启动器/主流启动器）──
+// ── 启动细节（低垂果实批，2026-08-08：对齐主流启动器）──
 
 int ShadowBackend::gcMode() const { return m_settings->gcMode(); }
 void ShadowBackend::setGcMode(int v) { m_settings->setGcMode(v); emit launchDetailChanged(); }
@@ -3917,8 +3917,6 @@ void ShadowBackend::saveSkinToFile()
     }
 }
 
-// ── Icon cache: async download webp → ffmpeg convert to PNG → cache locally ──
-// Qt 6.5.3 on this machine lacks qwebp.dll plugin, so we pre-convert webp to PNG
 // ============================================================
 // fetchResourcepackVersions
 // Q_INVOKABLE methods — App
@@ -5116,10 +5114,7 @@ bool ShadowBackend::validateBetaKey(const QString& key, QString* outError)
     return ok;
 }
 
-// ── UI 一次性标记（QSettings 持久化；2026-08-24 v1.0.1 一次性启动公告 toast 用）──
-// ── 更新后首次启动判定（2026-08-25）──
-// SLUpdater 完成替换后、新版本首次启动时，main_release.cpp 会在 exe 目录写 .just_updated
-// 标记；本方法消费该标记（存在即删），返回 true 表示本次是"更新后首次启动"。
+// ── 更新后首次启动标记 .just_updated：由 main_release.cpp PreInit 写入（当前没有消费方）──
 // ============================================================
 // Update
 // ============================================================

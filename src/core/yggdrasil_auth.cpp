@@ -192,10 +192,8 @@ YggdrasilMeta YggdrasilAuth::parseMeta(const QByteArray &data, QString &errorOut
     QJsonObject root = doc.object();
     QJsonObject metaObj = root.value(QStringLiteral("meta")).toObject();
     meta.serverName = metaObj.value(QStringLiteral("serverName")).toString();
-    // 注册地址在规范里是 meta.links.register（LittleSkin 实测就是这条路径）。
-    // 旧代码读的是 meta.registerUrl —— 那个字段规范里根本不存在，
-    // 所以这个属性从落地起就一直是空的，只是之前 UI 从没读过它，没人发现。
-    // 两种写法都兼容，优先规范路径。
+    // 注册地址在规范里是 meta.links.register（LittleSkin 实测就是这条路径）；
+    // meta.registerUrl 是早期读错的字段，留作兼容。优先规范路径。
     meta.registerUrl = metaObj.value(QStringLiteral("links")).toObject()
                            .value(QStringLiteral("register")).toString();
     if (meta.registerUrl.isEmpty())

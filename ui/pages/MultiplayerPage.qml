@@ -2,7 +2,7 @@
 import QtQuick
 import ShadowLauncher.Next
 
-// 联机页（2026-11-07，d3b 方案）
+// 联机页（d3b 方案）：创建/加入房间、设备身份与成员列表。
 // 结构：顶部标题 + 设备 chip，中间 560 宽居中卡片（四点阶段条 / 标题 / 说明 / 房间码 / 徽章 / 成员行 / 操作）。
 // 身份模型：联机认「这台设备」，与 MC 账号无关。
 //   deviceName 用户可改（存本地设置，跟设备走）；deviceCode = machine_id 前 4 位，固定，用于区分同名设备。
@@ -17,8 +17,7 @@ Item {
     readonly property string code: (mp && mp.roomCode) ? mp.roomCode : ""
     readonly property string devName: (mp && mp.deviceName) ? mp.deviceName : ""
     readonly property string devCode: (mp && mp.deviceCode) ? mp.deviceCode : ""
-    // 自己算，不读 backend.canRename：那个属性的 NOTIFY 只有 stateChanged，
-    // leaveRoom() 里先 setIdle 再 setRole(None)，读值会在 role 复位前被缓存成 false 且永不刷新。
+    // 与 backend.canRename 同义（role=None 且 state=Idle）；这里直接用本页已有的 st / role 算，少一层绑定。
     readonly property bool canRename: page.role === 0 && page.st === 0
     readonly property var members: (mp && mp.players) ? mp.players : []
     // 房主的游戏是否已经「对局域网开放」：0 = 还没开服。
@@ -58,8 +57,7 @@ Item {
     //   2 找联机中心（Discovering / Connecting）
     //   3 等游戏开服（WaitingForMcServer / VerifyingConnection）
     //   4 已连通（Connected / WaitingForGuests）
-    // 旧版把"等开服"和"找中心"归到同一格、把"已连通"也算成最后一格在跑，
-    // 结果是房主从第 1 格直接跳到第 3 格，中间那格永远没亮过 —— 这就是"遗漏"。
+    // 「等开服」与「找中心」必须分开：否则房主会从第 1 格直接跳到第 3 格，中间那格永远不亮。
     readonly property int stage: {
         if (isError) return -1
         switch (st) {
@@ -96,8 +94,7 @@ Item {
         }
     }
 
-    /// 后端错误码（稳定标识，不翻译）。以前这里用中文串 indexOf 判断，
-    /// 文案一旦进翻译就全废 —— 现在只看 code，文案只负责显示。
+    /// 后端错误码（稳定标识，不翻译）：只看 code，不要解析中文文案 —— 文案会进翻译，一改就失效。
     readonly property string errorCode: (page.mp && page.errorText !== "") ? String(page.mp.lastErrorCode || "") : ""
 
     readonly property string subText: {

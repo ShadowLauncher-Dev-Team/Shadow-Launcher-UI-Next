@@ -21,10 +21,10 @@ namespace ShadowLauncher {
 /// 不写注册表，与 主流启动器/主流启动器 一致）。装完后被 ModLoaderInstaller::findJavaPath
 /// 自动发现（其第 2 步扫描 java_cache/{major}/bin/java.exe）。
 ///
-/// 版本策略（2026-08-04 实测确认）：
-///   - Java 8 / 17 / 25 全部安装 JRE（Tuna 镜像均有 JRE 构建；
-///     游戏运行与 Forge/NeoForge 安装都只需 JRE——安装器全程 java -cp 跑 jar 无 javac 调用）
-///   - JRE 体积约为 JDK 的 1/4
+/// 版本策略（2026-08-17 起全部装 JDK）：
+///   - Java 8 / 17 / 25 一律安装 JDK（Tuna 镜像均有 JDK 构建）；
+///     JRE 裁掉了 jdk.crypto.ec 等模块，NeoForge 1.21.8+ 的认证库依赖 EC，
+///     用 JRE 会启动崩溃 "Module jdk.crypto.ec not found"
 /// 架构策略（Windows）：
 ///   - x64 → x64；x86 → x32（Tuna 目录名）；ARM64 → x64（Win11 Prism 模拟运行，
 ///     实测 Temurin 17/25 无 Windows ARM64 构建，Adoptium API 0 结果确认）
@@ -58,7 +58,7 @@ public:
     qint64 downloadTotal() const { return m_dlTotal; }
     double downloadSpeedMBps() const { return m_dlSpeedMBps; }
 
-    /// 一键安装 Java 8 (JRE) + 17 (JDK) + 25 (JDK)，跳过已安装
+    /// 一键安装 Java 8 (JDK) + 17 (JDK) + 25 (JDK)，跳过已安装
     Q_INVOKABLE void installRequiredJavas();
     /// 取消（当前版本下载完成后停止后续）
     Q_INVOKABLE void cancelInstall();
@@ -100,7 +100,7 @@ signals:
     void runningChanged();
     /// 下载进度实时更新（百分比 0-100 / 字节 / 速度 MB/s）
     void downloadProgressChanged();
-    /// 单个版本安装完成（label: "Java 8 (JRE)" 等；path: java.exe 路径；skipped: 已存在跳过）
+    /// 单个版本安装完成（label: "Java 8 (JDK)" 等；path: java.exe 路径；skipped: 已存在跳过）
     void javaInstalled(const QString& label, const QString& path, bool skipped);
     /// 全部完成
     void finished(bool ok, const QString& error);

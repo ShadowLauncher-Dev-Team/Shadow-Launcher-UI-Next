@@ -7,8 +7,8 @@
 // 三条安装路径（原版 / 加载器 / 整合包）共用同一套 key；显示名只由 UI 决定，
 // 后端业务逻辑一律按 key 找步骤，**不再按中文名子串匹配**。
 //
-// 迁移期：旧代码还在按中文名找步骤，keyForLegacyName() 提供"旧名 → key"的桥，
-// 等所有调用点改成 stepIndexByKey 之后即可删除。
+// keyForLegacyName() 是「旧中文名 → key」的桥：调用点已全部改用 stepIndexByKey，
+// 该函数目前无调用方，仅作兼容保留，可安全删除。
 
 #include <QString>
 #include <QHash>

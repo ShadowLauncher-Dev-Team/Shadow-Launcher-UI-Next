@@ -209,7 +209,7 @@ int main(int argc, char** argv)
     // 8) 真实 PCL2 / HMCL 目录探测（存在才跑，只读）
     // ════════════════════════════════════════════════════════════
     {
-        // 本机的真实目录走环境变量，不把开发机的用户名/路径写进仓库
+        // 真实目录优先取环境变量 SHADOW_TEST_MINECRAFT_DIR；另带一个无用户名的常见安装路径样本
         const QStringList real = {
             QStringLiteral("D:/Minecraft/.minecraft"),
             qEnvironmentVariable("SHADOW_TEST_MINECRAFT_DIR"),

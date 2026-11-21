@@ -58,9 +58,6 @@ public:
     /// Called when user clicks "检查更新".
     void checkUserInitiated();
 
-    /// Check if a ready-to-install update exists from a previous session.
-    /// If true, the caller should launch SLUpdater and quit.
-
     /// Resume a paused download from last session (called after startup).
     void resumePausedDownload();
 

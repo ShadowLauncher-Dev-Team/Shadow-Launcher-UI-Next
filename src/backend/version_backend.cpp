@@ -5789,9 +5789,9 @@ if (!loaderDlUrl.isEmpty()) {
             ds->loaderDownloadData = data;
 
             updateStep(installName, loaderDlStepIdx, QStringLiteral("completed"), 100, data.size(), data.size());
-            // ── 2026-08-14 修复：校验步骤按名字找，不再依赖 loaderDlStepIdx+1 ──
-            // 步骤顺序已调整为：主文件(idx=4) → 安装器库(idx=5) → 校验(idx=6)。
-            // +1 会错指向安装器库。
+            // ── 校验步骤按 key 找，不依赖 loaderDlStepIdx+1 ──
+            // 当前顺序（LoaderPlan）：主文件(4) → 校验(5) → 安装器库(6) → 安装(7)，
+            // 硬编码 +1 一旦顺序调整就会指错步骤。
             // ── 2026-11-06：按 key 找加载器校验步骤，禁止按中文名模糊匹配 ──
             // 旧实现 nm.contains("校验") && !nm.contains("资源")——步骤显示名统一后
             // 基础校验叫"校验游戏文件"（不含"资源"），于是这里误命中 MC 校验(idx=3)：
@@ -6441,8 +6441,8 @@ ModLoaderInstaller* VersionBackend::createLoaderInstaller(const QString& install
 
     ml->setGameDir(m_gameDir);
     // 2026-08-15：加载器安装器库/依赖库下载默认镜像优先（不跟随全局 fileSource）
-    // 加载器安装器/依赖库 = Artifact 类：按「文件下载源」决定优先源（官方优先时官方先、BMCLAPI 兜底），
-    // 不再硬编码镜像优先（契约 §11：一个设置一个消费者，路径不自己拍策略）。
+    // 加载器安装器/依赖库 = LoaderArtifact 类：routeFor 对该类固定镜像优先、忽略全局
+    // fileSource（MC 文件与加载器 Maven 是两个宿主集合，见 source_policy.h）。
     ml->setPreferOfficial(SourcePolicy::routeFor(
         SourcePolicy::RequestClass::LoaderArtifact,
         DownloadSourcePolicy::PreferOfficial,

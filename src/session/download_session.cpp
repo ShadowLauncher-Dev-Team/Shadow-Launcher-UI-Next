@@ -21,7 +21,7 @@ DownloadSession::DownloadSession(const QString& versionId, QObject* parent)
 DownloadSession::~DownloadSession() = default;
 
 // ══════════════════════════════════════════════
-// Progress / Speed (3-second sliding window)
+// Progress / speed push (speed is computed upstream)
 // ══════════════════════════════════════════════
 
 qreal DownloadSession::totalProgress() const {

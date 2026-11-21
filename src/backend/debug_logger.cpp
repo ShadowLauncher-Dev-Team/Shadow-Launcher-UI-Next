@@ -95,7 +95,7 @@ void DebugLogger::net(const QString& url, const QString& status, qint64 size, qi
 
 void DebugLogger::speed(qint64 bytesPerSec)
 {
-    // Speed is too frequent for text log — just store latest
+    // 速度更新过于频繁，写进文本日志会刷屏；当前实现直接丢弃该值
     Q_UNUSED(bytesPerSec);
 }
 

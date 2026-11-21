@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 // Shadow Launcher — Version Manager
-// Phase 2: Core — Fetches Minecraft version manifest from Mojang API
+// Phase 2: Core — Fetches the Minecraft version manifest (BMCLAPI 镜像优先，官方兜底)
 
 #include "version_manager.h"
 #include "../utils/logger.h"
@@ -140,10 +140,6 @@ void VersionManager::doNetworkFetch()
         });
     });
 }
-
-// ============================================================
-// Sync fetch
-// ============================================================
 
 // ============================================================
 // Mojang JSON parsing

@@ -1,4 +1,4 @@
-// 验证 Java 需求判定规则（与 src/backend/shadow_backend.cpp L2333 inferJavaByMcVersion 同步）：
+// 验证 Java 需求判定规则（与 src/backend/shadow_backend.cpp 的 inferJavaByMcVersion 同步）：
 // 1.16.5- → 8；1.17 → 16；1.18-1.20.4 → 17；1.20.5-1.21.x → 21；22+ → 25
 // 注意：此文件是规则快照，改动真实规则时必须同步更新两处
 #include <QCoreApplication>

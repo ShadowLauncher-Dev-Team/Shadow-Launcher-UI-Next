@@ -376,7 +376,7 @@ int LaunchBackend::getAutoMemory()
 //      OptiFine 版本与普通版本用固定档位。
 //   2. 阶梯预分配：0~T1 段 100% 给（基础需求优先保证）、T1~T2 段 70%、
 //      T2~T3 段 40%、T3~2×T3 段 15%（高需求段递减，保护系统余量）。
-//   3. 下限 = 最低需求；上限 = 2×T3，转 MB 后钳制 [512, 16384]。
+//   3. 下限 = 最低需求（ramMin）；上限 = min(T2, 物理内存一半, 物理内存-4GB)，转 MB 后钳制 [512, 32768]。
 int LaunchBackend::getAutoMemoryForVersion(const QString& versionId)
 {
 #ifdef Q_OS_WIN
@@ -700,7 +700,7 @@ void LaunchBackend::buildLaunchPipeline()
     m_pipeline->clearSteps();
     emit launchStepsChanged();   // 管线对象刚创建时也让 QML 重读一次
 
-    // 顺序必须与 runNextCheck() 的 case 0..5 一一对应
+    // 顺序必须与 runNextCheck() 的 case 0..6 一一对应
     m_pipeline->addStep(QStringLiteral("login"),   tr("检查登录状态"));
     m_pipeline->addStep(QStringLiteral("java"),    tr("检查 Java 环境"));
     m_pipeline->addStep(QStringLiteral("version"), tr("检查版本文件"));
@@ -1490,7 +1490,7 @@ void LaunchBackend::runNextCheck()
         break;
     }
     case 5: {
-        // Step 5 (75%)：启动前的最后准备 —— 外置登录组件 + launcher_profiles.json
+        // Step 5 (70%)：启动前的最后准备 —— 外置登录组件 + launcher_profiles.json
         emit launchCheckProgress(tr("准备启动环境..."));
         m_launchProgress = 70;
         emit launchProgressChanged(70, tr("准备启动环境..."));
@@ -2569,7 +2569,7 @@ QString LaunchBackend::exportLaunchScript(const QString& versionId, const QStrin
     launcher.setWindowTitleOverride(m_windowTitleOverride);
     launcher.setPreLaunchCommand(m_preLaunchCommand);
     launcher.setPostExitCommand(m_postExitCommand);
-    // 外置登录：注入 authlib-injector agent（对齐启动流程 Step 4）——
+    // 外置登录：注入 authlib-injector agent（对齐启动流程 Step 5）——
     // 否则脚本启动后不带 ygg 认证，外置服务器直接拒连（2026-08-10）
     QString effectiveJvmArgs = jvmArgs;
     if (m_yggdrasilMode && !m_yggApiRoot.isEmpty()) {

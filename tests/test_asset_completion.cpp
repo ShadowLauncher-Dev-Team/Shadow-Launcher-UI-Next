@@ -28,7 +28,7 @@ int main(int argc, char** argv)
     ShadowLauncher::installFileLogger(QCoreApplication::applicationDirPath());
 
     QByteArray contentA = "hello world asset A 0123456789";
-    for (int i = 0; i < 12; ++i) contentA += contentA;  // ~300KB
+    for (int i = 0; i < 12; ++i) contentA += contentA;  // ~128KB
     const QString sha1A = sha1Hex(contentA);
 
     // 简单服务器：每次连接返回 contentA

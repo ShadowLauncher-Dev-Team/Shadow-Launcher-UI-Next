@@ -5,11 +5,12 @@
 //
 // Key improvements over v8:
 //   - QThreadPool instead of QThread::create (avoids OS thread thrash)
-//   - 2 shared QNAMs with per-request HTTP/1.1 config (connection pooling)
+//   - thread-local QNAM per worker thread (per-request HTTP/1.1 config, reused across files)
 //   - DNS pre-resolution + IP reliability scoring
 //   - Per-host health tracking (consecutive failures, degraded hosts)
-//   - Phased acceleration: first-thread-for-all → speed-floor-thread-split
-//   - Removed QThread::msleep(50) BMCLAPI serial bottleneck
+//   - Phased acceleration: first-thread-for-all → per-file split (perFileCap / linkIdle)
+//   - Mirror throttle is now 100ms per request (rate-limit safety), no longer a global serial
+//     bottleneck for all files
 //   - Removed static s_lastProgressEmitMs race condition
 
 #include "core/file_downloader.h"
@@ -500,12 +501,9 @@ void FileDownloader::managerTick()
     }
 
     // Phase 2-3: speed-based thread splitting
-    // ── 速度门限（主流启动器语义，2026-08-04 恢复）──
-    // 全局下载速度 ≥256KB/s 就不追加分片线程：并发受控，避免把 CDN
-    // 打到限流（实测 14 个大文件全开分片 → 官方 CDN 限流 → 集体超时）。
-    // 速度不足时才加分片加速——主流启动器 NetTaskSpeedLimitLow=256KB/s。
-    // 注意：速度门限只挡“给已有线程的文件加分片”，不挡“无线程文件的
-    // 首线程补启动”（主流启动器 StartManager：等待文件启动不受速度门限限制）。
+    // 分片门限见下方 perFileCap（按剩余大小给连接）与 linkIdle（整机链路是否闲置）。
+    // 首线程补启动不看速度门限：无线程的文件总是优先启动（主流启动器 StartManager 语义）。
+    // kSpeedLimitLowBps（4MB/s）与 speedEnough 目前只作诊断值，不参与决策。
     const bool speedEnough = (m_instantBps >= kSpeedLimitLowBps);
 
     // Add threads to files with large remaining chunks
@@ -527,32 +525,14 @@ void FileDownloader::managerTick()
         }
         if (f->isNoSplit && !f->threads.isEmpty()) continue; // single-thread files, already started
 
-        // 速度门限：速度足够时不再给已有线程的文件加分片（主流启动器语义）
-        // ⚠️ 2026-11-18（尾部慢的真凶）：这个门限看的是**整机**速度，不是本文件速度。
-        // 冷装时 415MB 资源由山海经跑出 33MB/s，于是"速度足够"恒成立 →
-        // 夸父这 9 个文件（共 74MB）永远停在 1~2 条连接上，平均只有 3.8MB/s，
-        // 结果「资源 15.8 秒下完，安装却要等到 19.2 秒」。
-        // 例外：本文件线程数少于 4 时无条件加分片 —— 大文件本来就该多连接。
-        //
-        // ── 2026-11-20（再次校正：4 条/文件把库下载压在 6.5MB/s）──
-        // 冷装实测：126MB 库文件 15.4 秒（6.5MB/s），而同一主机
-        // 4 条并发 Range 实测 11.3MB/s、6 条整文件 GET 实测 33MB/s —— 对端不缺带宽，
-        // 是连接给少了。每文件上限改为「按剩余大小给，每 ~6MB 一条，最多 16 条」；
-        // 全局速度门限只用来挡「已经 4 条以上、且本文件已经很宽裕」的情况。
-        // 速度门限：全局速度足够时不再给已有线程的文件加分片（主流启动器语义）。
-        // ⚠️ 2026-11-18（尾部慢的真凶）：这个门限看的是**整机**速度，不是本文件速度。
-        // 冷装时资源由山海经跑出 33MB/s，于是"速度足够"恒成立 →
-        // 夸父这 9 个文件永远停在 1~2 条连接上，平均只有 3.8MB/s。
-        // 例外：本文件线程数少于 4 时无条件加分片 —— 大文件本来就该多连接。
-        //
-        // ── 2026-11-20 实测定稿 ──
-        // 「只有库要下」的场景（资源全在缓存，链路闲着）连测两轮：
-        //   4 条上限：4.6s / 38.3s（一条慢连接就能把文件拖死，结果呈双峰）
-        //   按剩余大小放到 12 条：4.28s / 4.39s（稳定）
-        // 而冷装（资源与库同时抢链路）时多开连接会把活塞 CDN 的 client.jar 打到
-        // 超时/连接被取消（那个失败在 4 条上限下同样出现，与线程数无关）。
-        // 因此判据取「整机链路是否闲着」：闲（<8MB/s）才给单文件多开连接，
-        // 忙时保持 4 条，避免把对端打到超时。
+        // ── 每文件连接上限（2026-11-20 实测定稿）──
+        // 旧门限看的是**整机**速度：冷装时资源跑出 33MB/s，「速度足够」恒成立 →
+        // 夸父的文件永远停在 1~2 条连接（平均 3.8MB/s），资源 15.8s 下完、安装等到 19.2s。
+        // 现在按剩余大小给连接：126MB 库文件 4 条只有 6.5MB/s，而同一主机 4 条 Range
+        // 11.3MB/s、6 条整文件 GET 33MB/s —— 对端不缺带宽，是连接给少了。
+        // 「只有库要下」连测两轮：4 条上限 4.6s/38.3s（双峰），放到 12 条 4.28s/4.39s（稳定）。
+        // 但冷装（资源与库同时抢链路）多开会把活塞 CDN 的 client.jar 打到超时/被取消，
+        // 所以判据取「整机链路是否闲着」：闲（< kLinkIdleBps）才放开，忙时每文件最多 4 条。
         const qint64 undoneForFile = qMax<qint64>(0, f->fileSize - f->totalDone());
         int perFileCap = 4;
         if (!f->isUnknownSize) {
@@ -580,7 +560,7 @@ void FileDownloader::managerTick()
     // 实测 16KB/s），整批下载被拖到龟速。检测持续慢速的分片线程，
     // 将其剩余范围一分为二并开新连接——老分片保留进度不丢，新线程新连接
     // 有机会命中更快边缘；多次切分后尾部多连接并跑，聚合速度成倍提升
-    // （并发上限 maxThreads，镜像源不分片、小于 32KB 不再切）。
+    // （并发上限 maxThreads，镜像源不分片、剩余不足 512KB 不再切）。
     const qint64 scanNow = getElapsedMs();
     if (scanNow - m_lastSlowScanMs >= kSlowScanMs) {
         m_lastSlowScanMs = scanNow;
@@ -796,14 +776,12 @@ std::shared_ptr<DownloadThread> FileDownloader::trySplitSlowThread(
     if (file->threads.size() >= 4) return nullptr;
     if (th->state != 2) return nullptr;
     const qint64 undone = th->downloadUndone();
-    // 剩余不足两倍最小粒度（32KB×2）不再切——保证切出的两半都 ≥32KB，
-    // 避免无限细分产生碎片分片
+    // 切分粒度：undone 不足两倍粒度就放弃，保证切出的两半都够大、不产生碎片。
     if (undone < 2 * kMinSplitPieceBytes) return nullptr;
-    // ── 2026-11-20：慢速切分的最低粒度提到 512KB ──
+    // ── 2026-11-20：慢速切分的最低粒度提到 512KB（上面那条 32KB 检查已被本条覆盖）──
     // 现场：client.jar 被切出 55,733 字节的碎片片（[8429568-8485301]），
     // 紧接着原连接被 abort → 「Operation canceled」→ 该文件判失败 → 触发整轮修复。
-    // 32KB 的粒度对「慢速切分」太小：切出来的碎片本身没有下载价值，
-    // 只是把一条能用的连接干掉。大文件切分至少留 512KB 才有意义。
+    // 碎片本身没有下载价值，只是把一条能用的连接干掉。
     if (undone < 2 * 512 * 1024) return nullptr;
     if (m_activeThreads.loadRelaxed() >= m_maxThreads) return nullptr;
 
@@ -826,8 +804,8 @@ std::shared_ptr<DownloadThread> FileDownloader::trySplitSlowThread(
         const qint64 reqEnd = th->requestedEnd.loadRelaxed();
         if (reqEnd <= th->downloadStart) return nullptr;   // 首个请求还没登记
         if (splitPoint < reqEnd) splitPoint = reqEnd;
-        // 2026-11-20：切出来的**后半段**也要够大。现场切出过 55,733 字节的碎片
-    // （[8429568-8485301]），这种碎片没有下载价值，只会在合并时留下缺口。
+        // 2026-11-20：切出来的**后半段**也要够大（同样 512KB）。现场切出过 55,733
+        // 字节的碎片（[8429568-8485301]），这种碎片没有下载价值，只会在合并时留下缺口。
     if (th->downloadEnd - splitPoint < 512 * 1024) return nullptr;
     }
     if (splitPoint <= th->downloadStart) return nullptr;
@@ -952,10 +930,9 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             QByteArray rangeData;                        // 止损前 readAll 保存的已接收数据（abort 会清空缓冲！）
 
             int timeoutMs;
-            // ── 自适应超时（主流启动器语义）──
-            // 主流启动器: Timeout = min(max(ConnectAverage,15000)×(1+FailCount), 30000)
-            // 基础 12s（官方 CDN 正常 1-2s 首字节），连续失败次数越多超时越长
-            // （上限 30s）——避免死等也避免误杀慢速但存活的连接。
+            // ── 超时（主流启动器语义的简化版）──
+            // 计算式照 主流启动器：base×(1+FailCount)，但结果被夹在 12000ms，
+            // 而 base 已是 12s/15s —— 所以当前实际恒为 12s，并不会随失败次数变长。
             // setTransferTimeout 是“无数据超时”，持续下载的文件不受影响。
             const bool isOfficialUrl = url.contains("mojang.com") || url.contains("minecraft.net");
             {

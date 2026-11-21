@@ -175,7 +175,7 @@ private:
     void forgeStep3_route(const QByteArray& jarData);                                  // 主线程：决策三分支
     // Legacy 2: has "install" field → universal JAR + inheritsFrom JSON
     void installLegacy2(const QByteArray& jarData, const QJsonObject& profile);
-    // Legacy 1: has "json" field, no install, no processors → maven/ + version JSON
+    // Legacy 1: has "json" field, no install, no processors, spec<=0 → maven/ + version JSON
     void installLegacy1(const QByteArray& jarData, const QJsonObject& profile);
     // Method A: Bootstrapper (processors / spec≥1 / NeoForge)
     void runBootstrapperProcess(const QByteArray& jarData);

@@ -41,10 +41,11 @@ public:
     // ── 状态管理 ──
     StepStatus status() const { return m_status; }
     int statusInt() const { return static_cast<int>(m_status); }
-    /// 契约（DOWNLOAD_CONTRACT §2）：终态（completed/failed/skipped）不可回退到 pending/active。
+    /// 契约（DOWNLOAD_CONTRACT §2）：终态（completed/failed/skipped）不可再迁移到任何其它状态。
+    /// （不只挡回退：completed → failed 之类同样丢弃，见 step_node.cpp。）
     /// 需要复位（重试用）时必须显式调用 forceStatus()，让"复位"在代码里可审计。
     void setStatus(StepStatus s);
-    void setStatus(const QString& s);  // convenience: "pending"|"active"|"completed"|"failed"
+    void setStatus(const QString& s);  // convenience: "pending"|"active"|"completed"|"failed"|"skipped"（其它值→Pending）
     /// 强制复位（仅限重试/重建等确知要回退的路径）
     void forceStatus(StepStatus s);
 

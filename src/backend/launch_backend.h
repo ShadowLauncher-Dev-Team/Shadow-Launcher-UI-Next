@@ -105,7 +105,7 @@ public:
     void setDetectedRegion(const QString& region) { m_detectedRegion = region; }
     void setVersionGameDir(const QString& dir) { m_versionGameDir = dir; }
 
-    // ── 启动细节配置（低垂果实批，2026-08-08：ShadowBackend 启动前注入）──
+    // ── 启动细节配置（ShadowBackend 启动前注入）──
     void setGcMode(int mode) { m_gcMode = mode; }
     void setMinMemoryMB(int mb) { m_minMemoryMB = mb; }
     void setProcessPriority(int priority) { m_processPriority = priority; }
@@ -216,7 +216,7 @@ private:
     void runCrashAnalysis();           // async analysis worker (singleShot)
 
     // ── 启动阶段管线 ──
-    void buildLaunchPipeline();      // 每次启动重建节点（顺序与 runNextCheck 的 case 0..5 对应）
+    void buildLaunchPipeline();      // 每次启动重建节点（顺序与 runNextCheck 的 case 0..6 对应）
     void syncPipelineStep(int step); // 按当前 m_checkStep 推进节点状态
     void completePipeline();         // 全部完成
     void failPipelineStep(const QString& reason);
@@ -251,7 +251,7 @@ private:
     QString m_detectedRegion;
     QString m_versionGameDir;
 
-    // ── 启动细节配置（2026-08-08）──
+    // ── 启动细节配置 ──
     int m_gcMode = 0;                 // 0=自动 1=分代ZGC优先 2=仅G1GC 3=不指定
     int m_minMemoryMB = -1;
     int m_processPriority = 1;        // 0=高 1=中 2=低

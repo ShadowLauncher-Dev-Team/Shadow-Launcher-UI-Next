@@ -91,8 +91,8 @@ QString YggdrasilBackend::normalizeApiRoot(const QString &input)
     return s;
 }
 
-// 拖入识别。注意这里刻意不联网：先只做"这个文件有没有可用信息"的判断，
-// 真正的地址解析（ALI）交给 resolveApiRoot —— 两者职责分开，失败原因也清楚。
+// 拖入识别：本函数只在本地读文件、找候选地址（不联网），
+// 找到后交给 resolveApiRoot 做 ALI 解析（联网那一步在那边），两者职责分开、失败原因清楚。
 QString YggdrasilBackend::resolveApiFromFile(const QString &filePath)
 {
     // QML 的 DropArea 给的是 file:// URL（含百分号编码，中文路径必须解开）

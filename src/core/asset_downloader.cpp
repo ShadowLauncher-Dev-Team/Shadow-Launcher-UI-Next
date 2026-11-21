@@ -7,13 +7,13 @@
 //   - Async SHA1 pre-check (IO pool instead of blocking main thread)
 //   - Async DNS resolution (QHostInfo::lookupHost instead of fromName)
 //   - Fixed cache-hit speed spike corrupting speed floor
-//   - Reduced default concurrency (burst 12, max 32, per-host 8)
+//   - Burst 64, concurrency from settings, per-host cap adaptive (<=64)
 //   - Added detailed logging for diagnostics
 //
 // Design:
 //   1. Init: async DNS pre-resolution, brief size-based cache check
-//   2. Burst: fire ~12 requests immediately
-//   3. Accelerate: every 50ms, check throughput. If speed < floor → add 4 more.
+//   2. Burst: fire up to 64 requests immediately
+//   3. Accelerate: every 50ms, check throughput; if below floor, raise target by up to 64.
 //      Speed floor starts at 256KB/s, rises to 85% of weighted peak.
 //   4. Steady: when speed >= floor, stop adding. Replace finished requests.
 //   5. Cooldown: if speed drops sharply, reduce inflight to avoid congestion.
@@ -108,13 +108,11 @@ void AssetDownloader::setupNam()
     m_targetInflight = 0;
     m_phase = PhaseInit;
 
-    // ── 2026-11-18：QNAM 数量从 2 提到 32 ──
-    // Qt 的 QHttpNetworkConnection 每个连接对象默认 6 条 channel，
-    // 所以「单主机真实并发 = 6 × QNAM 数」。之前 2 个 QNAM = 12 条真实连接，
-    // 与我们声明的 192 并发差 16 倍：日志里在途=192 却只有 114 文件/s、请求均 1653ms
-    // （参考引擎同样 192 并发是 309 文件/s、190ms）。
-    // 32 × 6 = 192，与目标并发对齐。每个 QNAM 自带一条网络线程，32 个线程可接受。
-    // 仍然逐请求 Http2AllowedAttribute=false（HTTP/2 单连接复用会把 192 请求挤到少数流上）。
+    // ── QNAM 数量 = kNamCount（当前 4）──
+    // Qt 6.5+ 用 QHttp1Configuration::setNumberOfConnectionsPerHost(255) 就能撑满单主机并发，
+    // 不需要按「6 × QNAM 数」堆数量；多开只多出网络线程与连接池开销。
+    // 留 4 个是为了让分片/探测/普通请求少抢同一把连接锁（详见头文件 m_nam 处注释）。
+    // 逐请求 Http2AllowedAttribute=false：HTTP/2 单连接复用会把并发请求挤到少数流上。
     for (int i = 0; i < kNamCount; ++i) {
         if (m_nam[i]) {
             m_nam[i]->disconnect();
@@ -572,18 +570,10 @@ void AssetDownloader::fireNext()
     req.setRawHeader("User-Agent", "ShadowLauncher/1.0");
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                      QNetworkRequest::NoLessSafeRedirectPolicy);
-    // ── 2026-11-18（第三轮）：官方源放开 HTTP/2 ──
-    // 起速实测（1 秒粒度）：在途 235 条只拿到 3.2MB，每条约 13KB —— 典型的
-    // 「每条连接各自慢启动」。192~256 并发下前 4 秒只能拿到 53MB，
-    // 而 t=4~6s 稳定期能到 62~65MB/s。也就是说**爬坡吃掉的那 3~4 秒**
-    // 才是距 11 秒的主因，不是稳态带宽。
-    // HTTP/2 把多文件复用到一条连接上：带宽爬坡只发生一次，而不是 200 多次。
-    // 注意：镜像（BMCLAPI）当年就是在 h2 并发流下吐 RST_STREAM 才被禁用的，
-    // 所以这里**只对官方 CDN 放开**，镜像继续走 HTTP/1.1。
     const QString attrHost = extractHost(url);
     const bool officialHost = attrHost.endsWith(QStringLiteral(".minecraft.net"))
                            || attrHost == QStringLiteral("minecraft.net");
-    // ── 2026-11-19：官方源也关掉 HTTP/2（撤回 11-18 的实验）──
+    // ── 2026-11-19：HTTP/2 全部关闭（撤回 11-18 对官方源的实验）──
     // 实测代价：26.2（5059 个资源）时服务器直接拒绝新流并关连接，
     //   W [qt.network.http2] Server stopped accepting new streams before this stream was dispatched
     //   W [山海经] 下载失败 xxx 所有镜像已耗尽 (Connection closed)   ← 成片连锁取消，重试 2 轮
@@ -597,9 +587,9 @@ void AssetDownloader::fireNext()
         h1cfg.setNumberOfConnectionsPerHost(255);
         req.setHttp1Configuration(h1cfg);
     }
-    // Per-source adaptive timeout（主流启动器语义）:
-    //   min(max(avg_first_byte, 15s) × (1+fails), 30s)
-    // 15s 下限避免快网络误杀慢连接；avg_first_byte 增长上限 30s。
+    // Per-source adaptive timeout:
+    //   min(clamp(avg_first_byte × 3, 6s, 12s) × (1+min(fails,3)), 12s)
+    // 6s 起步避免快网络误杀慢连接；失败次数最多放大 4 倍，上限 12s。
     {
         QString host = extractHost(url);
         QMutexLocker lock(&m_hostMutex);
@@ -622,7 +612,7 @@ void AssetDownloader::fireNext()
         m_hostStats[host].activeRequests++;
     }
 
-    // Round-robin across 2 QNAMs
+    // Round-robin across kNamCount QNAMs
     int namIdx = m_namRoundRobin;
     m_namRoundRobin = (m_namRoundRobin + 1) % kNamCount;
 

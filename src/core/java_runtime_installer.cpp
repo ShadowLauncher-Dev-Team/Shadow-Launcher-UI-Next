@@ -272,11 +272,9 @@ void JavaRuntimeInstaller::installNext(int idx)
         + QStringLiteral("/java_cache/%1/bin/java.exe").arg(item.major);
 
     // ── 前置检测跳过逻辑 ──
-    // 规则：已有同 major 任意类型（JRE/JDK）→ 不需要重复安装。
-    // 理由（实际应用场景）：
-    //   - 游戏运行需要 JRE，JDK 是超集但运行场景不需要额外工具链
-    //   - 用户已装 Java 17 JRE → 游戏/Forge 安装器都能跑，无需再装 17 JDK
-    //   - 只有该 major 完全缺失时才按预设类型安装
+    // 规则（见 isRequired）：已有同 major 的 JDK，或含 jdk.crypto.ec 的完整 JRE → 跳过。
+    // 缺损 JRE（Adoptium 裁剪版，无 crypto.ec）不算满足：NeoForge 1.21.8+ 的认证库
+    // 依赖 EC 模块，装上去也会崩，所以仍按预设类型补装 JDK。
     if (!isRequired(item.major, isJdkTarget)) {
         m_statusText = tr("已检测到 %1，跳过").arg(existingJavaLabel(item.major));
         emit progressChanged();

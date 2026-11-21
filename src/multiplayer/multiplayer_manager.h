@@ -280,8 +280,8 @@ private:
     int m_mcVerifyRetries = 0;
     static constexpr int kMcVerifyMaxRetries = 8;
 
-    // Guest: scaffold-session reconnect counter (Terracotta loops 60×4s until
-    // fingerprint verified; easytier tunnel may lag the first connect)
+    // Guest: scaffold-session reconnect counter (Terracotta 循环 60×4s；我们
+    // 最多 20 次 × 3s，easytier 隧道可能晚于首次连接才就绪)
     int m_connectRetries = 0;
     static constexpr int kGuestConnectMaxRetries = 20;
 

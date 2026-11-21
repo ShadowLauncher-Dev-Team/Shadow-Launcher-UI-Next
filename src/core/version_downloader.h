@@ -162,7 +162,7 @@ private:
     QString m_minecraftDir;
     QString m_cacheFallbackDir;  // real gameDir for cache lookups (used when m_minecraftDir is a tempDir)
     DownloadConfig m_downloadCfg;
-    int m_maxWorkers = 16;  // 与设置默认一致，上限 24
+    int m_maxWorkers = 16;  // 初值；实际值由 setDownloadConfig 从设置传入并夹到 1..512
 
     // Mirror fallback: tracks current position in fallback chain
     QVector<MirrorSource> m_fallbackChain;
@@ -228,9 +228,8 @@ public slots:
 
 signals:
         void progressChecked(int checked, int total);
-    /// 校验判坏后走「换镜像重下」的修复阶段进度（done/total = 本轮重下的文件数）。
-    /// 2026-11-20：修复期间上层步骤原本停在 99% 一动不动（实测 105 秒），
-    /// 用户以为卡死；有这个信号就能显示「修复中 x/y」并在跑完时收尾。
+    /// 用户取消时回报已校验数（转发成 verifyProgressChanged 的最后一拍，
+    /// 随后照常发 finished(false, …) 让调用方收尾）。
     void cancelled(int checked, int total);
     void finished(bool allPassed, const QStringList& missedLabels,
                   const QStringList& missedPaths);

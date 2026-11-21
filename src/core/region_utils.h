@@ -2,12 +2,11 @@
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 #pragma once
 
-// ── 区域判定（2026-11-18）──
-// 用途：下载源「自动」策略要按区域择优。国内的实际情况是 Mojang 官方 CDN
-// （resources.download.minecraft.net / libraries.minecraft.net）单次请求首字节
-// 280–800ms，而 BMCLAPI 只要 50–70ms —— 同一个文件差 4–10 倍。
-// 这部分与 HMCL 做法一致（HMCLDownloadProvider：RegionUtils.MACHINE_REGION == "CN"
-// 时 DEFAULT 策略 mirrorFirst = true）。
+// ── 区域判定 ──
+// 用途：下载设置一次性迁移（settings_backend 的 regionPolicyV1）时标注国内/其他，
+// 供日志与人工排障；它不再决定源策略——下载源「自动」已改为官方优先、与区域
+// 无关（见 source_policy.h 的 preferOfficial）。单发首字节会误判：官方 CDN 首字节
+// 虽慢，并发吞吐却远高于 302 到第三方节点池的 BMCLAPI。
 //
 // 判定顺序：系统时区 → 系统区域代码。两者任一命中「中国」即认为在国内。
 // 不联网、不引入第三方库，纯本地判断。

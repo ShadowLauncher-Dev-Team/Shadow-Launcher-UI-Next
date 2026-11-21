@@ -273,14 +273,14 @@ void SettingsBackend::loadSettings()
     // 推翻它：镜像优先 105.7s vs 官方优先 16.7s，镜像慢 6 倍。
     m_fileDownloadSource = qBound(0, s.value(QStringLiteral("download/fileSource"), 2).toInt(), 2);
     m_listDownloadSource = qBound(0, s.value(QStringLiteral("download/listSource"), 2).toInt(), 2);
-    // 并发上限 64 → 256（参考引擎实测 192 是拐点，256 不再更快但要留余量给用户手调）
+    // 并发上限 512（默认 192；参考引擎实测 192 已是拐点，再高不再更快，留余量给用户手调）
     m_maxDownloadThreads = qBound(1, s.value(QStringLiteral("download/threadLimit"), defaultDownloadConcurrency()).toInt(), 512);
 
     // ── 一次性迁移（regionPolicyV1）──
     // 老版本把「官方优先(1)」写死成默认并存进了注册表，也把线程数写死成 16。
     // 这两条在国内都是明显吃亏的选择。这里只迁移**一次**（写了标记就不再动），
     // 用户之后手动改设置也不会被覆盖。
-    //   源：1(官方优先) → 2(自动，国内=镜像优先)
+    //   源：1(官方优先) → 2(自动：官方优先 + 镜像兜底)
     //   线程：16(旧默认) → 核数×4（≤64）
     if (!s.value(QStringLiteral("download/regionPolicyV1"), false).toBool()) {
         const bool cn = RegionUtils::isChinaRegion();

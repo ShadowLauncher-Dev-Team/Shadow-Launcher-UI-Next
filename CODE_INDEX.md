@@ -1,782 +1,411 @@
-# Shadow Launcher 代码功能归档（CODE INDEX）
+# Shadow Launcher 代码索引（CODE_INDEX）
 
-> 本文档是 Shadow Launcher（C++17 / Qt 6.8 / QML，Windows）**全部代码文件的功能查询索引**。
-> 用途：①让不读代码的人也能快速知道每个文件是干什么的；②找功能代码时**先查本表**再动手，避免大海捞针。
+> **用途**：找功能 → 先查本文件 → 再去读代码。本文件只描述**当前**代码结构与职责，不描述历史。
 >
-> **维护铁律**（必须遵守）：
-> 1. 每次新增/修改/删除代码文件，**必须同步更新本文档**；
-> 2. 编辑只能使用 `edit` 或增量追加，**绝对禁止整文件覆盖重写**；
-> 3. 本文档不含敏感信息（密钥/令牌/地址均为机制描述），可安全提交仓库。
->
-> 更新日志见文末「文档更新记录」。
->> 2026-11-21（内嵌登录关闭按钮·第二次修复，真正根因）：上一版只订阅 `WindowCloseRequested` **没用** —— Chromium 规定
-> 「脚本只能关闭由脚本打开的窗口」，普通窗口里页面调 `window.close()` 会被**静默忽略**，事件根本不触发。
-> 现在的做法（`thirdparty/wv2login/src/AppWindow.cpp`）：`AddScriptToExecuteOnDocumentCreated` 注入脚本
-> ① 覆盖 `window.close` → `postMessage('WV2CLOSE:js')`；② 捕获阶段点击监听，按 id/class/aria-label/title 子串命中 close|dismiss|cancel|关闭 → `postMessage('WV2CLOSEBTN:...')`。
-> 宿主 `add_WebMessageReceived` 收到 `WV2CLOSE*` 就 `PostMessage(WM_CLOSE)`；`WindowCloseRequested` 仍保留做第三条路。
-> 同时写了 `<输出文件>.dbg.log` 调试日志（每次点击都记元素链，未命中记 `WV2CLICKANY`），下次再出问题可直接看实据。
-> **两个坑（都靠 node 跑假 DOM 测出来）**：① 正则带 `i` 时 `[^a-z]` 会连大写一起排除，`closeBtn` 这种驼峰匹配不上 → 改子串判断；
-> ② 删正则时漏删一行 `if (re.test(blob))`，`re` 未定义抛错被 try 吞掉 → **一次消息都没发出**，表现为点了完全没反应（和原 bug 一模一样）。
->> 2026-11-21（内嵌正版登录两个问题）：
-> ① **点页面里的关闭按钮没反应**：Microsoft 登录页在嵌入式布局下自带一个关闭按钮，它执行的是 `window.close()`；
->    WebView2 收到后只发 `WindowCloseRequested` 事件，**不会替宿主关窗** —— 不订阅就等于点了没反应，用户只能去点标题栏 X。
->    修法：`thirdparty/wv2login/src/AppWindow.cpp` 在创建 controller 后 `add_WindowCloseRequested` → `PostMessageW(m_window, WM_CLOSE)`，
->    并加 `m_closingForGood` 防重复投递。注意 SDK 里该 handler 的 `Invoke` 第二参是 **`IUnknown*`**（不是 `...EventArgs*`，写错编译报 C2061）。
-> ② **中途关窗后「登录状态」一直挂着**：`AccountBackend::loginFailed` 里 `m_msStatus.clear()` 后**没发通知**，
->    而 `msStatus` 的 NOTIFY 是 `microsoftLoginProgress` —— 只 clear 不发信号，QML 永远停在最后一步（「正在加载登录页面」），要重启才消失。
->    修法：clear 之后补 `emit microsoftLoginProgress(QString(), QString())`（登录成功路径同样补上）。
-> 日志里对应：`[wv2login] 未完成登录（窗口关闭/失败），按取消处理` → `登录失败: 登录被用户手动取消`。
->> 2026-11-21（外观页拖动取景卡顿、松手一秒才退出预览）：两个原因叠加。
-> ① `setActiveView()` 每写一次取景都 `emit customBgChanged()`（拖动时约 12 次/秒），QML 收到就 `bgRev++` → 整排缩略图 delegate（含圆角遮罩层 + MultiEffect）**每次全部销毁重建**；
-> ② 松手后 `previewHold` 还要走完 900ms + 180ms 淡出，共约 1.1s 才退出「只剩预览」。
-> 修法：后端新增**只表示图库结构变化**的 `bgLibraryChanged()`（导入/删除/切换当前图时发），QML 只在它上面 `bgRev++`；取景变化改为拖动中完全忽略、松手后经 `thumbRefresh`(260ms) 合并成一次重建。松手时 `previewHold` 立刻改成 200ms。
-> 实测：外观页 142.9 MB（未退化，首页 125.6），无 QML 报错。**注意 `bgRev` 千万不能绑回 customBgChanged**，那等于把整排 delegate 的重建挂到鼠标移动上。
->> 2026-11-21（外观页内存飙升 292 MB）：根因是**缩略图没设 `sourceSize`**——Qt 会把原图整张解进内存，
-> 内置壁纸 14 张 x 2737x1532 x 4B 约 **224 MB**，全被 176x104 的卡片吃掉了。
-> 修法：①`SetAppearancePane` 内置预设缩略图 `sourceSize = 卡片尺寸 x 2 x dpr`（写死 176/104，不用 `width`——首帧 `width` 是 0，那样仍会按原图解码）；
-> ②`SBgImage` 新增 `decodeSide`（默认 0 = 不限制），用户导入图的缩略图按 `176 x maxZoom x dpr` 解码。
-> **启动页刻意不设**：它要全分辨率；且 `sourceSize` 一变就要重解码，窗口拖动会卡，所以不做自动推导。
-> 实测（`QT_QPA_PLATFORM=offscreen` 跑真实 exe，`--ui-prefs --ui-pane appearance`）：外观页 **419.3 -> 144.5 MB**，首页 125.2，增量 **+292 -> +19 MB**，连续三次稳定。
-> **坑**：部署目录只有 `qwindows.dll`，离屏测量前要把 Qt 的 `qoffscreen.dll` 临时拷进 `platforms/`，否则进程静默退出、量到的全是空壳（第一次就量错了）。
-> **Qt 语义**：`sourceSize` 在 `fillMode: Stretch` 下是“等比装进框内”，`PreserveAspectCrop` 下是“铺满框”；给超过原图的尺寸时 Qt **不会反向放大**（4400 -> 2737）。
-> 2026-11-21（图标矢量重绘）：`resources/icons/app.svg`。几何不是目测的，是从 256px 帧**拟合**出来的：
-> PIL 4× 超采样渲染 + 1px 容差比对做网格搜索，最终 白底圆角 42 / 黑色尖顶六边形 中心(128,127.5) 半高66.75 半宽58 圆角16 / 两条 round-cap 白线 粗5。
-> 与位图对称差 109/65536 像素（0.17%）；再经 Edge 渲染回 256 比对，肉眼无差。
-> **坑**：先写的 `L 顶点 → A r 到下一顶点` 是反的（直线跨过圆角、圆弧跨过长边），渲染出来是个鼓包三角——圆角六边形的路径必须是 `A r 到本顶点另一侧切点 → L 到下一顶点切点`。
->> 2026-11-21（图标导出大尺寸 PNG）：`resources/icons/app-512.png`、`app-1024.png` 由 `app.svg` 经 Edge 无头渲染（`--force-device-scale-factor=1` + `--default-background-color=00000000`）导出，RGBA 透明背景。
-> 与另外 6 个 `app-16..256.png` 来源不同：那些是 .ico 逐帧抽取的原始位图，这两个是矢量渲染（放大不糊）。
-> 校验：四角 alpha=0、中心 alpha=255；1024 的六边形按阈值测得 280..743（÷4 = 70..185.75），与 256 位图的 69..186 差在抗锯齿阈值上。
->> 2026-11-21（图标补 PNG）：`resources/app.ico` 里 6 个尺寸（16/32/48/64/128/256）已抽成 `resources/icons/app-<size>.png`，
-> 用 Pillow `im.ico.getimage((s,s))` 逐帧取（不是缩放），尺寸与源帧一致；**256 是原生最大尺寸，再放大只会变糊**。
-> 注意这张图是「白色圆角基底 + 黑色六边形」，白底页面上几乎看不见，预览请放深色底。
->> 2026-11-21（覆盖式滚动条压住行尾）：导出面板的树列、模组列表、资源详情的旧版本列表都是 `ScrollBar.vertical`（覆盖式，不占布局宽度）+ 行宽 = 容器宽 → 行尾“已选 N · 收起”压在滚动条上。
-> 修法：给滚动条加 id，行/列宽改成 `容器宽 - bar.width - gap`。实测（`--ui-settings --ui-pane export` + `--screenshot`）：树列右缘 714.0、滚动条左缘 719.9，留 6px；模组行 4px。
-> **新增任何覆盖式滚动条都要让内容先让位**，否则默认就是压在内容上。
->> 2026-11-21（背景来源统一）：账户页自己拼 `file:/// + b.customBgPath`、版本页直接写死极光图 → 选内置预设背景时账户页掉回默认图，和启动页不是同一张。
-> 现在唯一真源是 `Theme.bgUrl(b)`（读 `b.customBgUrl`，回退 `Theme.bgFallbackUrl`）：启动页 / 账户页 / 版本页封面条全部走它，取景也统一改成 `SBgImage`（zoom/cropX/cropY 与启动页同一套公式）。
-> 自检日志：`[背景] 启动页 <url>` 与 `[背景] 账户页 <url>` 必须相同（实测两边都是 `qrc:/ui/stage-weijian-6.jpg`）。**新增任何带壁纸的页面都必须打这行。**
->> 2026-11-21（封面窗淡入）：之前 `show()` 是满不透明，桌面「啪」一下变成 #08090d + SHADOW，观感就是硬切。现改为 `fadeInAndShow(220)`：setWindowOpacity 0.02→1 走 smoothstep，自己在进入阻塞前泵事件循环完成。
-> 实测采样（屏幕平均亮度）：34.2 → 33.0 → 27.5 → 20.9 → 14.5 → 12.8，共 5 个中间帧、约 200ms —— 有真实过渡。
-> 注意 easeOut 不行：头 40ms 就冲到 78%，采样只剩 2 个中间帧，等于没柔化（第一版就是这个错）。
->> 2026-11-21（封面窗「没上屏」的重大纠正）：`show()+repaint()` 只把画面画进后备缓冲，窗口要等 WM_SHOWWINDOW/首帧被消息循环处理后才真正合成上屏。实测 show 在 +0.03s，屏幕上是 SHADOW 却在 +1.29s（load 结束前 227ms）——**封面窗一直没盖住加载**，用户看到的“SHADOW 等于装饰动画”是对的。
-> 修法：进入阻塞（backend 构造 + engine.load）之前 `QCoreApplication::processEvents()` 主动 pump + repaint + 再 pump。修后实测 SHADOW 在 +0.11s 上屏，一直持续到 +1.70s，全程盖住 1.5s 加载。**以后任何“先 show 再干长活”的窗口，都必须先 pump 一次。**
->> 2026-11-20（启动耗时归因，实测）：`--ui-min-root` 只加载一个空 Window → load 453/463ms；完整界面 → load 1202/1211ms。**差的 ~750ms 就是我们 14 个页面在 load 期同步实例化的成本**，不是 QML 引擎/磁盘缓存（清缓存 vs 保留在噪声内）。
-> 拆账：后端+引擎构造 ~300ms + 界面构图 ~1200ms + 首帧 ~55ms ≈ 1.5~1.6s。想真正缩短启动，唯一有效方向是「首帧后空闲创建页面」，预计首帧降到 ~0.8s。
-> 转圈光标 = 主线程 1.2s 不处理消息，静止封面掩盖不了；只有缩短阻塞才会消失。
->> 2026-11-20（启动动画压到 245ms）：实测「加载 1.5s + 动画 0.8s」= 用户多等一半时间，故把 800ms 压成 245ms（光晕/落定并行 120ms，底板再 120ms）。
-> 两个坑：① `ScriptAction` 挂在 `ParallelAnimation` 下会在 t=0 就执行（动画一帧演完）——必须外套 `SequentialAnimation`；② 封面窗用窗口淡出会在界面显形后留下半透明的大字标浮层——改成首帧后 30ms 直接 close。
-> 决策留痕：`[启动动画] enabled=true/false (args 里 no-intro=… screenshot=…)`，`--no-intro` 之前从未被验证过生效（测试脚本用了 PowerShell 自动变量 `$args`，参数根本没传进去）。
->> 2026-11-20（启动动画 A 落地）：`src/ui_splash.{h,cpp}` 静态封面窗 + `ui/StartupIntro.qml` 落定动画 + `ui/StartupIntroHalo.qml` 光晕（MultiEffect，Loader 隔离）。
-> 关键约束：QML 加载同步堵住主线程 1.4~1.8s，动画只能在首帧后演；封面窗与 StartupIntro 第 0 帧必须逐像素一致（同字体/同字号/同光晕/同位置）。
-> 几何自检日志：`[启动动画] 封面窗 rect=`、`[启动动画] 主窗口 rect=`、`[启动动画] 侧栏字标 scene`、`[启动动画] 结尾字标 scene` —— 四条对齐才算过关。
-> 关闭方式：`--no-intro`、`--screenshot`、系统「减少动画」、QSettings `general/startupIntro=false`；QML 侧另有 4s 兜底 Timer 防永久黑屏。
->> 2026-11-20（启动动画设计稿）：新增 `design/startup-intro.html` —— 单文件 HTML 三版对照（影子落定 / 一条线裂成界面 / 真进度），按真实窗口 1100×720、侧栏 208px、字标 14px/字距 2.2 复刻；可播放/暂停/拖时间轴/逐帧（?c=A&t=520）/显示标注。字标用**同一个 DOM 节点**从 44px 缩到 14px 落进侧栏，验证「交接是同一元素」这个思路。
->
-> 2026-11-20（启动优化第二批）：C — `JavaBackend` 构造不再请求 Adoptium，新增 `ensureVersionsLoaded()` 按需拉（启动请求 1→0）；D — `JavaPage` 构造不再无条件 `scanSystemJavas()`，只在页面可见时扫（启动 spawn 5→0）；F — `VersionPage` 构造去掉多余的 `refreshFolders()`（`onPageShown` 已有）。**E（页面惰性化）经实测否决**：页级 `Component.onCompleted` 全部同时触发（不能归因），用「临时移除 AccountPage + A/B」测得单页只占 ~70ms，QML 大头的成本不在页面实例化。
->
-> 2026-11-20（P0/P2 落地，实测首帧 2224→1812ms）：A `resource_backend.cpp:30 normTitle` 的 `QRegularExpression` 改 `static const`（每次调用重编译 → 只编译一次，`ResourceBackend` 构造 577→100ms）；G `main_release.cpp` 的 ScreenshotServer 改为默认不启动，需 `--ui-screenshots` 或 `SHADOW_SS_PORT` 才开（注释原称「NDEBUG stubs it out」，实际 release 一直监听 127.0.0.1:9999）。
->
-> 2026-11-20（启动性能清点）：新增 `design/startup-perf-audit-2026-11-20.md` —— 用日志 `[后端启动 +Nms]` + Qt6Core benchmark 实测出启动各段成本，定位到最大单点是 `ResourceBackend` 构造 577ms，其中约 407ms 来自 `normTitle()` 每次调用都新建 `QRegularExpression`（28k 次调用实测）。清单共 14 条，含建议与优先级（P0 正则改 static / P1 页面惰性化 + Java 延后 / P2 release 关 ScreenshotServer）。
->
-> 2026-11-20（推送前清理隐私 + 挡垃圾）：仓库里 9 处 `C:\Users\<本机用户名>` 全部换成占位符（`<用户名>` / `张三` / `Player`）；`tests/test_minecraft_layout.cpp` 与 `tests/test_slf4j_real.cpp` 改为从 `SHADOW_TEST_MINECRAFT_DIR` / `SHADOW_TEST_GAMEDIR` 取真实目录（不再把开发机路径写进源码）；`tools/gen_mcmod_*.py`、`trigger-import.ps1`、`verify-card.ps1` 同理改走环境变量。`.gitignore` 新增根目录零散截图、`dist/`、`frames*/`、registry 备份，以及 `tools/` 下一性调试脚本（用 `!` 白名单保留真正入库的 30 个）。推送后 `origin/main` 树内已无用户名、无 `sk-/ghp_/AKIA` 令牌。**注意：历史提交里仍有旧路径**（改不动，除非重写历史）。
->
-> 2026-11-20（动图在卡片里也播）：`SetAppearancePane.qml` 的两个 `SBgImage`（图库卡片 / 取景大预览）都绑 `playing: Window.window ? Window.window.active : true` —— 窗口切到后台自动暂停，回到前台续播。实测：卡片区帧号 1→301 递增，两张截图差异只落在卡片内（153×44 区域）。
->
-> 2026-11-20（启动页支持 GIF 动图背景）：`ui/controls/SBgImage.qml` 按扩展名分流——`.gif` 走 `AnimatedImage`（Qt 自带，用部署里的 `imageformats/qgif.dll`，**零新增依赖**），静态图仍走 `Image`；两者的取景几何完全共用（cover×zoom×crop），所以外观页预览与启动页一致。新增 `playing` 开关：`StagePage` 绑定 `page.visible && hostWindow.active`，最小化/切后台/切页即暂停，避免一直解码。动图用 `cache: false` 逐帧解码（1080p/上百帧全缓存要几百 MB）。`shadow_backend.cpp` 的 `pickBackgroundImage` 对话框加 `*.gif`，并加了 64 MB 上限（超过直接拒绝并写日志）。**视频（mp4）仍不支持**：Qt 6.8.3 套件没装 Multimedia 模块，要加需装模块 + 约 80 MB ffmpeg。
+> **不写什么**：更新日志与变更记录（GitHub commit 里有）、报错排查过程（见记忆库）、构建与环境配置（见 `ENV_SETUP.md`）、开发禁忌与流程（见 `DEV_RULES.md`）。
 
-> 2026-11-20（启动页左缘融合带，定稿）：侧栏 `Theme.sidebar` 是实底、背景图侧即使压了遮罩仍剩约 28% 亮度，交界处是一条明暗直立分界线。**融合带放在 `StageShell.qml`**（声明在页面容器之后，才盖在图上）：`anchors.left: sideBar.right` 宽 88px，`Theme.sidebar` 四档（1.0 / 0.62 / 0.24 / 0.0）往图片方向渐隐，等于「侧栏长出去」。只在启动页显示（`!stageHost.shifted && !root.sideCollapsed`），其它页面是实底、渗过去会在左缘留暗带。**不要把这种渐变写进 `StagePage.qml` 的图片侧**——影明确否掉了那种做法（视觉上是把图片左边吃掉一截）；同时 `ui/SideBar.qml` 的 1px `Theme.line` 右缘分隔线已删除（有融合带就不需要它了）。
+## 维护规则
 
-> 2026-11-20（Java 页重做）：`ui/pages/JavaPage.qml` 按设计稿「A-1 石墨中性」重写布局层（逻辑函数未动）：页面级中性色板 `nFill/nFill2/nPick/nStroke*/nText*`，**蓝色只保留主按钮 / 进度条 / 当前步骤下划线**；步骤行同时充当标题（走过显示已选值）；选项卡 76px 瓦片；状态行贴卡面底部；`minH` 让卡面填满视口。新增验收钩子 `--ui-java-step N` / `--ui-java-demo`（自动换步，拍过渡用）。注意 SButton：kind 0 = 实心、kind 1 = 描边。
-> 2026-11-20（步骤轨与换步过渡返修）：① 连接线改成**等宽列 + 固定长度居中**——先用隐藏 Row 量 5 个步骤名宽度取最宽列，列宽 `colW`、线长 `dashLen`，每条线在两段文字之间居中，垂直对齐序号圆心（之前线跟着文字宽度跑，所以长短不一、也不在两步中间）；② 换步过渡原来是 `reveal` 0.6→1 + OutQuint，实测 46% 时长就跑完，观感是硬切；改成 0→1、durSlow(260ms)、OutCubic + 14px 方向位移 + 卡高 Behavior，并加了一条会滑动的当下步下划线。
+1. 新增 / 删除 / 改名代码文件时，**同一次提交内**更新本文件。
+2. 只写「现在是什么」，不写「以前怎样」「哪天改的」「是谁修的」。
+3. 路径相对仓库根；职责一行说清，≤40 字；关键入口最多列 3 个。
+4. 目录重组、大范围重命名这类结构性变更，允许整篇重写；日常维护只做增量修改。
 
-> 2026-11-20（定稿）：更新卡片方案 A 已确认。**视觉基准是 `ui/UpdateCardWindow.qml`**（360x96，圆角 14，卡面 Theme.bgRaised，标题 14px/y=11，副行 12px/y=32，进度条 y=58/h=3，底行 11px/y=69）。`update/SLUpdater.cpp` 的 Win32 版按它逐像素同步（#12151C 卡面 / #262B35 轨道），**改一处必须同步另一处**；Win32 版不能换成 QML（安装时 Qt 库正在被替换）。
-
-> 2026-11-20（补充）：新增 `ui/UpdateCardWindow.qml` —— 更新卡片的**解耦预览窗口**，入口 `ShadowLauncher.exe --ui-update-card`（独立置顶无边框透明窗、六档假进度、不触发更新）。与更新流程完全无关，仅用于界面验收。
-
-> 2026-11-20：`update/SLUpdater.cpp` 的进度窗口改为卡片式（方案 A）：无边框圆角 360x96、UpdateLayeredWindow 分层位图、GDI+ 画卡面 + GDI ClearType 画字、SDF 遮罩生成圆角与阴影、WS_EX_TOPMOST 置顶；新增 `--card-test` 开发预览模式（`dumpCardToPng` 可导出位图 PNG）。同时修 `copyFileOverwrite` 未清只读属性导致 error 5 重试无效。设计稿与成品图见 `design/update-card/`。
-
-> 2026-11-20 变更：`ui/AgreementGate.qml` 的所有"铺满整窗"层（背景实底/壁纸/顶部渐变）改为绑 `gate.reveal`（入场用 `backdropAlpha` 恒 1），退场改 durPage + OutCubic —— 修「同意协议后硬切+闪一下」。`ui/StageShell.qml` 的交接遮罩已移除（它自己会造成压黑脉冲）。
-
----
-
-## 〇、速查：按功能找文件
+## 一、速查：按功能找文件
 
 | 想找的功能 | 看这里 |
 |---|---|
-| 2026-08-05 | **下载引擎全面对齐 主流启动器语义 + 进度/速度修复 + 尾程加速**（详见速查表下方新增「下载引擎 2026-08-05 大修」章节）：源策略（哈希混合分流废除→顺序 fallback）、速度门限（256KB/s→4MB/s 瞬时差分）、镜像不分片+限速、自适应超时、per-file 源禁用+Retried、无数据超时修复、分片阈值 1MB、山海经调度/大小降序、进度失真 4 处（总量丢失/分片进度/初始100%/超额虚高）、**尾程慢速分片看门狗**（慢分片一分为二并跑）、**分片截断字节二次扣减修正**。 |
-| 主程序入口 / 启动流程 | `src/main_release.cpp`（发布）、`src/main.cpp`（开发变体） |
-| QML 主界面唯一入口对象 `backend` | `src/backend/shadow_backend.{h,cpp}` |
+| 程序入口（唯一） | `src/main_release.cpp` |
+| 版本号唯一源 | `src/version.h` 的 `SHADOW_DISPLAY_VERSION` |
+| 配置占位（Azure client / Gitee / 更新地址） | `src/secrets.h` |
+| QML 根窗口 | `ui/Main.qml`（窗口本体 + 声明 `StageShell` / 启动动画 / 更新卡片窗） |
+| 应用外壳与页面路由 | `ui/StageShell.qml`（直接实例化各 Page，路由/转场都在这里；**窗口拖动不在它里面**，已下放到各 Page 的 topBar MouseArea） |
+| 侧栏菜单 | `ui/SideBar.qml` |
+| 主题令牌（颜色/字号/圆角） | `ui/Theme.qml` —— QML 侧唯一被引用的令牌源；注意 `src/ui_next/AppearanceController` 另有一套调色板数据，当前 QML 未引用，启用前需先决定单一真源 |
+| Toast 通知 | `ui/ToastHost.qml` |
+| 启动动画 | `ui/StartupIntro.qml` + `ui/StartupIntroHalo.qml` |
+| 首次启动协议确认 | `ui/AgreementGate.qml` |
+| 启动游戏时的全屏遮罩 | `ui/LaunchOverlay.qml` |
+| 首屏 / 启动页（玩哪个、要不要启动） | `ui/pages/StagePage.qml` |
+| 版本管理页 | `ui/pages/VersionPage.qml` |
+| 版本设置（右栏 + 各子页） | `ui/pages/VersionSettingsPage.qml` + `Vs*Pane.qml` |
+| 下载页 / 下载进度页 | `ui/pages/DownloadPage.qml`、`ui/pages/ProgressPage.qml` |
+| 账号页（登录/皮肤/披风） | `ui/pages/AccountPage.qml` |
+| Java 管理页 | `ui/pages/JavaPage.qml` |
+| 资源页 / 资源详情页 | `ui/pages/ResourcePage.qml`、`ui/pages/ResourceDetailPage.qml` |
+| 联机页 | `ui/pages/MultiplayerPage.qml` |
+| 设置页 + 各分页 | `ui/pages/SettingsPage.qml` + `Set*Pane.qml` |
+| QML 能访问的唯一后端对象（`backend`） | `src/backend/shadow_backend.{h,cpp}`（转发所有子后端信号/属性） |
 | 版本列表/安装/删除/校验/修复/隔离 | `src/backend/version_backend.{h,cpp}` |
-| 启动游戏（进程/参数/Token） | `src/backend/launch_backend.{h,cpp}`、`src/core/launcher.{h,cpp}` |
-| 账号（离线/微软正版/皮肤/披风） | `src/backend/account_backend.{h,cpp}`、`src/core/microsoft_auth.*` |
-| 外置登录（Yggdrasil/authlib-injector） | `src/backend/yggdrasil_backend.*`、`src/core/yggdrasil_auth.*` |
+| 启动游戏（进程/参数/Token/日志） | `src/backend/launch_backend.{h,cpp}`、`src/core/launcher.{h,cpp}` |
+| 账号（离线 / 微软正版 / 皮肤 / 披风） | `src/backend/account_backend.{h,cpp}`、`src/core/microsoft_auth.{h,cpp}` |
+| 外置登录（Yggdrasil / authlib-injector） | `src/backend/yggdrasil_backend.{h,cpp}`、`src/core/yggdrasil_auth.{h,cpp}` |
+| 内嵌微软登录窗口（WebView2） | `thirdparty/wv2login/src/AppWindow.{h,cpp}` |
 | 设置持久化 | `src/backend/settings_backend.{h,cpp}` |
-| Java 扫描/选择 | `src/backend/java_backend.{h,cpp}` |
-| 游戏时长统计 | `src/backend/stats_backend.{h,cpp}` |
+| Java 扫描 / 选择 / 自动安装 | `src/backend/java_backend.{h,cpp}`、`src/core/java_runtime_installer.{h,cpp}` |
 | 启动前检查（Java/版本文件/内存） | `src/backend/check_backend.{h,cpp}` |
-| 游戏完整性校验/修复 | `version_backend.cpp` L3951 `verifyVersion` / L4524 `cancelVerify` / L4560 `cleanCorruptVersion` / L4620 `repairVersion` |
-| 校验/修复 **命令行实测入口** | `ShadowLauncher.exe --ui-next --verify-test <版本ID>`、`--repair-test <版本ID>`（`src/main_release.cpp` "Verify / repair test mode"；结果逐行写 `build/Release/verify_test_result.txt`，跑完自动退出；repair 模式=先校验、失败自动进修复，用于验证「校验→修复」闭环） |
-| 下载中心：Mod/资源包/光影/整合包搜索 | `src/backend/resource_backend.{h,cpp}`、`src/core/resource_fetch_engine.*`（司南）、`src/core/cf_api.*`（CF） |
-| 详情页跳转/复制胶囊条 | `qml/DetailLinkBar.qml` + 各详情页 `_linkItems/_copyItems/refreshLinks()` + `resource_backend.resolveProjectLinks()` |
-| MC百科映射（mod 中文名 ↔ Modrinth/CF slug） | `tools/gen_mcmod_map.py`（自研脚本，抓 sitemap+详情页产出）→ `qml/mcmod_map.json` → `resource_backend.loadMcmodMap()` |
-| 下载引擎（通用批量） | `src/core/file_downloader.*`（夸父）、`src/core/downloader.*`（旧单文件） |
-| 下载引擎（assets 资源） | `src/core/asset_downloader.*`（山海经） |
-| 版本安装管线（client+libs+assets） | `src/core/version_downloader.*`（盘古） |
-| Mod 批量下载 | `src/core/modpack/mod_download_engine.*`（精卫） |
-| 整合包下载/解析/安装 | `modpack/modpack_downloader.*`（女娲）、`modpack_parser.*`、`modpack_install_task.*`、`modpack_importer.*` |
-| Forge/NeoForge/OptiFine 安装 | `src/core/mod_loader_installer.{h,cpp}`（三分支：Legacy2/1/Bootstrapper，Legacy3 已删 2026-08-08） |
-| 本地 Mod/资源包/存档管理 | `src/core/local_mod_manager.{h,cpp}` |
-| 联机（陶瓦 Terracotta 兼容） | `src/multiplayer/multiplayer_manager.{h,cpp}`（核心） |
-| EasyTier 进程/TOML/白名单 | `src/multiplayer/easytier_process.{h,cpp}` |
+| 版本目录布局 / 隔离 / 导入 | `src/core/minecraft_layout.{h,cpp}`、`src/core/version_isolation.{h,cpp}`、`src/backend/minecraft_folder_backend.{h,cpp}` |
+| 资源搜索（Mod/资源包/光影/整合包） | `src/backend/resource_backend.{h,cpp}` + `src/core/resource_fetch_engine.{h,cpp}`（司南）+ `src/core/cf_api.{h,cpp}`（CurseForge） |
+| 下载引擎（通用批量） | `src/core/file_downloader.{h,cpp}`（夸父） |
+| 下载引擎（assets 资源） | `src/core/asset_downloader.{h,cpp}`（山海经） |
+| 版本安装管线（client+libs+assets） | `src/core/version_downloader.{h,cpp}`（盘古） |
+| Mod 批量下载 | `src/core/modpack/mod_download_engine.{h,cpp}`（精卫） |
+| 整合包解析 / 下载 / 安装 / 导出 | `src/core/modpack/`（女娲 = `modpack_downloader`） |
+| Forge / NeoForge / OptiFine 安装 | `src/core/mod_loader_installer.{h,cpp}` |
+| 本地 Mod / 资源包 / 存档管理 | `src/core/local_mod_manager.{h,cpp}`、`src/core/mod_manager.{h,cpp}` |
+| 联机（陶瓦 Terracotta 兼容） | `src/multiplayer/multiplayer_manager.{h,cpp}` |
+| EasyTier 进程 / 白名单 | `src/multiplayer/easytier_process.{h,cpp}` |
 | 房码算法 | `src/multiplayer/room_code.{h,cpp}` |
 | Scaffolding 协议 | `src/multiplayer/scaffolding_protocol.{h,cpp}` |
-| 更新检查/安装 | `src/core/update_checker.*`、`src/core/update_manager.*`、`src/update/SLUpdater.cpp`（更新器进程） |
-| 引擎雅名体系（盘古/夸父…） | `src/core/engine_identity.h` |
-| 安装步骤管线（进度 UI 模型） | `src/core/step_pipeline.*`、`src/core/step_node.*` |
-| 主窗口/全局路由 | `qml/MainWindow.qml` |
-| 主页 | `qml/HomePage.qml` |
-| 版本选择 | `qml/VersionSelectPage.qml`、`qml/VersionSelectOverlay.qml` |
-| 版本设置 | `qml/VersionSettingsPage.qml`、`qml/VersionSettingsOverlay.qml` |
-| 设置 | `qml/SettingsPage.qml` + `SettingsGeneral/Java/Memory/ExperimentalPage.qml` |
-| 统计 | `qml/StatsPage.qml` |
-| 联机 | `qml/MultiplayerPage.qml` + `Multiplayer*` 组件族 |
-| 设计令牌（颜色/字号/圆角） | `qml/StyleTokens.qml`、`qml/AnimationTokens.qml` |
-| Toast 通知 | `qml/ToastManager.qml` |
-| 通用按钮/输入框/下拉/开关 | `qml/ShadowButton/ShadowIconButton/ShadowSwitch/ShadowDropdown/InputBox/SearchBox` |
+| 更新检查 / 下载 / 安装 | `src/core/update_manager.{h,cpp}`、`update/SLUpdater.cpp`（独立更新器进程） |
+| 安装步骤管线（进度 UI 的模型） | `src/core/step_pipeline.{h,cpp}`、`src/core/step_node.{h,cpp}` |
+| 引擎雅名体系（盘古/夸父/山海经…） | `src/core/engine_identity.h` |
+| 下载会话（跨页复用） | `src/session/download_session.{h,cpp}` |
+| 外观 / 壁纸控制器 | `src/ui_next/appearance_controller.{h,cpp}` |
+| HTTP 客户端 / 重试 | `src/core/http_client.{h,cpp}` |
+| 日志（运行日志 / 调试日志） | `src/core/logger.{h,cpp}`、`src/utils/logger.{h,cpp}`、`src/backend/debug_logger.{h,cpp}` |
+| 临时文件追踪与清理 | `src/utils/temp_tracker.{h,cpp}`、`src/core/cleanup_guard.h` |
+| 崩溃检测 / 异常退出恢复 | `src/core/crash_detector.{h,cpp}` |
+| 图标 / 头像缓存 | `src/core/icon_cache.{h,cpp}`、`src/core/render_head_util.h` |
+| 下载转圈（C++ 场景图 item） | `src/ui_next/dl_spinner_item.{h,cpp}` |
+| 自测可执行目标 | `tests/`，CMake 里用 `SHADOW_BUILD_UI_NEXT_TESTS` 等开关控制 |## 二、目录速览
 
-## 下载引擎 2026-08-05 大修（对齐 主流启动器语义）
+```
+src/
+  main_release.cpp        程序入口（唯一）
+  version.h               版本号唯一源
+  secrets.h               Azure client / Gitee / 更新地址 占位（真实值走 secrets_local.h，不入库）
+  ui_splash.*             启动闪屏（QQuickView）
+  backend/                QML 后端聚合层：一个类一个后端，由 shadow_backend 统一暴露给 QML
+  core/                   核心引擎与协议实现（不依赖 UI）
+  core/modpack/           整合包子域
+  multiplayer/            联机（陶瓦 Terracotta 协议兼容）
+  session/                跨页会话状态
+  utils/                  通用工具：哈希、日志、临时文件、令牌加密（lzma/ 是第三方 LZMA SDK）
+  ui_next/                QML 侧 C++ 扩展（QQuickItem、壁纸控制器）
+ui/
+  Main.qml                窗口根（装配 StageShell + 启动动画 + 更新卡片窗）
+  StageShell.qml          外壳与页面路由
+  Theme.qml               主题令牌唯一真源
+  *.qml                   公共层：侧栏、Toast、启动动画、遮罩、协议门
+  pages/                  主页面（Stage/Version/Download/...）与子页（Set* 设置、Vs* 版本设置）
+  controls/               通用控件：S- 前缀为基础控件，Set- 前缀为设置项组件
+update/                   独立更新器进程（SLUpdater）
+thirdparty/wv2login/      内嵌微软登录窗口（WebView2）
+tests/                    自测可执行目标（CMake 开关控制）
+tools/                    一次性脚本（抓数据/出图/验证），不属于产品代码
+```
 
-> 背景：用户实测下载速度曲线异常（前快中慢后停摆）+ 进度失真 + 超额下载浪费，
-> 连续 7 轮对照 主流启动器（ModNet.vb / ModDownload.vb）逐行核对修正。
-> 涉及：`file_downloader.*`（夸父）、`asset_downloader.*`（山海经）、`version_downloader.*`（盘古）、`version_backend.cpp`（进度计算）。
+### 不维护的目录
 
-### 核心语义修正（对照 主流启动器）
-| 项 | 旧（错误） | 新（主流启动器语义） | 位置 |
-|---|---|---|---|
-| 源策略 | 哈希 65/35 官方+镜像混合分流 | **顺序 fallback**：源列表=[首选组,备选组]，从源 0 找第一个可用；首选组全禁用才用备选组 | file_downloader.cpp tryStartFirstThread/tryAddThread、asset_downloader.cpp fireNext |
-| 速度门限 | 3s EMA ≥256KB/s 不加分片（官方单连接 300KB/s 永不触发） | **瞬时差分 m_instantBps ≥4MB/s** 才不加分片（低于期望速度就分片补偿） | file_downloader.h kSpeedLimitLowBps=4MB、speedTick 更新 m_instantBps |
-| 源禁用 | 官方试 2 次就切镜像 | **per-file FailCount≥5 且无进度才禁用**（sourceFailCounts）；全禁用重置重试一轮（retriedOnce） | file_downloader.h FileDownload.sourceFailCounts/retriedOnce |
-| 全局降级 | 3 次连续失败就全局拉黑 host | **10 次**（接近完全停摆才全局降级，防偶发失败架空官方优先） | recordHostResult |
-| 镜像处理 | 镜像参与分片 | **镜像禁止分片**（isMirrorUrl 检查选中源）+ 每线程请求限速 100ms | tryAddThread、runWorker |
-| 超时 | 固定 12s/30s | **自适应**：min(max(avg,15s)×(1+fails),30s)（同主流启动器）；无数据超时 readyRead 重置（防误杀大文件） | runWorker、asset_downloader fireNext |
-| 调度节拍 | 50ms | **20ms**（同主流启动器 StartManager） | file_downloader.h kManagerTickMs |
-| 分片阈值 | FilePieceLimit 512KB / isNoSplit 50MB | **256KB / 1MB**（同主流启动器） | tryAddThread、addFile |
-
-### 进度显示修复（version_backend.cpp + 引擎层）
-1. **总量丢失**：阶段 B startAssets 不再重置 m_categoryTotalBytes[1]（libs 总量被 assets 任务 collectTasks 清 0 → 支持库 0/0KB）
-2. **分片进度缺失**：fileProgress 上报文件级总进度（file->totalDone()/fileSize），不再报单分片 received（上层按 savePath 去重只计第一个分片）
-3. **初始 100% 闪**：catBytesTotal<=0 时不再用全局 bytesDl 臆断 completed（pending 0%）
-4. **超额虚高**：downloadDone 封顶线程范围（服务器返回全文件时进度不虚高）
-5. 文件完成补发满字节帧（进度精确到 100%）
-
-### 超额下载浪费修复
-- **根因**：fileSize 被分片响应（206 contentLen=分片大小）缩小 → isNoSplit 翻转 → 后续无 Range → 服务器返回全文件 200（23.9MB 只留 132KB）
-- **修复**：fileSize 更新只允许补差（actualSize>fileSize），不允许缩小
-- 200 全文件响应：isFullFile 标志整文件直接使用（mergeFile 优先），不截断浪费
-- 实测验证：curl + Qt 最小程序确认官方 CDN 正确返回 206 精确分片（排除服务器/Qt 问题）
-
-### 山海经（assets）调度修复
-- PhaseCooldown 误触发（小文件间隙速度归零 → 并发砍半 → 90% 后暴跌）：冷却条件收紧 pending>4
-- 任务大小降序（startDownload/appendTasks）：大文件先下（87 个 >1MB，最大 the_end.ogg 11MB），消除收尾停摆
-- 超时加 15s 下限（主流启动器 max(avg,15s)）
-
-### 尾程加速：慢速分片看门狗（2026-08-05 追加）
-- **背景**：大文件收尾只剩 1-2 个分片在跑，碰上慢边缘连接（实测 fastutil 尾部 195KB 以 16KB/s 爬 12s，前 12s 还整体无数据超时）→ 整批下载最后一步龟速。分片只在剩余 ≥256KB 时切分（主流启动器 FilePieceLimit），尾部小分片即使龟速也永不重分。
-- **实现（file_downloader.{h,cpp}）**：
-  1. managerTick 每 500ms 扫描活动分片（state=2），滚动基线算瞬时 bps，持续 2s <128KB/s → `trySplitSlowThread` 将剩余范围中点一分为二并开新连接并跑；
-  2. **切分后中止老连接**（关键）：老请求还在按旧 range 龟速流，不中止则分片白切（老线程要等整条旧响应流完才截断）。worker 侧 500ms 轮询 QTimer 消费主线程置的 `watchdogAbort` 原子标志，自己 abort 自己的 reply（线程安全），重试时以缩小后的范围换新连接（有机会命中快边缘）；
-  3. **中止不算失败**：不走 FailCount 累计，且跳过“快速失败守卫”（attempt≥2 且 <5.5s 即 break，否则看门狗中止会把重试链掐断）；每线程中止预算 2 次（kMaxWatchdogAborts，防 attempt 耗尽）；
-  4. 约束：并发上限 maxThreads（MC 64/模组 12）；镜像源不分片；剩余 <32KB 不再切；老分片响应超范围数据由既有截断逻辑裁剪。
-- **配套字节修正**：分片中段被切分后 downloadProgress 已按范围封顶计数，但完成时旧代码无条件扣 excess → 超额部分二次扣减 → m_downloadedBytes 欠计（尾部速度/进度显示被拉低）；改为只扣“已计入但超出最终范围”的部分（`counted - finalDone`），未计入超额由新分片另行计数，总量自洽。
-- **本地实测**（FDTest + 自建慢边缘服务器 _slow_tail_server.py：尾部 30% range 16KB/s，其余 2MB/s）：2.5MB 文件 18.3s → 10.4s（MC 模式 64 线程）/ 10.3s（modpack 24 线程），SHA1 校验一致；**迭代教训**：①QList append 扩容使引用/迭代器失效崩溃 → 下标遍历+原始指针；②轮询定时器曾误装进最终兜底块（无 sha1 时永不执行）→ 主请求循环；③看门狗中止触发快速失败守卫 break → prevWatchdogAbort 绕过。
-
-### 超额下载浪费修复（2026-08-07，file_downloader.cpp，commit 7ec05bd + d8098b2）
-
-- **问题**：日志实锤 476 次截断，预期 707MB 实际收到 1968MB，白白浪费 1261MB（178%）——全部是 206 状态但服务器返回远超请求范围的数据
-- **根因**：tryAddThread 加速切分只缩小 th->downloadEnd，但 in-flight HTTP 请求仍按旧 range 拉数据（首线程请求全文件被切分后服务器仍发完整文件，如 26.2.jar 起始=0 预期=12.9MB 实际=39MB）→ worker 等整条旧响应收完再截断丢弃
-- **修复（对齐主流启动器实现 ModNet.vb 流式语义：DownloadUndone=0 即断开）**：worker 在 downloadProgress 里检测 206 响应已收满本线程范围（received > downloadEnd-downloadStart，严格大于避免正常 206 误触发）→ 立即 abort 止损；数据前缀完整（截断写盘逻辑裁剪到范围），不丢进度、不需重试、不计 FailCount；200 全文件响应（isFullFile 优化）不触发
-- **⚠️ 数据丢失修复（d8098b2）**：实测 QNetworkReply::abort() 会清空未读缓冲（abort 后 readAll 返回 0，FDTest 只合并出 916KB/12MB）→ 必须 abort 前先 readAll 保存到 rangeData，主流程统一用 rangeData
-- **效果**：超额从整个旧 range（可达全文件）降到约一个网络包；本地 4 场景验证 SHA1 全部匹配
-
-### 双引擎架构（保留）
-- 支持库 >1MB → 夸父（分片加速）；≤1MB → 山海经（独立并发）；阶段 B assets 追加到山海经（appendTasks）
-- 完成判定：m_assetTasksDone 仅由 allFinished 置位（山海经小库+assets 全完成才算）
-
-### 卡片总进度统一为步骤管线加权（2026-08-05 追加，version_backend.cpp）
-- **背景**：总进度三套口径打架——①纯 MC 卡片=步骤加权（JSON1.0 隐藏/支持库3.0/资源5.0/校验1.0）；②merged 卡片=字节 EMA，且 `updateDownloadProgress` 里对同一 session 的 smoothProgress **写两次、两套公式**（公式 A：mcRaw=0.5×支持库+0.5×资源，漏 cat0；公式 B：grandTotal 字节加权，无加载器 0.5 封顶），主版本/次版本口径不一致；③安装页主进度 m_installBytesDl/Total 注释宣称“下载 0-90%/校验 90-100%”实际下载段爬到 100% 后校验段从 0 重新开始 → 进度条回跳。
-- **修复**：
-  1. merged 卡片 progress 全部改用 `totalProgress()`（步骤管线加权，与纯 MC 同构）；删除公式 A/B 的 smoothProgress 写入（mcBytesDl/mcBytesAll 保留）；canCancel/dismissAllCompleted/installProgressOf 同步改 totalProgress 口径
-  2. **client.jar 澄清**：collectTasks 分类 cat0=version JSON（50KB，HTTP race 下载），cat1=client.jar+libraries，cat2=assets——client.jar 归支持库，本就计入；merged JSON 步骤（权重 3.0）因 cat0 不走分类统计会永远 pending → 下载有字节流即标 completed
-  3. syncPrimaryProgress 真两段式：下载 ×0.9 + 校验 ×0.1 折算 0-100 刻度（字段无 QML 消费者，仅保留语义）；删 updateDownloadProgress 里的重复写入
-- 效果：纯 MC 下载完成 88.9%（8/9）→ 校验 100%；merged 下载完成 83.5% → 校验 86.2% → 加载器 100%，无回跳、无提前绿卡
-
----
-
-## 一、C++ 源码（`src/`）
-
-### 1.1 入口与主程序
-
-| 文件 | 行数 | 功能 |
-|---|---|---|
-| `src/main_release.cpp` | 814 | **发布版入口（CMake 实际编译）**。初始化 QML 引擎、统一后端聚合、Beta 内测密钥闸门（仅 `SHADOW_ENABLE_BETA_GATE=ON` 时启用，见 CMake 构建选项；OFF=公测直通 MainWindow，2026-08-14 改）、`TaskbarMinimizeFilter`（最小化到托盘相关）、崩溃/日志初始化。始终从 qrc 预编译资源加载 QML。窗口层：`setColor(transparent)` + **禁用 Win11 DWM 系统圆角（DWMWCP_DONOTROUND）**——防浅色主题下四角露出系统背景色白角（2026-08-03 修）。截图模式 `--navigate settings:about` 支持设置页 section 导航（0-4）。 |
-| `src/main.cpp` | 854 | **开发变体入口（未编入 CMake）**。与 main_release 逻辑相同，但支持 `SHADOW_DEV` 环境变量：从文件系统路径加载 QML 便于热调试；同样含透明背景 + DWM 圆角禁用。 |
-
-### 1.2 后端聚合层（`src/backend/`，QML 通过 `backend` 单对象访问）
-
-| 文件 | 行数 | 功能 |
-|---|---|---|
-| `shadow_backend.h/.cpp` | 857 / 4450 | **总聚合后端，QML 的 `backend` 对象**。聚合全部子后端（account/version/launch/resource/settings/java/stats/userdata/check/yggdrasil/multiplayer/modManager…），转发数百个 Q_PROPERTY/Q_INVOKABLE；也含少量自有逻辑：GeoIP 地区离线限制（`isOfflineRestricted`）、Beta 密钥校验落盘（`betaGateEnabled` 编译期属性，2026-08-14 加）、自定义背景、Toast/UI 消息通道、`checkAll` 启动检查汇总；崩溃分析信号转发（`crashAnalysisStarted`/`crashAnalysisReady`）+ `analyzeCrashNow`/`exportCrashLogs`/`openPath`；**Java 一键安装完成 → 自动刷新设置-Java 列表 + 一键安装卡片前置检测**。 |
-| `version_backend.h/.cpp` | 466 / 8287 | **版本管理大后端**：版本清单拉取/刷新（release/snapshot/old/aprilfool）、安装（走 VersionDownloader）、删除/重命名/克隆/迁移隔离、`verifyVersion`（游戏完整性校验）/`cancelVerify`/`cleanCorruptVersion`/`repairVersion`（修复，基于下载器 SHA1 校验重下缺失/损坏文件）、版本详情（Mod/资源包/存档列表异步）、installCards 模型、merged 安装上下文。 |
-| `launch_backend.h/.cpp` | 161 / 1480 | **启动后端**：组装 JVM/游戏参数、Token 刷新决策（`msTokenValid`/`shouldRefresh`）、进程启停（`launch`/`cancelLaunch`/`killGame*`）、在线/离线模式路由；**崩溃分析异步链路**：启动失败 → `crashAnalysisStarted` → `runCrashAnalysis`（QTimer 异步）→ `crashAnalysisReady`；`analyzeCrashNow`/`exportCrashLogs`/`openPath` Q_INVOKABLE。**2026-10-08 令牌续期修复**：改用 `shouldRefresh()` 触发续期、新增 `finishTokenRefreshOnFailure`（令牌已过期一律阻止启动）、刷新单次超时 12s→30s 且链路有进展即重置、超时重试前 `resetRefreshState()` 复位假死标记。 |
-| `account_backend.h/.cpp` | 156 / 1207 | **账号后端**：离线登录（用户名/UUID/历史）、微软正版登录（MicrosoftAuth 封装：token 管理/后台刷新/过期判断）、皮肤下载/上传/缓存、披风（CapeInfo）、3D 头像渲染触发、离线皮肤。**2026-10-08 修复**：后台刷新自锁（预置 `m_refreshingToken` 致刷新永久被跳过）、`loginSuccess` 丢弃新刷新令牌、`logout` 不复位刷新态；新增 `msMcTokenValid()`/`resetRefreshState()`，Mojang 档案 401/403 主动触发刷新。 |
-| `resource_backend.h/.cpp` | 247 / 1772 | **资源中心后端（下载页）**：Mod/资源包/光影/整合包搜索与详情（Modrinth+CurseForge 双源，分页池架构）、分类、版本列表、依赖解析、下载任务管理（下载队列/进度/取消/暂停/重试）、图标批量缓存。**2026-08-23 新增详情页跳转解析**：`resolveProjectLinks(title,slug,kind)`（kind→Modrinth/CF 路径映射 + CF 数字 id 判定 + MC百科映射 mcmod_map.json 解析，返回 mrUrl/cfUrl/mcmodUrl；不确定映射走百科搜索跳转）、`loadMcmodMap()`（qrc 加载 qml/mcmod_map.json，建 en/cf/mr 三向索引）、`resolveMcmodUrl()`。 |
-| `settings_backend.h/.cpp` | 245 / 1195 | **设置后端**：全部设置项读写（QSettings）、下载源/线程/限速、主题、语言、游戏目录、Java 默认、JVM/游戏参数、内存自动分配、背景图、协议同意状态等；scanJavaInstallations 完成回调保证每次扫描只 emit 一次 javaScanFinished；findAllJava 额外扫描启动器 java_cache（一键安装的便携 Java 可在设置-Java 选用）。 |
-| `java_backend.h/.cpp` | 136 / 438 | **Java 后端**：扫描系统 Java、版本检测（`java -version` 解析主版本）、自动选择、指定路径管理；Tuna Adoptium 目录浏览（版本/类型/架构/OS/文件五级）；**一键安装所需 Java**（转发 JavaRuntimeInstaller：前置检测 + 8/17/25 JRE 顺序安装 + 步骤/下载进度/速度信号）。 |
-| `java_runtime_installer.h/.cpp` | 155 / 900 | **一键安装 Java 运行时**：Tuna Adoptium ZIP 下载+解压到 java_cache/{ver}/（便携式不写注册表，同 主流启动器/主流启动器）；架构检测（x64/x32/aarch64/arm，ARM64 降级 x64 模拟）；**版本策略 8/17/25 全部 JRE**；**完整前置检测**（后台线程递归扫描，javac.exe 判定 JDK/JRE，已有同 major 任意类型→跳过）；**异步状态机安装**（列目录→downloadWithReply 实时进度→**后台线程解压**（UI 不冻结）→校验）；**完整性校验 isJavaComplete**（-version 能跑 ≠ 完整：检查 lib/modules(9+)/rt.jar(8)/jvm.dll/release）；安装链状态存成员（修复悬空引用崩溃）；**失败自愈**：残缺检测删除重装、自动重试 1 次、启动清理残留；路径统一 applicationDirPath。 |
-| `stats_backend.h/.cpp` | 53 / 142 | **统计后端**：游戏时长统计（按版本聚合，读取启动记录）。 |
-| `userdata_backend.h/.cpp` | 99 / 503 | **用户数据后端**：用户目录数据管理（皮肤缓存、头像、可迁移数据）。 |
-| `check_backend.h/.cpp` | 38 / 442 | **启动前 P0 检查**（同步快速）：Java 架构 32/64 位、版本 client.jar 存在性、version.json 合法性、可用内存；`checkAll` 汇总。 |
-| `yggdrasil_backend.h/.cpp` | 132 / 553 | **外置登录后端**：Yggdrasil/authlib-injector 认证（服务器地址、登录/登出、UUID/皮肤）。**2026-10-08 修复假登录态**：`loadSession` 与切换外置页时调用 `validateSession()`（非轮换 authserver/validate）校验，403/401 即清会话+删 session.json。 |
-| `yggdrasil_skin_fetcher.h/.cpp` | 49 / 201 | **外置皮肤拉取**：从 Yggdrasil 服务器下载皮肤/披风并缓存。**2026-10-08 修复无限转圈**：缓存/兜底优先（无缓存用史蒂夫兜底），失败也 `setSkinFromFile`，路径带 cache-buster。 |
-| `app_backend.h/.cpp` | 59 / 93 | **应用信息后端**：版本号、应用名等静态信息。 |
-| `debug_logger.h/.cpp` | 53 / 102 | **调试日志**：调试构建下的日志辅助。 |
-
-### 1.3 核心引擎（`src/core/`）
-
-| 文件 | 行数 | 功能 |
-|---|---|---|
-| `engine_identity.h` | 58 | **下载引擎雅名注册表**：盘古(VersionDownloader)/夸父(FileDownloader)/山海经(AssetDownloader)/精卫(ModDownloadEngine)/女娲(ModpackDownloader)/驿道(HttpClient)/司南(ResourceFetchEngine)；`engineTag`/`engineBanner` 日志前缀。 |
-| `http_client.h/.cpp` | 175 / 802 | **HTTP 传输底座（驿道）**：全引擎共用的 QNetworkAccessManager 封装；v2 起支持 >4MB 文件 Range 多线程分片、分片探测、限速、连接池、重试。 |
-| `file_downloader.h/.cpp` | 240 / 1180 | **通用批量文件下载引擎（夸父）**：QThreadPool 并发分块加速、SHA1 校验、断点续传、主机健康、缓存命中。**缓存命中修复（2026-08-04，commit 25fc4d5）**：addFile 只累计 m_cacheHits/m_cacheBytes，start() 统一入账（避免进度条从高完成度开始）；全缓存命中（m_files 空）时 start() 立即 allFinished（否则卡死）。 |
-| `asset_downloader.h/.cpp` | 240 / 1181 | **assets 专项下载（山海经）**：异步 SHA1 预检（IO 池）、异步 DNS、多镜像降级、objects 索引解析。 |
-| `version_downloader.h/.cpp` | 232 / 1331 | **版本安装管线（盘古）**：下载 client.jar + libraries + assets 到版本目录（merged 任务中可指向 UUID 临时目录）、JSON 解析、文件清单生成、校验。 |
-| `mod_manager.h/.cpp` | 264 / 1651 | **Mod 下载管理**：下载任务（驿道 downloadWithReply 断点续传，2026-08-02 自夸父回退）、Modpack 模式。⚠️ **用户 WIP（勿改勿提交）**。 |
-| `local_mod_manager.h/.cpp` | 104 / 782 | **本地 Mod/资源包管理**：扫描 mods/ 目录、解析 JAR（读取 mods.toml/fabric.mod.json 元数据）、Mod 列表/过滤、删除、导入复制。 |
-| `mod_loader_installer.h/.cpp` | 283 / 4016 | **Forge/NeoForge/OptiFine 安装器**：三分支（Legacy2/1 安装器 + Bootstrapper 模式，Legacy3 已删 2026-08-08）；Forge install_profile 处理、处理器列表、FART/srgutils、版本 JSON 生成；含 Java 自动下载（Tuna Adoptium 镜像 JRE——安装器只 java -cp 跑 jar 无需 JDK，与一键安装共享 java_cache）；java_cache 路径统一 applicationDirPath；toastMessage 信号（自动下载 Java 前/完成时弹全局 Toast）。**安装收尾重活已搬离主线程（2026-08-06，commit 0ee14f6）**：runInstallTask（QtConcurrent worker + 回主线程 onDone + 取消/失败标志 m_installWorkerFailed）；forgeStep3 拆 壳/prepareImpl(worker)/route(三分支)；bootstrapper 前置（JAR 剥离/mappings 预下载/TSRG 转换）→ worker；fabricStep3 拆 壳/Impl(worker)。遗留主线程：Java 自动下载解压、Legacy2/1、finalizeBootstrapperInstall、OptiFine 整目录复制。 |
-| `launcher.h/.cpp` | 105 / 1710 | **游戏启动核心**：实际启动 Minecraft 进程（参数组装、natives 解压、JVM 启动、进程监控、退出码处理）、服务器属性准备；**输出环形缓冲**（recentOutput，最近 600 行原始输出供崩溃分析）。 |
-| `microsoft_auth.h/.cpp` | 64 / 357 | **微软 OAuth 认证**：设备码/浏览器流程、XBL→XSTS→Minecraft→Profile 四步链、token 获取与刷新。**2026-10-08**：`refreshMcChain` 增加刷新令牌透传，使 `loginSuccess` 始终携带最新刷新令牌。 |
-| `yggdrasil_auth.h/.cpp` | 87 / 266 | **Yggdrasil 认证**：外置登录协议实现（与服务器握手、校验、token）。**2026-10-08 新增** `validate()`（authserver/validate 非轮换校验，204 有效/403 失效）。 |
-| `cf_api.h/.cpp` | 73 / 370 | **CurseForge API 适配器**：搜索/分类/版本/依赖请求（走镜像 /curseforge/v1/）。 |
-| `cf_api_key_local.h` | 13 | CF API Key 本地源（占位/注入点）。 |
-| `cf_key_crypto.h` | 171 | **CF API Key 解密**：与 tools/encrypt_cf_key.py 对应的 AES-256-GCM 解密运行时。 |
-| `resource_fetch_engine.h/.cpp` | 110 / 293 | **资源拉取引擎（司南）**：统一调度 Modrinth/CurseForge 搜索 API 与图标拉取，三层缓存 + 本地缩略图 + 严格并发控制。 |
-| `geoip_service.h/.cpp` | 59 / 126 | **IP 地区检测**：ip-api.com，24h 缓存（QSettings），失败 5 分钟自动重试；供离线登录限制（非 CN 未正版登录禁止离线）与语言/版本区域适配。 |
-| `icon_cache.h/.cpp` | 46 / 105 | **图标缓存**：网络图标（webp）→ 本地 PNG 缓存。 |
-| `mc_language.h/.cpp` | 30 / 122 | **MC 语言映射**：地区码 → Minecraft 语言/region 设置（options.txt）。 |
-| `crash_detector.h/.cpp` | 141 / 1150 | **崩溃分析引擎（v2 完整版）**：主流启动器 式 51 条正则规则库（OpenJ9/内存/Mod冲突/Mixin/OptiFine兼容等）+ 堆栈关键词黑名单分析 + 日志收集（崩溃报告/hs_err/latest.log/debug.log）+ 一键导出 + Markdown 报告生成（过长自动落盘）。`analyzeCrash(gameDir, latestOutput, launcherLog)` 全链路入口；**无崩溃报告但有 JVM 输出时也用输出做规则分析**（同主流启动器，覆盖 Java 不匹配/启动即退）；CrashReport 新增 jvmOutput 字段供 UI 展示。 |
-| `screenshot_server.h/.cpp` | 79 / 361 | **调试截图服务器**（Debug 构建）：/eval + /screenshot 远程调试接口。 |
-| `step_node.h/.cpp` | 85 / 61 | **步骤节点**：安装/下载步骤的状态/进度/字节计数 QObject（Q_PROPERTY+NOTIFY 供 QML 绑定）。 |
-| `step_pipeline.h/.cpp` | 95 / 202 | **步骤管线**：StepModel（QAbstractListModel）+ StepPipeline（加权进度/推进/取消），驱动安装进度 UI。 |
-| `update_checker.h/.cpp` | 48 / 128 | **更新检查**：查询最新版本（版本 JSON）。 |
-| `update_manager.h/.cpp` | 119 / 496 | **更新管理**：下载更新包、校验、解压替换、重启更新器。 |
-| `version_manager.h/.cpp` | 86 / 320 | **版本清单**：从 Mojang manifest 拉取版本列表（release/snapshot/old）。 |
-| `version_isolation.h/.cpp` | 42 / 212 | **版本隔离**：独立 .minecraft 目录的创建/迁移/删除。 |
-| `render_head_util.h` | 68 | **3D 头像渲染工具**：皮肤 → 头像渲染辅助。 |
-| `modpack_importer.h/.cpp` | 135 / 249 | **整合包导入**：本地 zip/mrpack 导入入口（校验、落盘标记 `.shadow_modpack`）。 |
-| `cef_login_app.h/.cpp` | 19 / 9 | CEF 登录辅助（占位/启动壳，微软登录嵌入式浏览器用）。 |
-| `logger.h/.cpp` | 33 / 129 | 日志分类定义与输出（logApp/logLaunch/logLoader/logNet…）。 |
-
-### 1.4 整合包子域（`src/core/modpack/`）
-
-| 文件 | 行数 | 功能 |
-|---|---|---|
-| `modpack_common.h/.cpp` | 74 / 108 | 整合包公共常量/工具。 |
-| `modpack_parser.h/.cpp` | 34 / 276 | **整合包 manifest 解析**（CF/Modrinth/通用格式）。 |
-| `modpack_downloader.h/.cpp` | 144 / 831 | **整合包编排下载（女娲）**：manifest → 文件清单 → 并行下载 → 覆盖备份钩子。 |
-| `mod_download_engine.h/.cpp` | 167 / 695 | **批量模组小文件下载（精卫）**：多源自降级、SHA1/大小校验、EMA 网速统计、**任务大小降序 + 慢速看门狗（500ms 扫描，<128KB/s 持续 2s → 换源，单源/全源慢时放弃看门狗宁慢不误判）**（2026-08-06）；**每文件独立重试预算（Item.retried ≤ kMaxRounds-1，取代全局轮次闸门）+ 重试间隔随次数线性放大（kRetryGapMs 5s/10s/15s/20s）+ 镜像限频移入 launchRequest 统一出口 + resetForRetry 完整复位**（2026-08-12，成片失败根因修复，见更新记录）。 |
-| `modpack_install_task.h/.cpp` | 181 / 1280 | **整合包安装任务**：合并安装上下文（MergedInstallContext，主流启动器 式 UUID 临时目录隔离）、加载器安装编排、步骤管线、取消清理。 |
-| `zip_archive.h/.cpp` | 71 / 283 | ZIP 解压封装（QZipReader 包装）。 |
-
-### 1.5 联机子域（`src/multiplayer/`，陶瓦 Terracotta 兼容）
-
-| 文件 | 行数 | 功能 |
-|---|---|---|
-| `multiplayer_manager.h/.cpp` | 275 / 2060 | **联机核心**：建房/加入房间状态机（Idle/CreatingRoom/JoiningNetwork/Discovering/Connecting/Connected/VerifyingConnection/WaitingForGuests/Error…）、Scaffolding 服务端（host）与客户端（guest）、协议 handler（ping/protocols/server_port/player_ping/profiles_list）、指纹验证、心跳、玩家列表同步、FakeServer（MC 局域网广播）、MC 扫描、连接难度计算（NAT 四档）、重连、退出兜底清理。**2026-08-21 起不再自提权重启**：createRoom/joinRoom 直接启动 EasyTier（easytier-core 以普通权限 QProcess 运行，无需提权）。**访客房主掉线检测**：`m_hostWatchdog` 每 5s 检查 `m_lastHostActivityMs`，房主 15s 无响应即 `handleHostLost()`→toast+`leaveRoom()` 自动退房；`onSocketError`/`onSocketDisconnected` 已验证分支同样走 `handleHostLost()` 全量清理。 |
-| `easytier_process.h/.cpp` | 122 / 694 | **EasyTier 进程管理**：easytier-core/cli 查找与启停、TOML 配置生成（`[[peer]]` 表数组 + 陶瓦公共节点）、`--no-tun` 参数、RPC 端口确定性生成、端口转发（port-forward add）、TCP 白名单动态更新、peer 表轮询解析（虚拟 IP/NAT 类型/host 活跃性 cost 过滤）。**2026-08-21 起完全不提权**：`--no-tun` 纯用户态组网无需管理员，`start()` 全平台统一走 `startViaQProcess()`（plain QProcess），已删除 `quoteWindowsArg`/`ShellExecuteEx("runas")`/`m_winProcess` HANDLE 追踪。 |
-| `room_code.h/.cpp` | 26 / 111 | **房码算法**：16 位 base34（不含 I/O）整体 mod 7 校验（对齐陶瓦）、生成/解析、I→1/O→0 兼容。 |
-| `scaffolding_protocol.h/.cpp` | 46 / 59 | **Scaffolding 协议**：请求包 `[typeLen][type][bodyLen][body]`、响应包 `[status][bodyLen][body]`（无 type，FIFO 匹配）构建工具。 |
-| `mc_scanner.h/.cpp` | 64 / 205 | **MC LAN 扫描器**：UDP 224.0.2.60:4445 监听真实 MC 服务器广播，检测 MC 端口。 |
-| `port_request.h/.cpp` | 19 / 34 | **端口请求**：requestSpecific/requestFree（对齐陶瓦 ports.rs）。 |
-| `connection_guard.h/.cpp` | 47 / 109 | **频率限制**：房码/连接/包速率防护。 |
-| `relay_crypto.h/.cpp` | 28 / 148 | **中继端点解密**：AES-256-GCM 解密 243 字节 blob（中继地址/前缀），开源构建回落全零占位。 |
-| `encrypted_addr.h` | 37 | 加密 blob 布局定义（offset/len，全零占位；真实值在 .gitignore 的本地文件，由 tools/encrypt_addr.py 生成）。 |
-| `encrypted_frag_1..5.cpp/.h` | 8×5 | 加密 blob 分片（混淆存放，开源构建为占位桩），`encrypted_frag_stub.cpp` 为桩实现。 |
-
-### 1.6 会话与工具（`src/session/`、`src/utils/`）
-
-| 文件 | 行数 | 功能 |
-|---|---|---|
-| `session/download_session.h/.cpp` | 147 / 137 | **下载会话**：跨任务下载会话状态（合并安装上下文关联）。 |
-| `utils/types.h` | 157 | 公共类型/枚举定义。 |
-| `utils/logger.h/.cpp` | 42 / 228 | 日志工具（文件日志、分类）。 |
-| `utils/hash_utils.h` | 18 | 哈希工具（SHA1 等）。 |
-| `utils/secure_wipe.h` | 24 | 安全内存擦除（SecureZeroMemory）。 |
-| `utils/temp_tracker.h/.cpp` | 32 / 141 | **临时目录追踪**：记录/清理 `%TEMP%/shadow-merged-*` 残留（启动时 cleanupOrphans）。 |
-| `utils/token_crypto.h/.cpp` | 38 / 322 | **令牌加密**：微软 refresh token 等敏感数据落盘加密。 |
-| `utils/lzma/LzmaDec.h`、`Types.h` | 237 / 83 | LZMA 解压（7z 支持）。 |
-
-### 1.7 其他
-
-| 文件 | 行数 | 功能 |
-|---|---|---|
-| `update/SLUpdater.cpp` | — | 独立更新器进程（下载并替换主程序）。 |
-| `tools/`（仓库） | — | 加密生成脚本：`encrypt_cf_key.py`、`encrypt_addr.py`（不在 src 内，见 git）。 |
-| `tools/gen_mcmod_map.py` | 252 | **MC百科映射自研脚本（2026-08-23 新增）**：读 mcmod.cn sitemap1/2 → 并发抓详情页 → 解析 中文名(en)/CurseForge slug/Modrinth slug → 输出 `qml/mcmod_map.json`（紧凑数组）。断点缓存 `tools/_mcmod_map_resume.jsonl`；`--limit/--workers/--out/--no-resume`；失败不落盘下次自动重试。 |
-| `qml/mcmod_map.json` | — | MC百科映射数据（id/en/cf/mr，由 gen_mcmod_map.py 生成，进 qrc 打包）。只做“中文名 ↔ 平台 slug”归一映射，**不搬运百科站内数据**；无映射时详情页 MC百科按钮走搜索跳转兜底。 |
-
----
-
-## 二、QML 界面（`qml/`）
-
-### 2.1 窗口 / 全局
-
-| 文件 | 行数 | 功能 |
-|---|---|---|
-| `UsefulWebsitesPage.qml` | 505 | **实用网站页（2026-08-19 增强）**：两级界面——①大类卡片页（**「本启动器」置顶占满整行**——loadData 重排 launcher 至 index 0，Flow 布局：index 0 全宽 88px，其余两列 92px；10 大类）；②网站卡片页（favicon + 主标题=站点名 + 副标题=网址+简介，点击 Qt.openUrlExternally 直达）。**动画体系**：载入=卡片下滑入+淡入逐张 stagger（SequentialAnimation+PauseAnimation delay，因 NumberAnimation 无 delay 属性，直接赋值被编译器拒）；悬停=上浮 -3px（独立 Translate）+图标 OutBack 放大+箭头右移点亮+高亮底/边框；点击=按压缩放 0.96+闪光反馈。数据源 `websites_data.js`（pragma library，由 `websites_data.json` 经 `tools/gen_websites_js.py` 生成；**不用 XHR**——同步 XHR 对 qrc 在 Loader 页内抛 Invalid state，踩坑）。**踩坑**：readonly property 别名 MouseArea.hovered（后声明）报 `Unable to assign [undefined] to bool` → 改内联引用 cHover.hovered；Behavior on 另一对象 transform 属性（cLift.y）报 `Cannot assign to non-existent property` → Behavior 移入 Translate 内。**悬停绑定失效（commit 96487c1 修）**：delegate 内直接绑定后声明的 MouseArea.hovered（color/scale/transform 引用）在本编译环境下绑定依赖不注册——hover 变化不触发重算（内联引用不报错但同样失效，实测完全无悬停效果）；修法=卡片根声明自身 cHovered/cPressed 属性，MouseArea onEntered/onExited/onPressedChanged 显式赋值，绑定只引用卡片自身属性。**悬停放大溢出（commit c763a3f 修）**：放大 1.02→1.015 + catFlow/siteFlow 四周留边距（x:8 y:6 width-16 spacing:12）+ hover z:2 提升层级 + contentHeight 补偿偏移。含 BackButton 返回、入场动画。 |
-| `websites_data.json` / `websites_data.js` | 135 / 446 | **实用网站数据**：10 大类 61 站（排除 md #2/#3 及基岩版专属，保留 Java/基岩混合如 Chunker）；每站 name/url/desc/icon(→`icons/sites/<key>.png`)。 |
-| `MainWindow.qml` | 1640 | **主窗口**：全 UI 骨架、侧边导航（navIndicator 光条）、页面路由（Loader 加载各页面，0=启动 1=下载 2=联机 3=统计 4=设置 5=安装进度）、全局 DropArea（整合包/Mod/资源包拖拽导入路由）、子浮层（版本选择/版本设置/设置等 Overlay）、ToastManager 挂载、协议同意闸门；崩溃分析接线（`onCrashAnalysisStarted`→Toast「启动失败，正在分析日志信息…」+弹窗分析态，`onCrashAnalysisReady`→结果态）；`--navigate settings:xxx` 支持设置页 section 切换。**浮层互斥（2026-08-13）**：`onShowVersionSettingsChanged` 联动——showVersionSettings 变 true 时强制 showVersionSelect=false（版本选择/设置同时显示时，自定义背景透明下会视觉叠加，鼠标点击只到上层浮层）；openVersionSettingsSection 也显式先关版本选择。**2026-08-19 侧边栏扩项**：navModel 在「下载进度」后加「帮助文档」（pageKey help_docs，external-link 图标，onClicked 直接 `Qt.openUrlExternally` 开浏览器不切换页）+「实用网站」（pageKey useful_sites，compass 图标，navListIndex 7 → UsefulWebsitesPage）；navLabel 补两 case；switchPage 增 `_usFadeOut` 淡出。 |
-| `SplashWindow.qml` | 50 | 启动画面。 |
-| `StyleTokens.qml` | 133 | **设计令牌**：颜色（bg/accent/text 系列）、字号、圆角、间距常量。 |
-| `AnimationTokens.qml` | 187 | **动画令牌**：时长/缓动曲线常量。 |
-| `ToastManager.qml` | 144 | **Toast 通知**：右下角堆叠、天蓝色、`show(msg, duration)`。 |
-| `ToastStyleSuccess.qml` / `ToastStyleWarning.qml` | 27×2 | Toast 成功/警告样式常量。 |
-| `AgreementOverlay.qml` | 329 | 用户协议/隐私/条款同意浮层（HTML 渲染）；内测协议行与内测文案按 `betaGateEnabled`（编译期）显隐，公测版隐藏（2026-08-14 改）。 |
-| `BackgroundCropOverlay.qml` | 281 | 自定义背景裁剪设置浮层。 |
-| `BetaKeyDialog.qml` | 154 | 内测密钥输入窗口（仅 `SHADOW_ENABLE_BETA_GATE=ON` 时主程序加载它；资源保留随时可加回）。 |
-| `DebugWindow.qml` / `DebugPanel.qml` | 164 / 132 | 调试窗口/面板（Debug 构建）。 |
-| `SubPageOverlays.qml` | 138 | 子页面浮层容器（版本选择/设置等 Overlay 的路由壳）。 |
-
-### 2.2 页面（导航主页面）
-
-| 文件 | 行数 | 功能 |
-|---|---|---|
-| `HomePage.qml` | 1480 | **主页**：版本快捷选择卡、离线/正版/外置登录切换、启动按钮、游戏时长/最近游玩、背景。**正版登录未登录态快捷跳转（2026-09-27）**：msLoginForm 内「Microsoft 登录」按钮下加「购买正版」（lucide shopping-cart，Xbox 商店页）/「跳转官网」（lucide globe，minecraft.net）两条下划线文字链，点击 `Qt.openUrlExternally`；图标尺寸 = 字号（fontSizeSm=12）1:1 配对；悬停变化由 MouseArea onEntered/onExited 显式赋值 delegate 自身 `linkHovered`（规避本项目 QML 编译环境「绑定后声明 MouseArea.hovered 不触发重算」的坑）；登录中（msInProgress）整行 `visible:false` 由 ColumnLayout 剔除（进度框不与文字重叠），登录成功随 msLoginForm 整体隐藏。 |
-| `DownloadPage.qml` | 2166 | **下载中心**：Tab 页（Mod/资源包/光影/整合包）、搜索/筛选（FilterCard）/分页（PaginationFooter）、结果网格、下载队列入口。 |
-| `InstallPage.qml` | 849 | **安装页**：版本安装（原版/Forge/Fabric/NeoForge/OptiFine 选择、ModLoaderCard 列表）。 |
-| `InstallProgressPage.qml` | 72 | 安装进度页（步骤管线展示）。 |
-| `VersionSelectPage.qml` | 404 | **版本选择页**（独立页形态，替代旧左栏）。 |
-| `VersionSettingsPage.qml` | 1067 | **版本设置页**（独立页形态）。 |
-| `SettingsPage.qml` | 676 | **设置页**：左侧分类导航 → 各 Settings*Page（通用/Java/内存/实验/关于）；关于页含「一键安装所需 Java」卡片（架构徽标 + 前置检测状态三行 + 小字说明 + **下载进度条（百分比/字节/速度）** + 安装中/取消按钮 + Toast 完成与异常反馈 + logMessage 关键提示）；**鸣谢卡（2026-08-12 改版）：4 条原卡片文案更新 + 名字可点击开网页（悬停变蓝+下划线）+ ChunMoMo「内测人员」徽标 + 新增「内测人员的支持」卡**。 |
-| `SettingsGeneralPage.qml` | 883 | 设置-通用：下载源/线程/限速、主题、语言、游戏目录、协议等。 |
-| `SettingsJavaPage.qml` | 408 | 设置-Java：Java 列表/选择/扫描；刷新按钮异步扫描（scanJavaInstallations → onJavaPathChanged → refreshAll 刷新列表+Toast，修复同步读旧缓存问题）。 |
-| `SettingsMemoryPage.qml` | 247 | 设置-内存（汇总视图）。 |
-| `SettingsMemorySection.qml` | 368 | 内存条组件（游戏分配标签文字自适应钳制）。 |
-| `SettingsExperimentalPage.qml` | 261 | 设置-实验性功能（审计范围外）。 |
-| `JavaPage.qml` | 620 | Java 管理页（详情/列表）。 |
-| `StatsPage.qml` | 297 | **统计页**：版本游戏时长条（Hover 显示完整版本名 tooltip——2026-08-03 改为自定义 Popup 圆角框，替代系统默认米白尖角 ToolTip）。 |
-| `SubPageOverlays.qml` | 138 | **⚠️ 死代码（无任何引用）**：旧式全页覆盖加载器（VersionSelectPage/VersionSettingsPage/Settings*Page），被 MainWindow 的 Overlay 形态取代。 |
-| `MultiplayerPage.qml` | 336 | **联机页**：创建/加入房间、状态指示、房间码卡、网络监控、玩家列表、帮助面板、底部合规声明。 |
-
-### 2.3 详情/子页面
-
-| 文件 | 行数 | 功能 |
-|---|---|---|
-| `ModpackDetailPage.qml` | 534 | 整合包详情（版本列表/下载/导入）。2026-08-23：分组改异步（_rebuildPackGrouped，Qt.callLater）+ 版本列表懒渲染（每组默认 30 条 + “还有 X 个版本”追加）+ 顶部统一跳转/复制胶囊。 |
-| `ModDetailPage.qml` | 1095 | Mod 详情（简介/版本/依赖/下载）。已含异步分组 _rebuildGrouped()+懒渲染（模板页）+ 跳转/复制胶囊（Modrinth/CF/MC百科/复制名称/复制链接）。 |
-| `ResourcePackDetailPage.qml` | 461 | 资源包详情。2026-08-23：同步分组改异步（_rebuildRpGrouped）+ 懒渲染 + 跳转/复制胶囊（Modrinth/CF/MC百科/复制名称/复制链接）。 |
-| `ShaderDetailPage.qml` | 499 | 光影详情。2026-08-23：同步分组改异步（_rebuildGrouped）+ 懒渲染 + 跳转/复制胶囊（Modrinth/CF/MC百科/复制名称/复制链接）。 |
-| `DataPackDetailPage.qml` | 607 | 数据包详情。2026-08-23：同步分组改异步（_rebuildGrouped）+ 懒渲染 + 跳转/复制胶囊（Modrinth/MC百科/复制名称/复制链接，无 CF）。 |
-| `ModpackImportOverlay.qml` | 328 | 整合包导入浮层（拖拽/选文件/自定义名）。 |
-| `InstallConfigOverlay.qml` | 151 | 安装配置浮层（版本名/加载器配置）。 |
-| `LaunchOverlay.qml` | 516 | 启动覆盖层（启动中状态/日志）。 |
-| `CrashDialog.qml` | 330 | **崩溃分析弹窗（v2）**：双态——分析中（LoadingSpinner 转圈+提示文案）/结果（原因、建议列表、嫌疑模组标签云、报告文件提示）；按钮：重新分析/导出全部日志/打开崩溃报告/打开报告/关闭；入场 scale+opacity 动画（AnimationTokens）；`beginAnalyzing()` + `crashData` 属性驱动。 |
-
-### 2.4 版本相关
-
-| 文件 | 行数 | 功能 |
-|---|---|---|
-| `VersionCard.qml` | 115 | 版本卡片（列表项）。 |
-| `DetailVersionCard.qml` | 173 | 版本详情卡（概览）。 |
-| `DetailInfoCard.qml` | 110 | 通用信息卡（详情页统计项）。 |
-| `DetailLinkBar.qml` | 116 | **详情页统一跳转/复制胶囊条（2026-08-23 新增）**：Flow 布局，`links`=({label,url} 蓝边胶囊，Qt.openUrlExternally)、`copyItems`=({label,text} 棕边胶囊，backend.copyToClipboard + toastManager.show)。纯文本无预览图（硬规则：UI 禁用 emoji，图标一律 Lucide SVG）。五个详情页（Mod/光影/资源包/整合包/数据包）共用一处实现。 |
-| VersionSelectOverlay.qml | 404 | 版本选择浮层（单卡片占满整页：已安装版本列表 + 顶部工具行 标题/刷新/搜索/导入整合包/安装/排序/筛选；2026-08-07 左侧版本文件夹卡片已删）。**右键进版本设置（2026-08-13 修）**：右键版本条目 onPressed 打开设置同时 showVersionSelect=false（原只置 showVersionSettings=true，自定义背景透明下与设置浮层叠加可见）。 |
-| `VersionSettingsOverlay.qml` | 1490 | **版本设置浮层（实际生效）**：7 分区（概览0/启动配置1/内存2/Mod管理3/资源包4/存档5/工具6），各分区内容 + 顶部启动按钮。概览快捷入口 2026-08-03 分类重做：统一 ShadowButton + 文件夹/日志/其他分组；Mod 文件夹按钮 visible 内联白名单判定（lt ∈ Forge/Fabric/NeoForge/Quilt，与 sidebar Mod 管理同款写法，原版必隐藏）；光影包/config 按钮已移除。 |
-| `VersionLaunchSection.qml` | 599 | 启动配置分区（Java/参数/GPU）。 |
-| `VersionMemorySection.qml` | 251 | 内存分区。 |
-
-### 2.5 联机组件族（`Multiplayer*`）
-
-| 文件 | 行数 | 功能 |
-|---|---|---|
-| `MultiplayerHelpPanel.qml` | 132 | 联机帮助折叠面板（架构/房主/访客/NAT/端口/FAQ）。 |
-| `MultiplayerStateIndicator.qml` | 112 | 状态指示面板（角色徽章/状态文字/进度条）。 |
-| `MultiplayerStateDot.qml` | 37 | 状态指示灯（颜色圆点+呼吸）。 |
-| `MultiplayerRoomCodeCard.qml` | 121 | 房间码卡（复制/难度徽章）。 |
-| `MultiplayerNetworkPanel.qml` | 119 | 网络监控面板（难度/协议/MC端口/在线玩家/指纹）。 |
-| `MultiplayerPlayerCard.qml` | 147 | 玩家卡（名称/身份/延迟动画）。 |
-
-### 2.6 通用组件
-
-| 文件 | 行数 | 功能 |
-|---|---|---|
-| `ShadowButton.qml` | 95 | 通用按钮（hover/press 缩放动效）。 |
-| `ShadowIconButton.qml` | 122 | 图标按钮。 |
-| `ShadowSwitch.qml` | 70 | 开关。 |
-| `ShadowDropdown.qml` | 222 | 下拉选择。 |
-| `LabeledDropdown.qml` | 36 | 带标签下拉。 |
-| `InputBox.qml` | 274 | 输入框（密码模式/历史下拉/校验错误态/右侧按钮）。 |
-| `SearchBox.qml` | 55 | 搜索框。 |
-| `ConfirmDialog.qml` | 72 | 确认弹窗。 |
-| `GenericPopup.qml` | 177 | 通用弹窗（标题/内容/按钮）。 |
-| `SelectionPopup.qml` | 217 | 选择列表弹窗。 |
-| `ProfileSelectPopup.qml` | 214 | 头像/配置选择弹窗。 |
-| `LoadingSpinner.qml` | 69 | 加载转圈（Canvas）。 |
-| `LoadStatus.qml` | 53 | 加载状态条。 |
-| `KillButton.qml` | 97 | 红色终止按钮。 |
-| `RefreshButton.qml` | 38 | 刷新按钮。 |
-| `BackButton.qml` | 53 | 返回按钮。 |
-| `PaginationFooter.qml` | 137 | 分页脚（上一页/页码/下一页）。 |
-| `FilterCard.qml` | 347 | 筛选卡（分类/加载器/版本过滤）。 |
-| `ExpandableGroupCard.qml` | 82 | 可折叠分组卡。 |
-| `DownloadCard.qml` | 320 | 下载项卡片（进度/速度/状态）。 |
-| `DownloadCardTagRow.qml` | 44 | 下载卡标签行。 |
-| `DownloadQueueCard.qml` | 366 | 下载队列卡片（队列项）。 |
-| `DownloadQueuePanel.qml` | 198 | 下载队列面板（右下角浮层）。 |
-| `ModLoaderCard.qml` | 163 | 加载器卡片（Forge/Fabric/NeoForge/OptiFine 选择）。 |
-| `ModpackInfoPanel.qml` | 149 | 整合包信息面板。 |
-| `MinecraftHead2D.qml` | 83 | 2D MC 头像（皮肤渲染）。 |
-| `InlineToast.qml` | 65 | 内联提示条。 |
-
----
-
-## 三、文档更新记录
-
-| 日期 | 说明 |
+| 路径 | 原因 |
 |---|---|
-| 2026-08-21 | **联机：访客房主掉线自动退房 + 彻底去除 Easytier 提权**：①访客侧新增 `m_hostWatchdog`（5s 轮询 `m_lastHostActivityMs`，房主 15s 无任何响应视为离开）——实测 easytier 端口转发在房主掉线时本地 socket 常半开、TCP 事件根本不触发，故不能只靠 `onSocketDisconnected`；新增 `handleHostLost()` 统一 toast（`errorOccurred`→MultiplayerPage 弹提示）+ `leaveRoom()` 全量清理，`onSocketError`/`onSocketDisconnected` 已验证分支与看门狗三处都走它。②实测 `easytier-core --no-tun` 在 Medium Mandatory Level（非提权）下正常启动（绑定监听+RPC、无权限错误），确认无需提权；`easytier_process.cpp` 删除 `ShellExecuteEx("runas")`/`quoteWindowsArg`/`m_winProcess`，全平台统一 `startViaQProcess()`；`MultiplayerHelpPanel.qml` 步骤文案去除管理员权限说明、FAQ 更新（无需提权 + 房主离开自动退房说明）。 |
-| 2026-08-21 | **联机取消启动器自提权（只提权 easytier-core）**：创建/加入房间不再 `runas` 重启整个启动器。原自提权（`elevated_session.{h,cpp}` + `--elevated/--elevate-config` + restoreHost/GuestSession）唯一目的是保护当时的私有中继 IP 不被命令行泄露，改用社区公共中继节点后已无必要。改为 `easytier_process.cpp` 用 `ShellExecuteEx("runas")` 单独提升 easytier-core（敏感参数只写临时 TOML、不上命令行，句柄用 `m_winProcess` 追踪退出）；启动器保持非提权（游戏也随之以普通权限运行）。删除 `elevated_session.{h,cpp}` 与 CMake 条目，更新 `MultiplayerHelpPanel.qml` 提权文案/FAQ。 |
-| 2026-08-14 | **公测准备：内测密钥闸门改编译期开关（CMakeLists/main_release.cpp/shadow_backend.{h,cpp}/AgreementOverlay.qml）**：新增 `option(SHADOW_ENABLE_BETA_GATE ... OFF)`（默认 OFF=公测直通 MainWindow；ON=内测，启动弹 BetaKeyDialog）。main_release.cpp 闸门段包进 `#ifdef SHADOW_ENABLE_BETA_GATE`；shadow_backend 新增 `betaGateEnabled` 静态属性（编译期）；AgreementOverlay 内测协议行/「欢迎使用 Shadow Launcher 内测版！」文案按开关显隐（allChecked 改 `(!betaGateEnabled||betaChecked)&&privacy&&terms`）。全部 Beta 代码/QML/协议资源保留，加回内测=cmake -DSHADOW_ENABLE_BETA_GATE=ON 重编译。双向实测：OFF 无 Beta 日志直通主窗口；ON 无密钥→Loading beta key dialog/Waiting for beta key input 卡窗、有密钥→直接放行。 |
-| 2026-08-12 | 鸣谢卡片 z0z0r4 补网址跳转（SettingsPage.qml ackItemComp model）：url 补 https://www.mcimirror.top/（用户补充，界面不显示网址）。 |
-| 2026-08-13 | **版本选择→版本设置页面叠加修复（VersionSelectOverlay.qml/MainWindow.qml）**：内测反馈——版本选择页右键版本条目进版本设置后两页面叠加（仅自定义背景开启时可见，点击不穿透）。根因——打开设置只置 showVersionSettings=true，未关 showVersionSelect → 两个浮层 Loader（同 z:5，settings 声明在后在上层）同时 opacity=1/visible=true；VersionSettingsOverlay 根 Rectangle `color: hasBg ? transparent : bgPrimary`——无自定义背景时不透明盖住下层看不出，开启自定义背景（透明）后下层版本选择页透出。修复（双保险）：①VersionSelectOverlay 右键 onPressed 加 showVersionSelect=false（进设置同时收版本选择，淡出动画自然播放）；②MainWindow onShowVersionSettingsChanged 联动 showVersionSettings→强制 showVersionSelect=false + openVersionSettingsSection 显式先关。编译通过。 |
-| 2026-08-12 | 鸣谢条目重叠修复（SettingsPage.qml ackItemComp）：内测反馈——描述小字与名字标题重叠。根因——MouseArea（anchors.fill）与徽标（anchors.verticalCenter）放在 Row（Positioner）内，Positioner 子项使用 anchors 属未定义行为，Row 高度/位置计算异常导致 ackDesc 与名字行重叠。修复——去掉 Row，改纯 anchors 布局（名字/徽标/描述/鼠标区全部直接锚在 ackItem 上，height 改 ackDesc.y+ackDesc.height，与原有 4 条手工条目同构）。 |
-| 2026-08-12 | 设置-关于-鸣谢板块改版（SettingsPage.qml）：①4 条原卡片文案按桌面《鸣谢.docx》更新（bangbang93/z0z0r4/Lucide/ChunMoMo，url/badge 入 Repeater model）；②名字可点击开网页——bangbang93→afdian.com/a/bangbang93、Lucide→lucide.dev（界面不显示网址，无 URL 条目不可点）；③点击交互：平时白色、悬停变 accent 蓝+下划线+手型光标（ColorAnimation 150ms）；④ChunMoMo 加「内测人员」徽标（accentSubtle 底+accentLink 字，仿一键安装 Java 卡架构徽标）；⑤新增「内测人员的支持」卡（3 段文案，同款卡片样式）；旧 4 条手工 Item → 新增 ackItemComp 局部组件 + Repeater 渲染（高度链：Item.height=名字行+3+描述，Positioner 展开）。 |
-| 2026-08-12 | 下载页"最新正式版"显示错误修复（DownloadPage.qml）：根因——latestHighlight 用 backend.versionIds[0]/[1]（Mojang manifest 全量顺序，快照在前，versionIds[1] 是第二个快照而非最新正式版）。修复：改从筛选列表取——最新正式版 = releaseVersions[0]（release 过滤列表新→旧序首项）、最新快照版 = snapshotVersions[0]（已排除愚人节版） |
-| 2026-08-12 | **整合包模组批量下载"成片失败"根因修复（mod_download_engine.{h,cpp}/modpack_downloader.{h,cpp}/tests/test_jingwei_retry.cpp + CMakeLists）**：内测/实测——上百个模组时一旦出现失败就成片失败，取消重导才可能成功。三个叠加根因：①**任务层重试结果被丢弃（直接机制）**：onEngineFileFinished 的 first-only 守卫 + findIndexBySavePath 的 !finished 过滤 → 精卫补位重试成功后同一文件再发 fileFinished 被忽略 → 文件实际已下好仍计失败 → 批量失败误报、failed==total 误判整包导入失败（回滚删除已下文件，只能重导）；②**全局 5 轮重试预算被集中失败耗尽**：pump/tryStartNextRound 用全局 m_round 做闸门且补位重试是"批量整体重入队"，一波网络抖动集中失败（几十个文件）瞬间吃掉 4 次配额 → 抖动结束后晚失败文件零重试 → 永久失败；③**镜像限频失效**：限频在 pump 里按 sources.first() 判断（当前源已是镜像时漏判），且 sourceFailed 就地换源直连完全绕过 → CF 包批量切镜像时 12 路并发打爆 MCIM 限流 429 → 更多失败自激。修复：①findIndexBySavePath 去终态过滤 + onEngineFileFinished 每次事件更新终态（重试成功→done+登记回滚+发 fileFinished；仅首次失败刷屏日志）；②重试预算改**每文件独立**（Item.retried，至多 kMaxRounds-1 次）+ 重试间隔随次数线性放大（kRetryGapMs 5s/10s/15s/20s，可 setRetryGapMs 覆盖）——短暂抖动消耗的尝试在恢复后仍能补上；③镜像限频移入 launchRequest 统一出口（按实际 URL 判断，覆盖新启动+换源两条路径）；顺带修 resetForRetry 补全运行态复位（resumeFrom/rangeChecked/enoughBytes/slow*，旧实现漏了导致重试时空文件 seek+Range → 前段零填充 → SHA1 必败/CF 大小校验误通过落盘损坏）。JingweiRetryTest 19 断言全 PASS：/f2（前 2 次 503）、/f4、/always、/ok 本地服务器控制失败次数，验证每文件请求次数恰为预算语义 + 任务层重试成功可见（旧代码此断言必 FAIL） |
-| 2026-08-11 | Mod 管理批量启禁用（local_mod_manager.{h,cpp}/shadow_backend.{h,cpp}/VersionSettingsOverlay.qml，c97bcb0）：setAllModsEnabled 遍历 mods 目录批量 jar↔jar.disabled（只处理 jar/jar.disabled，已是目标状态跳过，返回改动数）；ShadowBackend Q_INVOKABLE 转发；Mod 管理 Header 加全部启用（check-circle 绿）/全部禁用（x-circle 红）按钮放打开Mod文件夹左侧，点击刷新列表+toast。**08-11 修复**：两按钮 98→80 宽、iconSize 14→13（防挤出右侧打开文件夹/刷新按钮溢出） |
-| 2026-08-11 | 全量更新（zip 包）上线（CMakeLists 版本 v0.4.3-beta/main_release.cpp/SLUpdater.cpp/update_manager.cpp/pack.ps1）：①版本号升 v0.4.3-beta（SHADOW_DISPLAY_VERSION + project VERSION）；②打包改 .zip（-tzip，排除 compat.json），compat.json update_mode=force_full + full_sha256=zip 哈希（压缩后生成）；③main_release.cpp PreInit 实现全量安装 applyFullUpdate：ZipArchive 解压 _update/extracted → 删除除 .minecraft/logs/_update 外全部内容 → 复制覆盖（exe 跳过）→ SLUpdater 替换 exe；修复两个 off-by-one（download_path pos+=18→17、download_version pos+=20→21，此前吞盘符/引号导致自更新从未生效）；extracted 启动时无条件清理；④SLUpdater.cpp 修复 wWinMain 用 GetCommandLineW()（lpCmdLine 不含程序名，此前 argc 恒少 1 → Usage 弹窗、更新从未生效）；⑤update_manager forceFull 优先选 .zip asset、大小猜测支持 .zip；实测全量更新 13 项验证 PASS（保留 .minecraft/logs、删旧、覆盖、exe 替换、状态清理） |
-| 2026-08-11 | 启动参数/JVM 输出日志脱敏（launcher.{h,cpp}/test_toggle_script.cpp）：新增 sanitizeLaunchLog（launcher.h 导出，QRegularExpression 三规则：--accessToken/--session 空格或=号形式、JSON "accessToken"/"access_token"/"session" 形式、accessToken=/access_token=/auth_session= 键值形式 → 替换 <hidden>），应用于启动参数日志 + [JVM 输出]/[JVM 错误输出] 逐行（JVM 输出保留写入）；ToggleScriptTest 新增 2c 脱敏 6 断言 PASS |
-| 2026-08-11 | Mod/资源包卡片长文本溢出修复（VersionSettingsOverlay.qml，01af19e 后续）：根因——版本行 RowLayout 无 fillWidth + 版本 Text 无 elide → 长版本号把 loader 徽章挤出卡片；Text 默认 minimumWidth=implicitWidth 撑大 ColumnLayout minimumWidth → 整个列（含底部禁用/删除按钮）右移溢出。修复：版本行/版本文本 fillWidth+elide+minimumWidth:0、名称/介绍/作者 minimumWidth:0、loader 徽章 maximumWidth:130+文本 elide 上限 110、文件大小 elide+maxWidth:120、卡片 clip:true 兜底（Mod+资源包两处） |
-| 2026-08-10 | 驿道分片慢片看门狗（http_client.{h,cpp}，b361561）：分片 2s 采样，增量 <256KB（128KB/s）判龟速连续 3 次（6s）→ abort 换连接重试；龟速换连接预算每片 2 次（对齐夸父 kMaxWatchdogAborts），预算用完让慢片爬完不失败；龟速 abort 不消耗失败重试预算（低速网络不误杀）——修复分片“前段快后段龟速”慢片拖尾 |
+| `src/utils/lzma/` | 第三方 LZMA SDK，随上游版本，不按本项目风格改注释 |
+| `src/multiplayer/encrypted_*` | 由 `tools/encrypt_addr.py` 生成，改注释无意义 |
+| `build/`、`dist/` | 构建产物 |
 
-| 2026-08-10 | 整合包模组永不开始/永不完成修复（mod_download_engine.h/.cpp）：根因——①慢速看门狗（<128KB/s 持续 2s）触发换源时 sourceFailed 一律删除 tmpPath + received=0 从头重下 → 慢速源（镜像）上的大文件每次只下 ~200KB 就被换走重来 → 永远下不完（实测 283 模组 2.5 分钟零完成，18:29:18 启动 12 并发后 265 个 pending 永不派发——槽位被换源循环占满，失败后 pump 才派新任务）；②镜像慢速 ↔ edge 挂起超时（Operation canceled）交替循环。修复：慢速换源（slowSinceMs==-1 标记）保留 tmpPath/received 断点续传——Item.resumeFrom + launchRequest Range 头 + ReadWrite/seek append + onReadyRead 首包检测 200（不支持 Range 则截断从头）+ onReplyProgress 绝对进度 resumeFrom+recv；失败换源才重置；tryStartNextRound 重置 resumeFrom/rangeChecked。与 assets/精卫前两轮同思路：下载要按预期字节数主动推进，换源不丢进度 |
-| 2026-08-10 | 整合包模组下载永不完成修复（mod_download_engine.h/.cpp）：根因——精卫完成判定依赖 reply->finished（等 Content-Length 收满），空闲超时（idleTimer）被数据活动重置；服务器 Content-Length 异常（> 实际数据，连接挂起不关闭）时下载到真实大小后继续有数据流动 → idleTimer 永不触发、reply 永不 finished → 无限下载（实测 alexscaves/minecraftdungeons 最后 2 模组 18:19:35 后无任何日志，速度在跳永不完成）。修复：Item.enoughBytes + onReadyRead 尾部检查已收字节 ≥ manifest fileSize → 主动 abort → onReplyFinished error 分支 enoughBytes 时跳过 sourceFailed 走校验路径（大小/SHA1 定真伪，不符则换源）；launchRequest 重置标志 |
-| 2026-08-10 | Fabric API 进度不计入总进度导致卡绿修复（version_backend.cpp）：根因——①Fabric API 步骤 shows=false（hidden）→ weightedProgress 跳过 hidden → 26.2+Fabric 完成时可见步骤全完成=1.0；②真正触发时序：installFabric 同步阻塞（fabricStep1 内部 QEventLoop 网络）→ finished handler 执行时 fabricApiPending 还是 false → L5839 的 skip（i==7）不生效 → 步骤 7 被提前标 completed → 加权 1.0 卡绿一瞬间（实测 17:40:49.023 completed → 49.392 API 进度更新恢复）；③API 下载白白晚启动 14 秒（未与 Fabric 并行）。修复：API 下载块提前到 installFabric 之前（fabricApiPending 先设 + 真并行）；shows 改 true（参与加权）；hardcode 7 → steps.size()-1（4 处）；finishInstall 尾部 updateStep(7,completed) 加 Failed 保护（API 失败时保持 error 显示） |
-| 2026-08-10 | assets 下载卡 99% 修复（asset_downloader.h/.cpp + test_asset_watchdog.cpp + CMakeLists）：根因①in-flight 请求挂起——transferTimeout 是"无活动"超时，真实网络慢速/连接悬挂时可能失效，请求永不 finished → checkAllFinished 永不满足 → 永久 99%（实测 26.2-forge 下载 17:06:51 后静默）；修复：独立 m_watchdogTimer（1s，不依赖 accelTick——队列空时 accelTick 会停）+ InFlight.lastProgressMs（downloadProgress 更新）+ 30s 无字节进展 → abort 换源（watchdogAborted 不记 host 失败防误伤）；根因②全源不可用死锁——m_allBlockedSinceMs 冷却结束（5s）即清零 → 持续全拒每 5s 重新计时 → kAllBlockedFailMs 120s 失败收尾永不触发 → 永久卡死（配合换镜像被 hostCanAccept 拒绝场景）；修复：冷却结束不清零，成功派发（fireNext）才清零；AssetWatchdogTest：挂起源 15s transferTimeout → 换 localhost 源 → 成功（15.4s PASS，SHA1 校验通过，验证换源不卡死） |
-| 2026-08-10 | 导出脚本凭据风险提示 UI（VersionSettingsOverlay.qml）：版本设置-概览-其他分组导出启动脚本按钮下方加小字（"导出启动脚本会包含当前登录凭据（正版/外置），请勿分享给他人"，暗琥珀 #8a6d3b，WordWrap） |
-| 2026-08-10 | 导出脚本登录信息三态分流 + 令牌时效验证（shadow_backend.cpp/launch_backend.cpp/launcher.cpp/test_toggle_script.cpp）：①导出 auth 注入对齐 launch() 三态（0=正版 1=离线 2=外置）——原实现只看 m_account->isOnline()，外置登录导出的是无关账号信息；外置模式注入 ygg username/uuid/accessToken + setYggdrasilMode，launch_backend 导出时拼 authlib-injector agent 参数（对齐启动 Step 4）；②正版导出前校验 msTokenValid()，过期→同步刷新（QEventLoop+15s 超时）→成功用新 token，失败降级离线+logMessage 警告（防过期令牌进脚本→Realms 失效）；③buildLaunchScript 脱敏策略改：保留有效 token（脚本正版会话可用）+ 头部 rem 凭据提示（不再替换 0）；ToggleScriptTest 2b 扩至 17 断言 PASS |
-| 2026-08-10 | 导出启动脚本启动失败修复（launcher.cpp/test_toggle_script.cpp）：实锤根因——Fabric 26.x 的 jvm 参数 "-DFabricMcEmu= net.minecraft.client.main.Main " 等号后带空格，bat 拼接无引号被 cmd 拆成两参数（-DFabricMcEmu= 空值 + mainClass 提前→JVM 把 mainClass 当主类、-cp 失效→ClassNotFoundException；启动器内启动正常因 QProcess 数组自动加引号）。修复：①buildArgs 对齐 主流启动器 去 "McEmu= " 空格；②新增 quoteBatArg（空参数→""，含空格/&|<>^"→双引号包裹），直接行+PS 包装双路径应用；③buildArgs game 参数不再过滤空参数（--clientId 后空值保留，防错位）；ToggleScriptTest 2b 扩至 14 断言 PASS |
-| 2026-08-10 | 导出启动脚本全选项整合（launcher.cpp/launch_backend.cpp/shadow_backend.cpp/test_toggle_script.cpp）：buildLaunchScript 补 32 位探测（-Xss1m 与 start() 对齐）+ pre/post 命令（同主流启动器 SaveBatch，pre 在 java 前/post 在退出后）+ GPU 块（set SHIM_MCCOMPAT + reg add UserGpuPreferences，对齐 start()）+ 进程优先级/窗口标题→PowerShell Start-Process -PriorityClass + MainWindowHandle 轮询 SetWindowText（UTF-16LE Base64 -EncodedCommand 规避引号）+ access token 脱敏（FilterAccessToken 对齐）+ %→%% 转义 + 主流启动器 式结构（title/echo 行）；launch_backend exportLaunchScript 补传优先级/标题；shadow_backend exportLaunchScript 改 resolved* 7 项注入（版本级覆盖生效，对齐 proceedLaunch）；ToggleScriptTest 新增 2b 全选项 9 断言 PASS |
-| 2026-08-09 | 占用空间调研（docs/audit/size-report-2026-08-09.md）：dist 解压 241.6MB/7z 75.9MB；Qt WebEngine 170.8MB 占 70.7%（唯一用途=微软登录 Mode B 内嵌浏览器，Mode A 外置浏览器已默认可用→可全砍）；QuickControls2 六套风格只用 Basic 可删 5 套（~14MB）；qmltooling 调试插件可删；最新构建另有 dxcompiler 15.1MB（D3D12 用，默认 D3D11 不需要）+ easytier 20.6MB；P0 方案预期解压 ~47MB/压缩包 ~18-20MB；终极方案=Qt 静态编译；发现 pack.ps1 7z 用 -x!ShadowLauncher.exe 排除主 exe 待确认 |
-| 2026-08-09 | 瘦身第二轮：QuickControls2 只留 Basic 风格（pack.ps1 4g 步骤删 10 个风格 DLL + 6 个 qml 模块，-12MB）+ 删 qmltooling 调试插件（4h，-1MB）；实测 dist 解压 77MB（含 easytier 20.6）/ 7z 21.7MB；剩余可优化：Qt6Widgets 6.2MB（Java 文件对话框 QFileDialog→QML Qt.labs.platform.FileDialog + QApplication→QGuiApplication，待定）；分析确认：51.8MB 非 exe/easytier 部分 = Qt 六大核心 DLL 33.5MB（底裤）+ 渲染 6MB + 插件 5.5MB |
-| 2026-08-09 | WebEngine 移除→WebView2 独立登录进程（wv2login）：自研 Qt 内嵌 WebView2 多次失败（浏览器进程不起、导航不触发），定位为集成问题而非系统问题（官方 WebView2APISample 在任意位置正常）；最终方案=基于官方示例构建配置的最小登录 exe（thirdparty/wv2login/，MSVC vcxproj + NuGet 包，~0.9MB），ShadowLauncher 用 QProcess 调它，结果文件（授权码）读后即删，profile/cookie 存用户私有数据目录；关闭登录窗口=子进程退出，启动器零崩溃风险（用户警告的旧坑：Qt 内嵌时关窗撞悬垂 COM 回调）；踩坑：源文件 UTF-8 无 BOM 时 MSVC 按 GBK 解析导致中文路径乱码（需 /utf-8）、参数 substr 偏移 1 截断 client_id、wrl Callback 在 event.h 不在 client.h、--force-device-scale-factor 会把登录页改成大布局（与 WebEngine 观感不一致已回退）、DPI 需 SetProcessDpiAwarenessContext(PerMonitorV2) 否则模糊；清理：microsoft_auth 删 Mode B/C，删 webview2_window.{h,cpp}、thirdparty/webview2、测试文件，CMakeLists 摘 WebEngine 链接（误删 SLUpdater 定义已从备份恢复）；备份 backup/webengine-removal-2026-08-09/ + tag pre-webview2-2026-08-09；实测：压缩包 75.9→21.6MB（-72%），解压 241.6→92MB（含 easytier 20.6）；pack.ps1 已加 wv2login 复制 |
-| 2026-08-08 | 启动细节 QML 修复轮：①启动选项字号统一（项名 Md→Sm，与同页 JVM/游戏附加参数一致，区块标题保持 Md）②进程优先级点击无反应根因——ShadowBackend 全局 setter（setGcMode/setProcessPriority/setFullscreenEnabled/setAutoJoinServer/setWindowTitleOverride/setPreLaunchCommand/setPostExitCommand）未标 Q_INVOKABLE，QML 方法调用失败（属性赋值才走 WRITE；版本级方法都有 Q_INVOKABLE 所以版本页正常）→ 全部加 Q_INVOKABLE；进程优先级 Repeater 改显式三按钮 ③全屏/窗口标题/启动命令改版本级（versionFullscreenMode/versionWindowTitleMode/versionPreLaunchMode/versionPostExitMode + resolved* 解析，SettingsBackend/ShadowBackend 新接口），版本设置页去「全局设置」分组（此版本设置单卡片+（）说明小字），设置-通用页补全局默认（全屏/窗口标题/命令）④删版本隔离行；PriSignalTest 验证 C++ 信号链路正常后移除 |
-| 2026-08-08 | 启动细节 QML 落地（低垂果实批）：SettingsPage 通用页新增 启动分组（进程优先级高/中/低 chips + GC 策略四档 dropdown + 自动进服 InputBox）与 配置管理分组（导出/导入设置 FileDialog，敏感键过滤提示）；generalComponent 改 Flickable（childrenRect 滚动）+ FileDialog 移出 Component（修复 Invalid component body specification）；VersionLaunchSection 启动选项卡片扩展（全屏开关/GC 策略版本级 dropdown/自动进服版本级输入/窗口标题/pre-post 命令）；修复 SettingsPage 既有 _fmtBytes 跨作用域 ReferenceError（提到根作用域 + 无效输入防御）；main_release 截图模式加 --open-version-settings <section>（pageIndex=99 通道，MainWindow onNavigateToRequested 分支，不切主页面）；qmlcachegen + qml.exe 运行 + 启动器截图三重验证无 QML 错误 |
-| 2026-08-08 | 启动细节工程（低垂果实批）：GC 策略四档开关（gcMode 0=自动/1=分代ZGC优先/2=仅G1GC/3=不指定，对齐主流启动器实现 LaunchAdvanceGC）、进程优先级（高/中/低，onProcessStarted SetPriorityClass）、全屏 --fullscreen、自动进服（新版 --quickPlayMultiplayer / 老版 --server/--port，releaseTime>2023-04-04 判定，主流启动器 QuickPlay 语义）、窗口标题覆盖（FindWindow 轮询尽力而为）、pre/post 启动命令（异步不阻塞）、GPU 高性能注册表（UserGpuPreferences GpuPreference=2，与 SHIM_MCCOMPAT 双保险）、launcher_profiles 预创建（离线也写 profiles 段）、设置导入导出（exportSettingsToFile/importSettingsFromFile，敏感键过滤）、JVM 补全（Java24/25 unsafe、32位 -Xss1m、64位>4GB JIT 优化组、Java8 MaxInlineLevel）；版本级覆盖 versionGcMode/versionAutoJoinServer；LaunchDetailTest 20 用例 PASS；QML 规划 docs/audit/launch-detail-qml-plan-2026-08-08.md
-| 2026-08-08 | 启动自动安装 Java（Java 缺失时）：shadow_backend launch() 的 javaPath.isEmpty() 不再直接 launchBlocked → autoInstallJavaThenLaunch（版本归一化 16→17）→ JavaBackend::installJavaForLaunch（复用 JavaRuntimeInstaller::installJavaAsync，worker 下载/解压+主线程回调）→ 完成回调 scanJavaInstallations 刷新 + 用 onDone 返回的 javaExe 直接 proceedLaunch；进度经 launchCheckWarning/Progress → LaunchOverlay Java 下载 toast（对齐 authlib 卡片，独立 _javaDlActive 状态）；cancelLaunch 中止安装。测试：JavaAutoInstallTest（真实网络 8/21 下载解压 PASS）、JavaRulesTest（规则 19 用例 PASS） |
-| 2026-08-08 | 启动自动安装 Java 架构修正（b5b8784 后 + 本轮）：自动安装下沉到 LaunchBackend 状态机（runNextCheck Step 1）——Java 无效时不再在 ShadowBackend::launch 提前拦截，而是 overlay 立即显示 + Step 1 触发安装（launchCheckWarning/Progress 驱动 Java toast）+ 完成回调更新 m_pendingJavaPath 继续状态机；ShadowBackend 只 setJavaAutoInstallRequest(major) + 注入 setJavaInstaller；删 autoInstallJavaThenLaunch/快照成员；JavaBackend::installJavaForLaunch 加 onProgress(pct,status) |
-| 2026-08-08 | Java 自动安装取消语义：LaunchBackend 注入 JavaCancelFn（JavaRuntimeInstaller::cancelInstall）；cancelLaunch 时下载中 abort+清理（failJob 删 zip/半解压目录）、解压中不打断（解压线程不读 m_cancelled）；JavaCancelTest 回归（已缓存不误删/失败清理残留） |
-| 2026-08-08 | 启动时序重构：Java 检测完全下沉 LaunchBackend 状态机 Step 1（注入 JavaMajorResolverFn/JavaMatcherFn，ShadowBackend::launch 删整段匹配代码）；startJavaAutoInstall 防重入（stop timer + 忽略重复请求）——修复双触发锁冲突 bug |
-| 2026-08-08 | Java 列表实时性：LaunchBackend Step 1 首次进入先刷新列表（JavaRefreshFn 注入，等 javaScanFinished 后重新匹配，m_javaListRefreshed 防重复）——启动器开着删 Java 能感知；刷新不弹 toast |
-| 2026-08-08 | 一键安装 Java 前置检测漏 MC runtime：java_runtime_installer commonRoots 补 %APPDATA%/.minecraft/runtime + 官方启动器 runtime（与 SettingsBackend COMMON_JAVA_DIRS 对齐）；JavaScanTest 回归（异步等 systemJavaScanFinished，实锤 jre-legacy Java 8 可达） |
-| 2026-08-08 | Legacy3 全量清理（备份 backup/legacy3-cleanup-2026-08-08/）：删 installLegacy3 函数+声明+forgeStep3_install 的 legacy3 分支（改报错）；forgeStep1/fallback 链 universal/client 类别删除只留 installer.jar；删 installerLibsSkipped 信号+version_backend 连接+QML skipped 显示；Forge147Test 注释更新。legacy2 取消安全：installLegacy2/1 置 m_syncInstallRunning（destroyMergedContext 不删写中 tempDir）+ m_cancelled 快速失败 + 库下载 QEventLoop cancelPoll（200ms abort）+ cancelVersionInstall 同步安装中延迟销毁 + finished handler ctx->failed 清理。验证：1.5.2/1.6.4 Forge147Test ok=1 |
-| 2026-08-08 | Mod disabled 解析修复（scanMods）：禁用文件用真实路径 parseJar（.disabled 本身是 zip 可读），fileName 保留真实名+enabled=false；minimal 分支剥 .disabled 取 baseName。ToggleScriptTest 新增真实 zip disabled 解析断言 |
-| 2026-08-07 | Mod 启禁用 + 启动脚本导出（00804ed，+357/-6）：local_mod_manager setModEnabled（.jar↔.jar.disabled）+ scanMods 识别禁用态；launcher buildLaunchScript 复用 buildArgs 输出 .bat；launch/shadow backend 转发 + saveTextFile；VersionSettingsOverlay Mod 卡片启禁用按钮 + 概览其他导出脚本按钮；ToggleScriptTest 回归 |
-| 2026-08-07 | Forge 列表过滤扩到 1.5 及更早（5ef27ee）：queryForgeVersions 开头正则 ^1\.[0-5] 拦截（FML 4.x 需 fmllibs，官方源死 404；主流启动器 源码证实 1.5.2 也要 argo-small-3.2 等）；1.6+ 保留 |
-| 2026-08-07 | Forge 版本列表只保留 installer 类别（d1674a1，对齐 主流启动器）：BMCLAPI/官方双解析器过滤无 installer 版本——1.4.7 及更早（35 版本全 universal）列表为空，1.5.2+ 不受影响；1.4.7 fmllibs 官方源已死（404）故从根源杜绝 |
-| 2026-08-07 | Legacy 3 根本性修正（bd85c62）：实测 universal.zip（746）非自包含 JAR——client.jar 1933 条目、universal 缺 1688 个混淆类（lg 等）→ NoClassDefFoundError；重写 installLegacy3：游戏 JAR=原版 client.jar 副本 + universal→libraries/forge-{ver}.jar + flatten |
-| 2026-08-07 | 1.4.7 Legacy 3 mainClass 修正（d1939e4）：恒用 net.minecraft.client.Minecraft（实测 FMLRelauncher 无 main，FML 通过 Minecraft.fmlReentry 注入）；删 JAR 扫描逻辑 |
-| 2026-08-07 | 1.4.7+forge 启动崩溃修复（bca513b）：launcher pre-1.6 mainClass 覆盖加 FML 例外（FMLRelauncher 保留）；version_isolation 隔离模式统一返回 game/（删降级 verDir 分支，junction 不再建到 versions/.minecraft）；删 isDirNonEmpty 死代码 |
-| 2026-08-07 | 开启 JVM 标准/错误输出到日志（1cd4bac）：launcher onReadyReadStdout/Stderr 逐行 qCInfo（[JVM 输出]/[JVM 错误输出] 前缀，曾按用户要求关闭）；runBootstrapperSync 改每次迭代 drain 两通道（原依赖 waitForReadyRead 返回值，纯 stderr 进程会阻塞）+ stdout/stderr 写日志；OptiFine 安装器 capturedOutput 实际内容写日志（原只打行数） |
-| 2026-08-07 | merged 1.4.7 主文件下载失败修复（f9ad0e4）：fallback 链补 universal.zip/client.zip 三后缀（回滚时丢 9bca7f5）；新增 Yidao147Test 回归（驿道下载 universal.zip PK 魔数） |
-| 2026-08-07 | forge 下载驿道化 + versionInfo.libraries 并入安装器库（4031685，+161/-180）：merged 主文件下载（裸 QNAM）→驿道（downloadViaYidao 临时文件→内存，进度/100KB 校验/fallback/取消保留，loaderDlReply→loaderDlHandle）；downloadVersionLibraries 同步 QNAM→驿道（QEventLoop+15s 兑底）；forgeStepLibs 并入 versionInfo.libraries（1.7.10 0→17 任务提前并行）；tv/twitch→libraries.minecraft.net 映射；删 LibSkipTest 残留目标 |
-| 2026-08-07 | Legacy 2/3 安装器库步骤评估 + QML 进度可见性（96d791c）：新增 installerLibsSkipped 信号（Legacy 3 无 install_profile.json → 步骤标跳过不闪完成）；downloadVersionLibraries 加文件级进度（installerLibsFileProgress done/total）；version_backend skipped 联动（installerLibsDone 跳过已 skipped）；DownloadQueueCard 灰点+已跳过标签 |
-| 2026-08-07 | Legacy 2/3 合并统一旧版安装路线（mod_loader_installer.{h,cpp}，6639ebf，+281/-83，对齐 主流启动器/主流启动器）：新增 downloadVersionLibraries() 统一库下载（rules 判定 + natives/classifier 三级提取 + files.minecraftforge.net 兜底 + 跳过已存在）；Legacy 2 universal 提取路径对齐主流启动器实现 McLibGet(install.path)（不再网络下载 minecraftforge）；Legacy 3 补 flatten 拍平（原裸 inheritsFrom+空 libraries，merged 删原版后断裂）；forgeStep1 竞速改顺序尝试（installer 优先，防抢 universal 按 installer 校验失败）；officialMavenBaseForGroup 补老版本映射。验证：1.5.2/1.4.7/1.6.4 全 ok=1，natives×2、nightly rules 排除、flatten 后 inheritsFrom=(none) |
-| 2026-08-07 | 版本选择页删减优化（VersionSelectOverlay.qml/shadow_backend.{h,cpp}，6894d9d，+20/-249）：删左侧"版本文件夹"大卡片（游戏文件夹列表/添加文件夹按钮/磁盘剩余xGB条）→ 右侧版本列表卡片占满整页；导入整合包按钮改用通用 ShadowButton 迁至顶部工具行（标题/刷新/搜索/导入/安装/排序/筛选平齐）。C++ 清理：删 Q_PROPERTY gameDirInfo/gameDirectories/diskFree/diskPercent + Q_INVOKABLE refreshGameDirInfo/setGameDir/removeGameDir + 实现（QStorageInfo 磁盘查询/QTimer 版本统计/同步6后端）+ m_gameDirInfo 成员；保留 gameDir 属性/gameDirChanged 信号（AppBackend 真实源转发，大量 QML 读 gameDir）/openGameDir。验证：编译通过 + qml.exe 布局断言 card_full=true/header_overlap=false + 窗口宽度 640-960 搜索框无挤压 |
-| 2026-08-07 | 下载模块全面审计（任务A）+ 死代码删减（任务B，3a1e1f6，+6/-443）：任务A结论——所有下载已合理归属引擎（MC→盘古→夸父+山海经、整合包→女娲→精卫、Java→夸父单线程、Mod/资源包/光影→驿道 downloadWithReply，2026-08-02 回退有历史注释；版本管线内部竞速/修复/OptiFine、女娲 POST 批量解析、启动侧 manifest/更新/皮肤各有语义不宜强整合，司南仅 GET 不整合 POST）。任务B——删除 downloader.h/.cpp（Phase 2.3 遗留单文件下载器，全仓零引用） + CMakeLists 移除；mod_manager 清理夸父 fd 死分支（创建路径早已被驿道取代，wasKuafu 恒 false）+ tmpFile/tmpPath 死字段；顺带修 retryModFileDownload 悬垂迭代器（erase 后读 it->received UB，改擦除前取）。验证：Release 编译全绿（含测试项目）、FDTest 夸父 20MB ok=1 回归、全仓无 Downloader 残留 |
-| 2026-08-07 | Modrinth 侧统一接入司南引擎（mod_manager.{h,cpp}，a1105ab）：用户问详情页版本列表是否走司南——调查结论 CF 侧全走（getJsonWithFallback），Modrinth 侧版本列表/依赖/下载前查询仍直接 HttpClient。新增统一入口 fetchViaSinan(url, cacheable, done, fail)（司南优先 getJson，未注入回退 HttpClient，签名同构零语义损失）；9 处调用点替换：fetchModVersions/fetchResourcepackVersions/fetchShaderVersions（详情页版本列表×3）+ getModVersions + downloadResourcepack/downloadShader 下载前查询×2 + getModDependencies 两段 + searchModrinthProjects。语义等价（非 200 从 done 改走 fail，各 fail 回调已有对应处理）且司南多一次重试；效果：详情页往返版本/依赖 300s 缓存秒开 |
-| 2026-08-07 | 前置模组三项修复（ModDetailPage.qml/mod_manager.cpp/resource_backend.cpp/cf_api.cpp，8cddb02）：①required/optional 排序（Modrinth getModDependencies 与 CF resolveCfDependencies 均 stable_sort required 在前；QJsonArray 迭代器代理不支持 swap → 先转 std::vector）②依赖缓存 _depsCache（slug→deps，返回上一级秒开不再 10s+ 网络重请求；CF 分支也补 _versionCache 版本缓存）③CF overlay 前置加载不出——根因是镜像 files 端点依赖被误判恒空（实测带依赖，样本恰好全是无依赖 mod）；新增 fetchModDependencies（/mods/{id} latestFiles[0].dependencies，双源镜像优先官方降级，官方 key 解密可直连实测）；relationType 只收 2=required/3=optional 跳过 1=embedded/4=incompatible/5=include；resolveCfDependencies 串行改 4 路并发保序（上限 8→24 覆盖 Mekanism 全家桶）；依赖获取统一在 onModDetailSlugChanged（勿提前 return） |
-| 2026-08-07 | 启动界面版本号自适应缩小（HomePage.qml，78c505e）：长版本号溢出展示框；RowLayout 改 anchors.fill 撑满容器（防循环）+ TextMetrics 16px 基准测量 + 按可用宽比例缩放字号（上限16px不放大/下限9px），不用省略号（用户要求缩小而非 Elide）；qml.exe 实测无 binding loop、渲染断言 PASS |
-| 2026-08-07 | 超额止损数据丢失修复（file_downloader.cpp，d8098b2）：实测 QNetworkReply::abort() 清空未读缓冲（abort 后 readAll 返回 0）→ 改为 abort 前先 readAll 保存到 rangeData；止损条件改严格大于避免正常 206 误触发；本地 4 场景（MC/modpack 慢速止损、严格 range、200 全文件）SHA1 全部匹配 |
-| 2026-08-07 | 超额下载浪费修复（file_downloader.cpp，7ec05bd）：日志实锤 476 次截断浪费 1261MB（178%）——根因 tryAddThread 切分后 in-flight 请求仍按旧 range 拉数据（首线程请求全文件被切分后服务器仍发完整文件）；修复为 worker downloadProgress 检测 206 已收满本线程范围即 abort 止损（对齐 主流启动器 流式 DownloadUndone=0 即断语义），数据前缀完整不丢进度不重试；超额从整个旧 range 降到约一个网络包 |
-| 2026-08-06 | 导出五轮复比对：修资源包子项精确模式哈希泄漏（勾选子项时未勾选 zip 不再进 files[]/直装——collectMods 按 rpSubs 限定范围）；确认安装侧 modpack_parser 按 path 通用下载（resourcepacks 引用安全）（modpack_exporter.cpp） |
-| 2026-08-06 | 导出四轮复比对再修：①子项父勾选检查（父未勾选时子项规则不再泄漏导出——BUG）②存档按修改时间倒序、子项文件夹时间倒序+黑名单过滤+texturepacks 合并（主流启动器 ReloadSubOptions）③包名空兕底版本名（主流启动器 StartExport 不拦截空名）④哈希收集扩展：mods 压缩包变体（zip/rar/disabled/old）+ resourcepacks zip 也走在线匹配（主流启动器 packs/resource 语义），files[] path 通用化（modpack_exporter.cpp/ExportModpackSection.qml） |
-| 2026-08-06 | 导出三轮复比对再修 6 项：①downloads 排序方向（主流启动器 非 Modrinth 优先，原反了）②配置 PackPath 应用（读取后直接导出不弹窗）③清除配置覆盖入口（主流启动器 ResetConfigOverrides）④配置 UncheckedOptions 还原未勾选状态 ⑤打包进度 100ms 节流（大包防信号风暴）⑥取消导出静默（不弹“失败”误导）（modpack_exporter.cpp/ExportModpackSection.qml） |
-| 2026-08-06 | 导出对齐 主流启动器 补齐轮 + 代码复查：①补 immersive_paintings 子项、子项黑名单（Quark Programmer Art 等 UI+收集双过滤）、Mod 子项随父勾选显隐（parent 字段）、packdata/tacz/地图/JEI/EMI/帕秋莉/截图等补 showRules 可见性（无内容隐藏）②配置读取规则覆盖模式（rawRules，手工规则整体生效）③修严重 BUG：ModpackExporter 构造后未初始化 setGameDir（m_gameDir 空→导出全路径失效）④隔离版本内容根支持（versions/{id}/game/）⑤联网失败弹窗在浮层关闭时自动继续防 worker 死等（modpack_exporter/shadow_backend/ExportModpackSection） |
-| 2026-08-06 | 导出全量对齐 主流启动器（差距报告 P0-P2 全部落地）：规则驱动选项表 optionDefs（19 项，含隐私项默认不勾）+ Like 通配引擎（* ? [] ! 反选、/或\结尾=目录前缀）；全局排除 *.log/*.dat_old/*.BakaCoreInfo/hmclversion.cfg/log4j2.xml；子项规则（saves 带修改时间、资源包/光影子项 id:name/id:dir:name）；exportContext 扩展（options 可见性列表/rpItems/shaderItems/javaAvailable）；配置保存/读取（saveExportConfig/loadExportConfig 三段式 txt）；exportVersion 新签名（checkedOptions+extraFiles）规则收集；分阶段进度（收集/哈希/联网/打包）；QML 动态选项渲染+二次分发警告+Java 不可用禁用；ModpackExportTest 回归通过（规则收集/隐私排除/全局排除实测验证）（modpack_exporter.{h,cpp}/ExportModpackSection.qml/test_export.cpp） |
-| 2026-08-06 | 导出选项按版本实际情况动态显隐（同主流启动器 ShowRules）：ModpackExporter 新增 exportContext（版本 JSON 读 modable/hasOptiFine + 目录非空检测），QML 模组/配置/光影/资源包/存档选项按 ctx 显隐（原版不再出现模组/光影/配置）；进分区/切版本刷新 ctx；另输出 主流启动器 导出模块差距报告 docs/audit/export-gap-report-2026-08-06.md（选项体系/规则系统/配置化三层面 30+ 差距项） |
-| 2026-08-06 | 修选中版本不刷新老问题：①恢复上次选中版本改挂 installedVersionsChanged 且检查 installedIds（旧逻辑挂 versionListReady 查 manifest 在线清单→manifest 有但未安装的版本被误选中，如 26.2 vs 26.2-forge-65.1.0）②新增 ensureSelectedVersionValid（选中不存在→自动切第一个已安装，无则清空）；MainWindow homePageLoader onVisibleChanged 进启动页即校验+toast ③删除版本后 installedVersionsChanged 自愈自动切可用版本 ④open*Folder/openVersionDir 全部加版本存在性检查（不再 mkpath 凭空创建文件夹），overlay 快捷按钮失败 toast（shadow_backend/version_backend/settings_backend/MainWindow/VersionSettingsOverlay） |
-| 2026-08-06 | 修导出无反馈根治：ExportModpackSection 的 onCompleted connect 改为声明式 Connections（onCompleted 早于 MainWindow Loader onLoaded 的 backend 注入，连接全被跳过→C++ 导出完但 QML 零反馈）；存档加载挂起补载（onBackendChanged）；诊断日志 console.log→console.info（logger 只写 QtInfoMsg，console.log 是 QtDebugMsg 不落盘）；C++ 端导出开始/结束/参数不完整加 qCInfo 日志（ExportModpackSection.qml、modpack_exporter.cpp） |
-| 2026-08-06 | 修导出界面滚动不到底 + 滚动条遮挡内容：contentHeight 从绑 implicitHeight 改绑 childrenRect（ColumnLayout.implicitHeight 会漏显式 height 子项——QML 实测 218 vs 实际 374，导致滚动范围偏小滚不到底）；滚动条显式实例化 + 内容宽减滚动条宽（overlay 不再遮右侧）；onAccepted 防御式路径转换（typeof 判断 + file:/// 剥离）加固（ExportModpackSection.qml） |①恢复上次选中版本改挂 installedVersionsChanged 且检查 installedIds（旧逻辑挂 versionListReady 查 manifest 在线清单→manifest 有但未安装的版本被误选中，如 26.2 vs 26.2-forge-65.1.0）②新增 ensureSelectedVersionValid（选中不存在→自动切第一个已安装，无则清空）；MainWindow homePageLoader onVisibleChanged 进启动页即校验+toast ③删除版本后 installedVersionsChanged 自愈自动切可用版本 ④open*Folder/openVersionDir 全部加版本存在性检查（不再 mkpath 凭空创建文件夹），overlay 快捷按钮失败 toast（shadow_backend/version_backend/settings_backend/MainWindow/VersionSettingsOverlay） |
-| 2026-08-06 | 修导出无反馈根治：ExportModpackSection 的 onCompleted connect 改为声明式 Connections（onCompleted 早于 MainWindow Loader onLoaded 的 backend 注入，连接全被跳过→C++ 导出完但 QML 零反馈）；存档加载挂起补载（onBackendChanged）；诊断日志 console.log→console.info（logger 只写 QtInfoMsg，console.log 是 QtDebugMsg 不落盘）；C++ 端导出开始/结束/参数不完整加 qCInfo 日志（ExportModpackSection.qml、modpack_exporter.cpp） |
-| 2026-08-06 | 修导出界面滚动不到底 + 滚动条遮挡内容：contentHeight 从绑 implicitHeight 改绑 childrenRect（ColumnLayout.implicitHeight 会漏显式 height 子项——QML 实测 218 vs 实际 374，导致滚动范围偏小滚不到底）；滚动条显式实例化 + 内容宽减滚动条宽（overlay 不再遮右侧）；onAccepted 防御式路径转换（typeof 判断 + file:/// 剥离）加固（ExportModpackSection.qml） |
+## 三、C++ 后端（`src/backend/`，QML 通过 backend 单对象访问）
+
+| 文件 | 职责 | 关键入口 |
+|---|---|---|
+| `src/backend/account_backend.cpp` | 多账号/正版/离线/外置的登录、令牌刷新、皮肤披风装载 | AccountBackend::microsoftLogin, AccountBackend::switchAccount, AccountBackend::downloadOnlineSkin |
+| `src/backend/account_backend.h` | 账号后端接口：属性、信号与多账号持久化结构 | AccountBackend, CapeInfo, StoredAccount |
+| `src/backend/app_backend.cpp` | 应用级数据目录/游戏目录初始化与主题切换 | AppBackend(),setTheme,setGameDir |
+| `src/backend/app_backend.h` | 应用级属性（版本号/数据目录/主题/开发模式） | AppBackend, appVersion, AGREEMENT_VERSION |
+| `src/backend/check_backend.cpp` | 启动前 P0 校验：Java、jar、json、内存 | checkAll,checkJava,checkMemory |
+| `src/backend/check_backend.h` | CheckBackend 接口声明（P0 同步校验） | checkAll,checkJavaArch |
+| `src/backend/debug_logger.cpp` | 调试日志面板文本/条目与网络速率格式化 | append,net,speed |
+| `src/backend/debug_logger.h` | DebugLogger 声明（QML_ELEMENT 单例） |  |
+| `src/backend/java_backend.cpp` | Adoptium 镜像目录列表 + Java 下载/安装转发 | ensureVersionsLoaded,installJavaRuntime,installJavaForLaunch |
+| `src/backend/java_backend.h` | JavaBackend 声明与 QML 属性/信号契约 |  |
+| `src/backend/launch_backend.cpp` | 启动状态机：七步预检、内存建议、崩溃分析 | runNextCheck,getAutoMemoryForVersion,runCrashAnalysis |
+| `src/backend/launch_backend.h` | 启动流程：阶段管线、Java 自动装、崩溃分析接口 | LaunchBackend::launch, launchStepRows, exportLaunchScript |
+| `src/backend/minecraft_folder_backend.cpp` | 外部 .minecraft 探测与游戏文件夹注册表实现 | probe, setActiveFolder, refreshFolders |
+| `src/backend/minecraft_folder_backend.h` | 外部 .minecraft 选择/识别与多文件夹注册表接口 | MinecraftFolderBackend, probeMinecraftFolder, folders |
+| `src/backend/resource_backend.cpp` | 资源双源池搜索（Mod/光影/资源包/整合包/数据包） | searchModsEx,resourcePoolState,resolveProjectLinks |
+| `src/backend/resource_backend.h` | ResourceBackend 声明与池子/游标状态字段 |  |
+| `src/backend/settings_backend.cpp` | QSettings 设置持久化、Java 扫描与背景图库 | loadSettings,scanJavaInstallations,findJavaForVersion |
+| `src/backend/settings_backend.h` | 全局设置：Java/内存/背景图库/下载源/启动细节 | SettingsBackend, bgPresets, findJavaForVersion |
+| `src/backend/shadow_backend.cpp` | 总装后端：装配各子后端并统一转发信号给 QML | proceedLaunch,switchAccount,exportLaunchScript |
+| `src/backend/shadow_backend.h` | 门面：向 QML 暴露全部子后端并转发槽与信号 | ShadowBackend, account(), launchBackend() |
+| `src/backend/userdata_backend.cpp` | 用户数据 ZIP 导出/校验/导入（版本目录根散开） | doExport, parseArchiveItems, executeImport |
+| `src/backend/userdata_backend.h` | 用户数据导入导出接口与条目风险模型 | UserDataBackend, ImportItemInfo, validateArchive |
+| `src/backend/version_backend.cpp` | MC/加载器安装编排、步骤管线、校验与修复 | installModLoader, rebuildStepsByKeys, verifyVersion |
+| `src/backend/version_backend.h` | 版本后端接口：安装卡片模型、合并安装上下文、校验器 | VersionBackend, InstallCardModel, MergedInstallContext |
+| `src/backend/yggdrasil_backend.cpp` | 外置登录：ALI 解析、认证、会话恢复与校验 | resolveApiRoot,login,validateSession |
+| `src/backend/yggdrasil_backend.h` | YggdrasilBackend 声明与信号契约 |  |
+| `src/backend/yggdrasil_skin_fetcher.cpp` | 外置皮肤抓取、缓存与兜底头像渲染 | fetchSkin,cacheDir |
+| `src/backend/yggdrasil_skin_fetcher.h` | 外置登录皮肤获取（sessionserver + 域名白名单） | YggdrasilSkinFetcher::fetchSkin, cacheDir, applyFallbackSkin |
+
+## 四、核心引擎（`src/core/`）
+
+| 文件 | 职责 | 关键入口 |
+|---|---|---|
+| `src/core/asset_downloader.cpp` | 资源/库文件高并发下载引擎：分片、镜像与看门狗 | startDownload, appendTasks, fireNext |
+| `src/core/asset_downloader.h` | assets 专项下载引擎（自适应并发/分片/缓存预检）声明 | AssetDownloader::startDownload, appendTasks, setMaxConcurrent |
+| `src/core/cf_api.cpp` | CurseForge API 适配：分类、搜索、版本与依赖 | CfApi::search, fetchFilesAsVersions, fetchModDependencies |
+| `src/core/cf_api.h` | CurseForge API 适配器接口（搜索/文件/依赖/分类） | CfApi::search, fetchFilesAsVersions, toUnified |
+| `src/core/cf_key_crypto.h` | 内嵌 CF Key 解密（HKDF + AES-GCM） | decryptEmbeddedCfKey, gcmDecrypt |
+| `src/core/cleanup_guard.h` | 清理守卫纯逻辑：存档检测与残留分片删除 | dirHasUserSaves, removeStaleIndexParts |
+| `src/core/crash_detector.cpp` | 崩溃报告解析、规则诊断与日志导出 | analyzeCrash, scanLatestCrash, exportLogs |
+| `src/core/crash_detector.h` | 崩溃报告扫描与规则分析的数据结构与接口 | CrashDetector::analyzeCrash, exportLogs, matchRules |
+| `src/core/download_accept.h` | 兜底重试的数据可接受性判定纯函数 | acceptFallbackPayload |
+| `src/core/engine_identity.h` | 下载引擎雅名注册表与日志前缀/身份卡 | engineIdentity, engineTag, engineBanner |
+| `src/core/file_downloader.cpp` | 夸父：多线程分片通用文件下载引擎实现 | addFile, managerTick, runWorker |
+| `src/core/file_downloader.h` | 单文件多线程下载引擎（夸父）接口 | FileDownloader::addFile, start, setModpackMode |
+| `src/core/geoip_service.cpp` | IP 地区检测（ip-api.com，24h 缓存，失败重试） | detectRegion, onReplyFinished, scheduleRetry |
+| `src/core/geoip_service.h` | GeoIpService 接口（地区属性与检测信号） | detectRegion, regionDetected |
+| `src/core/http_client.cpp` | 通用 HTTP 客户端与分片下载（驿道） | HttpClient::get, download, verifyFile |
+| `src/core/http_client.h` | 驿道：HTTP 传输底座与文件下载句柄声明 | download, downloadWithReply, get |
+| `src/core/icon_cache.cpp` | 图标 URL 磁盘缓存与超额淘汰 | IconCache::resolveUrl, cacheBatchAsync |
+| `src/core/icon_cache.h` | 图标缓存类接口 | IconCache::cachedPath, resolveUrl |
+| `src/core/java_runtime_installer.cpp` | 便携 Java 检测/下载/解压/完整性校验安装链 | installRequiredJavas, installJavaAsync, findAllJava |
+| `src/core/java_runtime_installer.h` | Java 运行时检测与一键安装 | installRequiredJavas, scanSystemJavas, installJavaAsync |
+| `src/core/launcher.cpp` | 组装启动参数并拉起/管理游戏进程 | Launcher::start, buildArgs, exportLaunchScript |
+| `src/core/launcher.h` | 游戏启动（参数组装/进程管理/LAN 检测/日志脱敏） | start, buildLaunchScript, recentOutput |
+| `src/core/loader_events.h` | 安装器事件到步骤 key 的映射（单一来源） | forLoader |
+| `src/core/loader_plan.h` | 加载器安装步骤计划：key、权重、显隐 | LoaderPlan::make |
+| `src/core/local_mod_manager.cpp` | 本地 mod/资源包/光影包扫描与启停 | scanMods, setModEnabled, scanResourcePacks |
+| `src/core/local_mod_manager.h` | 本地 Mod/资源包/光影包扫描与启停接口 | scanMods, scanShaderPacks, setAllModsEnabled |
+| `src/core/logger.cpp` | 日志单例实现（按日期文件 + 控制台镜像） | init, info, writeLog |
+| `src/core/logger.h` | Logger 静态接口声明 | Logger::info, warn, error, init |
+| `src/core/mc_language.cpp` | 区域/语言映射并写入 options.txt | localeToMinecraftLang, writeOptionsTxt |
+| `src/core/mc_language.h` | 语言映射与 options.txt 写入接口 | localeToMinecraftLang, regionToMinecraftLang, writeOptionsTxt |
+| `src/core/microsoft_auth.cpp` | 微软 OAuth 登录链：本地回调/内嵌助手 | startLogin, startEmbeddedLogin, refreshMcChain |
+| `src/core/microsoft_auth.h` | 微软登录类接口、信号与忙碌状态 | startLogin, refreshMcChain, isUserBusy |
+| `src/core/minecraft_layout.cpp` | 游戏目录布局探测与版本游戏目录解析 | probeMinecraftFolder, detectLayout, resolveVersionGameDir |
+| `src/core/minecraft_layout.h` | 外部 .minecraft 布局识别与版本游戏目录解析 | probeMinecraftFolder, resolveVersionGameDir, detectLayout |
+| `src/core/mod_loader_installer.cpp` | Forge/NeoForge/Fabric/OptiFine 安装器实现 | installForge, forgeStep3_route, runBootstrapperProcess |
+| `src/core/mod_loader_installer.h` | ModLoaderInstaller 接口与安装状态 | installForge, installFabric, installOptifine |
+| `src/core/mod_manager.cpp` | Modrinth 搜索/版本/下载与依赖解析 | searchModrinth, downloadMod, fetchModVersions |
+| `src/core/mod_manager.h` | Modrinth/CF 搜索、版本查询与文件下载接口 | searchModrinth, downloadModFile, fetchVersionDependencies |
+| `src/core/modpack_importer.cpp` | 整合包导入门面：装配任务与转发状态 | startImport, cancelImport, retryFailedModDownloads |
+| `src/core/modpack_importer.h` | 整合包导入门面接口与 QML 属性 | startImport, importFinished, modItems |
+| `src/core/region_utils.h` | 本地区域判定（系统时区/区域码） | isChinaRegion |
+| `src/core/render_head_util.h` | 从 MC 皮肤裁剪缩放 128×128 头像 | renderHeadFromSkin |
+| `src/core/resource_fetch_engine.cpp` | 司南引擎：API JSON 拉取与图标下载缓存 | getJson, iconLocalPath, prefetchIcons |
+| `src/core/resource_fetch_engine.h` | 司南引擎接口：并发/缓存/重试策略 | getJson, iconLocalPath, iconReady |
+| `src/core/screenshot_server.cpp` | 开发用截屏与 QML eval 的 HTTP 服务实现 | start, handleRequest, evalQml |
+| `src/core/screenshot_server.h` | ScreenshotServer 接口与端点说明 | start, setWindow |
+| `src/core/source_policy.h` | 源策略到 URL 的唯一决策点（按请求类别路由） | routeFor, preferOfficial, mcManifestPrimary |
+| `src/core/step_keys.h` | 下载步骤 key 与显示名单一来源 | StepKeys::displayName, keyForLegacyName |
+| `src/core/step_node.cpp` | 步骤节点状态与进度单调性实现 | setStatus, setPercentage, setByteProgress |
+| `src/core/step_node.h` | StepNode 基类（Q_PROPERTY 定向绑定） | setStatus, setPercentage, setDetail |
+| `src/core/step_pipeline.cpp` | 步骤模型与管线：状态、进度、显式推进 | addStep, advance, weightedProgress |
+| `src/core/step_pipeline.h` | 步骤模型/管线类接口 | StepPipeline::addStep, start, advance |
+| `src/core/update_manager.cpp` | 应用更新检查/断点续传下载/SHA256 校验 | checkSilent, doCheck, resumeDownload |
+| `src/core/update_manager.h` | 启动器自更新生命周期与断点续传状态 | checkSilent, checkUserInitiated, resumePausedDownload |
+| `src/core/version_downloader.cpp` | 盘古：版本安装管线（JSON/库/资源/校验/换源） | downloadVersion, onAllFinishedV2, retryWithNextMirror |
+| `src/core/version_downloader.h` | VersionDownloader 接口与异步校验 worker | downloadVersion, cancel, retryWithNextMirror |
+| `src/core/version_isolation.cpp` | 版本隔离配置与游戏目录解析（外部目录只读） | getVersionGameDir, isVersionIsolated, migrateToIsolated |
+| `src/core/version_isolation.h` | 版本隔离开关与外部目录布局覆盖 | getVersionGameDir, markForeignIsolated, setFolderLayout |
+| `src/core/version_manager.cpp` | 获取/缓存 MC 版本清单并判定已安装 | fetchVersions, isInstalled, parseManifest |
+| `src/core/version_manager.h` | 版本管理器接口：源策略与缓存 | fetchVersions, isInstalled, setPreferOfficial |
+| `src/core/yggdrasil_auth.cpp` | Yggdrasil 外置登录协议请求与响应解析 | authenticate, refresh, parseMeta |
+| `src/core/yggdrasil_auth.h` | Yggdrasil 协议结构与会话接口 | YggdrasilAuth::authenticate, refresh, validate |
+
+## 五、整合包子域（`src/core/modpack/`）
+
+| 文件 | 职责 | 关键入口 |
+|---|---|---|
+| `src/core/modpack/mod_download_engine.cpp` | 模组小文件批量下载引擎实现（分片/看门狗/重试） | ModDownloadEngine::pump, launchRequest, watchTick |
+| `src/core/modpack/mod_download_engine.h` | 模组下载引擎对外契约与状态结构声明 | ModDownloadEngine, Segment, Item |
+| `src/core/modpack/modpack_common.cpp` | 加载器标识/版本名/相对路径净化工具实现 | parseLoaderId, sanitizeVersionName, sanitizeRelPath |
+| `src/core/modpack/modpack_common.h` | 双平台整合包统一数据结构与工具声明 | ModpackMeta, ModpackRemoteFile, parseLoaderId |
+| `src/core/modpack/modpack_downloader.cpp` | CF 地址解析 + 引擎下载编排与信号桥接 | start, processResolvedBatch, onEngineFileFinished |
+| `src/core/modpack/modpack_downloader.h` | 整合包下载层对外接口与运行态声明 | ModpackDownloader, DlItem |
+| `src/core/modpack/modpack_exporter.cpp` | 版本导出：规则收集/双哈希查询/打包实现 | exportVersion, exportContext, postJson |
+| `src/core/modpack/modpack_exporter.h` | 导出选项定义与 QML 可调接口声明 | ExportOptionDef, exportVersion, exportContext |
+| `src/core/modpack/modpack_install_task.cpp` | 导入任务调度：解析/解压/下载/装 MC/回滚 | start, onDownloadAllFinished, rollback |
+| `src/core/modpack/modpack_install_task.h` | 导入任务状态机、信号与卡片接口声明 | ModpackInstallTask, Phase, modItems |
+| `src/core/modpack/modpack_parser.cpp` | CurseForge/Modrinth 清单解析实现 | detectFormat, parseCurseForge, parseModrinth |
+| `src/core/modpack/modpack_parser.h` | 整合包解析层接口声明 | ModpackParser |
+| `src/core/modpack/zip_archive.cpp` | miniz ZIP 读写封装与解压/打包实现 | extractPrefixTo, addFile, addDirectoryRecursive |
+| `src/core/modpack/zip_archive.h` | ZIP 读写封装接口声明 | ZipArchive |
+
+## 六、联机（`src/multiplayer/`，陶瓦 Terracotta 兼容）
+
+| 文件 | 职责 | 关键入口 |
+|---|---|---|
+| `src/multiplayer/connection_guard.cpp` | 连接/入房/封包速率限制与冷却实现 | allowConnect, allowJoinRoom, checkAndAdd |
+| `src/multiplayer/connection_guard.h` | 限流阈值常量与守卫接口声明 | ConnectionGuard, kMaxConnPerMinute |
+| `src/multiplayer/easytier_process.cpp` | easytier-core 子进程启动与 peer/NAT 轮询 | start, parsePeerList, setTcpWhitelist |
+| `src/multiplayer/easytier_process.h` | EasyTier 进程管理与 NAT 类型声明 | EasyTierProcess, EasyTierNatType |
+| `src/multiplayer/mc_scanner.cpp` | LAN 组播扫描 Minecraft 服务器端口 | start, processDatagram, cleanupExpired |
+| `src/multiplayer/mc_scanner.h` | MC 扫描器接口与结果结构声明 | McScanner, McScanResult |
+| `src/multiplayer/multiplayer_manager.cpp` | 联机房间编排：发现/握手/心跳/端口转发 | startHostServer, doDiscoverCenter, notifyMcLanPort |
+| `src/multiplayer/multiplayer_manager.h` | 联机状态机、信号与成员声明 | MultiplayerManager, ConnectionDifficulty |
+| `src/multiplayer/port_request.cpp` | 本地端口探测与固定回退实现 | requestSpecific, requestFree |
+| `src/multiplayer/port_request.h` | 端口探测接口声明 | PortRequest |
+| `src/multiplayer/relay_crypto.cpp` | 加密 blob 分片拼装与 AES-GCM 解密 | getAssembledBlob, aesGcmDecrypt, relayEndpoint |
+| `src/multiplayer/relay_crypto.h` | 解密与中继端点接口声明 | aesGcmDecrypt, relayEndpoint, relayPrefix |
+| `src/multiplayer/room_code.cpp` | 房间码生成/解析与 base34 校验和 | generate, parse, codeMod7 |
+| `src/multiplayer/room_code.h` | 房间码结构与接口声明 | RoomCode::Parts, generate, parse |
+| `src/multiplayer/scaffolding_protocol.cpp` | Scaffolding 协议包编解码实现 | buildPacket, buildResponse, packProtocolList |
+| `src/multiplayer/scaffolding_protocol.h` | 协议名/状态码常量与编解码接口声明 | buildPacket, buildResponse, kHeartbeatIntervalMs |
+
+## 七、会话与工具（`src/session/`、`src/utils/`、`src/ui_next/`）
+
+| 文件 | 职责 | 关键入口 |
+|---|---|---|
+| `src/session/download_session.cpp` | 安装会话实现：进度信号、取消、卡片导出 | cancel, toCard |
+| `src/session/download_session.h` | 单个安装会话状态：步骤管线、速度、加载器数据 | pipeline, toCard, setSpeed |
+| `src/ui_next/appearance_controller.cpp` | 外观控制器：配色/密度/动效令牌构建 | rebuildTokens, colorTokens, motionTokens |
+| `src/ui_next/appearance_controller.h` | 外观控制器单例：主题、模式、密度与令牌 | setThemeId, tokens, availableThemes |
+| `src/ui_next/dl_spinner_item.cpp` | 下载卡片不确定环的场景图绘制实现 | updatePaintNode, spinnerState |
+| `src/ui_next/dl_spinner_item.h` | 下载卡片不确定环 QQuickItem 声明 | setRunning, setColor |
+| `src/utils/hash_utils.h` | SHA1 十六进制统一入口 | sha1Hex |
+| `src/utils/logger.cpp` | 会话日志落盘、重复折叠与告警摘要实现 | initLogger, installFileLogger |
+| `src/utils/logger.h` | 分模块日志分类与日志初始化接口 | initLogger, logApp |
+| `src/utils/secure_wipe.h` | 敏感字符串/字节的安全清零工具 | secureWipe |
+| `src/utils/temp_tracker.cpp` | 临时目录追踪文件读写与残留清理 | record, cleanupOrphans |
+| `src/utils/temp_tracker.h` | 下载临时目录追踪与孤儿清理接口 | record, cleanupOrphans |
+| `src/utils/token_crypto.cpp` | DPAPI 密钥保护 + AES-256-GCM 令牌加解密 | encrypt, decrypt |
+| `src/utils/token_crypto.h` | 令牌加密接口（BCrypt + DPAPI） | encrypt, decrypt |
+| `src/utils/types.h` | 全局数据结构：版本/账户/下载/设置/卡片 | McVersion, DownloadTask, InstallCard |
+
+## 八、程序入口与其他（`src/*.cpp`、`update/`、`thirdparty/wv2login/`）
+
+| 文件 | 职责 | 关键入口 |
+|---|---|---|
+| `src/main_release.cpp` | 程序入口：窗口 / QML 引擎 / 后端装配 / 命令行开关（含各 --ui-* 调试开关） | `main`, `FocusClearFilter`, `--ui-next-mode` |
+| `src/secrets.h` | 发布构建的配置占位符（真实值由本地 secrets_local.h 覆盖，该文件不入库） | `SHADOW_AZURE_CLIENT_ID`, `SHADOW_UPDATE_API_URL` |
+| `src/ui_splash.cpp` | 启动封面窗实现：加载期静态画面，与 StartupIntro 第 0 帧对齐以做到无缝交接 | `SplashWindow::paintEvent` |
+| `src/ui_splash.h` | 启动封面窗声明（QWidget；只为盖住 QML 同步加载那 1~2 秒的黑屏） | `SplashWindow` |
+| `src/version.h` | 版本号唯一源（改这里，别再改 CMake 宏，否则触发全量重编） | `SHADOW_DISPLAY_VERSION` |
+| `thirdparty/wv2login/src/App.cpp` | WebView2 登录辅助进程入口 | wWinMain |
+| `thirdparty/wv2login/src/AppWindow.cpp` | WebView2 登录窗口与授权码捕获 | Initialize, CreateWebView2, Finish |
+| `thirdparty/wv2login/src/AppWindow.h` | WebView2 登录窗口类声明 | Initialize, Finish |
+| `thirdparty/wv2login/src/stdafx.h` | wv2login 预编译头与依赖 |  |
+| `update/SLUpdater.cpp` | 独立更新进程：替换文件并重启 | wWinMain, copyTreeOverwrite |
+
+## 九、QML 公共层（`ui/*.qml`）
+
+| 文件 | 职责 | 关键入口 |
+|---|---|---|
+| `ui/AgreementGate.qml` | 首次启动协议门禁与退场动画 | accept, docTitles |
+| `ui/LaunchOverlay.qml` | 启动浮层：总进度、节点清单、失败诊断 | active, rows, crash |
+| `ui/Main.qml` | 主窗口：尺寸适配与外壳/启动动画挂载 | StageShell, StartupIntro, UpdateCardWindow |
+| `ui/MinRoot.qml` | 诊断用最小根窗口 | Window |
+| `ui/SideBar.qml` | 侧栏导航与选中滑块 | navActivated, mainItems |
+| `ui/StageShell.qml` | 外壳路由、全屏页宿主与全局拖入 | handleGlobalDrop, ToastHost |
+| `ui/StartupIntro.qml` | 启动动画：字标从封面落进侧栏 | start, boot |
+| `ui/StartupIntroHalo.qml` | 启动字标光晕层 | px, strength |
+| `ui/Theme.qml` | 主题令牌唯一真源 | accent, bgUrl, durPage |
+| `ui/ToastHost.qml` | 右下角 Toast 通知栈 | show, showAction |
+| `ui/UpdateCardWindow.qml` | 更新卡片预览窗口 | mode, steps |
+
+## 十、QML 页面（`ui/pages/`）
+
+| 文件 | 职责 | 关键入口 |
+|---|---|---|
+| `ui/pages/AccountPage.qml` | 账户页：登录、切换与移除账号，正版皮肤/披风衣柜 | close(), flash(), 登录结果信号 |
+| `ui/pages/DownloadPage.qml` | 下载页：MC 版本列表 + 安装配置，含资源库与 Java tab | openResourceDetail(), openProgress(), tab |
+| `ui/pages/JavaPage.qml` | 下载页 Java tab：按版本/JRE/架构/系统/分发形式选装 JRE | pickVersion(), refreshLocal(), step |
+| `ui/pages/MultiplayerPage.qml` | 联机页：创建/加入房间、设备身份与成员列表 | createRoom(), joinRoom(), roomCode |
+| `ui/pages/ProgressPage.qml` | 下载进度页：总览条 + 带步骤的任务卡，播放完成通知 | recalc(), installCardsModel, dismissCard() |
+| `ui/pages/ResourceDetailPage.qml` | 资源详情页：按版本+加载器选文件，批量下载含前置 | installAll(), buildJobs(), downloadsStarted() |
+| `ui/pages/ResourcePage.qml` | 资源库列表：Mod/光影/资源包/整合包/数据包共用的货架页 | doSearch(), applyPool(), handleDropped() |
+| `ui/pages/SetAboutPane.qml` | 设置·关于：版本、许可、日志入口、鸣谢与内测名单 | checkForUpdate(), repoUrl, credits |
+| `ui/pages/SetAdvancedPane.qml` | 设置·高级：启动器内嵌登录开关 | embeddedLoginEnabled |
+| `ui/pages/SetAppearancePane.qml` | 设置·外观：配色方案与启动页图片取景 | setColorScheme(), applyBgPreset(), chooseBgImage() |
+| `ui/pages/SetDownloadPane.qml` | 设置·下载：下载源、最大并发、限速 | fileDownloadSource, maxDownloadThreads, downloadSpeedLimitMB |
+| `ui/pages/SetGeneralPane.qml` | 设置·常规：界面语言与游戏内语言写入 | setLanguageIndex(), setAutoLangMode() |
+| `ui/pages/SetJavaPane.qml` | 设置·Java 与内存：扫描选择 Java、内存双滑块 | scanJavaInstallations(), availableJavaList(), setMinMemory() |
+| `ui/pages/SetLaunchPane.qml` | 设置·启动：GC、优先级、全屏、自动进服、前后命令 | gcMode, processPriority, autoJoinServer |
+| `ui/pages/SettingsPage.qml` | 全局设置全屏页：顶栏 + 左栏七项 + 分区内容 | rows, paneFor(), --ui-pane |
+| `ui/pages/StagePage.qml` | 启动页首屏：玩哪个版本、账号入口与启动/取消 | openVersions(), openAccount(), openSettings() |
+| `ui/pages/VersionPage.qml` | 版本管理：左列版本列表 + 右侧详情，可开版本设置 | refreshLocal(), openSettings, importModpack |
+| `ui/pages/VersionSettingsPage.qml` | 版本设置全屏页：按版本能力过滤左栏，装载分区页 | reloadPanes(), ensureKeyVisible(), goTo() |
+| `ui/pages/VsExportPane.qml` | 版本设置·导出整合包：内容树勾选 + 输出路径/格式 | export(), listMods(), quickDirs() |
+| `ui/pages/VsLaunchPane.qml` | 版本设置·启动配置：Java/GC/优先级/参数/命令的版本级覆盖 | switchMode(), load(), setVersionJvmArgs() |
+| `ui/pages/VsMemoryPane.qml` | 版本设置·内存：跟随全局/自动/自定义三档 + 系统内存条 | setMode(), versionMemoryMode(), resolvedMemoryMB() |
+| `ui/pages/VsModsPane.qml` | 版本设置·Mod 管理：搜索、启停、批量、导入、虚拟列表 | reload(), bulk(), setModEnabled() |
+| `ui/pages/VsOverviewPane.qml` | 版本设置·概览：加载器/游戏版本/内容计数 kv 单列 | refreshCounts(), requestPane() |
+| `ui/pages/VsPacksPane.qml` | 版本设置·资源包：搜索、导入、删除（二次确认） | reload(), importResourcePack(), deleteResourcePack() |
+| `ui/pages/VsPlaceholderPane.qml` | 版本设置分区占位：尚未施工的分区只显示「待施工」 | title, versionId |
+| `ui/pages/VsQuickPane.qml` | 版本设置·快捷入口：打开各目录/日志、复制路径、导出脚本 | openDir(), copyText(), exportLaunchScript() |
+| `ui/pages/VsSavesPane.qml` | 版本设置·存档：搜索、大小显示、删除（二次确认） | reload(), deleteSave() |
+| `ui/pages/VsShadersPane.qml` | 版本设置·光影：改名启停、导入、删除，解包态只列出 | reload(), setShaderPackEnabled(), importShaderPack() |
+| `ui/pages/VsToolsPane.qml` | 版本设置·工具与维护：校验/修复、克隆、重命名、删除版本 | verifyVersion(), repairVersion(), requestClose() |
+
+## 十一、QML 控件（`ui/controls/`）
+
+| 文件 | 职责 | 关键入口 |
+|---|---|---|
+| `ui/controls/ResourceTile.qml` | 资源库网格卡片 | fmtDl, hovered |
+| `ui/controls/SAcctChip.qml` | 账户胶囊（头像/名字/状态） | skinSource, status |
+| `ui/controls/SBgImage.qml` | 背景图取景、缩放与拖动交互 | source, zoom, cropX |
+| `ui/controls/SButton.qml` | 按钮（主/描边/危险/灰态） | kind, danger |
+| `ui/controls/SCard.qml` | 设置卡片容器 | title, cardPaddingTop |
+| `ui/controls/SDropZone.qml` | 全局拖入接收与提示遮罩 | dropped, accept, forceShow |
+| `ui/controls/SField.qml` | 浮动标签搜索框 | text, edited, blur |
+| `ui/controls/SIcon.qml` | Lucide SVG 图标着色 | name, color |
+| `ui/controls/SInput.qml` | 单行输入框 | text, edited |
+| `ui/controls/SLoadingBar.qml` | 顶部不确定进度条 | running |
+| `ui/controls/SMinecraftHead.qml` | 方形 MC 头像（头图/皮肤兜底） | source, rawSource |
+| `ui/controls/SRipple.qml` | 点击涟漪 | burst |
+| `ui/controls/SRow.qml` | 横向设置行 | label, rowHeight |
+| `ui/controls/SSegmented.qml` | 等宽分段控件 | items, currentIndex, activated |
+| `ui/controls/SSelect.qml` | 下拉选择 | items, currentIndex, activated |
+| `ui/controls/SShimmer.qml` | 高光扫过层 | phase, bandWidth |
+| `ui/controls/SSlider.qml` | 滑块 | value, moved |
+| `ui/controls/SStaggerItem.qml` | 列表逐条入场容器 | index, play |
+| `ui/controls/SSwitch.qml` | 开关 | checked, toggled |
+| `ui/controls/STextArea.qml` | 多行文本输入 | text, edited |
+| `ui/controls/SWindowButton.qml` | 窗口最小化/关闭按钮 | iconName, danger |
+| `ui/controls/SetGroup.qml` | 设置分组（标题+卡片） | title, bare |
+| `ui/controls/SetNote.qml` | 三段语义提示条 | kind, text |
+| `ui/controls/SetRow.qml` | 横向设置行（自适应高） | label, desc |
+| `ui/controls/SetStack.qml` | 纵向设置块 | label, desc |
+
+## 十二、测试（`tests/`）
+
+| 文件 | 职责 | 关键入口 |
+|---|---|---|
+| `tests/cf_test_vectors.h` | CF 密钥互操作固定测试向量 | TEST_EXPECT |
+| `tests/diag_image.cpp` | WebP 解码能力诊断工具 | main |
+| `tests/java_dl_test.cpp` | Java JDK 下载测速（TUNA 镜像） | main |
+| `tests/test_appearance_controller.cpp` | 外观控制器令牌与持久化测试 | main |
+| `tests/test_asset_completion.cpp` | 同 SHA1 预检查完成回归测试 | main |
+| `tests/test_asset_watchdog.cpp` | in-flight 挂起看门狗回归测试 | main |
+| `tests/test_cf_api.cpp` | CF 分类/搜索/文件转换自测 | main |
+| `tests/test_cf_crypto_interop.cpp` | CF 密钥 Python 向量互操作测试 | main |
+| `tests/test_export.cpp` | 整合包导出结构与自识别测试 | main |
+| `tests/test_fd.cpp` | 夸父单文件下载测试 | main |
+| `tests/test_forge147.cpp` | Forge 1.4.7 旧版安装集成测试 | main |
+| `tests/test_game_folder.cpp` | 游戏文件夹注册表后端测试 | main |
+| `tests/test_isogd.cpp` | 版本游戏目录布局感知测试 | main |
+| `tests/test_java_autoinstall.cpp` | Java 自动安装异步流程测试 | main |
+| `tests/test_java_cancel.cpp` | Java 自动安装取消与清理测试 | main |
+| `tests/test_java_rules.cpp` | MC 版本到 Java 需求规则快照 | main |
+| `tests/test_java_scan.cpp` | 系统 Java 扫描（含 MC runtime）测试 | main |
+| `tests/test_jingwei_retry.cpp` | 精卫补位重试回归测试 | testEngineRetry, testTaskLayerRetryVisibility |
+| `tests/test_launch_detail.cpp` | 启动参数细节（GC/全屏/进服/JVM）测试 | main |
+| `tests/test_minecraft_layout.cpp` | 外部 .minecraft 布局识别测试 | probeMinecraftFolder, resolveVersionGameDir |
+| `tests/test_modpack.cpp` | 整合包模块离线与在线自测 | runOfflineTests, runOnlineTests |
+| `tests/test_resource_fetch_engine.cpp` | 司南资源拉取缓存与图标测试 | main |
+| `tests/test_slf4j_dedup.cpp` | NeoForge slf4j 绑定去重测试 | main |
+| `tests/test_slf4j_real.cpp` | 真实 NeoForge JSON slf4j 去重验证 | main |
+| `tests/test_toggle_script.cpp` | Mod 启停与启动脚本生成测试 | main |
+| `tests/test_yidao.cpp` | 驿道分片下载集成测试 | main |
+| `tests/test_yidao147.cpp` | 驿道下载 1.4.7 universal.zip 校验 | main |
+| `tests/test_zip_helper.cpp` | miniz 测试 ZIP 构造辅助 | buildTestZip |
+## 十三、常用开发/调试开关
+
+开关全部由 `src/main_release.cpp` 或 QML 侧读 `Qt.application.arguments` 实现；下表只列实测用过、确认有效的。
+
+| 开关 | 作用 |
 |---|---|
-| 2026-08-05 | 修弹窗莫名出现且关不掉：ConfirmDialog 组件靠外部 visible 控制（直接实例化即常显）→ exportLookupDialog 默认隐藏+信号驱动；opened 绑定覆盖赋值 → 改信号驱动；Qt.StandardPaths → Qt.labs.platform（2279efc） |
-| 2026-08-05 | 修版本设置页全空白：ExportModpackSection.qml 未登记进 CMakeLists QML 资源列表（qt6_add_resources 显式列表非 glob）→ qrc 缺失 → not a type（291e0b3） |
-| 2026-08-05 | 导出全面自查修复：ScrollView 防裁切、ConfirmDialog 移顶层全屏、存档版本切换重载、格式切换保留路径、批量查询分块 500（484ce7d） |
-| 2026-08-05 | 导出对齐 主流启动器 补全：game=minecraft 规范、versionId/summary、IncludeJava、hostedAssetsOnly、查询失败 ConfirmDialog 弹窗、垃圾目录排除；修 ConfirmDialog onAccept/onClosed 覆盖 bug + zip 泄漏（c62cb43） |
-| 2026-08-05 | 整合包导出完全对齐 主流启动器：双平台在线来源查询（Modrinth sha1 + CF MurmurHash2 指纹）、hosted→files[]/未托管→overrides 直装、CF zip 格式、ModrinthUploadMode、存档子项（modpack_exporter.{h,cpp} + ExportModpackSection.qml） |
-| 2026-08-05 | 导出整合包改为版本设置独立分区 Section 7（ExportModpackSection.qml 取代浮层）：侧边栏入口、通用组件、worker 线程零阻塞 |
-| 2026-08-05 | 整合包导出 .mrpack（P0 收官）：ModpackExporter + ZipArchive 写入 + ExportModpackOverlay 浮层 + 工具分区入口 + ModpackExportTest 回归测试 |
-| 2026-08-05 | 缓存命中失效修复：山海经 appendTasks 加预检查（assets 不再全量重下 578MB）、夸父后台预检加 fallback 复制（merged/跨版本命中）、AssetDownloader 增加 m_minecraftDir（asset_downloader.{h,cpp}、version_downloader.cpp） |
-| 2026-08-05 | 缓存命中日志补齐：notifyCacheHit 节流明细 + 夸父完成汇总 + 盘古预检汇总（file_downloader.{h,cpp}、version_downloader.cpp） |
-| 2026-08-05 | 资源索引双源竞速修复（镜像跟随302）+ 官方源分片下载（探测Range→4片并行），assets 启动提速（version_downloader.cpp） |
-| 2026-08-05 | 安装完成态残留修复：纯 MC 完成后 installing 永久 true → 整合包导入被拒；重复导入被 fail() phase 守卫静默吞掉（version_backend.cpp + modpack_install_task.cpp） |
-| 2026-08-05 | 山海经防卡死：degraded 30s 自动恢复 + 全源不可用 5s 冷却重试 + 持续 120s 失败收尾（asset_downloader.{h,cpp}） |
-| 2026-08-05 | 卡片总进度统一为步骤管线加权：删 merged 双写 smoothProgress（公式 A/B）、merged 卡片改 totalProgress、client.jar 归属澄清（cat1）、JSON 步骤尽早完成、syncPrimaryProgress 真两段式（version_backend.cpp） |
-| 2026-08-05 | 尾程加速：慢速分片看门狗（<128KB/s 持续 2s → 剩余范围一分为二并跑 + 中止老连接换新）+ 分片截断字节二次扣减修正（file_downloader.{h,cpp}） |
-| 2026-08-04 | 新增数据包（Data Pack）Tab：双源池子（Modrinth project_type:datapack + CF classId=6945）、DataPackDetailPage、FilterCard datapack 行（来源/类别/排序）；随后全 Tab 加来源筛选（sourceFilter → 五池 source 参数）；CF sortField 参数化；数据包池权重 2.5→1.0。 |
-| 2026-08-04 | 修 StatsPage 黑屏：Popup 残留 ToolTip 专属属性（text/delay/timeout）导致 QML 报错 delegate 创建失败；改自定义 tipText 属性 + parent 挂 root + mapToItem 坐标换算。 |
-| 2026-08-03 | 首次建档（全量归档 src/ 与 qml/ 全部文件）。 |
-| 2026-08-03 | VersionSettingsOverlay 概览快捷入口分类重做（ShadowButton 统一 + 文件夹/日志/其他分组 + 修 stub isModdedVersion 恒隐藏 bug）；StatsPage tooltip 自定义 Popup 圆角框。 |
-| 2026-08-03 | 快捷入口 Mod 按钮 visible 改 sidebar 同款内联白名单（readonly property 中转不生效，内联可靠）；删光影包/config 按钮；移除临时 DIA 日志。 |
+| `--ui-prefs --ui-pane <名称>` | 直接打开设置页的某个分页（如 `appearance`），做内存/渲染测量用 |
+| `--ui-size 1280x720` | 强制窗口尺寸 |
+| `--verify-test <版本ID>` | 校验指定版本，结果写 `build/Release/verify_test_result.txt` 后自动退出 |
+| `--repair-test <版本ID>` | 先校验、失败自动进修复，验证「校验→修复」闭环 |
+| `--ui-screenshots` | 启动内置截图服务（仅绑 `127.0.0.1`，默认不开） |
+| `--screenshot` | 截图模式：关掉外观设置的持久化，不污染用户配置 |
+| `--no-intro` | 跳过启动动画 |
+| `--ui-update-card` | 直接预览更新卡片窗（与真实安装卡片同形态） |
+| `--ui-gate` | 直接进首次启动协议门 |
+| `--update-check` | 启动即触发一次更新检查 |
 
-| 2026-08-11 | 修版本JSON三源竞速重试崩溃（内测 0xc0000005 @ 0x1b9712）：fetchVersionJson 的 startRound/launchRequest 原为栈上 std::function 且被闭包按引用捕获（&startRound/&launchRequest），函数返回后悬空；三源全失败（网络差）触发重试时 use-after-free 崩。改堆上 shared_ptr + launchRequest 侧 weak_ptr 防环（version_backend.cpp fetchVersionJson） |
-
-| 2026-08-19 | **实用网站页动画与布局增强（commit 4ab18a9，续 d90bbc6）**：①「本启动器」置顶（loadData 重排 launcher→index0）且占满整行（大类卡片 GridView→Flow：index0 全宽 88px/其余两列 92px）；②载入动画=卡片下滑入+淡入逐张 stagger（SequentialAnimation+PauseAnimation delay；**NumberAnimation 无 delay 属性直接赋值被编译器拒绝**——踩坑）；③悬停动画=上浮-3px（独立 Translate）+图标 OutBack 放大+箭头右移点亮+高亮底/边框；④点击动画=按压缩放 0.96+闪光反馈。踩坑修复：readonly property 别名后声明 MouseArea.hovered 报 `Unable to assign [undefined] to bool`→改内联引用；Behavior on 另一对象 transform 属性报 `Cannot assign to non-existent property`→Behavior 移入 Translate 内。验证：截图 ASCII 确认本启动器全宽置顶、大类/网站双列网格无重叠、favicon 正常。 |
-
-| 2026-08-19 | **悬停动画修复两连（commit 96487c1 + c763a3f，续 4ab18a9）**：①**悬停完全不生效**——根因：delegate 内直接绑定后声明的 MouseArea.hovered（color/scale/transform 引用）在本 QML 编译环境下绑定依赖未注册，hover 状态变化不触发重算（此前 readonly property 中转已报 `Unable to assign [undefined] to bool`，内联引用虽不报错但同样失效）。修复：卡片根声明自身 cHovered/cPressed 属性，MouseArea onEntered/onExited/onPressedChanged 显式赋值，绑定只引用卡片自身属性（实测 hovered 卡中心色 26,31,42→47,54,78 生效）。②**悬停放大溢出容器边缘**——放大倍率 1.02→1.015，catFlow/siteFlow 四周留边距（x:8 y:6 width-16 spacing:12），hover z:2 提升层级防邻近遮挡，contentHeight 补偿 y 偏移+底部 padding。验证：真实鼠标悬停截屏，hovered 卡左右边缘外为背景色无溢出。 |
-
-| 2026-08-19 | **版本号升至 v1.0.1-beta + 打包（commit 1010a52）**：src/version.h `SHADOW_DISPLAY_VERSION` v1.0.0→v1.0.1-beta（唯一版本源，pack.ps1 从它读版本标签）；resources/app.rc FILEVERSION 1,0,1,0 + FileVersion/ProductVersion "1.0.1-beta"（exe 文件属性）；CMakeLists project VERSION 1.0.1。重编译 + pack.ps1 打包：`dist/ShadowLauncher_v1.0.1-beta.zip`（32.3MB），compat.json version=v1.0.1-beta + full_sha256=b7b925cd…，exe FileVersion 实测 1.0.1-beta。 |
-
-> 之后每次代码变更后在此追加一行：日期 + 变更文件 + 一句话说明。
-
-| 2026-08-19 | **侧边栏新增「帮助文档」链接 + 「实用网站」两级页面（commit d90bbc6）**：MainWindow navModel 在「下载进度」下加 help_docs（external-link 图标，点击直接开浏览器跳 shadowlauncher.cn/docs，不切页）+ useful_sites（compass 图标，navListIndex 7）；新增 UsefulWebsitesPage.qml（大类卡片双列 GridView → 网站卡片 favicon+主副标题，点击 Qt.openUrlExternally）；数据 qml/websites_data.json → gen_websites_js.py 生成 websites_data.js（pragma library 直接 import，规避 Loader 内同步 XHR 对 qrc 抛 Invalid state——踩坑）；排除 md #2/#3 及基岩版专属网址（保留 Java/基岩混合 Chunker），共 10 大类 61 站含「本启动器」（官网+帮助文档两卡）；favicon 用 tools/fetch_site_favicons.py 抓 60 站（favicon.ico / icon.horse 双策略）→ icons/sites/*.png（64px，PIL 居中裁剪）；新增 lucide 图标 external-link/compass/book-open/users/chevron-right；CMakeLists 注册 QML/JS/JSON + 60 favicon + 5 lucide；main_release --navigate 支持 sites。验证：qmlcachegen 编译过、截图 ASCII 检测无重叠、favicon 渲染确认（mcmod.cn 绿块）。 |
-
-| 2026-08-19 | **用户协议开源协议更正 MIT→AGPL-3.0 + 更新日期（commit 705f16b）**：官网 index.html 与启动器内嵌 qml/agreements/terms_of_service.html 的 3.1/3.2 条款「基于 MIT 开源协议发布」全部更正为 AGPL-3.0（实际开源协议），更新日期 2026-06-28 → 2026-08-19，生效日期保持 2026-06-28 不变（隐私协议/beta 协议经查不含开源协议条款，无同类错误，未改）。官网已上传服务器（/var/www/shadowlauncher.cn/index.html，md5 ec996511…，外部 HTTP 200 验证通过，HTML 不缓存无需 CF Purge）；启动器重编译 + pack.ps1 打包。 |
-
-| 2026-08-20 | **自定义 JVM 参数 GC 冲突修复（commit b69e912，内测 26.2 崩溃）**：内测人员安装 26.2 后启动即崩 Error occurred during initialization of VM / Multiple garbage collectors selected（退出码 1，三次复现）。根因：buildArgs 自动 GC 注入只检查版本 JSON（chainJvmArgs）是否已指定 GC，**从不检查用户自定义 JVM 参数 m_jvmArgs**——该用户自定义参数含 -XX:+UseZGC -XX:+UnlockExperimentalVMOptions，自动逻辑又注入 G1 组（-XX:+UseG1GC + 一串 G1 调优）→ 两个 GC 选择标志共存，JVM 拒绝初始化。修复：detectGcFlag lambda 统一检测 -XX:+Use/-XX:-Use 前缀 + 含 GC 字样，chainJvmArgs 与 m_jvmArgs（tokenize 后）任一命中即跳过自动注入并打日志。回归：LaunchDetailTest 新增用例 6（自定义 ZGC → 保留 ZGC / 不注入 G1 / 无 G1 调优参数；无自定义 → 仍自动注入单一 GC）6 断言 PASS；CMakeLists 给 LaunchDetailTest 补 src/core/minecraft_layout.cpp（resolveVersionGameDir 依赖）。已重编译 + pack.ps1 打包（zip full_sha256=5fb9f455…）。
-
-| 2026-08-23 | **详情页对齐主流启动器（版本过多优化 + 统一跳转/复制按钮）**：① 版本分组同步计算改异步——ModDetailPage（模板）/ResourcePackDetailPage(_rebuildRpGrouped)/ShaderDetailPage(_rebuildGrouped)/DataPackDetailPage(_rebuildGrouped)/ModpackDetailPage(_rebuildPackGrouped) 全部 Qt.callLater 分组 + _groupedCache 缓存 + _versionListEnter 入场淡入；② 版本列表懒渲染——每组默认前 30 条 + “还有 X 个版本”追加 50（五个详情页统一）；③ 新增 qml/DetailLinkBar.qml 统一胶囊条（左=跳转蓝胶囊/右=复制棕胶囊，backend.copyToClipboard + toastManager.show，纯文本无预览图），五个详情页注入 DetailInfoCard 底部；④ resource_backend 新增 resolveProjectLinks(title,slug,kind) + loadMcmodMap() + resolveMcmodUrl()（kind→路径映射，CF 数字 id 判定，MC百科 en/cf/mr 三向索引，无映射走百科搜索兜底），ShadowBackend 转发；⑤ 新增 tools/gen_mcmod_map.py 自研脚本抓 mcmod.cn sitemap 产出 qml/mcmod_map.json（只做 slug 归一映射，不搬运百科站内数据）；⑥ CMakeLists 注册 DetailLinkBar.qml + mcmod_map.json。硬规则遵守：UI 零 emoji、RowLayout 图标 Layout.preferredWidth/Height、不在代码/commit 中写“PCL2”。 |
-| 2026-08-24 | **v1.0.1 官网更新内容/公告页 + 左下角版本号可点 + 一次性启动公告 toast**：① 官网新增两个 VitePress 渲染页（/docs/notes/v1.0.1更新内容.html、/docs/notes/启动器公告.html，search:false 不进站内搜索、无导航入口，仅直链），已部署服务器并外部 200 验证；② MainWindow 左下角版本号改为可点击（MouseArea + hover 高亮，点击 Qt.openUrlExternally 打开官网 v1.0.1 更新内容页）；③ 新增 changelogUrl/announcementUrl 常量 + openChangelogPage/openAnnouncementPage + maybeShowStartupToasts（启动后延迟 800ms 弹两个常驻可点 toast：蓝色=更新内容、橙黄=启动器公告；点一次写 QSettings 标记后不再弹，一直不点每次启动都弹）；④ ToastManager 新增 style 参数（info 天蓝 / warning 橙黄，缺省 info 兼容旧调用）；⑤ shadow_backend 新增 Q_INVOKABLE readUiFlag/writeUiFlag（QSettings ui/flags/ 前缀持久化）。验证：Release 编译通过 + qmlcachegen 通过 + --screenshot 冒烟运行无 QML 报错、像素采样确认两个 toast 按蓝/橙黄渲染。 |
-| 2026-08-25 | **v1.0.1 正式发布（增量更新 + 全量包 + 官网版本号）+ toast 区分新装/更新**：① `maybeShowStartupToasts` 区分更新用户——蓝色更新内容 toast 仅更新弹（黄色公告 toast 新装+更新都弹）；② 更新判定用「更新留痕」而非版本号比对：`main_release.cpp` PreInit 检测到 `install_lock` 存在且 `state.json` 不存在（=SLUpdater 已完成替换）时在 exe 目录写隐藏标记 `.just_updated`，`shadow_backend` 新增 `Q_INVOKABLE consumeJustUpdatedFlag()`（读后即删、一次性消费）；③ 更新源官网 `downloads/latest.json` 切 v1.0.1：`compat.json` `update_mode=incremental`（只替换 exe；qt 6.8.3/epoch 1 均未变不触发全量）+ assets 三件（compat.json、ShadowLauncher.exe 增量 exe_sha256=308bce26…、ShadowLauncher_v1.0.1.zip 全量 full_sha256=05ec5ebe…）；④ `pack.ps1` 重新打包 v1.0.1 完整包（33MB）上传服务器，官网 index.html 版本号改 v1.0.1（hero badge / 下载区当前版本 / 下载链接三处）。验证：Release 编译通过、双场景（无/有 `.just_updated` 标记）截图像素确认蓝黄 toast 正确、外部 curl 200 + 服务器 sha256 与本地一致。 |
-| 2026-08-25 | **更新检查磁盘缓存缺陷修复（v1.0.0 用户 4ms 命中旧 latest.json 看不到 v1.0.1）**：① 根因——`http_client.cpp` 构造函数全局 `QNetworkDiskCache`(128MB) + `get()` 默认 `useCache=true` 走 Qt 启发式缓存（无 Cache-Control 响应 freshness=(Date-Last-Modified)*10%），latest.json 服务器 8-15 部署后 8-24 才被客户端缓存 → freshness≈1 天，期间 4ms 命中旧响应（实测缓存 data8/d/cdosvtdm.d 内 body 仍 tag v1.0.0、etag "…203"=515 字节）。② 客户端修复——`HttpClient::get` 加 `bool useCache=true` 末参，`buildRequest` 传参设 `CacheLoadControl=AlwaysNetwork`；`update_manager.cpp` 两处 get（latest.json + compat.json）传 `false` → 更新检查强制实时不走磁盘缓存。③ 服务器双保险——nginx 站点配置给 `location ~* \.json$` 加 `Cache-Control: no-cache, no-store, must-revalidate` + `expires -1`（deployed + reload + curl 验证）。④ 重新编译+打包+重新上传 v1.0.1（新 exe_sha256=65fde91a…、full_sha256=16decc20…、zip 34565964B）。已清本机 httpcache 供复测。**已知残留**：极少数「最近≈1 天内检查过更新」的 v1.0.0 用户本地缓存仍 fresh，需等 TTL 到期（≤1 天）才重新走网络；服务器无法远程清客户端本地缓存。 |
-| 2026-09-24 | **v1.0.3 发布（鸣谢/README 修正 + 官网更新内容页 + 全量包）**：① README 修正笔误「这这些」→「这些」、统一英文空格，鸣谢表新增 PCL2、HMCL 两行；启动器关于页新增鸣谢叙述（不重复点名）+ 两条鸣谢条目（唯一保留项目名之处）；② src/version.h v1.0.2→v1.0.3，qml/MainWindow.qml 更新内容直链与 toast 标志改 v1.0.3 / changelog_v103_clicked；③ 重编译 + pack.ps1（zip 34578688B / exe 7935488B / full_sha256=e17826ee49a9… / exe_sha256=2ff519164ac6…）；④ latest.json 三资产 + 官网 index.html 5 处版本与缓存戳 e17826ee49a9；⑤ 官网新增 docs/notes/v1.0.3更新内容.html（VitePress）；⑥ 部署服务器（备份 docs.bak-20260924-2134、index.html.bak-20260924-2134），服务器端 zip sha256 与本地一致，外部 root/note/latest=200、zip Range=206；⑦ Gitee master 已更新（精选提交），v1.0.3 代码改动仅在本地（远端无 version.h、源码树为旧快照）。 |
-| 2026-09-27 | **正版登录未登录态新增「购买正版 / 跳转官网」快捷跳转文字（HomePage.qml + icons/lucide/shopping-cart.svg + CMakeLists.txt + src/version.h）**：① msLoginForm 的 ColumnLayout 在「Microsoft 登录」按钮与进度框之间插入 RowLayout（`visible: !msLoginForm.msInProgress`）——登录中整行从布局剔除，进度框紧贴按钮、不与文字重叠；登录成功 msLoginForm 整体隐藏故链接自动消失（未登录+正版 tab 之外也不显示）；② Repeater 两项：购买正版→https://www.xbox.com/zh-cn/games/store/minecraft-java-bedrock-edition-for-pc/9nxp44l49shj（新增 lucide shopping-cart 图标并注册 icon_resources）、跳转官网→https://www.minecraft.net/（lucide globe），点击 `Qt.openUrlExternally`；③ 样式：文字 font.underline 常显 + 悬停 color textTertiary→accentLink（ColorAnimation）+ 图标 opacity 0.8→1.0，图标 Layout.preferredWidth/Height = fontSizeSm(12) 与文字像素尺寸 1:1 配对；④ 悬停态用 delegate 自身 linkHovered（MouseArea onEntered/onExited 显式赋值），规避本项目 QML 编译环境「绑定后声明 MouseArea.hovered 不触发重算」的已知坑。验证：qmlcachegen 编译通过；qml.exe 渲染截图三态（未登录=两链接居中于按钮下/登录中=链接隐藏且进度框无重叠/悬停=文字变蓝+图标变亮，悬停由 delegate.linkHovered 置位驱动）；几何断言两链接文本 sceneX=444/524、宽 48、高 16（图标 12=字号）。⑤ src/version.h v1.0.3→v1.0.4。**注**：真机鼠标悬停自动化受限于 harness 窗口不在交互桌面未能驱动，悬停视觉态用属性置位验证，MouseArea→linkHovered 为显式赋值（项目内推荐写法）。 |
-
-| 2026-10-08 | **登录认证两大缺陷修复（微软：启动认证超时 + 游戏内无效会话；外置：假登录态 + 头像无限转圈）**。① **微软启动认证超时根因**：`AccountBackend::startBackgroundRefresh()` 定时器先把 `m_refreshingToken=true` 再调 `refreshMicrosoftToken()`，而后者见该标记立即 `return`（日志“后台刷新已触发”紧跟“令牌刷新中,跳过重复请求”，且再无复位）→ 标记假死；此后每次启动刷新被静默跳过、`LaunchBackend` 等不到回调，12s×3 后报“网络超时，无法验证正版登录状态”（2026-09-17/10-05/10-06 日志实锤）。修复：后台刷新不再预置标记；`refreshMicrosoftToken` 增加 60s 假死判定可重新发起；新增 `resetRefreshState()` 供启动超时重试强制复位；`logout()` 复位刷新状态并 `cancelLogin()`。② **无效会话根因**：同一假死标记使互动登录被误判为刷新流程，`loginSuccess` 里 `if(!m_refreshingToken)` 闸门丢弃新刷新令牌（登出又已 secureWipe 旧值）→ `saveMicrosoftSession` 落盘空刷新令牌，启动日志可见“正版登录成功 refreshToken: EMPTY!”与随后“无刷新令牌，跳过/会话无刷新令牌,已清除”；且旧 `LaunchBackend` 在无刷新令牌或刷新失败时无条件“使用缓存令牌继续”，过期令牌进游戏即“无效会话”。修复：`MicrosoftAuth::refreshMcChain` 透传刷新令牌 + `loginSuccess` 恒以非空值更新刷新令牌；新增 `msMcTokenValid()`（只看 MC 令牌时效，不要求刷新令牌）区分“到期”与“可继续”；`LaunchBackend` 改为 `shouldRefresh()` 触发续期、令牌已过期且无法续期一律 `abortCheck`（新增 `finishTokenRefreshOnFailure`），仅“令牌仍有效、只是续期失败”才放行；`downloadOnlineSkin` 遇 401/403 主动触发刷新（本地时效不可信）。③ **外置假登录态/转圈根因**：`YggdrasilBackend::loadSession()` 只按 apiRoot/accessToken/username 非空判定“已登录”，从不校验服务端 → 令牌早已失效仍显示已登录；`YggdrasilSkinFetcher::fetchSkin` 必须先成功请求 profile 才设置头像，失败则 `m_skinPath` 恒空，`MinecraftHead2D` 因源为空永久转圈。修复：`YggdrasilAuth` 新增非轮换 `validate()`（authserver/validate，204 有效/403 失效）；`YggdrasilBackend::validateSession()` 在启动恢复与 `ShadowBackend::setLastLoginMode(2)`（切回外置页）时校验，403/401 或响应体携带 error → `clearSessionAfterExpiry()` 清会话+删 session.json+toast“外置登录会话已过期，请重新登录”（网络错误不误判；validate 不支持的服端回落 refresh）；皮肤获取改缓存/兜底优先（先展示本地缓存，无缓存用史蒂夫兜底，失败也 setSkinFromFile），彻底消除无限转圈。验证：Release 全量编译通过（改动 TU 零错误，仅既有警告）。 |
-
-| 2026-10-09 | **UI 令牌化颜色回归修复（下载卡片等组件变蓝）**：根因——2026-09-11 `774f1de`「硬编码颜色批量收敛」把一批中性底色错配成蓝色令牌 `accentSubtle`（#1a2848），而 `_ui_color_map.json` 中这些 hex 本应映射到中性令牌（#141a24→surfaceOverlay、#151922→surfaceOverlay、#1a202c→bgCard、#151830→bgCard、#1a1d28→bgInput、#1e2230→bgElevated、#2A2F3A→bgHover、#161a24→surfaceLight、#1A1D24→surfaceLight）；`44d0eef` 只修了 27 处 hover 状态折叠，未覆盖这些非 hover 底色，导致整片下载队列/下拉面板/输入框呈蓝色。修复——按映射表还原 20 处非 hover 中性底色：DownloadQueueCard 卡片主体（用户报告项）与进度条轨道、DownloadQueuePanel 边框+两条分隔线、DownloadCard/DownloadCardTagRow 分类标签底、InstallPage 压缩包名胶囊、ModDetailPage 依赖提示浮窗、ModpackDetailPage 加载器标签底、SettingsGeneralPage colorBorder、SettingsJavaPage GC 预设闪烁回落、ShadowDropdown 下拉面板背景、VersionSettingsOverlay 重命名输入框、BackgroundCropOverlay 视图边框/缩放按钮/取消按钮。验证：程序化对齐 `94f0d16`（令牌化前）与工作树，非 hover 中性→蓝残留 = 0；Release 重编译（qrc_qml_resources 重新生成）通过。 |
-| 2026-10-12 | **v1.0.4 发布（启动页与组件异常蓝修复 + 联机帮助卡片居中 + 全量包 + 官网更新内容页）**：① 启动页「蓝色浮光」根因——`HomePage.qml:32` 兜底渐变中间档被 2026-09-11 `774f1de` 令牌收敛由中性 `#111520` 误配为 `StyleTokens.accentSubtle`（#1a2848），仅在未设自定义背景（`hasBg=false`，三档才上色）时可见；修复改回中性 `StyleTokens.surfaceOverlay`（#141820，视觉等同旧值）；② `MultiplayerHelpPanel.qml` 收起态头部未垂直居中——卡片高 `headerHeight(36)+16=52` 而列布局写死 `y: 6`、头部行实测 `implicitHeight=18`（上 6/下 28）；改为 `y: expanded ? 14 : Math.round((root.headerHeight + 16 - headerRow.implicitHeight) / 2)` 并给 RowLayout 加 `id: headerRow`，展开态 14 不动；qml.exe 实测 col.y 6→17、抓图象素墨迹带中心 32.5 = 卡片中心 32.5；③ 继承 2026-10-08/10-09 的登录与颜色修复；④ `MainWindow.qml` 更新内容直链、toast 文案与门控、左下角版本号全部切 v1.0.4，一次性标记改 `startup/changelog_v104_clicked`；⑤ 重编译 + pack.ps1（zip 34584972B / full_sha256=7640112171b4… / exe_sha256=5561cd861d39…）；⑥ 官网 `downloads/latest.json` 三资产 + `index.html` 5 处版本号与缓存戳 7640112171b4；⑦ 官网新增 `docs-src/notes/v1.0.4更新内容.md` → VitePress build → `docs/notes/v1.0.4更新内容.html`；⑧ 部署（备份 docs.bak-20261012-2048、index.html.bak-20261012-2048），外部验证 `/`、`/docs/`、v1.0.4 更新内容页、latest.json、zip、exe 全部 200，服务器 exe sha256 与 compat 声明一致。**教训**：Windows 上 `scp -r docs` 上传会把远端目录建成 700，nginx（www-data）无法穿越 → `/docs/` 整目录 403；上传后必须 `chmod 755` 目录、`644` 文件。 |
-| 2026-11-05 | **打开下载页卡 7 秒根因修复（QML 逐项访问 QVariantList 会回调 C++ getter，O(n^2)）**：① 现象——启动已修好（2.1s 可响应）但点侧栏「下载」后 GUI 冻结约 7.1s（/eval 延迟探针实测 7143ms，点「设置」仅 2ms）；② 定位——把 DownloadPage 三个顶层 Item 逐个/全部注释后卡顿仍在（7.2~7.3s），说明不在子组件；给根属性加 Date.now() 埋点后 dateMap 7265ms / 907 版本，其余 5 个版本属性均 0ms；C++ 侧加计时发现 versionList() 单次仅 3-4ms 但一次点击被调用 1816 次（约 2×907）——QML 里 QVariantList 是「序列包装」，vl[i] 每取一项都回调一次 C++ getter，而 getter 每次重建 907 个 QVariantMap，于是 O(n^2) 约 7s；③ 修复——ShadowBackend 新增 Q_PROPERTY(QVariantMap versionDateMap)（id→date 一次性构造，QML 侧转 JS 对象一次完成）+ versionList() 结果缓存（versionListReady 时失效）；DownloadPage.qml 的 dateMap 改为查表，不再循环访问 b.versionList；④ 顺带把 7ab57f3 的异步懒加载改回同步常驻（根因已除，不必把卡顿挪到首次打开），现启动 1.63s、首帧立即、点下载 7ms；截图 design/shot-download-fixed.png 验证日期/计数/chips 正常。**教训**：QML 里对 C++ QVariantList 属性做 for 循环逐项访问 = 每次下标都过一遍 getter，必须先在 C++ 侧缓存或改一次性 QVariantMap 查表。 |
-| 2026-11-05 | **删除版本列表的加载器 chips（QML+C++ 核查）**：① 影决定版本行不再显示 Fabric/Forge/NeoForge/OptiFine 胶囊；② QML 侧整块删除——`ui/pages/DownloadPage.qml` 的 `loadersOf(mc)` 推断函数 + 列表 delegate 里渲染 chips 的 `Row/Repeater`（18px 胶囊、#101319 底、#242b36 描边、10px 字），日期列与已安装绿点保留；③ **C++ 侧无可删**：全仓 grep `loadersOf|loaderChips|loaderSupport|promoters_slim|maven-metadata` 在 `src/` 命中 0——chips 从头到尾是 QML 用 `backend.installedVersions` 拼的，后端映射表从未实现；`docs/loader-chips-status.md` 改写为「已废弃」留档；④ 顺手修 `ProgressPage.qml` Timer 的 `running` binding loop 警告（原来同时读 `page.visible` 自身，改为只看宿主 `page.parent.visible`，运行期日志已无该警告）；⑤ 验证：Release 编译 + 契约 18 files、启动 1637ms/首帧即时、`design/shot-download-nochips.png` 确认 26.2 行不再有 chips 且日期/类型标签/绿点正常；commit c317c69（chips）+ 5962f79（Timer）。 |
-| 2026-11-05 | **刷新版本列表改为「结果提示」（后端补完成信号）**：① 反直觉点——点刷新只弹「正在刷新版本列表」，之后无论成功失败都没有任何反馈；② 根因——QML 在点击时就弹一次 toast，后端 `refreshVersionList()` 只有 `versionListReady`（无成功/失败语义），失败只写日志；③ 后端改动：`VersionBackend` 新增 `versionRefreshFinished(bool ok, const QString& message, int count)`，在 `versionsReady` lambda 里发成功（带版本数）、在 `VersionManager::fetchError` lambda 里发失败（带错误串）；`ShadowBackend` 转发同名信号；④ QML 改动：`DownloadPage.qml` 点击只置 `refreshPending` + 启 20s 兜底 Timer，不再弹「正在刷新」；`Connections.onVersionRefreshFinished` 只在 pending 时弹「版本列表刷新成功」（info，2.2s）/「版本列表刷新失败」（warning），启动期自动刷新不会弹；⑤ 踩坑：第一版写成 `page.refreshTimer.restart()`（id 不是页面属性）→ 运行期 `TypeError: Cannot read property 'restart' of undefined`，改成裸 id `refreshTimer.restart()`；⑥ 验证：Release 编译 + 契约 18 files，真机点刷新（Win32 模拟点击 x=963,y=27）后截图 `design/shot-refresh2-4.png` 右下角出现「版本列表刷新成功」，日志无 TypeError；commit 65d87ed。 |
-| 2026-11-06 | **顶部加载条「硬消失」修复（SLoadingBar.qml）**：① 根因——`opacity: running ? 1 : 0` 是绑定表达式，绑定重算与 `Behavior on opacity` 竞争，实测结束瞬间直接归零（120ms 的 durFast 也短到看不出是淡出）；② 改显式动画——`onRunningChanged` 里手动 `fadeIn.start()/fadeOut.start()`，淡出用 `Theme.durSlow`(260)，时序完全可控；③ 扫动段 `running: root.running || root.opacity > 0.02`，淡出期间继续扫，避免停住变成静止色块再被抹掉；④ 修掉扫动段里 `visible: opacity > 0.01` 实际读的是自身 opacity（恒 1）的无效代码。真机确认淡出正常。 |
-| 2026-11-06 | **资源详情页第二轮：全屏独立页 + 下拉/前置卡片重做（6e5e38c + 后续）**：① 穿透根因——`resDetailHost` 只从侧栏右侧开始、页面内又留 28px 边距，未覆盖区域点穿到底层资源库；改为 `resDetailOpen` 计入 `fullOpen`（侧栏收到 0）+ host `anchors.fill` + 自带不透明底 + 全屏 MouseArea；② 下拉盖住触发器/偏到右栏——原来是硬编码屏幕坐标估算，改 `Popup { parent: triggerBox; x:0; y: height+6; width: parent.width }`；③ 保存对话框预填文件名——Qt 6.8 `QtQuick.Dialogs.FileDialog.selectedFile` 可写（qmltypes 有 `write: setSelectedFile`），open 前设 `file:///`+上次目录+文件名；④ 前置卡片去噪——删「取自 dependencies」说明与「N 必需·M 可选」计数，勾选框改 SIcon check，无前置则整卡不渲染，依赖图标走 resolveIconUrl（.webp 直接加载会解不出）；⑤ 旧版本折叠列表补回。 |
-| 2026-11-06 | **列表页六项遗留（6e5e38c）**：① 卡片底部改三锚点（左/中/右），弃用 `Item{width: parent.width-150}` 占位；② 来源写全称 Modrinth / CurseForge；③ 新增 `ui/controls/SField.qml` 浮动标签搜索框（标签激活后上浮压边框），外部回填用 `Binding{when:!input.activeFocus}` 防打断输入；④ 搜索框统一移到 DownloadPage 顶栏右侧、全 tab 常驻，资源库侧 450ms 防抖；⑤ 加载器筛选下拉不再写死，选项从本轮 pool 的 `loader`/`loadersList` 聚合，无数据不显示；⑥ `ResourcePage.qml` 补 `import QtQuick.Controls`（Popup 类型）。 |
-| 2026-11-06 | **进详情时卡片「一瞬间变长」+ 下载页拥挤与三列不满**：① 根因——`cols` 按自身宽度算（`width >= 1000 ? 4 : 3`），而打开详情页会让侧栏收起、页面 892→1100：跨过 1000 那刻列数 3→4，cellWidth 由 278 骤降到 206（高度恒 146）→ 卡片瞬间变窄拉长，且发生在详情页还半透明时，用户一眼看到。修法两条：`cols` 改为按「侧栏展开时的内容宽度」算（`winW - sideW - 96`），动画期间列数恒定；侧栏收起延后到详情页完全不透明之后（`narrowDelay` 260ms）再执行，重排发生在不透明页后面。关闭时立刻复原（`sideNarrowed` 与页面可见性解耦，`Behavior.duration` 按 `sideNarrowed || versionsOpen || accountOpen` 取 durPage 否则 0）。② 拥挤——宽布局左右内边距 72→48（内容 748→796）。③ 三列不满——`cellWidth: floor(width/cols)` + delegate 最后一列不扣 gap（`lastCol ? 0 : gap`），行右缘与分页栏右缘对齐；旧公式 `(width-(cols-1)*gap)/cols` 每行多留 ~32px 死区。 |
-| 2026-11-06 | **菜单级切页总透出启动页（StageShell 五个页面宿主重构）**：① 根因——每个 host 对**整页**做 `opacity 0→1` 淡入（180ms），opacity 作用于自身背景，于是这 180ms 里只盖住下层一部分，下层启动页透出来；观感就是「先闪一下启动页再淡入目标页」。② 修法——host 打开时立即不透明（`Behavior on opacity { duration: open ? 0 : durBase }`）+ host 内铺 `Rectangle{color:Theme.bg}` 实底；**动效下移到内部内容层**（`opacity 0→1 durFast` + 位移），位移也只在关闭时动画（打开时 duration 0，否则实底会漏一条 8/48px 的缝）。关闭时整页淡出（此时露出启动页正是期望）。五个宿主（版本/账户/下载/详情/进度）统一。③ 验证：从启动页点「下载」，120ms 抓帧——目标页已完全不透明、无启动页残影；资源详情重构后仍正常打开。 |
-| 2026-11-06 | **菜单级切页彻底改硬切（上一版仍被用户判为未修复）**：上一版只让「打开」瞬间不透明、内容层还留 120ms 淡入 + 启动时立即位移，观感仍是一段过渡，用户继续报同一问题。本轮把五个页面宿主（版本/账户/下载/详情/进度）全部简化成 `visible: <open>` + 不透明实底 + 直接放页面，**删掉所有 opacity Behavior、内容层淡入、位移**（共 -2375 字节动画代码）。依据：淡入淡出必然产生「半透明帧」，而下层启动页一直亮着；只要过渡存在，就一定会被看见。硬切时新旧页在同一事件循环内切换，只输出一帧结果，中间态不存在。验证：启动→下载、下载→启动、下载→下载进度，各在点击后 ~30ms 抓帧，均为目标页完整画面，无启动页残影。 |
-| 2026-11-06 | **安装名命名对齐旧 UI（含 Fabric API）；资源下载补上可见反馈**：① 命名——`DownloadPage.loaderSuffix()` 改成旧 UI `InstallPage.versionSuffix()` 同一套：`<mc>-forge-<v>` / `-neoforge-<v>` / `-fabric-<v>[-fabric-api-<apiV>]` / `-OptiFine_<v>`；旧实现只拼加载器 key（`26.2-fabric`），丢了加载器版本且完全没带 Fabric API，所以选 Fabric API 名字不动。`clearFabricApi()` 与 Fabric API 版本点击处补 `refreshName()`。实测：Fabric 0.20.1 → `26.2-fabric-0.20.1`；再选 API 0.152.1+26.2 → `26.2-fabric-0.20.1-fabric-api-0.152.1+26.2`。② 下载反馈——`StageShell` 统一收 `modFileDownloadStarted/Progress/Finished/Failed/Cancelled` 成 `fileDl` 表；详情页按 `downloadModFile` 返回的 id 过滤出本页任务，在「本次安装」卡里逐条显示「下载中 62% · 1.2 MB/s / 已完成 / 失败」（卡片高度随条数增长），并在接受保存路径时 toast「开始下载 xxx」、完成/失败时 toast（壳层统一发）；下载进度页新增「文件下载」块（名称 + 百分比/速度/已完成），不再只有安装任务卡。 |
-| 2026-11-06 | **切页过渡回归（但不透底）+ 下载三处细节**：① 过渡——结论迭代为「宿主永不改 opacity（一出现就不透明实底），动效只做宿主内部位移 + 宿主 clip」；五个全屏页入场从右 24 / 下 40（详情、进度 12）归位，`Behavior` 只在打开方向给 `Theme.durPage`，关闭仍是硬切；启动页也加了返回入场（离开时右移 22，全屏页硬切消失后滑回）。② 模组下载提交完（保存对话框全部走完且至少提交 1 个）→ 详情页发 `downloadsStarted()`，壳层自动 `resDetailOpen=false; progressOpen=true` 并高亮「下载进度」。③ 进度条流光——原来只在 `stalled`（速度归零）时显示且跑在整个轨道上；改为放进**已填充段内部**（clip = 已走过区域，物理上不可能穿模），整段下载期间常驻。④ 已完成/失败/取消的下载条目带 `hideAt`，壳层 500ms 定时器 4s（失败 6s）后移除，卡片不再挂着。 |
-| 2026-11-06 | **侧栏右缘的极光裂隙**：给 StagePage 加 `transform.translate x=-22`（回主页的入场）后，位移不改变 anchors，启动页左移后**压到侧栏右缘上面**（侧栏先声明、启动页后声明 → 启动页在上），于是侧栏右边露出 22px 宽的极光条。修法：把 StagePage 包进 `stageHost`（anchors.left = sideBar.right、`clip: true`、内铺 Theme.bg 实底），位移只作用在宿主内部，越界部分画不出去。验证：同位置放大截图，极光带消失，只剩侧栏自带的 1px `Theme.line` 分隔线（设计如此）。 |
-| 2026-11-06 | **合并安装进度三项根因修复（加载器步骤不可见 / Fabric 进度恒 0 / MC 校验提前点亮）**：① 进度页只渲染 4 步——`ui/pages/ProgressPage.qml` 步骤 Repeater 固定 `model: 4`，而合并安装有 7~8 步（MC 4 + 加载器 3~4），加载器/Fabric API 步骤被整段裁掉；改为 `model: page.countSteps(steps)` 动态槽位（DlSpinner 是 C++ 场景图 item，重建不打断动画）。② 加载器依赖库步骤无进度——`version_backend.cpp` 的 `installerLibsStarted/Done/FileProgress/Failed` 按中文名 `contains("安装器库")` 匹配，而 `StepKeys::displayName` 早已统一为「下载 <Loader> 依赖库」→ 永不命中；改用 `LoaderEvents::forLoader(ds->loaderType).libsKey` + `stepIndexByKey`。merged 分支 `stepProgress` 从 `step-1+4` 算术偏移改为语义 key（Fabric 无校验步、Forge step3=安装），`progressChanged` 补「进入下一步 = 上一步 completed」（Fabric 配置步原来永远 active 0%，直到安装器整体结束被兜底标绿）。③ Fabric 依赖库字节进度——`mod_loader_installer.cpp` fabricStep2 原来只在每个文件完成时发 `stepProgress(2, 文件数%)`，单文件下载期间恒 0；改为 `(已完成文件 + 在途文件 recv/total)/文件数` 的字节感知百分比（分母固定=文件数，单调不跳、最多 101 次上报）。④ MC 校验提前激活——`handleLoaderData` 按 `contains("校验") && !contains("资源")` 找加载器校验步骤，基础校验显示名改为「校验游戏文件」后不含"资源"被误命中(idx3)，加载器主文件一下完就点亮 MC 校验；改 `StepKeys::loaderVerify()`+`stepIndexByKey`，`createLoaderInstaller` 的 verifyStarted/verifyFinished 同样改 key。验证：26.2+Fabric 0.20.1 真装 8 步全部可见、Fabric 依赖库 0→1→30→58→87→100、API 0→3→33→100；26.2+Forge 65.0.0 真装「校验游戏文件」在 MC 库 56% 时保持 pending、「下载 Forge 依赖库」显示「剩余 18 个文件」并推进到完成，全程到 100%；UI 契约 22 files。截图 `design/shots/merge-bug-early.png`（修复前只 4 步）、`fix-verify-early.png`、`fix-verify-forge-libs.png`。 |
-| 2026-11-06 | **动效系统补全（下载页 + 页面过渡）**：新增 Theme 动效 token（`durPress 90 / durSheen 900 / easePop OutBack 过冲 / staggerMax 12`）；新增两个可复用控件 `controls/SShimmer.qml`（相位驱动的斜向高光扫过，自身 clip，绝不穿模）与 `controls/SRipple.qml`（点击涟漪）。侧栏：整块选中滑块在导航项之间**平移**（原先两条独立竖条各自伸缩），图标选中微弹。页面对齐：五个全屏页宿主入场 = 位移 + 0.988 缩放归位（仍不改 opacity，不透底），启动页返回入场。下载页：tab 与筛选段都改为滑块平移；列表↔配置双向推拉（列表左移退场、配置右移入场，原先返回是硬切）；版本行逐条入场 + hover 左侧强调条 + 箭头右移；加载器箭头旋转过渡、版本行错峰落下、hover 右推；安装名自动改写时边框脉冲（`autoNameTick` 只在程序改名时触发）+ 冲突抖动；最新版卡 9s 周期高光扫过 + 点击涟漪；开始安装按钮可用态颜色/缩放过冲 + 涟漪。资源库：卡片逐条入场（`staggerBudget` 只给每次新搜索的前 12 个，渐进补入的不再抖）；骨架屏（统一相位扫光）；上下渐隐遮罩；卡片 hover 上浮 2px + 图标推近 + 扫光、按压 0.975 回弹 + 涟漪。进度页：任务卡入场、百分比脉冲。Toast：过冲弹入。SField：聚焦下划线从中间展开、清空按钮缩放淡入。详情页：三块错峰浮现（每次打开重置）。 |
-| 2026-11-06 | **验收 9 条修复**：① 筛选/标签滑块改用 delegate 上报几何（`segGeom`/`tabGeom`），`Repeater.itemAt` 首帧为 null 会让滑块宽度 0 → 整排选中态消失；② 多文件下载改 `FolderDialog`：>1 个文件时选一次目录，`nextInQueue` 直接按文件名落盘（不再逐个弹 SaveFile）；同时修 `onVersionFileResolved` 只塞缓存不入队导致前置永远下不下来；③ 详情页下拉：`closePolicy` 改 `CloseOnPressOutsideParent`（原来点触发框先被判为 outside 关掉、onClicked 又开回来 → 永远展开）+ 触发框 toggle + Popup enter/exit 过渡；④ 详情页入场改 3 段递增 `revealStep`（原 bool 在同一帧翻 false/true → 整页抖一下），关闭时归零；⑤ 下载完成 toast 按 downloadId 去重（后端失败路径会 finished+failed 双发）；⑥ SField 加 `blur()`，页面空白点击与切 tab/筛选/版本行时清焦点（聚焦蓝边不再常驻）；⑦ 版本列表入场用 `listEntry` 由外壳在 `downloadOnChanged` 显式触发（子项 visible 不随父级变化，delegate 只创建一次所以原来永远看不到）；⑧ 最新版卡 hover 改为“立刻扫一道”（原只改 strength，光带多数时间在卡外，无效），去掉死绑定。 |
-| 2026-11-06 | 多文件下载改原生选文件夹 + 三个真根因：① ShadowBackend::pickFolder（QFileDialog::getExistingDirectory，Widgets 已链接）——QML FolderDialog.open 在本机静默失败，必须走后端；多文件选一次目录，全部按文件名落盘。② 后端 ModManager 按 slug 批量解析前置的路径漏发 version_id，前端既没 url 也没 version_id，前置被静默跳过（模组能下、前置下不下来的真因），两个分支都补上。③ startPlan 改为先装填再统一开跑（batchFilling）：原实现 pushJob 见队列长度 1 就立即下载，首个文件下完队列又空，finishBatch 提前触发并跳页，后续前置还没入队就被打断。④ installAll/installLatest 开头复位 dialogBusy/dlQueue，防止对话框被强关后标志卡死。 |
-| 2026-11-06 | 版本列表撤掉逐条入场（C3）：用户实测「没有逐个进入动画，视觉效果更好」。删除 vcard delegate 内的 rowShown/rowDelay/playEntry/Connections，以及 DownloadPage.listEntry + 外壳 onDownloadOpenChanged 的 bumpListEntry 触发；保留 hover 强调条与箭头位移。 |
-| 2026-11-06 | **模组+前置一起下载：真根因是 Modrinth 不给 version_id**。实测 `GET /version/X1g3VhTx`（entityculling 1.11.3）返回 `dependencies=[{version_id:null, project_id:P7dR8mSH, dependency_type:required}]` —— 前置依赖的 version_id 是 **null**。于是前端既无 url 也无 version_id，`buildJobs` 把它算成「缺下载信息」静默跳过，只有主文件被提交（用户看到的就是这个）。修法：`ModManager::fetchVersionDependencies` 里对缺 version_id 的前置，用父版本的 `game_versions` + `loaders` 去 `GET /project/{id}/version`，取 primary 文件，把 url/filename/size/sha1/version_number 直接随依赖项回传（`resolvedFiles` + `pendingResolve` 计数，全部回来后 `emitList`）；QML `buildJobs` 优先用依赖项自带的 url，`fileCache` 只作补充。实测：一次选文件夹 → id=1 entityculling 1508547 字节 / id=2 fabric-api-0.160.5+26.3 2589795 字节，两个 jar 都落盘。 |
-| 2026-11-06 | **Java 下载后端修 7 条**（承接 Java 页设计）。① `JavaBackend::javaInstallDir()` 由 `QDir::currentPath()` 改为 `applicationDirPath()`（实测：从仓库根启动时原来给 `D:/latest-code/shadow-v2/java_cache`，与扫描根 `build/Release/java_cache` 不一致）→ 现返回 exeDir。② `installJavaAsync` 加 `m_jobActive` 单任务互斥（原来入口直接 `m_job = InstallJob{}`，设置页装 Java 8 的同时点启动装 17 会互相覆盖、前次 onDone 被吞、m_running 永久 true）。③ 分片下载任一片失败时先降级整包单连接重下一次（http_client.cpp finishAll + fellBackToSingle），此前只有探测失败会降级。④ `cleanupStaleCache` 不再用 java -version 判定完整性（超时即删好 Java），只删 bin/java.exe 确实不存在的半解压目录；实测伪造 `java_cache/99/bin/java.exe`（垃圾内容）重启后存活。⑤ Forge/NeoForge/OptiFine 缺 Java 时的 downloadAndExtractJava 重写：blockingGet 在本线程自建 QNAM（避免跨线程用单例 manager）+ 流式写盘（不再 readAll 整包进内存）+ 无数据超时 10 分钟（原 180s 固定总时长）+ 失败重试一次 + 解压后删 zip。⑥ x32 + 21/25 直接给镜像仅提供 64 位、请改用 Java 17 的文案（实测 404）。⑦ pickNewestZip 按版本号数值挑最新，替代 zipUrls.last() 的字符串序（实测 8u99 会排在 8u504 之后）。实测：190MB JDK17 走分片 4 片 3.7s 成功；Java 页通路 106MB 47MB/s SHA1 通过。 |
-| 2026-11-07 | **Java 下载页落地（4805555，D 版逐级抵近，结构版无动效）**：新页面 `ui/pages/JavaPage.qml`（下载页 tab 6，资源库不再接管）。五步级联：版本 → JRE/JDK → 架构 → 系统 → 分发形式；顶部步骤轨（已选实心蓝 / 当前蓝框 / 未到灰）+ 已选 chips（点 × 回退到那一步）+ 只有当前步展开的卡片 + 后面几步的占位卡（「选完上一步后展开」）+ 第 5 步换成摘要行「已选 Java 17 · JDK · x64 · Windows / 重新选择」。数据全部真实（镜像 8 个主版本、每级联动）；架构按 `cpuArch` 自动预选并裁到 x64/x32/aarch64（镜像里 ppc64/s390x/riscv64 等服务器架构对启动器无意义），系统只留 Windows。后端：`installJavaAsync` 增 `archOverride`（页面选的 x32 才用 x32，空则自动检测）；`JavaBackend` 新增 `installJavaRuntime(major,type,arch)`（ZIP → JavaRuntimeInstaller 全链路）、`downloadJavaFileToPath(url,savePath,size)`（MSI → 用户选目录）、`javaCacheRuntimes()`（扫 java_cache）、`installingMajor` / `installStatusText`；`cancelDownload()` 由 deleteLater 改为先 `cancel()` 真停；`javaInstalled`/`finished` 回刷 cache 列表。发现并修掉三个 QML 级坑：属性名与 Q_INVOKABLE 同名（`javaCacheList`）→ 调用报 not a function，改名 `javaCacheRuntimes` 并让 Q_PROPERTY 的 READ 指向它；`scanSystemJavas` 是异步的（日志里 4 个 Java 分 4 次到达）→ 接 `systemJavaScanFinished` 再刷；`fileRows` 原样转发镜像顺序（MSI 在前）→ 按 zip/msi 排序。 |
-| 2026-11-07 | **Java 页动效 + 下载页全页衔接复核（17f13c1）**：Java 页按既有的动效语言补齐 —— ① 步进用 `reveal`(0..1) 驱动当前步卡片淡入 + 8px 上浮 + 1% 缩放归位（durBase/easePop），第 5 步摘要行与文件卡同样走 reveal；② 步骤轨刚走过的那条连线扫一道淡蓝流光（三停点 gradient，durSlow/easeStandard，`clip: true` 保证不溢出）；③ 胶囊 hover 描边提亮 + 按压 0.97（durPress/easePop）+ SRipple 涟漪；④ 新 chip 从 0.92 弹入（transformOrigin Left）；⑤ 文件卡 hover 底色/描边过渡 + 按压 0.995，已填充进度条内嵌 durSheen 循环流光（clip 在填充段内，不穿模）。**踩坑**：Qt 6.8 起信号处理器注入参数被弃用，`onClicked: { ...mouse.x... }` 会报 `Parameter "mouse" is not declared`，必须写 `onClicked: function (mouse) {...}`；`Row` 里既排版又对子项加 anchors 会打架（胶囊小字第一次改就错位），改用 Item 容器 + baseline。**全页衔接复核**：七个 tab（MC/Mod/光影/资源包/整合包/数据包/Java）逐个切换、下载页↔进度页↔启动页往返、Java 页四步抵近 + chip 回退，均无 QML 告警（日志仅剩网络层 warning）。**未验证**：动效逐帧 —— 截图接口单次往返已超过 180ms 动画时长，抓不到中间帧（连抓两帧与稳定帧同哈希）；需肉眼或在动效时长内录屏确认。 |
-| 2026-11-07 | **Java 页动效返修（ce76245）**：① **进场**——JavaPage 之前完全没有入场动画，切到 Java tab 是硬闪；新增 `enter`(0..1)，顶部内容列与底部「本机」卡一起淡入 + 8px 上浮（durPage/easeEnter）。② **换步 duang**——根因是把 `reveal` 绑在整张卡片的 opacity/translate/**scale** 上（卡片整体先缩 1% 再弹回、外框跟着跳）；改为外框稳定 + `Behavior on height` 平滑，只有内容层 `cardCol` 做 opacity + 2px 位移，删掉整卡 scale。③ **连线**——前两轮理解错（做成了「路过的白光」）；用户要的是「当前步 → 下一步」这一段常亮淡蓝荧光：该段 3px 光晕 opacity 0.14↔0.34 呼吸（durSheen）+ 1px 亮芯线 + 3 颗小光点沿段漂过（各自呼吸），已走过段仍 accent 55%。④ **文件卡文字错位**——`Row` 里给子项加 left/right 锚会让整排失效并刷 `Cannot specify ... anchors for items inside Row`；改为 Item + 三块锚定（图标 38 / 动作区 118 / 中间文字列 left+right 自适应），不再手算魔法数。⑤ **重新扫描点了没反应**——`refreshLocal` 把 `scanning` 同步置回 false，整条反馈链断掉；改为点击 →「扫描中…」胶囊态（禁用、hover 不亮）→ `systemJavaScanFinished` 回 toast「已重新扫描：N 个运行时」（实测 4 个运行时）。本轮之后本次运行日志 **零 QML 告警**。 |
-| 2026-11-07 | **Java 页连线荧光重做（503d00b）**：① 上一版用「三层矩形叠加」画荧光，实际观感是**实心胶囊**（中间还压了一条 `#dfeaff` 亮芯线），已整体替换为 **贴图光晕**：`ui/assets/rail-glow.png`（Python/PIL 生成，中间亮 / 上下高斯渐隐 / 两端收口，160×28）+ `Image{fillMode: Stretch}` 横向拉伸 + `opacity` 0.62↔0.88 呼吸 → 真正「散开」的柔光，无硬边。**踩坑**：试过 `QtQuick.Effects` 的 `MultiEffect`，它把 source 拉伸到 effect 尺寸，3px 线被拉成 26px 实心块、且低透明度下变灰，效果更差，已弃用并移除 import。② 粒子改成 **朦胧浮尘**：4 颗 2px、opacity 0→0.18、沿光带漂移 + 明灭（用户原话「我说的粒子，是荧光散发出的那种朦朦胧胧的粒子」，之前是 3 颗实心圆点，像串在电线上的珠子）。③ 连线几何回到设计稿 D：`wire` 铺在「标签 → 下一个圆点」之间、左右各留 12（此前是 10/2，两端间距不一致）。④ 当前段的底色线改用 `Theme.accent`（原来这层是 `#20252e` 深灰，光带看起来像一块实心色块）。资源注册方式沿用 `qt6_add_resources(... BASE "ui/assets")`，引用 `qrc:/ui/rail-glow.png`。 |
-| 2026-11-07 | **Java 页五连修（23653c6）**：① **步骤卡抽搐**——`height: cardCol.implicitHeight + 40` 直接挂 `Behavior on height`，换步瞬间数据二次到达会让 implicitHeight 先塌到很小再撑开，动画把抖动放大；改为 `cardH` 守卫（`onContentHChanged: if (contentH > 60) cardH = contentH + 40`），退化值忽略。② **删掉 rail 荧光**（用户判定效果不好）——连线只留 1px（已走过/当前段 accent 0.9，未到 `#20252e`），连带删 `ui/assets/rail-glow.png` 与 CMake 资源项。③ **进度条「不断从左划入」**——卡内流光写成 `NumberAnimation { target: parent; property: "x" }`，动的是整条 bar 的 x，整条进度条来回滑；改成具名 `sheen` 只动流光。④ **下载中重选进度丢失**——新增**常驻传输条**（rail 下方，`page.anyBusy` 驱动）：任务标题**快照** `transLabel` + 百分比/速度 + 取消，换步/重选都不受影响；同时修 `transferCancel` 判定——原来用 `zipInstalling`（含 `installingMajor === selVersion` 比对），重选清空 selVersion 后条件永假、取消按钮点了没反应，改用 `zipBusy = installingMajor.length > 0`。⑤ **按钮动效补齐**——chips ×（hover/press/SRipple）、「重新选择」裸文字 → 有边胶囊 + hover/press/ripple、本机运行时 chips hover 过渡、「重新扫描」press 缩放。**C++**：`failJob`/`finishJob` 额外 `QFile::remove(zipPath + ".part")`（取消后原来残留 `.tmp-jdk-25.zip.part` 与 `jdk-25.lock`）。实测：下载中「重新选择」→ 传输条带着原任务标题继续；点取消 → 条消失、`java_cache` 空。 |
-| 2026-11-07 | **Java 页换步不闪 + 步骤条过渡**：① 「切文字时闪一下」根因是 `cardIn` 的 `from: 0` —— `reveal = 0` 后动画第一帧必然渲染在 0，内容全透明一帧；改为 `from: 0.6` 淡入（easeEnter）并去掉手动重置。② 「上方步骤条没有过渡」——圆点 `color`/`border.color`、编号 `color`、标签 `color`、连线 `color`/`opacity` 全部加 `Behavior`（`Theme.durBase`），换步时是渐变而不是硬切；新冒出来的 chips 补 `NumberAnimation on opacity` 淡入。 |
-| 2026-11-07 | **Java 页步骤卡改手风琴堆叠（246…）+ 步骤条固定几何**：影判定「同一张卡里换内容怎么调都会闪」，采纳其方案——5 张独立卡（`Repeater model: 5`）三态：**已选完**=收成一行（STEP n · 标题 · 已选值 · 修改）/ **当前**=展开选项 / **未到**=占位；卡片不复用不换内容，切换只是各卡 `Behavior on height`。**顺带修真 bug**：pill 内的 `index` 是选项序号而非步骤号，`page.choose(index, modelData)` 会把版本选成 `jdk`（点 jdk 变成 selVersion=jdk）；现在卡上固化 `stepIndex`，卡内一律用它。**步骤条抽搐真因**：标签文字长度随选择变化（"Java 版本"→"25"）→ 线段长度跟着变；现在标签固定 `width: 68`（`elide`），连线用常量几何（18+8+68+左右各 12），5 段线长度位置完全一致。内容区包进 `Flickable`（截止到「本机已检测到」卡上方），第 5 步文件多时不再被底部卡压住。 |
-| 2026-11-07 | **Java 页删掉顶部 chips 行**：手风琴卡片已自带「已选值 + 修改」，chips（`25 ×` / `JDK ×` …＋「点 × 回到那一步重选」）是重复信息，整块删除；连带删掉只服务于它的 `page.stepValueShort()`。删后 rail 直接接步骤卡栈，纵向更干净（也少一层 34px 占位）。 |
-| 2026-11-07 | **Java 页进度条不再戳出卡片圆角**：卡内进度条是贴底 2px 直条 + 按百分比从左铺，卡片 `radius: Theme.rMd`(10) 在底部 2px 内的水平内缩只有约 6px → 条两端超出弧线、露出直角（右下角台阶最明显）。改为左右各内缩一个圆角半径（`x: Theme.rMd`，`width: (w - 2r) * pct / 100`）并把条自身 `radius: 1` 圆端化；传输条底部进度条同样处理。**通用规律：圆角容器里贴边的条，左右 inset 必须 ≥ 圆角半径**。 |
-| 2026-11-07 | **联机页落地（d3b）+ 设备身份后端**：`ui/pages/MultiplayerPage.qml`（560 居中卡片、四点阶段条、成员行、改昵称浮层，10 状态全绑定）；`StageShell.multiplayerOpen` + 侧栏路由；`MultiplayerManager.deviceName/deviceCode/canRename` + `setDeviceName`（QSettings 持久化，**房间里拒绝改名**）；心跳与自报名改用 deviceName，账号名不再覆盖。**已知环境限制**：仓库内没有 `easytier-core.exe`，创建房间立刻报「找不到 easytier-core.exe」，故 waitmc/房间/访客等在线态本机无法实测。 |
-| 2026-11-07 | **接入 EasyTier 2.6.4 运行时**：`vendor/easytier/`（easytier-core/cli 2.6.4-8428a89d + wintun/Packet/WinDivert，约 34MB，取自旧仓库 cpp-winold 与 cpp/dist），CMake POST_BUILD 复制到 `$<TARGET_FILE_DIR>/bin`。**实测**：创建房间 → EasyTier 启动 → 虚拟 IP 10.144.144.1 → 房间服务端口 24773 → NAT Symmetric（难度「困难」）→ 进入「房间已建好 · 还差游戏里开服」，房主在成员列表（0ms）。 |
-| 2026-11-07 | **联机页三处修复**：① Idle 时 stage 返回 -1 → 四点全暗，改为 0（点亮首格）；② `canRename` 依赖 backend 属性但其 NOTIFY 只有 stateChanged，`leaveRoom()` 先 setIdle 再 setRole(None) → 读值缓存成 false 且永不刷新，页面改为自算 `role===0 && state===0`，后端补独立 `canRenameChanged` 并在 setRole/leaveRoom emit；③ `ToastHost.show` 的 5 秒同文去重会吞掉连点反馈 → 新增 `force` 参数，用户主动点击的三条提示走 force。 |
-| 2026-11-07 | **联机动效复查**：① 阶段映射重定义 0..4（旧版把「等开服/找中心」并格、把「已连通」当在跑，房主 1→3 跳格，中间格永不亮）；② 光条改为「轨道 + 宽度动画填充 + 三道刻痕」，推进时真的往前长（durSlow），空闲保留首格；③ 卡片 `clip`（高度动画期间内容会漏边）；④ `contentFade` 0.86→1 覆盖状态切换（不从 0 起，避免闪帧）；⑤ chip/「修改」hover、延迟变色补 ColorAnimation；⑥ 房间码字号 19↔26 硬跳改固定。 |
-| 2026-11-08 | **联机：访客连不上排查**（Terracotta 访客日志 10:00）。根因：房主没在游戏里开服 → `c:server_port` 回 status 32 → Terracotta 访客视为致命（Kill EasyTier + PingHostFail）。隧道/握手本身正常。修：① 没开服时复制按钮降级为不可点「开好服后再复制房间码」并在说明里点明；② 新增 `MultiplayerManager::guestRejected(QString)` + 房主 toast；③ `handleServerPort` 改判 `m_mcPort==0`（去掉 `state==WaitingForGuests` 误伤）；④ `leaveRoom()` 清 `m_mcPort`/`m_mcServerName`。另：`tools/mc_lan_stub.py` 可伪造 MC 局域网广播验证扫描器（实测 1s 内识别 port=25565）。 |
-| 2026-11-08 | **联机：成员行显示来源小字（vendor）**。协议里 profile 的 `vendor` 字段就是 HMCL 玩家列表名字下那行小字；我们原来发的是裸 `"shadow"`，且自己的 UI 没渲染（字段没丢：`handlePlayerProfilesList`/`sendHeartbeat`/`SelfProfile` 都在用）。改动：① 成员行两行布局（行高 44→50，vendor 10px `#4d5563`，空值「未知来源」）；② `hostPlayer`/`localSelf` 补 vendor（原来只给访客序列化时兜底，自己列表读不到 → 显示「未知来源」）；③ vendor 内容改 `Shadow Launcher v1.0.4`（引 `src/version.h` 的 `SHADOW_DISPLAY_VERSION`，`shadowVendor()` 辅助函数）。 |
-| 2026-11-08 | **联机：成员列表延迟修复**。两个后端 bug：① host 从不发 `c:player_ping` → `handlePlayerPong` 永不触发、`m_latency` 恒空 → 宾客 latency=-1 → UI「—」；补 `m_latencyProbeTimer`（3s，建房起，逐个 socket 发带 ts 的探针）。② `ts` 回显错：host pong 里塞自己的时钟，宾客 `now-ts` = 时钟偏差不是延迟；改为回显宾客 ts（附 `server_ts`），宾客心跳补 `ts`，宾客侧 `handleGuestResponse(kPlayerPing)` 真正算 RTT 并写进房主行（原来该分支是空的）。UI：自己的行显示「本机」。验证工具 `tools/mp_fake_guest.py`（伪造宾客回 pong），实测 host 得到 RTT 1–3ms、成员行显示 2ms。 |
-| 2026-11-08 | **联机：撤回 host→guest 延迟探针（会把 Terracotta 客户端打掉）**。日志证据：10:24:37 连上 → 10:24:42 加入 → 10:25:02 心跳超时（watchdog 移除行）；10:25:24 再连 → 10:25:47 又超时；对面 UI 仍显示正常（旧状态）。根因：Terracotta 客户端只处理「响应」，我们发的带类型请求会让它读流错位/断开；且日志里**无任何协议协商**（`c:protocols` 从未出现），无法按能力 gating。改为零主动请求：删 `m_latencyProbeTimer`/`sendLatencyProbes`，延迟由宾客心跳**自报** `latency`（本机从 pong 回显 ts 算 RTT），host 采纳、没有则 `-1`→「—」。验证工具 `tools/mp_fake_guest2.py`：9s 内收到 host 请求数 = 0，行显示 42ms，未被判超时。 |
-| 2026-11-08 | **联机：成员列表出现延迟（两端都先只看到自己）**。房主侧：宾客要等握手走完发首次心跳才进 `m_players`（实测连接→加入差 5s）；宾客侧：原来要等 MC 连接校验（≤8 次）跑完才 `ensureLocalSelfInList()` + 拉成员表。修：① 房主 `onNewConnection` 即 `emit playersChanged` + 新增 `pendingGuestCount`（已连上未报身份的人数），UI 显示「N 位玩家正在加入…」占位行、空位数扣除；② 宾客握手通过即 `ensureLocalSelfInList()`（幂等）+ `syncGuestProfiles()`。验证：`tools/mp_silent_guest.py`（只连不发）→ 立刻出现占位行、空位 4→3。 |
-| 2026-11-08 | **校验/修复后端全面修复并实测（1f4fefe + ae6a445，version_backend.{h,cpp}/main_release.cpp）**：① `assets/indexes/<id>.json` 纳入校验（sha1/size 取 version.json 的 assetIndex）——旧实现扫目录只能查损坏、查不出**缺失**；② 索引可修复，先补索引再展开校验（BMCLAPI 路径是 `/v1/packages/<sha1>/<id>.json`，`/assets/indexes/` 实测 404）；③ repair 补 `downloads.classifiers` 的 `natives-windows*`；④ 无可修目标时不再 re-verify 死循环，逐条输出「无法修复: <path>」；⑤ 真取消（`QAtomicInt m_repairCancelRequested` + `QPointer<QNetworkReply> m_repairReply`，cancelVerify 置标志并 abort）；⑥ verify 在修复中排队；⑦ 下载写 `<path>.part`，SHA1 通过才替换；⑧ `setTransferTimeout(20000)` + 主备各 2 次重试 + `NoLessSafeRedirectPolicy`（Qt6 默认不跟 302）；⑨ 新增 `repairProgress(done,total)` 字节进度。**实测**（26.2-Forge）：正常 5183 文件全过；删索引后 → 126 文件、明确报 `assets/indexes/32.json (缺失)`、ok=0（旧实现假通过）。 |
-| 2026-11-09 | **版本设置 v2 全页施工（StageShell `settingsOpen`）**：`ui/pages/VersionSettingsPage.qml`（顶栏返回+标题+版本 ID、208 左栏 9 项三组、2px 选中条、`paneFor()` Loader）；分区 `VsQuickPane`（快捷入口 C：9 入口／真实 9 个后端调用）、`VsOverviewPane`（概览甲：身份/运行/内容/存储四组 kv + 三路异步计数）、`VsLaunchPane`（启动配置甲：配置模式 seg 统管 jvm/game 两模式 + Java/JVM 预设/启动行为/游戏参数/命令五卡）、`VsMemoryPane`（内存设置甲：跟随全局/自动/自定义三选卡 + SSlider + 系统内存实况 `getMemoryStatus`）、`VsToolsPane`（工具与维护甲：校验状态卡 + 异常文件清单 + 版本操作，含重命名 Popup 与 FileDialog 导出用户数据）、`VsModsPane`（Mod 管理甲：搜索/批量启停/导入/SSwitch 单卡）、`VsPacksPane`（资源包甲：搜索/导入/删除，无开关——后端无启用接口）。新控件 `ui/controls/{SSwitch,SSegmented,SSelect,SCard,SRow,STextArea,SInput,SSlider}.qml`。`--ui-next --ui-settings <vid> --ui-pane <key>` 为逐页验收入口。存档页与导出整合包**按影要求不做**。 |
-| 2026-11-09 | **版本设置 v2 · 导出整合包页施工（`ui/pages/VsExportPane.qml`，826 行；`paneFor("export")` 接线）**：定稿甲版式——顶栏 Modrinth/.mrpack ↔ CurseForge/.zip 二选一（`SSegmented`）+ 恢复默认；左栏内容树按「基础／Mod 与配置／资源／存档／其他」分组，父项 44 高加粗带数量 tag、子项缩进 22px 带竖线连接，资源包/光影/存档三个父项**展开真实文件子项**（`exportContext().rpItems/shaderItems` + `listSaves()`，子项 id 规则 `resourcepacks:<name>` / `resourcepacks:dir:<name>` 与导出端解析一致），父项勾选连带全选子项；`Flickable` + 细 `ScrollBar`。右栏：打包信息（名称/版本 → `exportVersion` 的 displayName/packVersion）／高级（仅包内资源、仅 Modrinth、打包 Java）／一行摘要（格式 · 已选 N 项 · 存档）——**故意不给「预计大小」**，那要联网查哈希才知道，不编数字。底部固定导出条（路径 + 更改 `FileDialog.SaveFile` + 开始导出/取消导出 + 进度条），`busyChanged` 只用于导出中。联网查询失败用模态 Popup 走 `continueAfterLookupFailure(bool)`。顺带修 `modpack_exporter.cpp` 的 `matchShowRule`：二级通配规则在 `dirPart` 为空时 `QDir("")` 会指向进程 CWD，误判可见，改为直接 false。 |
-| 2026-11-09 | **导出页 · 模组逐个勾选（影反馈「为什么不能选择要导出什么模组」）**：① 后端新增 `Q_INVOKABLE QVariantList listMods(vid)`（mods/ 下 jar/zip/rar/disabled/old，带 name/size/sizeDisplay）；② `exportVersion` 规则生成支持 `mod:<文件名>`，**按少数派自适应**——勾选数 > 半数走黑名单（`mods/` + `!mods/<未勾>`，规则数=排除数），≤半数走白名单（只列勾选项）；全选则保持整目录规则一条不加（否则 425 个 mod 会生成 425 条精确规则，`likeMatch` 逐文件比对会明显拖慢导出）；③ 收集阶段同样遵守子项，未勾选的 jar 不再做哈希/联网查询；④ QML 导出页 Mod 父行加「N 个 · 已选 M / 挑选·收起」，展开区 = 搜索框 + 全选/全不选 + 240 高虚拟化 `ListView`（`reuseItems`），逐项勾选；内部只记 `excludedMods`（默认全导），导出瞬间才展开成 `mod:<名>`。**踩坑**：①② 上次那条 UI 全错位是因为 `Row` 内放了 `Item { width: parent.width - … }` 占位 + Row 内 Text 宽度反绑 Row 宽度 → QML `Row: possible QQuickItem::polish() loop`，整页布局连锁崩；改为一律绝对定位（`x:` / `anchors.right`）后正常。⑤ `ModpackExportTest` 加第 7 参数只导指定 mod；**中文路径坑**：`QString::fromUtf8(argv[1])` 在 Windows 下拿到的是本地代码页字节，含中文的 gameDir 会解析失败报「版本不存在或已损坏」，测试必须用纯 ASCII 路径。实测：全选 8 个 / 只选 2 个包内正好 2 个 / 8 个走黑名单结果一致。 |
-| 2026-11-09 | **导出页 · 默认落盘目录改到「下载」夹（影实测导出物出现在 `C:\Users\<用户名>\Downloads\.minecraft` 里）**：`VsExportPane.buildOutPath()` 原来拿 `backend.gameDir` 当输出目录 → 整合包被写进游戏目录（和 assets/libraries/mods 混在一起，看起来就像"导出成了 .minecraft"）。改：① 后端新增 `Q_INVOKABLE QString defaultExportDir()`（`QStandardPaths::DownloadLocation` → Desktop → home 逐级回退）；② QML 用它拼默认路径；③ 导出前 `pathInsideGameDir()` 把关，若用户在文件对话框里手动选进游戏目录，自动改到下载夹并 toast 告知。实测：日志 `导出开始/完成 → C:/Users/<用户名>/Downloads/香草纪元：食旅纪行-Release2.7.1.mrpack`（432.1 MB，426 模组 / 315 联网托管 / 111 直装），游戏目录内 mrpack 归零。 |
-| 2026-11-09 | **导出页 · 导出位置改成真正的「文件夹选择」（影连提三次）+ 窗口超出屏幕导致底部被裁**：① `FileDialog{fileMode: Directory}` 在 Windows 原生后端**会退化成保存框**（有文件名/保存类型/保存按钮），即使加 `ShowDirsOnly` 也不可靠 → 改用 Qt 6 专用 `FolderDialog`（`selectedFolder`），实测弹出的是纯文件夹选择（只有目录树 + 「选择文件夹」）；② 选完只改目录，文件名继续由「名称」+ 格式自动拼；③ 路径行文字本身也可点 → 弹 `pathPop`（完整路径输入框 + 「选择文件夹…」+ 确定 + 桌面/下载/文档快捷），不依赖系统对话框也能改；④ `file:///C:/中文/x.mrpack` → 本地路径原来只切 `file://` 会留前导斜杠，改切 `file:///` + `decodeURIComponent`，反向 `toFileUrl` 保住盘符；⑤ **窗口尺寸按屏幕物理尺寸/DPR 收口**（`ui/main.qml`）：1100x720 逻辑在 125% 缩放下是 1375x900 物理，而屏幕只有 1536x864 → 窗口底部 36px 永远在屏幕外，导出条的路径/「更改」/「开始导出」全被裁到看不见。现在按 `min(1100, 逻辑宽-40) / min(720, 逻辑高-40)` 定尺寸（本机 1100x651 → 1375x814），底部导出条完整可见。**踩坑**：第一版 clamp 用了 `screen.availableWidth`（Qt6 里可能是 undefined）→ 算出 NaN → 窗口变 0x0 完全不可见，日志 `window fit undefined x undefined -> 0 x 0`；必须数值校验 + 回退默认值。 |
-| 2026-11-09 | **版本设置页 · 动效接入（全 9 个分区 + 左栏）**：① 左栏选中态改成与主菜单 Sheet 一致的**单一滑块**（`Behavior on y` durSlow+easeEnter），蓝条跟随；行只留 hover，避免两套高亮打架。② 分区切换原来是 `NumberAnimation on opacity {running:false}` **死代码**（从没播过），改成 `ParallelAnimation`：淡入 + Translate 上移 6px，durBase，只在 `sourceComponent` 变化时播（首次进入不叠壳的 durPage 320）。③ 快捷入口/概览 逐条入场（staggerStep 28 / staggerMax 12 / durSlow）；瓦片按下 scale 0.98（durPress+easePop）。④ 列表页入场**不用 ViewTransition**——实测整表替换的 model 只触发 populate，add/remove 永不触发；改 delegate 自播入场预算，只首次载入/刷新给预算。⑤ 内存条 durBase、条件卡高度 durBase（首帧 `laidOut` 抑制）、导出树展开 durSlow、勾选框 1→1.08→1、工具页状态卡高度 + 按钮交叉淡入。⑥ **删掉 VsToolsPane 进度条上的 `Behavior on width`**（高频信号会重置动画，进度条永远追不上）。⑦ 修复：左栏改结构时引用了未定义的 `navFlick` id → 列宽算成 0，菜单全缩没；补 id 后恢复。验证：构建 EXITCODE=0、UI contract OK(45)、六帧连拍证明胶囊在动；手感需人工验收。 |
-| 2026-11-09 | **修复：全屏页第二次进入是硬切（影报）**。根因在 `StageShell.qml` 的 `Behavior + duration: root.xxxOpen ? Theme.durPage : 0` —— 时长与位移同帧求值、顺序不可靠，关闭时先算成 0，下次打开就沿用了 0 → 位移瞬移；首次只是碰巧对上。**全项目 8 处同款写法**（版本管理/版本设置/账户/下载/联机/资源详情/下载进度），即所有全屏页第二次打开都硬切。改为 `states` + `transitions`（时长字面量、只写 `to: "shown"`，进入有过渡、离开仍瞬时）。新增 `--ui-reenter` 测试参数（进/退 1.2s 交替），连拍 45 帧统计：连续变化 4 帧（硬切只会 1 帧）。另：窗口默认尺寸恢复 1100x720（上一版按屏幕收口导致整台机器启动器变矮 69px，不该拿全局默认尺寸补局部裁剪）。 |
-| 2026-11-09 | **分段控件 SSegmented 选中态改成滑动（影报"滑块应该能看到左右移动"）**。根因：每个分项自己画选中底色 `color: index === currentIndex ? ...`，切换只是两块颜色各自渐变，中间没有东西在移动。改法：Row 之下放**一个整块滑块**（分项等宽可直接算 x），`Behavior on x`(durSlow+easeEnter) + `Behavior on width`，分项不再自绘底色只留文字色过渡(durFast)。**共享控件 → 下载页/导出页等所有分段选择一起生效**。静态图 \`seg_launch.png\` 确认滑块位置正确；连续帧验证被环境挡住（合成点击抢不到前台、置顶后注入事件点不中控件），该项需人工确认。 |
-| 2026-11-10 | **修复滚动卡死 + 输入框不失焦（影报）**。① 滚动：`STextArea` 用 `ScrollView` 包 `TextArea`，**ScrollView 无条件消费滚轮**（内容没溢出也吃），启动配置页 4 个文本框在视野里 → 鼠标划过滚轮失效、滚到底光标停在框上就完全滚不动。改 `Flickable` + `interactive: contentHeight > height`：未溢出滚轮穿透页面，溢出才内部滚。② 失焦：原来只有 `SField.blur()` 且靠各页面自己调，漏一处输入框就一直保持聚焦态。改 `StageShell` 最底层 `MouseArea(z:-1)` 统一在空白点击时清 `hostWindow.activeFocusItem.focus`。 |
-| 2026-11-10 | **焦点修复 v2（v1 我改错了）**。v1 用全窗 `MouseArea(z:-1)` + `activeFocusItem.focus=false`：① 对 FocusScope 链无效，点空白仍不失焦；② 因为 `STextArea` 改成 `Flickable{interactive:false}` 后不再消费 press，press 穿透到该 MouseArea，导致点另一个输入框要点多次、必须移出去再移入。v2：改 `TapHandler`（不抢 press）+ `focusSink.forceActiveFocus()`（走 Qt 正常焦点转移）。**教训：两个都涉及焦点/事件的修复会互相踩，必须一起梳理 press 传播链。** |
-| 2026-11-10 | **焦点问题第三轮：真凶是 STextArea 的 TextEdit 没有 height（我引入的）**。ScrollView→Flickable 改造时 TextEdit 只给了 x/y/width，没给 height → 只有内容高度（一两行 ≈14px），而外框 92px，**只有文字那一行能点中能聚焦**，点其他位置毫无反应 = 影说的"点快了还是会出现刚才的情况"。修：`height: Math.max(flick.height - 22, implicitHeight)`。焦点释放最终放 C++ 窗口层 `FocusClearFilter`（拦 MouseButtonPress，焦点是 TextInput/TextEdit 且按点在矩形外则 `contentItem()->forceActiveFocus()`）——**不依赖 QML 事件传播链**（pane 里的 Flickable 会吃掉 press，导致前两轮 QML 方案全部失效），全站一次生效、按下即判断无延迟。日志 `[focus] 点空白释放文本焦点` 可验证。 |
-| 2026-11-10 | **焦点释放收尾（第四轮）：为什么不能照搬下载页 + 实证**。下载页的 `MouseArea{z:-1}` 能工作是因为它的 ListView/Flickable 只占页面一部分，还有没被覆盖的空白；版本设置页每个 pane 是 `Flickable{anchors.fill}` 铺满内容区 → 下层永远收不到。要复刻必须挂在 **Flickable 自己**身上（`TapHandler{onTapped: pane.forceActiveFocus()}`，tap 与 drag 不冲突），已加 quick/overview/launch/memory/tools 五个 pane。C++ 过滤器补 `fi->setFocus(false)`（只 `forceActiveFocus` 到 contentItem 会静默失败 → 日志说释放了但蓝边还在）。**实证**：`press(880,192) focusItem=QQuickTextEdit inside=false → 已释放文本焦点`。 |
-| 2026-11-10 | **输入框只有文字那一行是文本区（影从光标形状发现）**。`SInput` / `SField` 的 `TextInput` 只有 `anchors.verticalCenter`、**没有 height** → 实际只占文字行（约17px），外框 34/36px。鼠标在框上下留白处：光标不变 I 形、**点击也点不中**。与 `STextArea` 的 `TextEdit` 没 height 是同一个病（已修）。修法：`anchors.top/bottom: parent` + `verticalAlignment: TextInput.AlignVCenter`，整块成为文本区。**教训：QML 里给 TextInput/TextEdit 只加 verticalCenter 会得到「看起来是输入框、实际只有一行能点」。** |
-| 2026-11-10 | **顶部光条在退出下载页后仍转**。`StageShell.loading` 四个分支里，下载页那行漏了「该页仍开着」判断：`(downloadPage ? downloadPage.resourceBusy : false)` —— 而 resDetail / settings 两行都有 `root.xxxOpen &&`。`downloadPage` 是**常驻对象**（不是按需卸载），退出后里面的资源视图扫描未结束 → `resourceBusy` 仍 true → 光条一直转。修：`(root.downloadOpen && downloadPage ? downloadPage.resourceBusy : false)`。**规律：长任务接进全局光条时，条件必须带「任务所属页面仍在前台」，否则退出后光条残留。** |
-| 2026-11-10 | **光条第二轮：下载页内切 tab 后仍转**。`resourceView` 是**常驻对象**、靠 `tabIndex: page.tab` 复用（Mod/光影/资源包/整合包/数据包同一页）；切到 MC 版本页只是 `visible:false`，Mod 的扫描还在跑，`busy` 仍 true。修：`resourceBusy: (resourceView && resourceView.visible) ? resourceView.busy : false`。**同一类问题的第二个实例：判据要从「对象存在/有任务」升级到「对象正在显示」。** |
-| 2026-11-10 | **切换角色后重启回到新角色（启动恢复抢走 current）**。`ShadowBackend` 构造函数用 QSettings 的 `account/lastLoginMode`+`lastUsername` 在启动 100ms 后调 `offlineLogin()`，而 `offlineLogin` 内部 `upsertAccount(..., true)` 会把 `accounts.json` 的 `current` 覆盖成离线那条 → 用户选的正版被永久盖掉。日志实锤：`current=0` 读对后 3 秒出现 `[启动] 恢复离线登录`。修：启动恢复**以 accounts.json 的 current 为唯一权威**（current 非离线则跳过；current 为离线则用**该账号的名字**恢复，而非 QSettings 的名字），QSettings 只作 `current<0` 时兜底；`switchAccount` 后同步 QSettings 防两套状态继续发散。**清理**：删掉 `setLastLoginMode` 的 QSettings 持久化（旧 UI「三选一登录」残留，启动已不看它）；内存态 `m_lastLoginMode` 保留（账号页 tab + 启动身份判据仍需）。实证：`current=0` → 启动日志「当前账号非离线，跳过离线恢复」→ `current` 保持 0。 |
-| 2026-11-11 | **B 类收尾（commit 98679dc，−180 行）**：再删 14 个死暴露，其中 4 个是**空实现/假实现**——`checkFileChanges() {}`（空函数）、`isModdedVersion()`（`return false` 恒假）、`openConfigFolder()`（等价 `openGameDir`）、`pickJava()`（等价 `browseJava`）。外加 `killMinecraft`（新 UI 用 `killGameProcess`/`killGameByPid`）、`detectJava`（用 `java.scanSystemJavas`）、`refreshInstalledList`（有 `refreshInstalled`）、`modpackBusy`、`cancelModLoaderQueries`（取消机制存在但零入口）、`demoLaunchFailure/demoLaunchRepairs/downloadProbeCancel/downloadProbeCancelLeak/setAutoLangModeFromCombo`。`Q_INVOKABLE` 252 → **189**。**只剩 5 项**且均为有意保留：`isOfflineRestricted`（合规限制，UI 未读→限制实际没生效）、`openShaderPacksFolder`、`openVerifyReport`、`quitForUpdate`（更新安装流程整体未接）、`updateCrop`（外观页）。 |
-| 2026-11-11 | **B 类死代码清理 + 衣柜/进程优先级接线（commit c556309，10 文件 −1367 行）**。删 `UiNextPresenter` 整层（31 属性 + 18 方法，`ui/` 零引用却仍注册为 QML 单例）、20 个被取代的资源转发接口（searchMods/getPopularMods/getShaderList/downloadMod…，底层 ResourceBackend 保留给任务三）、12 个调试钩子（downloadProbe/downloadSelfcheck/logUiMsg/readUiFlag/switchLanguage…）、`resolved*` 10 个误标 Q_INVOKABLE、`logout` 两处 QML 暴露、旧卡片体系 5 个 Q_INVOKABLE。**换皮肤失效根因**：日志里「衣帽间/已选择皮肤/上传皮肤」零记录 → 上传链路从未被触发；且后端有两套 uploadSkin，`ShadowBackend` 那套成功后不刷新头像、`AccountBackend` 那套（官方 multipart）才是对的但 `skinUploadFinished` 无人接收。现合并为唯一实现并接上刷新。 |
-| 2026-11-11 | **账户页接入皮肤衣柜 + 版本设置接入进程优先级**。衣柜：模型（自动/经典/纤细）、选文件、应用皮肤、导出当前皮肤、披风横排缩略图（标注仅供查阅）。**披风预览图 qrc 双层路径 bug**：`PREFIX /qt/qml/ShadowLauncher/resources/capes` + `FILES resources/capes/x.png` 会拼成 `resources/capes/resources/capes/x.png`，已加 `QT_RESOURCE_ALIAS`（同 agreements 的坑）。进程优先级：`VsLaunchPane` 启动行为卡新增一行，`SSelect` 四选项（跟随全局/高/正常/低）映射 `versionProcessPriorityMode` + `versionProcessPriority`，后端 `resolvedProcessPriority` 已确认接到 `m_launch->setProcessPriority`。 |
-| 2026-11-10 | **旧 UI（qml/）整体移除 + 运行时资源迁移**。删 200 个 qml/ 文件、`src/qmlcache/` 17 个旧 QML 编译产物（5.4 MB，CMake 未引用）、`src/main.cpp`（旧入口，CMake 只编译 main_release.cpp）、孤儿 `icons/sites/` 60 个 favicon。**必须先迁走的新 UI 依赖**：`qml/mod_zh.json`+`mcmod_map.json`（`resource_backend.cpp` 硬编码读取，改为 `assets/data/`）、`qml/agreements/*.html`（改 `assets/agreements/`，并加 `QT_RESOURCE_ALIAS` 否则 PREFIX+相对路径会拼出 `agreements/assets/agreements/` 双层）。删 `qml/icons/`（dev 副本，真正注册的是根 `icons/`）。CMake：删 82 条 qml_resources 注册、`--qmldir qml`、qml 的 dev 复制、I18N GLOB 改指 ui/。main_release：加载路径固定 `Next/Main.qml`，内测闸门不再引用已删的 BetaKeyDialog。**实证**：自检两条断言 PASS——协议 HTML 长度>1000、`resolveModZh("24Hourclock")` 返回「24小时制」。 |
-| 2026-11-10 | **移除「统计」与「实用网站」两个页面（含后端）**。影决定：这两页不做，后端也一并删。删除范围：后端 `src/backend/stats_backend.{cpp,h}` 整对；`ShadowBackend` 的 `m_stats` / `statsBackend()` / 4 个 Q_PROPERTY / `refreshGameStats` / 2 个信号 / 2 处 setGameDir；`UiNextPresenter::totalHours`；CMakeLists 3 处注册。新 UI：`SideBar.qml` 删两项、`StageShell` 删「统计」分支。旧 UI：`qml/StatsPage.qml`、`qml/UsefulWebsitesPage.qml`、`websites_data.{js,json}`、`qml/icons/sites/` 60 个 favicon 全删；`MainWindow.qml` 删两个页面块 + nav 项 + `pageTitle` case + `_usFadeOut`；**navListIndex 重编号**（旧 3=统计/7=实用网站删除后，settings 4→3、installProgress 5→4、helpDocs 6→5），含 `index !== N` 成对比较一起改；`main_release.cpp` 的 `--nav` 页面分派同步。**教训：Positioner/索引这类隐式契约，删一项必须全量重编号并检查成对比较。** |
-| 2026-11-10 | **设置页 8 项实测反馈修复**。①`SetNote` 文字偏上 → Row 改 `anchors.verticalCenter`（原来固定 y:12，Text 的 lineHeight 1.6 在文字下方撑出额外行高）；②Java 加「自动选择（推荐）」行，后端新增 `useAutoJava()`（`setJavaPath("")` 会被 isFile() 拒绝，所以不能用它清空）；③扫描后光条不复位 → `busy` 改由 `javaScanFinished` 复位（原来点完立即置 false，而扫描是异步的），并加 `isJavaScanning()` 守卫；④删「自动检测」按钮（依赖 cachedJavaList，缓存空时无反应，且与「重新扫描」语义重复）；⑤删「游戏目录」行（版本选择页已可切文件夹）；⑥`SetStack` 无内容时仍加 10 间距 +28 留白 → 加 `_hasSlot` 收紧；⑦退出设置侧栏仍高亮「设置」→ `SideBar` 记录 `previousLabel`，`onClose` 还原；并补齐「下载/下载进度/联机」分支的 `prefsOpen=false`（原来在设置页点这些会进页面但设置页仍盖着）；⑧Java 版本徽标 22 高全圆角 → 26 高 radius 6。 |
-| 2026-11-10 | **全局设置页施工完成（7 页）**。新增 `ui/pages/SettingsPage.qml`（壳：顶栏+左栏 7 项+内容区，选中胶囊整块滑动、分区切换 durBase 淡入上移）+ 7 个 pane：`SetGeneralPane`（界面语言/游戏内语言）/ `SetJavaPane`（当前 Java/自动检测/已检测列表可切换/内存双滑块）/ `SetLaunchPane`（GC/优先级/全屏/标题/自动进服/前后命令+风险提示）/ `SetDownloadPane`（两个源/并发/限速）/ `SetAdvancedPane`（内嵌登录/游戏目录）/ `SetAboutPane`（版本/许可/日志/鸣谢/内测）/ `SetAppearancePane`（占位，后端未合并）。新增 4 个共享控件 `SetGroup`/`SetRow`/`SetStack`/`SetNote`。接入 `StageShell`：`prefsOpen` 属性 + 同款 states/transitions 全屏宿主 + 侧栏「设置」打开 + `--ui-prefs [key]` 测试钩子。 |
-| 2026-11-10 | **`gameDir` 未暴露给 QML**。`SettingsBackend::gameDir()` 只是普通 C++ 方法，QML 里 `s.gameDir` 拿到 undefined（日志 `Unable to assign [undefined] to QString`）。修：加 `Q_PROPERTY(QString gameDir READ gameDir NOTIFY gameDirChanged)`，`setMinecraftDir` 与 `setIsolationGameDir` 变更时发信号。 |
-| 2026-11-10 | **高度为 0 的 Item 不裁剪子项**。Java 页列表空态文案用 `height: list.length===0 ? 52 : 0` 隐藏，结果列表非空时 Text 仍画出来压住第一行。修：必须显式 `visible: list.length === 0`。 |
-| 2026-11-10 | **无边框窗口从来不能拖动**（影报下载页顶栏空白处拖不动）。全项目 grep `startSystemMove / DragHandler / HTCAPTION / WM_NCHITTEST` **零命中** —— 项目从未实现过窗口移动，无边框窗口没有系统标题栏，默认就是拖不动。修：`ShadowBackend::beginWindowMove()`（`Q_INVOKABLE`，遍历 `topLevelWindows()` 取 `type()==Qt::Window` 的那个调 `QWindow::startSystemMove()`，保留 Windows 贴边吸附；**不用 QML 手算 window.x/y**——高 DPI 会漂移且丢吸附），6 个页面的 `topBar` 内各加一层透明 `MouseArea`（**声明在子项最前面**，后面的按钮/搜索框自然盖在它上面，只有空白区能触发）。覆盖 DownloadPage / AccountPage / VersionPage / VersionSettingsPage / ProgressPage / ResourceDetailPage。 |
-| 2026-11-13 | **启动页外置账号显示橙点+字母头像**（commit 81fa719）。根因：胶囊只读 `isOnline`（= 微软会话标志），切到外置后必然 false → 橙点 + 头像回落到空的 `offlineSkinPath`。外置账号的头像快照其实一直存在（`accounts.json` 的 `avatarFile` → `assets/accounts/2_<name>_<mtime>.png`），只是没人读。改为 `ShadowBackend::accountOnline = isOnline \|\| ygg->loggedIn()`，并新增 `currentAccountAvatar` 暴露当前账号快照给 QML 兜底。 |
-| 2026-11-13 | **披风加载反馈（最终版，commit 52f5c76）**：只用一个 `AccountBackend::capesLoading` —— 请求 Mojang profile 前置 true，逐张披风下载完/失败/无披风/15s 超时/切号都置 false；`ShadowBackend::accountLoading` 转发给 QML（QML 的 `b` 是 ShadowBackend，直读 `b.capesLoading` 得到 undefined）。AccountPage 的 `wardrobeBusy` 并入它 → 顶部 `SLoadingBar`，加载中提示写「正在获取…」。**前一版把加载标志绑到令牌链（identityLoading）是错的方向**：影明确要求「拉披风不要走完整登录流程，别把简单修改复杂化」，该整块已删除，登录链路保持原样。 |
-| 2026-11-13 | **顶部光条「切号有、首次进入没有」+ 披风文案**（commit 14570bf / a5e25ce）。三层原因依次是：① QML 里的 `b` 是 **ShadowBackend**，而 `capesLoading/identityLoading` 定义在 **AccountBackend** → `b.identityLoading` 恒为 undefined，光条永远不亮（加 `accountLoading` 代理属性+接两个信号）；② 只覆盖「档案请求→披风下载」那 1 秒多，可切到正版要先跑令牌链 3~4 秒，新增 `identityLoading` 从 `switchAccount()` 起算；③ `identityLoading` 只在 `switchAccount()` 置位，**启动恢复那条路没设**，所以才出现「首次进入没光条、切回来才有」。另加 15s/20s 兜底超时防止卡死常亮。文案：`(capesLoading \|\| identityLoading) && capes.length === 0` 时显示「正在获取...」，不再写「此账号没有可用披风」。 |
-| 2026-11-13 | **外置账号头像变字母的最后一层：它根本没有自己的快照**（commit bbefeae）。上一轮修的是快照写入竞态，但真正原因是 `saveCurrentAvatarSnapshot` 按 mode 二分取皮肤：`mode==0 ? m_skinPath : m_offlineSkinPath`——外置账号(mode 2) 取的 `m_offlineSkinPath` 永远为空，于是**从未生成过自己的头像快照**；它能显示全靠「当前账号实时头像」兜底，切走就变字母。改为三分支（正版/外置/离线），并由 ShadowBackend 把 `YggdrasilSkinFetcher` 的皮肤路径经 `setExternalSkinPath()` 灌给 AccountBackend。**教训：「当前账号能显示、切走后不能」= 只在当前身份下才有数据；要补数据源，不是改渲染兜底。** |
-| 2026-11-13 | **切号空窗 + 首页不认外置**（commit 70f1e3e）。① 头像闪字母：`saveCurrentAvatarSnapshot` 用「固定文件名 + 先删再拷」，删掉那刻 QML 去读就是空 → 回退字母头像；拷完 URL 未变 → 图片缓存命中 → **不会自己刷新**（影说的「重新选中又恢复」）。改为文件名带源文件 mtime + 先写 `.part` 再 rename，文件名记进 `avatarFile`。② 切号后「没有可用披风」要等 3.5 秒：`switchAccount` 先 `clearActiveIdentity()` 清空皮肤/披风，再走 MS令牌→XBL→XSTS→MC认证→MC档案→Mojang profile。改为**按账号缓存**（`skinPath/capePath/activeCapeAlias/capesJson` 存 accounts.json，非凭据），切号立刻显示、后台再刷新。③ 首页 `StagePage.hasAccount` 只判 `isOnline` 与离线名，**没算外置登录** → 切到外置后首页说「还没有登录账号」。补 `yg.loggedIn` 与外置 `userName`。 |
-| 2026-11-13 | **外置登录「刚登录就需重新登录」的真正根因：`logout()` 吊销了账号列表赖以生存的令牌**（commit 7a10e3b）。指纹日志实锤：`03:01.431` 绑定成功令牌 `328828f5/len1154` 写入 accounts.json，`03:10.414` 恢复时传入同一个令牌但「当前会话令牌 `<empty>`」，随即 validate/refresh 双双 403 → 判死。会话在 9 秒内被**静默清空**且令牌被服务端吊销——只有 `logout()` 能同时做到（`m_session.clear()` 不留 expired 日志 + `authserver/invalidate` 真吊销）。**这是语义错误不是竞态**：Yggdrasil 没有 refresh token，accessToken 就是多账号列表保存的唯一长期凭据，而「切到正版账号」会调 `ygg->logout()` 清活动身份，顺手把这个凭据烧掉。修法：`logout()`（默认）只清本地保留令牌，新增 `logoutRevoking()` 仅在账号条目已删除时吊销；`switchAccount` 遇到 needsRelogin 账号跳过 restore；`restoreSession` 令牌一致时视为空操作。前两轮修的迟到 403 与登录上报过早都是真 bug 但非主因。**教训：任何调 invalidate 的地方都要先问「这个令牌还有别处在存着用吗」。** |
-| 2026-11-12 | **移除账号会「复活」的根因**（commit 1ace5eb）：`AccountBackend` 构造函数里有一段「已登录但不在 accounts.json → 补登记」，本意是给旧版本升级补数据。但删账号只删了 `accounts.json` 条目、没删 `microsoft_session.json`，于是下次启动 `loadMicrosoftSession()` 读到残留会话，又把账号原样写回列表。外置账号同理（`session.json`）。修法：`AccountBackend::removeAccount` 删到当前微软身份时先删会话文件 + 抹内存令牌（**清理必须放在分支之前，分支里有 `return true`**）；`ShadowBackend::removeAccount` 先记下被删账号的 mode，外置则 `ygg->logout()`。实跑验收：移除当前正版 → 剩 1 条 mode=2、`microsoft_session.json` 已删，正常重启后仍是 1 条。同批还修了**账号失效时的 UI 紊乱**：`hasAccount` 只表示「真的登录着」，唯一账号失效后它为 false，界面于是同时走「无账号」和「有账号列表」两套布局；改为区分 `browsingAccounts`（有账号且不在登录表单），点失效账号不再跳登录页，改为右侧渲染重新登录卡片（重新登录 / 移除此账号）。 |
-| 2026-11-12 | **wv2login.exe 移植进 v2，内嵌登录真正可用**（commit e171191）。2026-11-04 建仓时把旧仓库 `cpp/thirdparty/wv2login`（466MB）当体积垃圾排除，导致 v2 的内嵌登录从第一天就是死代码——点「开始登录」必报「登录组件缺失：未找到 wv2login.exe」。按方案 B **移植源码**：只搬 `src/` 4 文件 + 最小 SDK（WebView2 头 4 个、WIL 头 26 个、x64 的 WebView2Loader 导入库与 dll），共 4.82MB，CMake 编出 207KB 的 `wv2login.exe`。它是个独立 Win32 进程（无 Qt），用 Edge WebView2 开窗口加载 Microsoft 授权页、拦截 `nativeclient` 跳转取 `code=`，写进 `--output-file` 后退出（0=拿到码 1=取消 2=错误），窗口崩了也不带崩启动器。**两个编译坑**：①必须 `UNICODE`/`_UNICODE` 宏，旧 vcxproj 靠 `CharacterSet=Unicode` 提供，缺了 `IDC_ARROW` 退化成 `MAKEINTRESOURCEA`，`LoadCursorW` 报 C2664；②`WebView2Loader.dll` 必须 POST_BUILD 复制到 exe 同目录，启动器按 `applicationDirPath()` 找助手。启动侧仍保留「exe 缺失则降级浏览器登录」的兜底，且**降级前不能先 beginBusy**（`startLogin()` 开头有 `if (m_busy) return;`，否则静默失效）。**教训：迁移时按体积排除目录，必须先确认有没有代码在运行期按路径找它。** |
-| 2026-11-12 | **外置登录「重启一次就过期」的终局根因：令牌未绑定角色**（commit fe2d376）。日志证据：`认证成功 http=200 profiles=2` → 重启后 `validate 403` → `refresh 400 访问令牌未绑定角色，请在刷新时指定角色`。**LittleSkin/Yggdrasil 规范：账号下有多个角色时，authenticate 返回的 accessToken 不绑定任何角色**，这种令牌在 validate/refresh 一律被拒；前端从未发过 `selectedProfile`，所以登录只在当次运行有效。修：`YggdrasilAuth::refresh()` 增 `selectedProfile` 参数，**且必须是对象 `{id,name}`**（传裸字符串服务端报 `selectedProfile must be an object`）；新增 `bindProfile()/onBindReply()`，单角色登录成功后与多角色选好角色后立刻绑定并落盘；`doRefresh()` 也带 selectedProfile，可把历史遗留的未绑定令牌重新绑回角色。**实证**：旧令牌 1524 字符 → 绑定刷新后轮换为 1576，`accounts.json` 的 `needsRelogin` 自动清空，再次重启整段无任何 403/400。 |
-
-| 2026-11-13 | **登录/启动/启动页三处账号数据统一（commit 待提交）**：影反馈「选了账号A，登录页正常，但启动页不显示A、也启动不了」，根因是三处各用一套真源。① `ShadowBackend::launch()` 用 `m_lastLoginMode`（「上次登录方式」，只在切号/删号时同步，**重启后不与 accounts.json 的 current 对齐**）决定身份 → 当前是外置(mode=2)而它还是 0 → 走正版分支 → `m_account->username()` 已被清空 → `m_authName` 空 → `LaunchBackend` 预检 step0 `if (m_authName.isEmpty()) abortCheck("登录状态")` → 弹「启动失败·启动前检查未通过」。② QML `b.launch(ver, b.isOnline)` 传的是**微软会话**标志，外置账号恒为 false → 即便身份判对也会被当成离线送进 `setAuthInfo`。③ 启动页 `hasAccount/userName/chip 头像` 各自拼 `isOnline / offlineUsername / yg.loggedIn`，与账户页、启动预检对不上。修法：新增统一身份访问层 `ShadowBackend::activeAccountMode/Name/Uuid/Online/Avatar/Skin`（真源 = `AccountBackend::currentAccountMode()` = accounts.json current，各自取该类型的会话；名字/uuid 在会话未恢复时回落 accounts 条目）；`launchGame` 的 auth 分派改用 `authMode` 推导 `useOnline`，**不再信调用方传的 online**；导出启动脚本、衣帽间保存、`loginType` 同步改走 `activeAccountMode()`；启动恢复时 `setLastLoginMode(curMode)`；`StagePage`/`LaunchOverlay` 全部改用 `activeAccount*`（`hasAccount` 改为 `activeAccountMode>=0 && 名字非空`）；新增验收钩子 `--launch-now`（与按钮同一路径）。实测三种账号各跑一遍启动：外置 `认证 外置登录模式启动 / 登录状态通过 / authlib-injector 注入 https://littleskin.cn/api/yggdrasil / --username xiaole1173`；正版 `在线模式启动 uuid=bee403c8…`；离线 `离线模式启动 uuid=d9810b0b…`，三者均「全部检查通过 → 游戏启动完成」；启动页胶囊外置=自己的皮肤头+绿点、离线=史蒂夫+橙点。 |
-
-| 2026-11-13 | **更新系统审查与修复**：① **通知全断**——`ShadowBackend::toastMessage` 在整个新 UI（`ui/`）**没有任何监听**，更新模块 16 条提示（已是最新版本/检查更新失败/发现新版本正在后台下载/下载失败…）+ 模组安装 4 条 + 版本后端 3 条全部石沉大海，用户点「检查更新」只看到按钮闪一下。修复：`StageShell.qml` 的 Connections 里补 `onToastMessage(msg) → toastHost.show`，并补 `onUpdateReadyForRestart(version) → toastHost.showAction(...)` 调 `b.quitForUpdate()`（原来下载完成无任何提示、无重启入口）。② **SLUpdater 起不来时启动器自己退出**（`main_release.cpp` 原 `CreateProcessW` 失败仍 CloseHandle + `return 0`）：杀软拦截/文件占用时表现就是「点更新后启动器消失、更新没装」。改为判返回值，失败清锁、保留 state.json 下次再试、继续用当前版本启动。③ **quitForUpdate 重启失败仍退出**：`QProcess::startDetached` 失败原来只记日志照样 quit，用户同时失去窗口和更新；改为 toast 提示并留在当前版本。④ **静默检查失败白扣 6 小时**：原实现发请求前就打 `last_silent_check` 时间戳（网络一失败要等 6h 才重试），改为拿到有效响应并解析出 tag 后才写。⑤ **下载中途退出不能续传**：退出时 state 停在 `Downloading`，而 `resumePausedDownload` 只认 `Paused` → 已下部分被当垃圾删除重下（34MB 白跑）；改为 `aboutToQuit` 时把 Downloading 落盘成 Paused。⑥ 新增 `--update-check` 验收钩子（启动 1.5s 后自动点一次检查更新，与按钮同路径）。实测：`--ui-next --update-check` → 日志 `用户手动检查更新 / 服务器版本 v1.0.4 / 需要更新 false`，右下角 toast「已是最新版本」像素可见；服务器 latest.json 200（tag=v1.0.4，assets: compat.json / ShadowLauncher.exe 7.9MB / zip 34.6MB）。未真机触发「发现新版本→下载→Ready→安装」全链（服务器版本与本机一致），该路径靠逐行审查 + 三处失败分支修复。 |
-
-| 2026-11-13 | **启动前检查链路审查（分类错位 + 检查失效）**：逐条审过 LaunchBackend::runNextCheck() 的 case 0..5 与 buildLaunchPipeline() 节点。① **分类错位**：Step 4 名为「检查内存分配」，里面却塞着「外置登录服务器 5s 探测 + authlib-injector.jar 下载（含进度条/修复行）+ launcher_profiles.json 写入 + 全部检查通过」——用户会在内存那行卡十几秒下载网络文件，失败时红色也标在「检查内存分配」上（abortCheck("外置登录服务器") 实际着色的是当前 step 节点）。拆分：新增 pipeline 节点 authlib（「准备外置登录组件」，非外置模式 setSkipped+setHidden），case 5 = 准备阶段、case 6 = 启动，节点索引与 case 一一对应。② **内存检查名不副实**：原来只有 if (<512) warning，从不与真实内存比对。改为 GlobalMemoryStatusEx：分配 > 物理内存 → abort（实测 32768MB vs 32543MB 拦下，日志「阶段=内存分配 原因=分配 32768 MB 超过物理内存 32543 MB」）；分配 > 当前可用 → 警告。③ **外置服务器探测阻塞 UI**：栈上 QNAM + QEventLoop 同步等 5s，整窗冻结。改异步（暂停状态机→finished 回调→恢复），并加 m_authlibProbed / m_authlibArgAdded 防止异步恢复后 javaagent 参数被注入两次。④ **版本 JSON 损坏静默放行**：原来仅 launchCheckWarning("JSON 格式警告") 继续，随后 checkVersionLibraries 也因解析失败 return 空列表 → 依赖检查整条失效、带坏配置启动。改为 abortCheck("版本配置", "版本配置文件格式损坏（…）")。⑤ **natives classifier 死条件**：key.contains("natives-windows") 与自身重复（同一字符串写两遍），且不区分架构。改为按 QSysInfo::currentCpuArchitecture() 选 natives-windows[-arm64/-x86]。⑥ **登录状态对外置形同虚设**（原来只判名字非空）：补 m_yggdrasilMode && m_authToken.isEmpty() → abort「外置登录凭据缺失，请重新登录该账号」。实测：外置 内存 1536/可用 18434/总计 32543 → 服务器可达 → 单条 javaagent → 全部检查通过；离线无 authlib 行、检查通过；内存超限被拦。**未修（记录在案）**：库检查不处理 rules.features（demo/custom_resolution 可能误报）、natives 已解压即早退（运行库检查近似失效）、无磁盘空间/写权限检查。 |
-
-| 2026-11-13 | **外观页动工：配色方案（黑/白）+ 启动页图片自定义**。① **先调研**：外观页原是占位（SetAppearancePane.qml 自述三套后端未合并），实际可用件是 Theme.qml（硬编码色板）、AppearanceController（主题/密度，Theme 不读）、SettingsBackend.customBg*（路径/透明度/裁剪，仅 StagePage+AccountPage 各用一处；StagePage 用 "file:///"+path 而 pickBackgroundImage 存的是 file:/// URL → 双层前缀必然图裂，属既存死路径）。② **配色**：Theme.qml 升级为可切换调色板 —— scheme（dark/light）+ 派生 bg/bgCard/bgCard2/bgInput/bgHover/bgRaised/line/line2/line3/fg/fg2/fg3/fg4/accentSoft/accentText/accentFg/dangerSoft/dangerText/pBg/pLine/imageFg*；真源是 SettingsBackend.colorScheme（appearance/scheme），StageShell 启动与变更时同步 Theme.scheme（后端唯一真源，Theme 只是镜像）。颜色迁移：脚本按亮度/饱和度把 242 个散落字面色收敛到令牌（512 处替换），再人工处理 41 处纯白（按是否在 accent 实底上分派 accentFg / fg）——**坑**：onAccent / onImage 这类 on+大写 命名会被 QML 当成信号处理器（报 Cannot assign a value to a signal），改名 accentFg / imageFg*。③ **照片页固定暗色**：启动页/账户页背景是用户图片，任何方案都用固定暗色文字体系（pBg/pLine/imageFg*），并用 SButton.tone="dark" 让这两页按钮不随方案变白（否则浅色方案下出现白底白字，实测按钮整块消失，已修）。④ **图片自定义**：新增 ui/controls/SBgImage.qml（cover 基准 × zoom 1–4 × cropX/Y 取景，支持拖拽平移 + 滚轮缩放），启动页与外观页预览共用同一公式；SettingsBackend 增加 bgZoom、bgPresets()（内置预设列表，默认 aurora=qrc，后续加预设只需追加一项）、applyBgPreset / chooseBgImage / restoreDefaultBg / resetBgView；ShadowBackend 增代理与 customBgUrl（统一 file:/// 转换）；pickBackgroundImage 改为存纯本地路径并只删 dataDir/custom_bg 下的副本（原实现可能删用户原图）。⑤ **外观页 UI**：两张主题卡（内置色板示例 + 选中蓝框 + 勾）、预设缩略图（极光默认）+ 自定义图片卡、取景预览 + 缩放滑块 + 重置取景 / 恢复默认背景，全部复用 SetGroup/SetStack/SButton/SSlider/SIcon。⑥ **验收钩子**：--scheme-flip（1.5s 后走 b.setColorScheme 切换，验证即时生效）。实测：黑/白两套逐页截图（外观、启动页、版本页、下载页、Java 页、账户页）文字全部可读；--scheme-flip 日志 [外观] 配色方案 = dark 且界面即时换色；自定义背景 2x 缩放 + crop(0.25,0.35) 生效；恢复默认后回到内置极光。 |
-
-| 2026-11-13 | **修复：启动页默认背景被放大裁切（commit 9f94072）**。影报「启动页默认图片的缩放被改了」。根因：新组件 SBgImage 里 fillMode 用了 Image.Pad —— **Pad 会按源图原始像素尺寸绘制，忽略外层设置的 width/height**；几何本来已按 cover×zoom 算好 1607×900（源图 2737×1532，coverScale 0.5875）并设在元素上，Pad 却把 2737×1532 的整张图画进去再被父级裁掉，视觉上就是「放大后裁切」。改 Image.Stretch 即恢复原状（等价原来的 PreserveAspectCrop 居中）。验证：Pillow 按 cover 居中裁切生成期望图，与截图右半区逐像素对照，极光走向/山体/月亮位置完全一致（mean diff 15 来自遮罩压暗）。自定义图的缩放/取景也随此变准。**教训**：Image.Pad 不是「拉伸到指定尺寸」，是「原尺寸 + 留白」；自己算几何时必须配 Stretch/Fill。 |
-
-| 2026-11-13 | **修复：拖动壁纸取景时把设置页带着滚（commit 待提交）**。现象：在外观页拖动预览里的图片，鼠标移到图片/取景边界后继续拖，整个设置页跟着上下滚动。根因：预览的 SBgImage 里 MouseArea 没设 preventStealing，父级 Flickable（设置页内容区）在拖动越过阈值后把这次拖拽判成翻页手势抢走 grab。修法：interactive 的 MouseArea 加 preventStealing: true（Flickable 会尊重该标志，不再抢已按下的拖动）；同时 WheelHandler 在缩放已到 1x/4x 极限时不再吞滚轮（event.accepted=false），让页面能正常滚。 |
-
-| 2026-11-13 | **取景框比例对齐启动页 + 实时半透明预览（commit 待提交）**。影反馈两点：① 取景预览是 2.2:1 宽条而启动页内容区约 1.24:1，框里挪到边的位置启动页根本看不到，等于选不准；② 调整时看不到实际效果。修法：① 预览几何改为由真实窗口反推 —— stageAspect = (窗口宽 - 侧栏宽) / 窗口高（用 QtQuick.Window 的 Window.window），宽度取 min(可用宽, 340×aspect)、高度 = 宽度/aspect，与启动页同比例（实测 421×342 ≈ 1.234 vs 启动页 1.239）；② 新增 livePreview：拖动（SBgImage.dragActive）或缩放后 0.9s 内为真，SettingsPage 用 Qt.binding 转发给 ShadowBackend 侧壳，StageShell 的 prefsHost.opacity 由 1 淡到 0.22（durBase），背后启动页直接透出并实时更新取景 —— 松手 0.9s 自动恢复；③ 顺手修「鼠标停在预览上就滚不动页面」：WheelHandler 只有按住 Ctrl 才缩放，否则 accepted=false 让 Flickable 正常滚。实测：拖动中截图可见设置页整体半透明、下方「26.2 Forge / 启动游戏」清晰可见；松手后恢复不透明；滚轮在预览上可正常滚动页面；取景框比例与启动页一致。 |
-
-| 2026-11-13 | **实时预览二期：只留预览 + 启动页真正同步（commit 待提交）**。影反馈：① 透出启动页时设置页没完全隐藏，两层叠在一起很别扭（但图片区域要保留）；② 透出的启动页图片不跟手，只有松手才更新。修法：① 不再整页压透明度 —— SettingsPage 增加 chromeOpacity（livePreview 时为 0）隐藏底色/顶栏/左栏/页标题，外观页增加 solo 把配色分组、图片来源分组、说明、滑条行全部淡出，SetGroup / SetStack 增加 bare 模式（去掉卡片底/描边/标题），只保留取景预览；StageShell 的 prefsHost 宿主底色也必须一起让开（否则露出的是纯色 —— 实测黑屏）。② 取景写后端从防抖改成节流：原来 applyTimer.restart() 在拖动中每次 mousemove 都重置 150ms 定时器，整个拖动期间一次都不写，所以松手才动；现在距上次写入 ≥80ms 就立即写（拖动中约 12fps），零碎变更由定时器兜底；并在拖动中忽略后端回灌，避免自写信号覆盖本地值。实测：按住拖到 A 截图、继续拖到 B 截图 —— 露出区域的启动页背景像素差 19~21（真的在动），侧栏像素差 0（页面没滚）；松手后设置页完整恢复。 |
-
-| 2026-11-13 | **修复：实时预览时右边一条黑边（commit 待提交）**。现象：外观页拖取景透出启动页时，右侧出现约 22px 纯色黑边。根因：StageShell.stageHost 里的启动页在「全屏页打开」时会有 translate.x = -22 + scale 0.99（全屏页入场的视差），而 fullOpen 包含 prefsOpen —— 设置页虽然自己透明了，底下这层启动页仍被左移 22px，露出宿主自己的 Rectangle 底色（Theme.bg）。修：给 stageHost 加 previewing = prefsOpen && prefsPage.livePreview，预览期间位移归 0、缩放归 1，宿主底色也一起透明。实测：右边缘列亮度 33~70（此前是 9 纯黑），像素差校验启动页仍跟手（23.4）、侧栏不动（0）。 |
-
-| 2026-11-13 | **窗口拖动：启动页顶部可拖 + 全程实时跟随（commit 待提交）**。影反馈：① 启动页顶部区域拖不动（只有 SHADOW 侧栏能拖）；② 拖窗口时出现 Windows 传统白框、界面不跟手。根因：启动页根本没有拖动区（Window 上的拖动带 2026-11-05 就删了），而各页 topBar 用的 QWindow::startSystemMove() 走 WM_SYSCOMMAND(SC_MOVE) —— 本机只画拖影框、窗口不实时跟随。修法：① StagePage 顶部加一条 Theme.topH 高的透明拖动带，声明在账户胶囊/按钮之前，所以按钮照旧可点、只有空白处才是抓手；② ShadowBackend::beginWindowMove() 不再调 startSystemMove，改为「按下时记下光标全局坐标与窗口位置的差 → 拖动期间用 QCursor::pos() 反算 setPosition」，用全局坐标因此高 DPI 也不漂；事件过滤器在松开左键时自动摘掉。实测：顶部拖动窗口实时跟随（拖动中 rect 已变化）、松手停止；账户胶囊点击仍能打开账户页。 |
-
-| 2026-11-13 | **回到启动页的"白边框"消失（改成透明度过渡）（commit 待提交）**。现象：从下载页回启动页的一瞬间，窗口四周闪一圈白边（连拍实测第一帧顶/底 6 行均值 145，正常 16）。根因：回退用的是「位移 -22 + 缩放 0.99」的视差，页面在半路上四周会各留 1~22px 的缝，那几帧缝里露的是窗口外面（桌面/别的程序）→ 看起来就是一圈白边；窗口本身透明（曾是 transparent 为了躲圆角白边）放大了这个问题。修法：① 回退过渡**只做透明度**（0.55 → 1，durPage），没有几何缝隙；② 窗口底色从 transparent 改成深色实底 #08090d（QML Window + main_release 的 setColor 两处一起改），任何残余缝隙露的是自己的底色；③ 顺手去掉 DWM 在窗沿画的那圈 1px 边框（DWMWA_BORDER_COLOR = DWMWA_COLOR_NONE）。实测连拍 12 帧：第一帧 R/T/B/L = 45/25/21/11，全部为深色，无白边；同时保留"从暗处浮回启动页"的过渡观感。 |
-
-| 2026-11-13 | **启动页入场编排定稿：删整页阴影动画 + 组件错峰动画真正落地（commit 待提交）**。影反馈：① 切出启动页无阴影、切回却突然出现一块阴影动画，很突兀，应删除；② 胶囊/版本号/启动按钮仍然完全没有动画。根因①：上一版为掩盖"回退没有几何动画所以显得平"而给整页加了一层 0.55 到 1 的透明度动画 —— 它只在切回时出现（切出时全屏页直接盖住），看起来就是一块莫名的阴影。根因②：组件动画用的是 property bool stageIn + Behavior on opacity；回到页面的那一帧 bool 被翻转，Behavior 经常等不到可见的中间值就直接跳到终态，等于没播。修法：① StageShell 里彻底删掉整页 opacity 动画（页面本体 opacity 恒为 1，不做任何透明度/几何动画，历史教训写进注释）；② StagePage 改用 property real enterT + 显式 NumberAnimation（target: page, property: "enterT", from 0 to 1, durPage, OutCubic）驱动，再用 seg(from,to) 把统一的 0 到 1 切成四段时间窗做错峰：胶囊 0.00~0.45、kicker 0.12~0.62、版本标题 0.20~0.72、按钮 0.42~1.00，各组件的 opacity 与 translateY 直接由 seg 求值。实测（PrintWindow 8ms 连拍）：背景区亮度恒定 33.9（整页无任何明暗动画），标题 48.2 到 79.1、按钮 18.3 到 111.2 有明显中间值，日志 enterT 从 0.11 递增到 1.00，证明动画真的在播。 |
-
-| 2026-11-13 | **修复：从联机页进设置再退出，画面回启动页但侧栏仍高亮联机（commit 待提交）**。根因：进入设置时会把 downloadOpen / progressOpen / multiplayerOpen 全部置 false（设置是全屏页，而联机/下载的宿主声明在 prefsHost 之前，不关就会被压在设置底下继续显示）；退出设置时却只还原了侧栏高亮 sideBar.currentLabel = prefsPrevLabel，没有把对应页面开回来 → 侧栏高亮"联机"、画面是启动页。修法：SettingsPage.onClose 里按还原后的 label 把对应页面开回来（联机 → multiplayerOpen、下载 → downloadOpen、下载进度 → progressOpen）。实测三条路径：联机→设置→返回 = 联机页（侧栏高亮一致）、下载→设置→返回 = 下载页、启动→设置→返回 = 启动页；日志 "退出设置，还原页面: X" 与预期一致。 |
-
-| 2026-11-13 | **接入「帮助文档」（侧栏最后一项，commit 待提交）**。做法：不内嵌文档，点侧栏「帮助文档」直接用系统默认浏览器打开官网 VitePress 站点 https://shadowlauncher.cn/docs/ —— 内容/截图/更新节奏跟官网是同一份，也避免打包体积翻倍与「文档与官网不一致」。实现：StageShell 新增 readonly property string helpDocsUrl；onNavActivated 在「启动」分支之后补「帮助文档」分支调用 Qt.openUrlExternally(root.helpDocsUrl) 并打日志；该侧栏项是子项（isMain=false），SideBar 点击时不会改 currentLabel，所以既不会切页、也不会把高亮挪过去。实测：启动页点它 → Edge 打开「Shadow Launcher 帮助文档」，启动器仍停启动页、高亮仍是「启动」；联机页点它 → 仍停联机页、高亮仍是「联机」。|
-
-| 2026-11-13 | **背景图改成「图库」：导入的图全部保留，每张各自记住取景（commit 待提交）**。影报：手动添加的照片切回默认后就丢了（预期是导入的图全保存，切换不丢源文件和「选区+缩放」）。根因有两条：① 数据模型只有**一份** customBgPath + 一份 zoom/crop，切回默认（restoreDefaultBg / applyBgPreset）直接 clear() 路径并复位取景；② pickBackgroundImage 每次选图都把 dataDir/custom_bg 下所有文件删掉再复制，旧图被物理删除。改法：SettingsBackend 改成图库模型 —— QVector<BgImage>{id,name,path,source,builtin,zoom,cropX,cropY} + activeBgId，序列化成 QSettings 里的 customBg/library（JSON）+ customBg/active；切换只改 active，谁也不清空谁；导入按文件内容 sha1 去重、复制进 dataDir/custom_bg/bg_<sha1>.<ext>（不再清目录）；customBgPath/customBgUrl/bgZoom/cropX/cropY 全部改为读写「当前激活的那一张」；restoreDefaultBg = 切回 aurora，resetBgView 只复位当前图；新增 removeBgImage（只删数据目录副本）+ ensureBgLibrary 按绝对路径去重（迁移用路径 sha1、导入用内容 sha1 会产生重复卡片，实测出现过）。旧数据自动迁移（按内容 sha1 转成图库一条，迁完清掉旧 key 免得每次启动重算）。UI：图片来源从 Row 换成 Flow，内置/导入分两组 Repeater，每张导入图一个卡片（缩略图用它**自己的**取景）+ 悬停出现 × 删除，末尾是「选择本地图片」；presets 增加 bgRev 依赖，切换后选中态才会刷新。实测：自定义图 cropX=0.3168/zoom=1.15 与内置 0.5/1.0 各存一份；点「恢复默认背景」后用户图仍在库中且取景不变；切回自定义图预览恢复 115% 与原选区；重启后启动页仍是该图 + 115%。 |
-
-| 2026-11-13 | **修外观页图片卡片三处观感（commit 待提交）**。影报：① 卡片底部的灰白条与整体色调不符；② 选中态蓝色圆角边框的左上/右上角像缺了一截；③ 白色卡片名糊在灰白条里看不清。根因①③：SetAppearancePane 与 MultiplayerPage 共 4 处写了 Theme.scrim，但 Theme 里根本没这个 token（只有 imageScrim*）—— binding 求值失败后 Rectangle 落回默认色「白」，于是名字条是一块 62% 不透明的白，白字自然糊掉。修：Theme 正式定义 scrim（两套方案都用深色 #05080e，遮罩的语义是压暗），并把名字条从「实色块 + opacity」改成「透明 → scrim 的竖向渐变」，高度 26 → 34、文字下边距 6。根因②：卡片把 border 画在图片**下面**，而图片是直角矩形（clip 只按矩形裁，不跟随 radius），四角的直角会盖住圆角弧线 → 看起来边框缺角。修：图片容器不再画边框，边框抽成最上面一层独立 Rectangle（color transparent + border），四角永远完整。实测：黑/白两套方案下名字白字都清晰、选中蓝框四角闭合、未选中灰框也完整。 |
-
-| 2026-11-13 | **白色配色方案暂时下线（commit 待提交）**。影：切到白色后发现大量不适配元素，先把白色入口收掉，等逐个修完再放开。做法：① 外观页配色方案只保留「黑色」一张卡，desc 改为「当前提供深色主题…」；② SettingsBackend 新增开关 kEnableLightScheme = false —— loadSettings 读到的 light 归一到 dark（否则界面停在白色但设置页只剩黑色卡，看起来像坏了），setColorScheme 也在这里夹一次（单一入口，外部传 light 也落 dark）；③ --scheme-flip 验收钩子加注释说明现状。恢复方式写在两处注释里：开关改 true + 把 model 里的白色项加回来。实测：重启后 registry appearance/scheme = dark，设置页只剩黑色卡，其余页面渲染不变。 |
-
-| 2026-11-13 | **多语言第一步：把 ui/ 全部界面文案接入 qsTr，繁体拆成港澳/台湾两套并落地第一批译文（commit 待提交）**。影问「界面语言真的生效了吗，所有文字都翻译了？」实测答案：**没有**，三个硬伤 —— ① `ui/` 下 qsTr 命中数为 0（所有文案都是裸字符串，翻译无处落地）；② `i18n/shadow_zh_*.ts` 659 条全部指向已被删除的 `../qml/*.qml`，热更新不进去；③ main_release 只映射 0/1/2，没有 en 分支。影定：先做繁体，且**繁体必须拆成港/台两种风格**（用词不同：網絡/網路、軟件/軟體、帳戶/帳號、質素/品質、上載/上傳、按/依、進程/處理程序），翻译逐条人工、禁止机翻。做法：① 先修「用文案当逻辑键」的隐患 —— SideBar 的 `currentLabel/previousLabel` 改成 `currentKey/previousKey`（launch/download/multiplayer/settings/progress/help），`navActivated` 传 key，StageShell 的 6 处 `label === "下载"` 全部改 key 比较；这一步同时修掉上一轮遗留 bug（设置页退出后的页面回填还在拿中文比较 back）。② 47 个 QML 文件铺 qsTr（6 个子代理分文件并行，我统一构建），拼接改 `%1` 占位符，日志/注释/URL/图标名/枚举/品牌名不包。③ `lupdate` 重建三份 .ts（1726 条：C++ tr 902 + QML 824），旧死词条备份到 `i18n/_oldui_backup/`。④ 写 `i18n/GLOSSARY.md` 差异表 + `tools/i18n_extract.py`/`i18n_apply.py`（按 context 抽条目 → 填 JSON → 合并回 .ts，可增量）。⑤ 第一批 186 条（侧栏 + 设置页 8 个 pane + 启动页 + 外壳 toast）逐条给 HK/TW 译文，占位符一致性与简体残留检测均为 0。⑥ 语言下拉从 3 项改 3 项但语义修正：简体 / 繁體（香港／澳門）/ 繁體（台灣），后端 `languageIndex` 夹在 0..2（旧值 3 归 0）。**实测**：registry languageIndex=1 → 设置页整页港繁（設定/全域預設值/介面語言/按地區/網絡）；=2 → 台繁（依地區/依網路/進階/帳號）。机制与原计划一致，剩余约 1540 条待逐条翻译。 |
-| 2026-11-13 | **繁体译文二期：QML 界面文案 830 条全部落地（commit 待提交）**。接着第一批继续按页分批逐条翻译（账号页 88、进度页 21、联机页 62、版本页 36、版本设置各 pane 260、导出 84、资源详情/下载/资源列表 100、Java 页 41、启动浮层 33、存档/资源包/Mod/内存 pane 97），每批写完先做占位符一致性 + 换行数 + 简体字残留三重校验再 `i18n_apply.py` 合并，全部 0 异常。繁体拆两套的差异在这批里大量出现：帳戶/帳號、上載/上傳、網絡/網路、區域網絡/區域網路、進程優先級/處理程序優先順序、配置/設定、發佈/發佈、電郵/電子郵件、客戶端/用戶端、截圖資料夾/螢幕擷取資料夾、按地區/依地區、命令/指令、進階、推薦/建議、可攜版。**实测**：languageIndex=2 重启后，侧栏「啟動/下載/連線/設定/說明文件」、启动页「未選擇版本/啟動遊戲」、下载页「搜尋版本號/遠古版/愚人節版/最新正式版」全部为台繁，布局无溢出。C++ 侧 tr() 另 896 条（崩溃诊断、启动进度、错误提示）尚未翻译。 |
-| 2026-11-13 | **繁体译文三期：C++ 侧 896 条 tr() 全部落地，1726 条词条清零（commit 待提交）**。前两期只覆盖了 QML（830 条），C++ 的 tr() 还有 896 条 —— 这批不是日志，是**崩溃诊断正文**（CrashDetector 111 条：OpenJ9/32 位 Java/OpenGL/内存不足/重复模组/Mixin 注入/OptiFine 冲突/NightConfigFixes…）、**启动进度与校验报告**（LaunchBackend 125、VersionBackend 113：检查登录状态/令牌刷新重试/校验修复/断点续传/重命名克隆）、**整合包安装流水**（ModpackInstallTask 104）、**Mod 与资源搜索**（ModManager 110 + ResourceBackend 145，含 22 个模组分类名与 55 条推荐 Mod/光影简介）、以及 Java 自动安装、账号登录、更新检查等。按 15 个批次逐条人工翻译，每批先过「占位符一致 + 换行数一致 + 简体字残留」三重校验再合并。港台差异在后半段密集出现：網路/網絡、上傳/上載、處理程序/進程、設定檔/配置檔、偵錯/除錯、專案/項目、核准/批准、建議/推薦、監聽/懸置/懸掛。**实测**：`i18n_extract.py --stat` 待翻译 = 0；切港繁后账号页为「帳戶類型 / 存取權杖 / 移除此帳戶」，切台繁为「帳號類型 / 移除此帳號」，同一位置用词按地区分开，布局无溢出。 |
-| 2026-11-13 | **英文（English）落地：shadow_en.ts 1764 条全部英译，语言下拉恢复四项（commit 待提交）**。接着繁体二期把 C++ 侧补完，本轮做英文：① 新增 `i18n/shadow_en.ts`（从 zh_CN 复制空壳、16 条一批逐条英译，1750 条全部人工填写，`i18n_extract.py --langs en --stat` 待译=0）；② CMake `qt_add_translations` 加 en，main_release 改 `kLangCodes[4] = {zh_CN,zh_HK,zh_TW,en}`，`settings_backend` 夹 0..3，`shadow_backend` 的 codes 列表加 en，下拉恢复「English」；③ `i18n_extract.py`/`i18n_apply.py` 重写成**多语言通用**（--langs 参数 + 只导出未完成项）。**真机实测发现并修掉 4 个英文字符串特有的布局/逻辑问题**：㈠ `SSegmented` 每项宽度是 `max(60, row.width/n)`，不看文案 —— 英文「System language」比 60px 宽，三项文字直接叠到卡片外；改成用 TextMetrics 量最长文字定宽（并顺带把英文缩短为 Off / System / By region）；㈡ 下载页 7 个 tab 英文名过长把搜索框和刷新按钮挤出屏幕 —— 加 `compactTabs` 探针（`qsTr("%1 万").indexOf("万") < 0` 即非中文），英文用 Packs / Modpacks / Data；㈢ 下载量缩写「亿/万」英文没有这两个量级 —— 同一探针切到 120M / 12K，`fmtDl()` 收口到 ResourceTile 与 ResourceDetailPage；㈣ 外观页内置图名字「极光（默认）」在库里存的是**上一次语言**的译文，切语言后不刷新 —— `ensureBgLibrary()` 每次启动用当前语言重算内置图名。**实测**：English 下设置页 7 个 pane、启动页、下载页全为英文且无溢出；切回简体、台繁各自正常。 |
-| 2026-11-13 | **修「雷霆大黄框」：SetNote 把强调色当填充色用（commit 待提交）**。影报：切换界面语言后，常规页底部提示条变成一整条高饱和黄色块。根因：`SetNote` 的 `bgColor` 在 warn 态直接取 `Theme.warn`（#f59e0b）—— 这个 token 的语义是**墨色**（给文字/描边/图标用），不是底色；整条铺满就是 430px 长的大黄块。danger 态当初就避开了这个坑（底色用 bgCard2 + 柔边 dangerSoft），warn 没跟上。改法：Theme 新增 `warnSoft`（深色方案 #2e2410，与 dangerSoft 同一套低明度做法），`SetNote.bgColor` 的 warn 分支改用它，文字与边框仍用 `Theme.warn` 保持警示语义。同时扫了一遍全项目「把语义色当填充」的用法（LaunchOverlay 两处 2–3px 竖条、DownloadPage 5px 圆点、AccountPage/MultiplayerPage/VsExportPane 三处纯文字）—— 都只用在小面积或文字上，只有 SetNote 这一处是整块填充。**实测**：简体/港繁/英文三种语言下切语言后的 warn 提示条均为深琥珀底 + 琥珀字 + 琥珀边框，无刺眼色块；未切语言时的 info 态仍是原蓝色。 |
-| 2026-11-13 | **账号列表类型标签未翻译 + 分段控件宽度回归（commit 待提交）**。影截图指出账号列表里「正版/外置/离线」三行小字在英文界面仍是中文。根因不在 QML：`AccountBackend::accounts()` 的 `typeText` 由 `accountTypeText(mode)` 生成，那里是裸 `QStringLiteral("正版")`，从没进过翻译；QML 只是把后端给的串画出来。改法：改为 `AccountBackend::tr(...)`，并补 `Official / External / Offline`（港台用「正版 / 外置 / 離線」）。同批顺手把另外几处「后端发给 QML 显示、却没包 tr」的串一起补上：皮肤/披风失败原因（`未登录正版账号`/`皮肤文件不存在`/`无法读取皮肤文件`/`网络请求失败`/`披风ID未找到`，它们会被拼进「上传失败：%1」）、用户数据导出进度的 13 条、以及「上次游玩」超过 7 天时的日期格式（中文 `M 月 d 日` 固定写死，英文应为 `MMM d`，用 `tr("%1 月 %2 日").contains("月")` 当探针区分）。**同时修掉上一轮引入的回归**：`SSegmented` 上一版把每段宽度写成纯测量值 `max(60, 文字宽+12)`，调用方给了固定 `width` 时（账号页模型切换是 `width: 180`）两段缩成 60 挤在左边、右侧留空白、滑块位置也跟着错 —— 影报「滑块大小异常」。改为 `effSegW = max(测量宽度, 容器均分宽度)`：容器宽时均分填满，容器窄时由文字撑开。**实测**：英文 Official/External/Offline、港繁正版/外置/離線、台繁正版/外置/離線；账号页「經典/纖細」恢复 180px 均分；英文 General「Off/System/By region」与 Launch「Automatic/Generational ZGC/G1GC only/Unspecified」都不再溢出。 |
-| 2026-11-13 | **分段控件第三轮：文字越界 / 省略号（commit 待提交）**。影报「此处文字突出滑块」（版本设置·配置模式，「Follow global settings」溢出蓝色胶囊并压到容器圆角边框外）。根因是我上一版把每段宽度写成 `max(文字宽+12, 容器均分)`，而该处容器是**固定 width: 240**，英文两段需要 310 → 段宽取测量值后整体超出容器。三重修法：① 英文标签收到与中文等长（跟随全局设置→Follow global、独立配置→Custom），对齐「GC 策略」里已在用的 Follow global；② `SSegmented` 的文字改成 `anchors.fill` + 左右 6px + `elide: ElideRight` + 居中对齐 —— 无论译文多长都只会省略在自己的段内，绝不会压到相邻项或突破圆角边框；③ 测量余量 12→20px，因为 `TextMetrics` 与实际 `Text` 有细微排版差，只留 12px 时「分代 ZGC」这种卡边文案会被吃掉（中文启动页实测复现）。同时把两处被省略号的英文也收短：全屏启动→Fullscreen、高性能 GPU→High-perf GPU。**实测**：英文与中文下，General（Off/System/By region）、Launch（Automatic/Generational ZGC/G1GC only/Unspecified、High/Normal/Low）、版本设置配置模式（Follow global/Custom）、账号页模型（經典/纖細，180px 均分）四处全部完整无省略、无越界。 |
-| 2026-11-13 | **联机页 / 下载进度页三语言逐页验收 + 补 `--ui-multiplayer` 钩子（commit 待提交）**。补完英文后剩这两页没实际切过去看过。联机页原本没有验收钩子，只能靠模拟点击侧栏，而自动化下这个点击偶尔被前台窗口截走（本轮复现 3 次：连拍截图与上一张 sha256 完全一致，说明页面根本没切）—— 于是按 `--ui-download`/`--ui-progress` 的写法补了 `--ui-multiplayer`，直接置 `multiplayerOpen` 并同步侧栏高亮。**实测三种语言 × 两页**：联机页 英 Multiplayer/Play with friends/This device is called/Paste room code/Join/Create room、港 連線/和朋友一起玩/這台裝置叫/貼上房間碼/加入/建立房間、台 同港但ポート→連接埠（「不用開連接埠」）；进度页 英 Downloads/Overall progress/Total speed/Task/Remaining/0 in progress/No downloads right now、港台 下載進度/總進度/總速度/任務/剩餘/0 進行中/目前沒有下載任務。布局均无溢出。 |
-| 2026-11-13 | **资源详情页三处 bug 修复 + 选中动画补齐（commit 待提交）**。影报：① 旧版本列表能展开但**点不动、无法下载**；② 详情页**没有任何跳转按钮**（百科/Modrinth 链接全失效）；③ 左右边距不等、布局往左偏。根因与修法：① 旧版行只有一个 `visible: false` 的下载按钮、行本身无 MouseArea —— 加 `pickedId` 状态 + `currentFile`（选中优先、回落最新），行可点选并收起列表，主卡/右栏/下载目标全部改读 `currentFile`，同时给出「已选旧版本 / 回到最新」出口；② `ShadowBackend` 里 `resolveProjectLinks` **只剩注释、声明被删**（旧 UI 删除时连带删掉），QML 调 `page.b.resolveProjectLinks()` 是 undefined → 三个 chip 全空。补回 Q_INVOKABLE 声明 + 实现转发 `m_resource`，头部按后端实际返回渲染 Modrinth / CurseForge / MC百科 三个跳转胶囊（空串的源不显示）；③ 详情页两栏布局却沿用 `Theme.padR(104)`，右侧比左侧多 40px 空白 —— 改为与 padL 对称。**动画（按项目规范：只用 `Theme.dur*` + `Theme.ease*`，不写裸 duration）**：旧版展开/收起高度过渡 durSlow/easeEnter + 内容淡入、选中竖条高度 durBase/easePop 长出、跳转胶囊 hover 颜色 durFast + 按下 scale durPress、主卡换文件时文件名与日期 opacity durFast 轻闪一下（值本身瞬间变，不给提示看不出换了版本）、「回到最新」胶囊 opacity+scale durBase 淡入。**同时修掉两个实测发现的既有缺陷**：`SSegmented.maxTextW` 在绑定里写 `TextMetrics.text` 形成自依赖 → `Binding loop detected` 刷满日志（改成函数 + onItemsChanged 手动算，effSegW 分母改用 root.width 而非 row.width）；`StageShell` 里裸写 `previewing` 触发 `ReferenceError`（QML 子项不继承父项自定义属性作用域）→ 改 `stageHost.previewing`，否则该绑定整条失效、底色落回默认白。另修影复现的「版本还没加载出来就先显示已选旧版本」：`pickedId` 是页面级状态会跨资源残留 → 新增 `picksOldVersion`（选中项存在且 ≠ 最新才成立）+ `onSlugChanged`/`applyVersions` 清空选择。新增 `--ui-res-detail` 验收钩子（详情页要先过下载页→选 tab→等网络→点卡片，自动化里极易点偏）。 |
-| 2026-11-13 | **修「显示 41 个旧版本却只能看到 6 个」（commit 待提交）**。影报：详情页写「该组合下还有 41 个旧版本」，展开后只列 6 行、也滚不动，第 7 个往后的版本根本选不到。根因是旧版 ListView 当初按「30+ 个一次铺完太吓人」做了折叠，但两处一起写死了：高度 `Math.min(6, oldCount) * 38`、且 `interactive: false` —— 折叠变成截断，能展开却不能看全，「能展开就能选」的承诺是假的。改法：`interactive: true` + `boundsBehavior: StopAtBounds`，并挂 `ScrollBar.vertical`（沿用 VsExportPane 那套细轨道样式，policy=AsNeeded，保持全项目一致）；可视高度仍为 6 行（与 oldBox.height 保持一致），内容超出即出滚动条。**实测**：fabric-api 单组合 42 个版本（41 旧版），滚轮从 0.160.x 一路滚到 0.153.x，点中 `fabric-api-0.154.0+26.3.jar` 后主卡/右栏/日期(2026-07-01)/大小(2.4 MB) 全部跟随，显示「已选旧版本 / 回到最新」。验收钩子样本同步从 sodium 换成 fabric-api —— 它单个组合就有 40+ 个版本，正好覆盖「旧版列表需要滚动」这条路径。 |
-| 2026-11-13 | **修「模组 + 前置一起下载，前置丢失」（commit 待提交）**。影报：下载带前置的模组（一次两个），进度跑完但保存目录里只有一个。**实测复现并定位**（加了 `--ui-batch-dl <dir>` 验收钩子，跳过原生选目录对话框）：`buildJobs()` 里前置的 `url` 与 `filename` **都是空串、只有 version_id**（Logrinth 对多数前置只给 version_id）。这时走 `fetchVersionFile` 异步解析，而 `onVersionFileResolved()` 里写的是 `if (pend && file && file.url)` —— **解析不出 url 就什么都不做，前置静默消失**；而且只要队列里还有主文件，`startPlan()` 连「有前置缺少下载信息」这句都不显示（那句只在队列为空时才设），最后只报「已提交 1 个文件」，用户完全不知道丢了东西。另有两处会把「丢」放大：① `filename` 为空时 `pushJob` 兜底成 `download.jar`，多个前置全部同名 → 后写覆盖前写；② `pendingDeps` 拿 `version_id` 当 key，两个前置若拿到同一个/空的 version_id 会互相覆盖。修法：㈠ `depFallbackName()` 用 slug/project_id + 版本号拼唯一兜底名，主文件与前置都走它；㈡ `pendingDeps` 改复合 key `versionId#projectId`，`onVersionFileResolved` 用前缀匹配**取出全部**等待项；㈢ 拿不到 url 时不再静默 —— 记入 `missedDeps` 并 `reportMissedDeps()`（右下角 warning toast + 状态栏，最多列 3 个名字），`finishBatch()` 与 `startPlan()` 末尾都调用。**实测**：iris+sodium、entityculling+fabric-api 两组各 2 个文件全部落盘；用**受控故障注入**（临时把 url 判空分支强制成立）验证提示链路 —— 目录只剩主文件，右下角如期弹出「1 个前置没有可用的下载信息，已跳过：mc26.3-0.9.2-fabric」，日志 `[batch] MISSED-DEPS 1`；注入已还原并复测通过。 |
-| 2026-11-13 | **根治前置解析不出 url（commit 待提交）**。影追问「这个提示怎么解决？还是解析不出 url？」——**不是提示的问题，是真的解析不出**。上一轮只让失败变可见，这一轮找到它失败的**源头**。`fetchVersionDependencies()` 走三步：`/version/{id}` 拿依赖 → `/projects?ids=` 拿名字 → `/versions?ids=` 拿版本号。**第三步的响应里本来就带完整 `files`（url/filename/size/hashes），但代码只取了 `version_number`，把 files 整个丢掉**。而「依赖带了 version_id」的项会进 `depVerId`、于是**不会**进下面 `resolveDepFile` 的 `need` 列表 —— 两条路都不给它 url，回传到前端就是 url="" / filename=""；前端只好再逐个 `fetchVersionFile()` 补，那一步任何闪失前置就消失。**修法**：`/versions?ids=` 回调里把 `files` 也解析出来（primary 优先、否则取首个），用 `depVerId` 反查 project_id 填进 `resolvedFiles`，一次请求拿全，前端直接走 `queue(direct)`，不再赌第二次请求。**实测**：iris+sodium 两条「下载Mod文件」日志同为 `18:28:46.385`（同一毫秒 = 同步提交 = 后端已给 url，修复前是相隔 82ms 的异步补查），两个文件均落盘，无 MISSED 提示。 |
-| 2026-11-13 | **下载页版本类型切换：滑块选中态不可见 + 列表硬载入（commit 待提交）**。影报「滑块切换无移动动画，列表硬载入也没有动画」，后补充「滑块不够明显，太透明了」，再报「MC版本的滑块会冲出左右两侧」。三件事其实是三个独立缺陷：① **滑块太透明**：`segPill` 用 `Theme.bgInput(#0f131a)` 压在容器 `bgCard2(#0b0d12)` 上，亮度只差一档，深色屏上等于隐形，读起来像"只有文字变色"。改用顶栏那排 tab 同一套 `accentSoft(#132340)` 蓝底 —— 两排都是筛选，选中态用同一个颜色。② **滑块冲出边界**：先试过 `easePop(OutBack)` 增加位移存在感，但 OutBack 有约 10% 过冲，滑块在两端会越过容器圆角（从最右滑到最左时左缘冲出）；且内缩只有 2px、内块圆角 6 与外框 `rSm`=6 不同心，四角顶到外框。改：动画回 `easeEnter`（无过冲），内缩 2→3px，滑块圆角 6→4（与外层 6 同心），高度 28→26。实测像素：蓝底 621..717、外框线 721，左右间隙各 3px，对称。③ **列表硬载入**：`rows` 直接绑 `filter`，切换时 model 一帧全换。改成「淡出 + 上收 6px → 换数据 → 淡入 + 自下而上 10px」。**关键实现细节**：换数据最初放在 `SequentialAnimation` 的 `ScriptAction` 里，连点两次时 `restart()` 从第一步重来、那次 ScriptAction 直接不执行 → 标签已切到新类型、列表还停在旧数据（实测踩到）。改用独立 `Timer`（interval=`durFast`），每次切换都重新计时必然兑现。另加验收钩子 `--ui-dl-filter 0..3`（原生窗口 tab 点击坐标随 DPI/窗口位置漂移，用参数才能稳定复现），以及 `tools/clickburst.ps1`（先声明 DPI 感知再点击+连拍，否则 GetClientRect 返回虚拟化坐标，点击整体偏 1.25 倍）。 |
-| 2026-11-13 | **资源页「CF 加载不出来、加载条先消失、几秒后 CF 突然蹦出来」（commit 待提交）**。定位链路：资源搜索是双源（Modrinth 快 ~1s / CurseForge 走「镜像→官方」降级，实测 3-5s，镜像卡住时更久）。**根因在后端的 8 秒慢源兜底**：`ensureModPool` 等五处（Mod/光影/资源包/整合包/数据包同构）在 8s 未全回时执行 `m_xxxPending = 0; emitXxxPool()` —— **清零计数等于告诉前端「加载结束」**。前端 `settleTimer` 每 300ms 轮询 `resourcePoolState().pending`，看到 0 立刻关条；而慢源（CF）稍后真的回包时 `onModSourceDone` 仍会合并池子再 `emitModPool` 一次，QML `applyPool` 重刷列表 —— 用户看到的就是「条没了，几秒后 CF 条目突然蹦出来」。**第二个放大器**：QML 的 `ticks` 只在 `running` 由 false 变 true 时归零，连续搜索/翻页/切 tab 时 busy 常驻 true，计数跨搜索累加，之后某次搜索一上来就撞 `ticks > 30`（9s）上限、条立刻关掉 —— 这解释了「**有时候**」。**修法**：后端五处改两级 —— ① 8s 只 `emitXxxPool()` 发已到的数据（用户不必对着空列表干等），**保留 pending**；② 25s 仍未回才清 pending 并结束（带 `[池子] xxx 有源 25s 未返回` 日志）。前端：`doSearch` 里清零 `settleTimer.ticks`；上限 `ticks > 30`→`> 100`（30s），**必须大于后端 25s 最终兜底**，否则前端先关条、后端后发数据，同样会「蹦」；关条时打一行 `[settle] close ticks=… pool=… timeout=…` 便于回查。**实测**：正常加载 `[settle] close ticks=14 pool=53 timeout=false`（4.2s，53 条 = MR 30 + CF 23），确认走的是 `pending==0` 正常关条而非超时。顺带加验收钩子 `--ui-dl-tab 1..5`。 |
-| 2026-11-13 | **滑块不用强调蓝：二级筛选用中性灰（commit 待提交）**。影指出「这两个滑块原先不是蓝色」「启动器内还有一些文字从白变蓝」。核对：顶栏那排（下载/MC版本/Mod/…）的 `accentSoft` 蓝底是 `787f411`「动效系统补全」时就有的，不是新加的；**版本类型那排是我上一轮为解「太透明」改成蓝的**。这里犯的是层级错误 —— 一级 tab 用 `accentSoft` 表示「当前在哪一页」，二级版本筛选跟着用蓝，等于把两排拉成同一层级，视觉上抢戏。改回中性：`bgHover(#151a23)` 压在 `bgCard2(#0b0d12)` 上是 2.9 倍亮度差（原 `bgInput` 只 1.9 倍，太糊），再 `line2` 描 1px 边界定轮廓 —— 不透明也不引入强调色。**「文字变蓝」自查**：`git grep accentText` 后确认 `Theme.accentText(#a9c8ff)` 的既定用途是「当前生效项」（当前 Java / 当前内存参数 / 当前设置项 / 版本页强调数字），最近 8 个提交里**没有**把 `Theme.fg` 改成 `accentText` 的改动；唯一新增是详情页旧版本选中行的标记（新功能）。 |
-| 2026-11-13 | **修「一批近白文字被我误改成强调蓝」（commit 待提交）**。影报加载器版本号「本来是白色的」。`git blame` 定位到 `44c1da74`（外观页/黑白配色那次做硬编码色→token 的批量替换）把 `color: "#dfe5ee"` 改成了 `Theme.accentText`。**这不是孤例**：把该提交里 73 处 `accentText` 逐一和它替换掉的原始色对照后发现 **17 处是「近白 → 强调蓝」的误判** —— `#eef2f8`/`#f2f5fa`/`#dfe5ee` 是正文/标题的近白，被当成了 `#a9c8ff` 那类强调蓝；正确的映射是 `Theme.fg`。涉及 SCard（卡片标题）、DownloadPage（加载器版本号）、VsExportPane ×6（资源行标题/「模组 (mods/)」/分组标题/「导出位置」/查询失败文案）、VsMemoryPane ×2、VsModsPane、VsPacksPane ×2、VsSavesPane ×2、VsToolsPane ×2。全部按行号精确回改成 `Theme.fg`；两处条件式保留对比（`opt.active ? Theme.fg : Theme.fg2`、`on ? Theme.fg : Theme.fg2`，原来「激活=近白、未激活=fg」几乎没有区分度）。真正的强调蓝（操作链接「更改/全选/全不选」、内存百分比数值行 `opt.val`）保持不变。`git diff --stat`：8 文件 17 行。 |
-| 2026-11-13 | **换色错误第二批：进度页统计数字 + 进度条主轴色（commit 待提交）**。影追问进度页「总速度 / 任务 / 剩余」三个浅蓝大数字。`git show 44c1da74` 对照：这三处原色是 `#dfe6f0`（近白），和上一批 `#eef2f8`/`#f2f5fa`/`#dfe5ee` 同一类，**我上次的近白集合里漏了 `#dfe6f0`**。另发现一处更特别的：下载步骤的小 Spinner 原色是 `#3b82f6` —— 那正是 `Theme.accent` 的本色（主线蓝），被映射成了 `accentText`（浅蓝），等于**把主色调浅了一档**，应回到 `Theme.accent`。顺带把 44c1da74 的**全量 hex→token 映射表**跑了一遍（原色按 token 反查、同色多 token 交叉检），确认除这两类外没有系统性错映射；唯一保留的是进度条流光 `#dce9ff`→`accentText`（装饰高光、非文字，视觉与浅蓝等价，不动）。 |
-| 2026-11-13 | **完整清点 44c1da74 的换色错误：共 24 处，全部已修（commit 待提交）**。影要求「完整清点」。先把 `44c1da74` 里 410 组 `hex → Theme.token` 配对全部提取，按旧色分类（主蓝 / 浅蓝 / 近白 / 灰 / 深底 / 线）判定落点是否同类，再补两个专项检查：① 用了 `accentText` 但元素是**实心色块**而非 Text 的；② 主蓝（`#3b82f6` 系）被降级成浅蓝的。**结论：错误只有两类，共 24 处 —— A 类「近白文字→强调蓝」20 处**（SCard 标题×1、DownloadPage 加载器版本×1、ProgressPage 总结三数字×3、VsExportPane×6、VsMemoryPane×2、VsModsPane×1、VsPacksPane×2、VsSavesPane×2、VsToolsPane×2）；**B 类「饱和色→文字浅色」4 处**（ProgressPage Spinner `#3b82f6→accentText`→改 `accent`；LaunchOverlay 节点方块 `#3b82f6/#60a5fa/#ef4444` 被换成 `accentText/accentText/dangerText` → 改 `accent/accentTop/danger`）。**其余全部合理**：`#cfd6e1→fg`（浅灰白本来就是主文字）、`#8fb6f8/#dce9ff→accentText`（浅蓝装饰、波纹、进度流光）、`#0d1016→bgCard` 等（审计脚本报的 42 条跨类里有 16 条是「同一行含两个颜色」的错位假阳性，已逐条核对排除）。 |
-| 2026-11-13 | **换色第三批 + 完整 552 组逐条核对（commit 待提交）**。影指出「总进度条原本也不是这个颜色」并明确要求「不要抱侥幸心理，用脚本逐一核对」。**前两轮的方法确实有洞**：① 第一轮先列"可疑色集合"再筛 —— 集合里没有的颜色永远查不出来（漏了 `#dfe6f0`）；② 第二轮按"整行配对"，同一行含两个颜色时（`isChecked ? "#3b82f6" : "#0d1016"`）会把 then/else 错位，产生 16 条假阳性、同时漏掉真错。**这轮改为逐行内按出现顺序配对**，得到 **552 组**（比之前 410 多 142 组）精确映射，再用"旧色类别 → 合法 token 集"严格判定：**违规 28 处，全部在清单上，无遗漏**。其中 **A 类（近白→accentText）20 处**已在前两轮修完；**B 类（饱和色→文字浅色）8 处全在 LaunchOverlay.qml**：进度条填充 `#3b82f6/#ef4444`→`accent/danger`、节点方块 `#3b82f6/#60a5fa/#ef4444`→`accent/accentTop/danger`、失败感叹号方块边框与竖条 `#ef4444`→`danger`、准备环境卡片细进度条 `#4f9d76/#60a5fa`→`ok/accentTop`。另有脚本未覆盖的一类：**彩色→灰**（`#4f9d76` 绿 → `fg3` 灰），已手工修正。最后补跑"高饱和色落到灰/底"扫描确认剩余 0 处。 |
-| 2026-11-13 | **五方向推进（第一批）：外置登录 ALI / 整合包导入 / 光影管理 / 能力过滤 / 版本页自动刷新**。goal 建立后用 3 个子代理并行（ver-page / vs-content / res-drop），lead 负责共享文件（CMakeLists、SDropZone、tools/）与统一编译提交。
-| | **① 外置登录（lead）**：后端 `YggdrasilBackend` 新增 `resolveApiRoot()` 实现 **ALI（X-Authlib-Injector-API-Location）** —— 用户只输 `littleskin.cn`，GET 该地址读响应头得到真实 API 根；另有 `resolveApiFromFile()` 从拖入文件（文本搜 URL / jar 认 authlib-injector）提取地址。QML 侧加 LittleSkin 快捷按钮、登录前自动解析。**真机实测：点按钮后台填 `https://littleskin.cn/api/yggdrasil`**。角色选择复用后端早已有但 UI 从未使用的 `profileHeadUrls`/`preloadProfileSkins`，加皮肤头像 + uuid 副行。 |
-| | **② 整合包导入（ver-page）**：版本页顶栏加「导入整合包」按钮 + `SDropZone` 拖入（.zip/.mrpack），走 `backend.modpackImporter.startImport`；`localPathOf()` 含 decodeURIComponent（旧 VsModsPane 写法会留下 `/D:/` 前缀，中文/空格路径打不开）。**③ 光影管理（vs-content）**：新建 `VsShadersPane.qml`（415 行，布局对齐 VsModsPane/VsPacksPane），local_mod_manager 加 scanShaderPacks/import/delete/setEnabled（启用=改名 .zip.disabled）。**④ 能力过滤（vs-content）**：左栏按 loader 白名单过滤 —— 原版只留资源包/存档。**⑤ 自动刷新（ver-page）**：`onVisibleChanged` 触发，10s 陈旧阈值 + 用后端 `isScanningVersions` 做 in-flight 去重。
-| | **共享组件 `SDropZone.qml`（新建，lead）**：三个方向共用。**踩了两个坑**：先写 `visible: dropOverlay.visible`（恒真→整页被遮罩盖死），改成 `visible: containsDrag` 后变成**鸡生蛋**（DropArea 不可见就收不到拖拽事件→containsDrag 永远 false）。res-drop 用 qml.exe 探针双向证明后定为：**根 Item 常驻可见、可见性只给内层遮罩**。
-| | **工具修复**：① `check-ui-contract.ps1` 行尾注释里的 `→` 被误判成图标（只跳过了行首 `//`），改为剥掉行尾注释再匹配；② `clickburst.ps1` 的 `MainWindowHandle` 对 Qt 无边框窗口返回隐藏窗口（client 0x0 @ -32000,-32000），改为 EnumWindows 取「可见 + 面积最大」的那个；修好后 client 是**物理 1375x900**，点击要传**图像坐标**而非逻辑坐标。 |
-| 2026-11-13 | **外置登录对齐 LittleSkin 文档（第二批）**：① **ALI 的配套能力** —— meta 扩展 `skinDomains`（根级字段，兼容 meta 内）/ `hasSignatureKey`；② **注册入口**：发现并修复一个**一直存在的 bug** —— 规范里注册地址是 `meta.links.register`，旧代码读的是 `meta.registerUrl`（规范里不存在），该属性从落地起就是空，只因 UI 从未读过才发现不了；③ **皮肤域名白名单**：`skinHostAllowedFor(domains, url)`（站点未声明则放行，声明后只允许白名单或其子域），`YggdrasilSkinFetcher::fetchSkin` 下载前校验，拒绝时回退兜底皮肤并记警告 —— 防被篡改的 profile 把下载引到任意主机；④ 解析出 API 根后顺手 `fetchMeta`，登录页显示站点名 chip + 「还没有账号？去注册」。**真机验证**：点 LittleSkin → 地址自动填 `https://littleskin.cn/api/yggdrasil` → 显示「已连接: LittleSkin」+「还没有账号？去注册」。**⑤ i18n**：`lupdate` 扫出 66 条新文案（移除 936 条废弃），逐条人工翻译 zh_HK/zh_TW/en，`i18n_apply` 落盘后三种语言 `unfinished` 全部归零。 |
-| 2026-11-13 | **拖入识别链路打通 + 两个 QML/C++ 互操作坑（commit 待提交）**。为了让「拖入 → 识别 → 填地址」这段可真机验收，加了 `--ui-account-drop <path>` 钩子（真正的 DropArea 事件无法脚本模拟，那部分由 SDropZone 独立探针覆盖）。**踩了两个坑，都不是逻辑错而是框架约束**：
-| | **坑 1：QML 调不动 `QString*` 输出参数**。第一版写 `Q_INVOKABLE bool resolveApiFromFile(const QString&, QString *outKind)`，QML 侧传字符串进去 —— **不报错、不生效、无任何日志**，表现为"拖入毫无反应"。改成返回 kind 字符串（`"api"` / `"authlib"` / `""`）。
-| | **坑 2：`Component.onCompleted` 里 `page.yg` 还没注入**。钩子喂进去直接 return。改成 `pendingDrop` + Timer 等 backend 挂上。
-| | **顺带改进**：拖入的文本里最常见的其实是**裸域名**（用户从网页复制 `littleskin.cn`），而原正则只认带 scheme 的完整 URL。补了裸域名匹配：先找 `域名/api/yggdrasil`，再退一步找「像域名」的串（含 cn/com/net/org/cc/io/me/top/xyz/dev/in/hk/tw 后缀）。
-| | **真机验收日志**：`[drop] 从文件识别出地址: "littleskin.cn"` → `[ALI] https://littleskin.cn -> https://littleskin.cn/api/yggdrasil`，界面地址栏随之填好并显示站点名与注册链接。 |
-| 2026-11-13 | **拖入改成"全局接收 + 上下文分流"（commit 待提交）**。影指出我理解错了：**拖入不是随便哪都能导**，Mod 必须处于 Mod 管理页才能触发；但**整合包导入应该几乎到处都能用**。重新设计了判据：
-| | **① 全局唯一接收器**：`StageShell` 挂一个 `SDropZone`，页面内原来的三个（账号/版本/资源页）全部移除 —— 多个 DropArea 重叠会抢同一个拖拽事件。**② 按内容判定类型**：新增 `ShadowBackend::classifyDroppedTarget()`，真的用 `QZipReader` 打开压缩包看结构（`modrinth.index.json`/`manifest.json`→整合包，`fabric.mod.json`/`mods.toml`→Mod，`shaders/`→光影，`pack.mcmeta`→资源包，`level.dat`→存档，含 authlib→authlib），只看扩展名必错（`.zip` 有四种可能）。**③ 上下文门禁**：`settingsPane` 由 VersionSettingsPage 同步，Mod 只在 mods 分区、光影只在 shaders、资源包只在 packs、存档只在 saves 才落地，否则提示"请先进入 X 页面"；整合包不受门禁，任何页面都能导。
-| | **④ authlib-injector 拖拽链接**：影拖进来的是 `authlib-injector:yggdrasil-server:https%3A%2F%2Flittleskin.cn%2Fapi%2Fyggdrasil`。这是皮肤站页面上的标准拖拽格式，**不是文件**：QQ 的 DropArea 里它不出现在 `urls`，只在 `text` 里。SDropZone 补了 text 兜底，`parseAuthlibInjectorLink()` 解码后直接填地址。**真机日志**：`[drop] parseLink -> https://littleskin.cn/api/yggdrasil`，界面地址栏与站点名、注册链接全部就位。 |
-| 2026-11-13 | **拖入失败反馈重做：不再静默、不再答非所问（commit 待提交）**。影问「拖入不符合要求的东西会报错吗」，审代码发现四个问题并全修：① **判定顺序错** —— 原来先查「有没有选实例」再查「认不认识」，导致没选实例时拖一张 .png 得到「请先选择一个实例」（答非所问），现在先判类型；② **部分失败被吞** —— 拖 3 个成 2 败 1 只报「已导入 2 个」，现在汇总报「已导入 N 个，另有 M 个未导入。第一条原因」；③ **多错误只报最后一个** —— 改为收集数组，报第一条 + 其余数量；④ **拖动过程中不分好坏** —— 原来拖 .png 也挂着「松开以导入」的遮罩，松手才说不行。现在 SDropZone 按扩展名粗筛：不可接受时边框转 danger 色、文案变「这里不接受这种文件」并列出支持的类型，光标同时变禁止。**另修一处文案 bug**：dropContextName（页面名）被当成内容名拼进「要导入 X」，说成「要导入 Mod 管理」；拆出 dropKindName 后为「要导入 Mod，请先进入「Mod 管理」页面」。**真机验证**（新增 --ui-drop-test 钩子）：拖 .png → 「v_final.png：认不出这是什么（支持 Mod / 资源包 / 光影包 / 整合包…」；启动页拖 .jar → 「fabric-api-0.152.1+26.2.jar：要导入 Mod，请先进入「Mod 管理」页面」。 |
-| 2026-11-13 | **拖入遮罩文案改为跟随位置（commit 待提交）**。影指出遮罩写「整合包 / Mod / 资源包 / 光影包 / 存档，或外置登录链接」，与「Mod、资源包、存档只能在对应页面导入」的规则自相矛盾 —— **确实是我在骗用户往哪儿拖**。改为由 StageShell 按当前页面算出 dropHintTitle / dropHintBody / dropAcceptExts / dropRejectBody：启动页「松开以导入整合包／整合包在任何页面都能导，其余要先进对应页面」；资源包页「松开以导入资源包／接收 .zip」；账号页「松开以填入外置登录地址／支持 authlib-injector 链接或含 API 地址的文本」。**可接受范围也一起跟随**：在启动页拖 .jar 当场变禁止光标，不再等松手才说去 Mod 管理页。新增 `--ui-drop-hint` 视觉验收钩子（拖动无法脚本模拟，但遮罩长什么样可截）。**真机验证**：三页文案各自正确；不支持 Mod 的版本（左栏无 Mod 管理）自动回落到整合包提示，符合预期。 |
-| 2026-11-13 | **外置登录表单三处残留（commit 待提交）**。影反馈：重启后 API 地址仍在、下方又有 LittleSkin 与去注册、再点一次 chip 冒出「已连接LittleSkin」。三个根因：① `Component.onCompleted` 把上次的 `yg.apiRoot` 回填进输入框并立刻 `fetchMeta` —— 登录表单预填一个地址会让人以为已经配好，且它连带把那句提示也唤起；已删，重启后是空白表单。② `setStatus("已连接: " + serverName)` 在 meta 解析成功后设置且**从不清理**，这一行本该只报「正在做什么/哪里失败」；改为 `setStatus(QString())`，站点名交给 metaServerName。③ 下方另起一行的站点 pill 与上方 LittleSkin 快捷钮长得一模一样，等于同一个东西摆两遍；整行删除，注册入口并入上方说明行尾部（`· 还没有账号？去注册`，registerUrl 有值才出现）。**验收**：新增 `--ui-account-addr <host>`（等价点击 chip，真实点击无法脚本模拟）。重启后表单全空、无「已连接」；点 chip 后地址填好、只保留一行说明 + 注册入口。 |
-| 2026-11-13 | **下载页切出「正式版」时闪一下（commit 待提交）**。影指出：从正式版切到快照/远古/愚人节时，卡片收起后列表会闪一下才载入；三者互切不闪。根因是上一轮把卡片收起改成高度动画后，**淡出阶段布局就开始变化** —— `cardShown` 绑的是 `page.filter`（点击那一帧就变），于是卡片立刻开始收缩、列表被往上推，而列表内容还在淡出（120ms 后才换数据），旧数据在移动中被看见。修：`cardShown` 改绑 `page.filterShown`（数据真正切换时才变），淡出期间卡片与槽高度都不动，换数据时一起收起。**顺带修一处错位**：列表行的类型标签 `typeLabel/typeColor` 原绑 `filter`，导致淡出那帧出现「26.3 正式版」配橙色「快照」标签；改绑 `filterShown`。**验收**：新增 `tools/burst2.ps1`（PrintWindow 连拍，不受窗口遮挡影响）；实测中间帧卡片原位、旧内容与原标签一致、布局零跳变。 |
-| 2026-11-13 | **启动异常分析接入 + 失败面板无关闭按钮（commit 待提交）**。① 检查阶段拦截（`abortCheck`）原来手搓一份 report 发 legacy `crashDetected`，与新链路各产生一份结果，且 `reason` 填的是阶段 key、真正原因只进了 UI 从不显示的 `description` → 改为统一走 `crashAnalysisStarted` + `runCrashAnalysis`，`precheckReason` 传给 detector，面板与导出报告同源。② `CrashDetector` 在「无崩溃报告 + 无进程输出」时直接 `return isValid=false`，导致预检失败拿不到任何结论 → 新增 `precheck` 分支继续走规则引擎，并补两条兜底建议。③ 分析报告原本只在 `reportTooLong` 时写，预检失败导出 zip 里只有日志没有结论 → 只要 `analysisText` 非空就写 `analysis-report.md`（不预拷日志）。④ 修一行惰性正则 `(ERROR\|FATAL)\].*?` 零长度匹配导致原因栏全是碎片。⑤ 失败面板补「关闭」按钮（原「取消启动」条件是 `!failed`，恰好把唯一出口关掉）。⑥ 新增 `--ui-demo-launch` 下的 `demoPrecheckFail()` 验收钩子 + `tools/verify-precheck.ps1` 一键验证（触发失败→读 lastCrash→导出→关闭→截图）。 |
-| 2026-11-14 | **整合包导入三个实测缺陷（commit 待提交）**。①**副标题来回闪**：模组路（`queueProgress`）与 MC 路（300ms `m_mcPollTimer`）各自 `setProgress`，交替覆盖同一行文案 → 新增 `recomposeProgress()` 作为**唯一出口**，两路只更新分量，文案按「模组路是否还在跑」决定；`runMcInstall` 里那处直写也改走它。②**剩 1 个文件却显示 100%**：`qRound(100×421/422)=100` → 剩余文件时封顶 99（`queueProgress` 与 `onFileProgress` 两处口径都改）。③**卡住不收口**：单个失败文件在多源切换+重试间隔下连续折腾约 6 分钟（日志实测 00:20:19→00:26:27 同一文件 4 轮补位重试），`allFinished` 迟迟不来 → 新增「MC 路已完成 + 模组路连续 120s 零速度」硬兜底，强制按部分失败收口并保留已完成文件。④顺带修 `ProgressPage.qml` 的 22912 次 `binding loop detected for property stepDetail`：`recalc` 每 400ms 无条件 `cardModel.set`，而 `steps` 数组角色每次新建 → 改按内容签名比较，未变不写。 |
-| 2026-11-14 | **整合包单文件下载失败的四个真 bug（commit 待提交）**。影要求核实「reactivemusic 折腾 6 分钟」真假。**实测证据**：该文件真实大小 **294,702,638 字节(281MB)**，与 manifest `fileSize` 完全一致；curl 实测 mediafilez 574KB/s、modrinth 1022KB/s、edge **404**；完整下载 11.1 秒/26.4MB/s。**所以文件能下，是客户端的问题**。逐层定位并修掉：① `onReplyProgress` 只在 `delta>0` 时写回 `received`，一旦计数器因续传/换源超前就**永久卡住**，慢速看门狗每次读到 delta=0 → 把实测 **1111KB/s** 的文件判成「慢速」反复换源 → 改为 delta<0 时也强制同步；② `watchTick` 遇 `received` 回退（计数器被修正）时会把这一拍算成「慢」，改为回退即重置并跳过；③ idle 超时只在 `readyRead` 重置、不认 `downloadProgress`，且下限 15s 对 281MB 文件过短（一次 TCP 拖尾就砍）→ 有进度也算活跃 + 下限提到 30s（上限 45s）；④ `QStringLiteral(...%2...).arg(url)` 链式替换会把 URL 里的 `%2B` 当占位符二次解析，日志打印出 `reactivemusic-forge-1.3.0%15000b1.20.1.jar` 这种根本不存在的 URL（我排查时被它误导过）→ 改多参数 `arg()`。**实测效果**：binding loop 22912→**0**；慢速换源从满屏→**0~1 条**；`[精卫] [完成]` 开始正常出现；单文件存活时间 15.9s→131s。**仍未解决**：281MB 文件在 400 文件并发下只分到 143KB/s（需 33 分钟），期间停顿仍会被换源重来——属调度问题，待定方案。 |
-| 2026-11-14 | **大文件单独通道（方案 3，commit 待提交）**。影选定「>50MB 的文件独占一路、不参与并发轮转」。实现：`Item::isLarge` + `kLargeFileBytes=50MB`；`start()` 按大小降序分流到 `m_largePending`；`pump()` 大文件同时最多 1 个、优先启动，且它运行时普通并发**减半**（12→6）给它让带宽；补位重试对大文件**不走 `resetForRetry`**（那会删临时文件、`resumeFrom` 归零，281MB 从零重来），只复位连接态、断点原封保留。实测日志：`[大文件通道] 开始独占 reactivemusic-forge-1.3.0+1.20.1.jar（281.1 MB），普通并发临时降至 6`（识别出 5 个大文件），单文件存活 117s→**195s**。另：大文件 idle 超时放宽到 180s；修「实测速度」日志公式（原用含 `resumeFrom` 的 `received` 除本次用时 → 虚高，改只算本次新收字节）。**未解决**：281MB 文件在客户端仍 180s 收不到数据；已用 curl 逐项排除——默认 UA 3.27MB/s、客户端同款 UA+identity 2.87MB/s、Range 续传 4.5MB/s（40s 下 180MB），全部正常，故问题在客户端连接层（并发连接/`setNumberOfConnectionsPerHost(128)` 方向），待查。 |
-| 2026-11-14 | **启动器卡死 + 部分模组失败（commit 待提交）**。①**卡死根因**：`version_downloader.cpp` 的 `startAsyncVerify` 回收旧校验线程时 `wait(3000)` 超时**照样 `delete m_verifyThread`** —— 3665 个文件的校验不可能 3 秒退完，于是运行中的 QThread 被析构，Qt 报 `QThread: Destroyed while thread is still running` 并卡死（实测时间戳：01:17:06.978 第二次收集完成 → 01:17:09.994 正好 3 秒）。改为 cancel 后**断开信号让线程自己 `deleteLater`**，不阻塞 UI 也不强删。②**「部分模组失败、单独能下」根因**：慢速看门狗阈值 `kSlowBytesPerTick=64KB/500ms`（≈128KB/s）对 12 路并发太激进 —— 实测并发下每文件只分到 85~164KB/s，大批被判「慢速」换源；而 `edge.forgecdn.net` 常年 404（日志中 3 个文件实测 404），`modrinth` 138KB/s 恰在阈值边缘 → 轮转几轮后判失败。**单独下载有全部带宽所以必然成功**。阈值降到 16KB/500ms（≈32KB/s），只有真的基本停传才换源。全日志证据：慢速换源 96 次、Operation canceled 379 次。另：同批并发 curl 实测 8 个请求 7 个 200（1.5~14MB/s），各源单独复测全部 200，**排除服务端问题**。 |
-| 2026-11-14 | **失败卡片无法关闭 + 导入后不跳进度页（commit 待提交）**。①**卡片不销毁**：`ProgressPage.recalc` 只移除「成功完成」的卡片（`done = !failed && progress>=1`），失败/取消的卡片**永久留在列表**；而卡片上只有「重试」「取消」两个按钮，没有任何关闭入口 → 加「关闭」按钮（`visible: isFailed`）调 `dismissCard(cardIid)`。后端 `ShadowBackend::dismissCard` 本来就实现了（资源卡片 + 整合包任务卡片两条路径），只是 UI 从未接。②**导入后不跳转**：拖入整合包只有 `startImport(...)` + `doneCount++`，最后弹「已导入 1 个文件」—— 既没切页、措辞还像已经导完了（实际刚排队）。版本页选文件导入也只弹 toast 不跳页 → 在 StageShell 加 `Connections { target: dropImporter; onBusyChanged }`，`busy` 变 true 即切到下载进度页，**统一覆盖拖入 / 版本页 / 下载页三个入口**；拖入路径的 toast 改为「开始导入整合包：%1」。**实测**：触发导入后自动落到「下载进度」页，卡片显示「正在解压资源 (1737/2131)」。 |
-| 2026-11-14 | **整合包导入完成后弹两条 toast（commit 待提交）**。根因：`ProgressPage` 在卡片完成时弹「%1 安装完成」，`VersionPage::onImportFinished` 成功分支又弹「整合包已导入：%1」。`ToastHost` 本有去重（按去掉「下载完成/安装完成/下载失败/安装失败」后的**主题**比对，5 秒内同主题只留一条），但这两句主题不同 → 去重失效。修：**成功提示只由进度页发布**，删掉版本页成功分支的 flash（保留失败分支——进度页不弹失败）。顺带修文案：卡片名对整合包是「导入整合包：XXX」（动作+名字），直接拼会变成「导入整合包：XXX 安装完成」→ 先剥掉动作前缀，改为「XXX 安装完成」。 |
-| 2026-11-14 | **卡片重叠 + 自动销毁 + 从版本页导入后侧栏消失（commit 待提交）**。①**组件重叠**：卡片高度公式写死 `8`（步骤列表上边距），但失败态 `stepsCol.topMargin` 是 `30`（给「已取消/错误文案」让位）→ 卡片少算 22px，底部按钮行压在最后一行步骤上。改为 `(failed ? 30 : 8)` 与 stepsCol 用同一条件。②**卡片不销毁**（影报第二次）：原来只移除成功完成的卡片，失败/取消永久留存；「关闭」按钮不够，改为**失败态 3 秒后自动调 `dismissCard`**，保留手动关闭。③**从版本页导入后左侧菜单消失**：上一轮加的跳转只设 `progressOpen=true` 却没关版本页，而 `sideCollapsed = versionsOpen || accountOpen || sideNarrowed` → 侧栏收起、版本页仍盖着、用户无法退出。补 `versionsOpen/accountOpen/resDetailOpen/settingsOpen = false`。**实测**：取消后 0.9s 布局不再重叠、5.9s 卡片消失显示「当前没有下载任务」。 |
-| 2026-11-14 | **Forge 安装收尾卡顿（667ms）根因：主线程 `removeRecursively`**。日志固定复现 `finishInstall 发射` → `清理临时目录` 间隔 **667ms / 695ms**，而「清理临时目录」这行日志是在删除**之后**才打的 → 时间全花在 `destroyMergedContext` 里的 `QDir::removeRecursively()`（删解压出的几千个 MC 文件，主线程同步）。改为 `QThreadPool::globalInstance()->start()` 后台删除，主线程立即返回；**删成功才 `TempTracker::forget`**，失败则保留 `.track` 交给 `cleanupOrphans()` 兜底（顺序很关键：先 forget 再删会导致删失败时无人清扫）。**状态：代码已改 + 仅编译验证（ClCompile EXIT=0，无 warning），因用户正在测试下载未构建、未重启，待真机确认。** |
-| 2026-11-14 | **内存分配 1536MB 的两层根因**。① **显示层**：启动日志 `启动内存: 1536MB (verMode=0, auto=0)` —— 自动分配被关，走固定值；注册表 `memory` 键为 `minMB=1024 / maxMB=1536 / autoMemory=false`，与 `--ui-selftest-settings` 自测的调用序列（`setMaxMemory(2048)`→`setMinMemory(1536)`→`setMaxMemory(1024)` 被夹到 1536→`setMinMemory(1024)`）**逐位吻合** → 自测写进了真实用户配置；该块注释早已写明「会改写 QSettings，调用方跑前必须自行备份」，但结尾只打印提示、**从未真正恢复**。修：自测开头整体快照 QSettings，结尾逐键还原并删除自测新增键。② **算法层**：`getAutoMemoryForVersion` 用 `ullAvailPhys`（可用内存，随开着的程序剧烈波动）做基准，且档位系数偏低；`getMemoryStatus().recommended` 同样用 `availMB/2` 且上限 8192。修：基准改 `ullTotalPhys`；档位按模组数对齐 GDLauncher 口径（425 模组→10325MB、0 模组 Forge→3072MB、原版→4096MB、16GB 机器→8192MB、8GB 机器→4096MB）；上限三重约束 `min(total×0.5, total−4096, t2)`。③ 新增 `ShadowBackend::recommendMemoryForVersion(versionId)`，版本设置页的「自动配置」改为显示**该版本**建议值（原来用的是全局 recommended，425 模组的包和空实例显示同一个数字），并在当前值低于建议 80% 时显示警示。 |
-| 2026-11-14 | **「跟随全局 = 自动，但界面显示固定值并误报警示」**。影指出全局设置开的是自动，可版本页「跟随全局」仍显示 2048 MB 且提示「低于建议」。根因：`globalMB` 取的是 `settings().maxMemoryMB`（固定值），而 `shadow_backend.cpp` 里 `autoMemoryEnabled()` 为真时启动实际走 `getAutoMemoryForVersion`（按模组数）——两者根本不是同一个数。修：新增 `globalAutoOn` / `globalEffectiveMB`，跟随全局时显示实际生效值并标注「按模组自动」；`underAllocated` 收窄为**仅「自定义」模式**才判低（自动与跟随-自动本质就是建议值，报警没有意义）。另：空加载器实例（mods=0）基础档 3072→4096（Forge 核心+ASM 转换本身要 2-3GB）。**实测**：`auto=true / 空Forge=4096 / 425mod=10325`。 |
-| 2026-11-14 | **英文模式文字压住按钮/文字**。①**分页**：`ResourcePage.qml` 两个按钮写死 `Layout.preferredWidth: 64`，中文「上一页」装得下、英文「Previous page」溢出居中矩形压住左侧 `1 / 4`。改为 `Math.max(64, label.implicitWidth + 24)`，RowLayout 加 `spacing: 8`。②**详情页**：`ResourceDetailPage.qml` 的 `fileTag` 用 `anchors.leftMargin: 98` 假设标题「可下载版本」不超 80px，英文「Downloadable versions」压下；改锚 `fileTitle.right`。③**版本页标题**：`VersionPage.qml` 标题 `leftMargin 120` / 计数 `leftMargin 196` 只留 76px，英文「Select version」约 95px → 重叠；改锚 `titleTxt.right`。④**我自己的回归**：上一轮改了 `SetJavaPane` / `VsMemoryPane` 文案，源文本变了而 `.ts` 里还是旧 `<source>`，英文模式回落成中文；四个语言文件同步更新（5 条 × 4 语言，繁体按 GLOSSARY 手写 記憶體/模組/整合包）。⑤`minecraft_folder_backend.cpp` 的「默认游戏目录」是 `QStringLiteral` 而非 `tr()`，英文模式仍显中文；改 `tr()` 并补 4 语言译文（新建 `MinecraftFolderBackend` context）。**实测**：英文下 `1 / 2 · Previous page · Next page` 正常、`Downloadable versions / Latest` 分开、`Select version / 3 installed` 分开、内存面板显示 `8243 MB · auto by mods`。 |
-| 2026-11-14 | **全后端审计 + A 类死码清理**。方法：脚本提取 14 个 backend 头文件的 744 个 `Q_INVOKABLE`/`Q_PROPERTY`，与 `ui/**` + `tests/**` 词边界匹配并扣除定义行，再逐条 grep 核实。**结论**：确定死码 32、重复实现约 30、死文件 2、QML 零引用但内部在用 238。**已删**：`app_backend` 的 `appName`/`resolvePath`/`setDevMode`；`minecraft_folder_backend` 的 `currentDir`/`layoutId`/`foreignActive` 属性与 `versionInfos`/`versionJarPath`/`versionHasJson`/`applyAsGameDir`（均被 `result()`/`setActiveFolder()` 取代）；死文件 `src/core/cef_login_app.*`（CEF 已整体移除，`#include "include/cef_app.h"` 现已编不过）与 `src/core/update_checker.*`（被 `update_manager` 取代，128 行）。**关键判据**：`Q_INVOKABLE` 只有声明+定义、QML/C++/tests 三处皆零才算死码；`checkJavaArchitecture` 等 4 个启动检查虽 QML 零引用但启动管线内部真实调用，只该去掉 `Q_INVOKABLE` 不该删。报告见 `design/backend-audit-2026-11-14.md`。**编译验证 EXIT=0**。 |
-| 2026-11-14 | **C3 删 analyzeCrashNow + 崩溃产物积压修复 + C6b 文件夹重命名/移除**。①`analyzeCrashNow` 四处（launch_backend.h/.cpp、shadow_backend.h/.cpp）全部删除。②**崩溃产物积压根因**：`crash_detector.cpp` 每次分析新建 `crash-analysis/<时间戳>/`，把**整份启动器日志**（实测 51.39 MB）`QFile::copy` 进去，且 `cleanupCrashArtifacts`（注释声称「关闭窗口即销毁」）**从未被任何地方调用** → 崩一次 +51MB，永不回收。修：单日志副本上限 **4 MB**（超出只存尾部并注明，分析只需最近上下文）+ 分析目录**只保留最近 5 次**（`pruneOldRuns`，字典序即时间序）。**实测**：连触发 8 次 → 保留 5 个、每个 4 MB、共 20 MB（原理论 421 MB）。③**C6b**：文件夹菜单每项加「改名 / 移除」（默认目录与使用中目录不显示/禁用），新增命名弹层（新增时预填目录名可改、改名时预填当前名），**移除只删启动器登记记录、不动本地文件夹**，移除前二次确认。**实测**：菜单出现「改名 移除」、改名弹层预填正确、`PCL2 → 我的PCL2整合` 生效且路径不变。 |
-| 2026-11-14 | **文件夹菜单：重叠 / 无法悬停 / 英文缺译**。①**重叠**：`使用中` 与右侧操作行都 `anchors.right + rightMargin:10`，非默认且使用中的目录会同时显示 → 叠在一起。改为「使用中」锚在操作行左侧，左侧文字列右边界顺着它们走。②**悬停无反馈**：整行 `MouseArea` 声明在操作行**之后**（盖在上层），既抢走按钮点击、又用 `hoverEnabled` 吃掉按钮的悬停事件；且单独挂的 `HoverHandler` 实测完全不触发。改为：整行 MouseArea 移到操作行**之前**（下层），用 `hoverEnabled + containsMouse`（与 `retryHover`/`prevHover` 同模式），行高亮 = 行区域 ∪ 两个按钮的悬停。行底色加 `ColorAnimation`，按钮悬停变色（重命名→fg，移除→dangerText）。③**英文缺译**：新增 12 条 qsTr 未同步 `.ts`；且 `重命名`/`确认` 只存在于 `VsToolsPane` 上下文，`VersionPage` 查不到 → 回退中文（**Qt 翻译按 context 隔离**）。④**`默认游戏目录` 永远中文**：`MinecraftFolderBackend` 在 `namespace ShadowLauncher` 内，`tr()` 上下文是 **含命名空间的 `ShadowLauncher::MinecraftFolderBackend`**，而我手工写成 `MinecraftFolderBackend` → 查不到。实测 en 下 `In use / Rename / Remove`、悬停 Remove 变红 `(243,149,143)`、Rename 变亮白 `(227,233,238)`，中文同样正常。 |
-| 2026-11-14 | **文件夹下拉面板位置错位**。原来 `anchors.right: parent.right + rightMargin: 24` —— 对齐的是**窗口右边缘**，但按钮在右上工具栏里、其右边缘还要减去「导入整合包 / 刷新」两个按钮的宽度，两者没有关系，所以面板一直偏右、与按钮错开（实测截图反馈）。改为用 `folderChip.mapToItem(folderPop, chip.width, 0)` 取按钮**实际**右边缘，面板右边缘与它对齐、底边贴按钮下沿；`x/y` 都做 12px 边距夹取，放不下自动往左/往上挤。**实测**：英文面板右边缘 865 = 按钮右边缘 865，中文 887 = 887，两语言均对齐。 |
-| 2026-11-14 | **文件夹下拉面板位置**。改成左边缘贴按钮左边缘、挂在按钮正下方后，面板仍贴在窗口最左边。两个连环坑：① `mapToItem(folderPop, ...)` 里 `folderPop` 在菜单关闭时 `visible=false`，对不可见项做坐标映射**直接返回 0**，而 `mapToItem` 是普通函数调用、QML 追踪不到「可见性」这个依赖，绑定永远停在 0；② 换成映射到始终可见的 `page` 后仍不对——属性绑定在**组件创建时**就求值一次，那时按钮还在 `Row` 里没完成布局，照样返回 0。最终改成 `_place()` 里 `folderChip.mapToItem(page, 0, 0)`，由 `Component.onCompleted` / 菜单打开 / page 尺寸变化 时用 `Qt.callLater` 主动量一次，保证量的时候布局已完成。实测中英两语言面板左边缘均与按钮左边缘重合（中文 815=815，英文 682=680）。 |
-| 2026-11-14 | **「校验游戏文件」恒 100%**。`VersionDownloader::collectVerifyItems` 在收集阶段末尾先发了一次 `verifyProgressChanged(totalItems, totalItems)`（注释写「Phase A complete」），等于凭空报 100%；而 `VersionBackend::updateStep` 与 `StepNode::setPercentage` 对 active 步骤有「百分比单调不得回退」的契约（防止多路进度信号抢同一步骤时数字往回跳），于是紧接着真实校验的 0%、1%、2%… 全被钳成 100%，用户只看到一个转着圈却不动、写着 100% 的步骤。删掉那次假 100%，收集阶段也不再报估算百分比（清点文件不是校验工作），只保留 Phase B 真实 (checked, total)。 |
-| 2026-11-14 | **整合包模组批量下载两处修复**。① 进度来回跳：步骤 2 的百分比有**两个写者**——`fileProgress` 里按 `(doneCount + 单文件 frac)/effective` 写一次，`queueProgress` 里又按 `completed/total` 写一次，两者口径不同且 `setCardStep` 无单调保护，200ms 交替下发；模组少时单文件占比大（1/N），跳幅可达二三十点。改为**只由 queueProgress 一处写**，且分子计入 `partialFraction()`（在跑文件的字节比例之和），并对显示值做单调钳制。② 尾程「卡死」：实为单文件单连接 + 只剩大文件时带宽塌陷（日志实测剩余 2 个模组时空槽 10 个，单连接仍 44KB/s 达 10 分钟），而慢速看门狗的**全局 EMA 门控**恰好在这种时候豁免换源。改为：有空闲并发槽时用更严阈值（128KB/s）且不受全局门控，换源后可跑到 2MB/s。 |
-| 2026-11-14 | **精卫：按「还来不来得及」判定换源**。原来只看单拍增量 <32KB/s 判慢，于是 44KB/s 下 29MB 要 11 分钟也被认定「不算慢」，实测两次导入都卡在尾程这两个大文件（日志：634 秒 44KB/s / 310 秒 14KB/s）。新增 ETA 兜底：用「本次连接平均速度 → 剩余字节还需多久」判定，超过 6 分钟就换源（仍需 ≥5s 采样避虚高）。换源后同一台 CDN 15 秒下完 29MB。 |
-| 2026-11-14 | **精卫：大文件分片下载**。按影的要求「只对大文件分片、体积越大段数越多、不打死现有体系」：< 8MB 一个字节都不碰，仍走原单连接路径；8–32MB=2 段，32–96MB=3 段，≥96MB=4 段（每段 ≥8MB 向上取整封顶）。段=一条独立 Range 连接写自己的 `.partN`，全部到达后按偏移拼接成完整文件再走原有 SHA1/大小校验。**防「多余数据」三道闸**（历史坑：旧多线程版在服务器不认 Range 时每条连接都下一遍整文件，浪费流量且速度虚高）：① 响应头到达（`metaDataChanged`）就校验必须 206，200 直接 abort，**不等 body**，一个字节都不收；② 校验 `Content-Range` 起点必须等于请求起点；③ 任一段失败 → 整个文件**永久降级回单连接**重下（`segFailedOnce`），绝不因为分片把文件判死。另加 `m_wastedBytes` 计量并在回退日志里打出累计浪费。 |
-| 2026-11-14 | **分片段缺看门狗（尾程仍卡的根本原因）**。日志证实分片已正常启动（36.9MB 分 3 段、20+ 个大模组分 2~3 段），但尾程 2 个文件的各段稳定在 ~20KB/s，合计 0.1MB/s 挂十几分钟。根因：`watchTick` 主循环第一句是 `if (it->state != 1 \|\| !it->reply) continue;` —— 分片项 `state==0` 且**没有 `it->reply`**，整条被跳过，所以**段完全没有慢速检测**，只剩空闲超时（有字节就重置，龟速滴流永远不超时）。已补独立的分片段看门狗：按段算速率 + ETA，超限 abort 该段换源（上限 6 次），日志 `[精卫] [分片] xxx 第N段慢速换源`。 |
-| 2026-11-14 | **步骤进度写入风暴**。`setCardStep` 每次调用都无条件把整份步骤数组推给 QML（`updateTaskCardSteps`），而模组下载热路径每 200ms 调一次、百分比往往一整轮不变 → 进度页 delegate 5 次/秒全量重算，实测日志膨胀到 72.4MB 且几乎全是 `Binding loop detected for property stepDetail` 刷屏，GUI 线程被拖住（下载慢的嫌疑之一）。改为 status/percentage 与现值相同就**直接 return**，与 `setCardStepName` 同一策略。 |
-| 2026-11-14 | **302 被误判成「源不支持分段」→ 安全网把文件永久降级回单连接（本次提速失败的真正原因）**。日志：`species-3.5.jar 第1段慢速换源（31KB/s）` 之后紧跟 `回退单连接：源不支持分段（HTTP 302）`。`metaDataChanged` 每跳都发，我却用 `code != 206` 一刀切，把中间的重定向 302 当成了失败；而分片安全网是「一次失败即永久回退」，于是凡经过跳转的源（mod.mcimirror.top 等）分片全线失效，尾程退回单连接龟速。改为 3xx 直接放过（Qt 已设 NoLessSafeRedirectPolicy 会自己跟），只有 200 才算「真不支持 Range」。 |
-| 2026-11-14 | **主机级坏源表（前快后崩的机制）**。日志：尾程 `[慢速换源] 14KB/s / 15KB/s / 13KB/s`，同一文件 第1次→第2次→第3次，在 `mod.mcimirror.top` 与 `cdn.modrinth.com` 之间反复横跳；`pickSource` 只看「该文件自己的下一个源」，没有主机级记忆，于是所有文件同时往同样的慢主机上撞，每次 abort 还要重新握手。新增 `QHash<QString,qint64> m_hostBadMs`：判慢时记下该主机，**90s 内其它文件优先跳过它**（全坏才按原顺序走），并定期清理过期项。 |
-| 2026-11-14 | **空闲槽驱动的分片（影：不管限速模型如何，先把空闲连接用满）**。原来门槛卡的是**总文件大小**（`kSegMinBytes=8MB`、每段 ≥8MB），于是尾程只剩 2~3 个文件、10 个槽空转时，小文件永远切不了。改为 `plannedSegCount` 读 `m_maxThreads - m_active`：**有空槽（≥2）→ 门槛降到 2MB/段、最多 4 段**；没空槽 → 保持原规则（只切大文件，避免抢别的小文件的口粮）。日志带 `（空闲槽驱动，空 N 槽）` 便于验证。 |
-| 2026-11-14 | **运行中升级：单连接就地切成多段**。此前「空闲槽驱动」只在文件**开始那一刻**决策，早就开始单连接慢爬的文件等 10 个槽空出来也不会中途升级（尾程龟速的真因之一）。新增 `tryUpgradeToSegments()`：尾程有空槽（≥2）且剩余 ≥2MB 时，flush 后取**磁盘实际长度**为前缀，掐断单连接，把 `[prefix, fileSize)` 切 2~4 段并行；`assembleSegments` 改为 `ReadWrite + seek(segPrefix)` 续写（`WriteOnly` 会把前缀截断）。回退时 `QFile::resize(tmpPath, segPrefix)` 截掉拼接过的一半并**以 prefix 断点续传**，绝不重下已下字节。另修：拼接失败路径不再提前删 tmpPath（否则前缀白扔）；段从单连接**当前所在源**起跑；在途未写盘字节从总量扣回（防进度虚高）。 |
-| 2026-11-14 | **资源下载阶段内重试（99% 的真正成因）**。日志铁证：`all done` 时 `进度=5113/5134`（21 个文件永久失败）、`3655/3658`（3 个）。失败文件的字节**永远不会到达**，而步骤分母是计划总字节，于是百分比在数学上到不了 100%，只要一个文件早起失败，进度条就被钳在 99% 直到整段结束；随后被丢弃给上层的「校验 + 自动修复」兜底，实测多花 **1.3 分钟**重校验重下（`安装失败，启动自动修复 … 21 个文件缺失或校验失败` → 12:44:09 → 12:45:29 校验游戏文件才完成）。改为 `retryOrFail()`：下载阶段内重试 3 轮，**回退到完整镜像表**（换源过程中 `mirrors` 被逐段裁剪，只剩最后那个已失败的源），第 3 轮退避 2s，`m_retryScheduled` 防止退避期间被 `checkAllFinished` 误判完成。**明确不采用**「把失败字节核销成已完成」的做法——那是用假 100% 掩盖文件缺失，违反契约「有失败却 100%」。 |
-| 2026-11-14 | **版本设置页换版本不刷新**。`VersionSettingsPage` 在 `StageShell` 里是**常驻实例**（打开/关闭只切宿主 `visible`），页面对象与分区页都不会被销毁；而 10 个分区页里只有 `VsExportPane` 写了 `onVersionIdChanged`，其余（VsModsPane/VsShadersPane/VsPacksPane/VsSavesPane/VsLaunchPane/VsMemoryPane/VsQuickPane/VsOverviewPane/VsToolsPane）都只在自己 `Component.onCompleted` 里加载一次数据 → 从版本列表打开**另一个版本**时，Mod 管理显示的还是上一个版本的内容。修法：页面层统一 `reloadPanes()`，在 `onVersionIdChanged` 与新增的 `opened`（由 StageShell 传入 `root.settingsOpen`）时把 `paneLoader.active` 置 false→true **销毁并重建分区实例**，一次覆盖全部 10 个分区，顺带清掉属于旧版本的搜索词/滚动/选中态；用 `paneEpoch` + `Qt.callLater` 防抖合并「换版本 + 重新打开」两次触发。另修 `ensureKeyVisible()` 让 `--ui-pane` 待切分区优先（其可见性分两拍到达，旧实现第一拍被打回 quick 且 pendingKey 已消费）。 |
-| 2026-11-14 | **模组版本号显示构建占位符**。`Advancement Plaques`/`Ageing Spawners`/`AlwaysEat` 等行的版本号显示成字面量 `${file.jarVersion}` —— 作者打包时没替换 Gradle 占位符，`local_mod_manager.cpp` 从 `fabric.mod.json` / `mods.toml` 原样读出。`entryToMap()` 是 4 个解析器（fabric json / toml / mcmod.info / MANIFEST）唯一的出口，在那里统一剥掉 `${...}` 与 `@...@` 形式的占位符，保留同串里其它真实内容，剥完为空则清空版本（不猜，真版本通常在文件名里、同屏已显示）。QML 侧版本为空时 `visible: text.length > 0`，不留多余间距。另：C++ 源码里不写美元字面量，用 `QChar(0x24)`。 |
-| 2026-11-14 | **版本设置退出无过渡动画**。`settingsHost.visible` 直接绑 `root.settingsOpen`，一置 false 宿主立刻消失，退场动画没有机会播（进入方向有位移过渡，退出方向什么都没有）。从启动页进来时观感还行（关闭会触发 `stagePage.playEnter()` 重放入场），但从**版本列表**进来就是纯硬切。修法：宿主加 `closing` 标志 + `visible: settingsOpen || closing`，退场用 `settingsFade` 把**整个宿主** opacity 1→0（durPage / easeExit），durPage 后才 `closing=false` 并复位 opacity。**不做内容层位移** —— 宿主那块铺满的不透明底色会留在原地挡住下层，变成「内容滑走后闪一下列表」。同时 state 的 `when` 加上 `closing`，否则一关就退出 state、内容瞬移回收起位再淡出。 |
-| 2026-11-14 | **修正上一版（52d644d）的错误做法**：让设置页整体淡出 320ms 再消失，等于「关个页面还要等动画」，阻塞操作。影明确否掉。改为**关闭瞬时、过渡做在下层**：`settingsHost` 完全恢复原状（`visible: root.settingsOpen`，退场仍是硬切），过渡交给下层版本列表自己轻放入场（`versionsSettleAnim`：`versionsSettle.y` 10→0 + `versionsSurface.opacity` 0.92→1，`Theme.durBase` / `easeEnter`），与启动页 `stagePage.playEnter()` 同一思路；仅在 `!settingsOpen && versionsOpen`（设置叠在版本列表之上）时触发，其它路径一律不动。位移走 `transform: Translate` 而不是再动 `x`，避免与 state 的 PropertyChanges 抢同一属性。 |
-| 2026-11-14 | **版本设置删除版本无二次确认**。`删除该版本` 直接调 `b.deleteVersion()` —— 而它会 `forceRemoveDir` 整个 `versions/<id>`（连 mods/saves/config 一起删），还会连带删掉同前缀的加载器版本（删 `1.20.1` 会顺带删 `1.20.1-forge-47.x`），且不可撤销。新增 `deletePop` 确认弹窗，体例照搬 `VsSavesPane` 的「删除存档？」（Popup / 360 宽 / padding 18 / 标题 14px DemiBold / 正文 12px fg2 / 取消 + danger 删除）。**出现动画**：`enter: Transition` 淡入 + 96%→100% 归位（`Theme.durBase` / `easeEnter`，`transformOrigin: Item.Center`）；**只做入场、不做退场** —— 退场会让弹窗播完才消失，等于关弹窗还要等动画（上一轮已因此被否）。删除后 `requestClose()` 退出设置页（版本已不存在，留在它的设置页没意义）。 |
-| 2026-11-14 | 其余确认弹窗补齐入场动画：`VsSavesPane`（删除存档）、`VsPacksPane`（删除资源包）、`VsShadersPane`（删除光影）的 `confirmPop` 统一加 `transformOrigin: Item.Center` + `enter: Transition`（opacity 0→1、scale 0.96→1，`Theme.durBase` / `easeEnter`）。只做入场不做退场（退场会让弹窗播完才消失）。与「删除版本」确认框、全屏页入场同一套语汇。 |
-| 2026-11-14 | **内置启动页壁纸 ×13**。影提供的一批 MC 壁纸（方寸/山河/林澜/未见×3/寂光/余温×2/城市建筑×2/城市漫步/静谧）按现有约定作为**内置背景**入库：`ui/assets/stage-*.jpg`（2737×1532，与原 `stage-aurora.jpg` 同规格，合计 10.7MB）+ `CMakeLists` 的 `ui_stage_assets` 注册 + `settings_backend.cpp` 新增 `kBuiltinBgs` 表驱动同步（缺的补齐、名字按当前语言重算、表里删掉的不留死卡片、内置图恒排最前）。老用户升级后外观页即可见到，无需重装。 |
-| 2026-11-14 | **关于页：赞助支持 + MCBLOCK 鸣谢**。新增「赞助支持」分组（`SetAboutPane.qml`，位于内测人员之后）：爱发电用户_Wa3G 赞助 19 元；鸣谢名单在 Lucide 之后加入 MCBLOCK（https://mcblock.top/，为启动页提供了超多好看的壁纸）。三条新文案同步补 `shadow_en/zh_HK/zh_TW.ts` 译文（英文 UI 下不再回退成中文）。 |
-| 2026-11-14 | **修复：导入背景的删除按钮点不动**。`SetAppearancePane.qml` 里用户图的删除按钮嵌在图片容器内，而「点击整张图 = 使用它」的 `MouseArea` 声明在它**之后**；QML 的命中顺序就是声明顺序，于是点 X 全被整块点击区吃掉，实际执行的是「切换背景」并弹出「已使用「xxx」」——图当然不会消失。删按钮提升为 tile 最后一个子项后恢复正常。 |
-| 2026-11-14 | **圆角不再被图片盖住**。`Rectangle.clip` 只裁**矩形边界**，不认 `radius`——圆角处会漏出图片方角。内置图与用户图两张缩略图都改为：容器 `layer.enabled` + `MultiEffect { maskEnabled: true; maskSource: <同尺寸圆角矩形> }`，遮罩源 `visible: false` 只提供形状。 |
-| 2026-11-14 | **删除按钮改为整块 tile 悬停 + 严格布尔**。`visible: uTileHover.containsMouse` 在委托初始化时会拿到 undefined（日志连刷 `Unable to assign [undefined] to bool`），写成 `=== true` 消掉；悬停判定从 26px 小方块提到整块 tile，指针不会因稍一偏出就把按钮弄没。按钮 `z: 2` 且是 tile 最后一个子项。 |
-| 2026-11-14 | **删除按钮改为常驻**。这个 × 先后两次因悬停判定拿不到 hover 而消失（一次写在按钮自己身上、一次写在整块 tile 上），点击也跟着失效——因为点击那一刻按钮不在。删除是低频且明确的动作，直接把 `visible: true`，彻底移除 hover 依赖。 |
-| 2026-11-14 | **修复：背景图删不掉的真凶——`ShadowBackend` 缺 `removeBgImage` 转发**。QML 里 `pane.b` 是 ShadowBackend，`applyBgPreset` 有转发而 `removeBgImage` 没有，点击直接 `TypeError: Property 'removeBgImage' ... is not a function`，界面毫无反应。补 `Q_INVOKABLE void removeBgImage()` + `m_settings->removeBgImage()` 转发。 |
-| 2026-11-14 | **修复：删除背景没有 toast**。`removeBgImage` 会同步 `emit customBgChanged` → 网格重建 → 正在处理点击的 delegate 被销毁，`onClicked` 里销毁之后的语句不再执行。改为**先弹 toast 再删除**。 |
-| 2026-11-14 | **新增 `tools/pack-release.ps1`（本 checkout 的发布打包）**。仓库根目录的 `pack.ps1` 指向旧项目 `D:\latest-code\cpp` 且找 `qml/`、`qml-next/` 等已不存在的目录，直接跑会打错东西。新脚本：只带自己的二进制（排除 `.exp/.lib/测试 exe`）+ EasyTier `bin/` + `windeployqt --qmldir ui`（**必须给 qmldir，否则 QML 运行时目录整个不部署**）+ CRT 兜底 + D3D/软渲染兜底 + 只裁已知风格目录。产出 `dist/ShadowLauncher-v1.0.4-win64.zip`（230 文件，解压 149.9MB → **68MB**）。 |
-| 2026-11-15 | **协议门禁（首次启动必同意）**。新 UI 从来没显示过协议，`agreementAccepted` / `markAgreed` / 三份协议 HTML 在后端一直是死代码。新增 `ui/AgreementGate.qml`：壁纸 + 压暗底、SHADOW 字标、SCard 卡面、SButton/SSegmented，全部沿用既有语言；动效全走 Theme 令牌（卡片 0.98→1 + 上浮 16px、切协议面板淡入、勾选对勾弹入、同意后退场动画收完才 dismiss）。`StageShell` 最后挂载、`z:1000` 盖住侧栏与窗口按钮；`--ui-gate` 可强制显示；en/HK/TW 各补 12 条译文。 |
-| 2026-11-15 | **修按钮文字溢出**。`Accept and continue` 从 132px 宽的按钮里伸出去压到 `Quit`。根因在 `SButton`：`RowLayout` 没有任何宽度约束，调用方一旦把按钮设得比文案窄就必然溢出。改成 `Layout.maximumWidth`（按钮宽 - 内边距 - 图标）+ `elide`：正常按内容撑开，真放不下才省略；门禁底栏按钮改用自然宽度、勾选文案 `fillWidth` 可省略。 |
-| 2026-11-15 | **日志系统重做：按启动分文件 + 去冗留精**。落盘：`logs/shadow_launcher_<yyyy-MM-dd_HH-mm-ss>.log`（一次运行一份），启动时清旧「按日」文件、只留最近 10 份、单次 12 MB 上限、文件头带版本/PID/系统/Qt/目录、连续重复折叠、退出补「会话结束」。去冗（基于真实 82.4 MB / 69.5 万行日志的计量）：安装器 JVM 逐行（73.3%）→ 摘要 + 前 30 条可疑行 + 全文进 `logs/installer-last.log`；游戏 JVM 逐行（2.2%）→ 只留过滤后的告警；`[夸父]` 分片细节（1.2%）→ `qCDebug`。新增 `--log-selftest` 一条命令验证折叠/保留/文件头。 |
-| 2026-11-15 | **日志精简后保住异常追踪**。① `logs/errors.log`：W/E 跨会话摘要，不受 10 份轮转影响，1 MB 上滚（超出转 `errors.prev.log`）；② 启动即检测上一次会话是否写了「会话结束」标记，没写就报「上一次运行未正常结束」；③ 全量输出仍落盘（游戏 `shadow-jvm-output.log`、安装器 `logs/installer-last.log`）；④ 下载失败路径（请求失败/数据不完整/SHA1/提交失败）全是 W，一条未动；⑤ 只把「速度下限」这类正常调参降到 debug。`--log-selftest` 现在同时校验折叠/文件头/摘要。 |
-| 2026-11-15 | **README 重写 + 迁入 AGPL-3.0 许可证**。根 `README.md` 按用户草稿（旧版历史包袱→UI 重写→修 v1 bug）展开为完整文档：为什么有 v2 / 特性 / 技术栈 / 目录结构 / 构建 / 开发参数 / UI 硬规则 / 文档 / 许可 / 致谢；封面图用真实运行截图 `docs/shots/ui-next.png`（1375x900，来自 9999 端口截图服务）。`LICENSE` 从 GNU 取 AGPL-3.0 全文（544 行），许可沿用一代仓库 `xiaole1173/shadow-launcher`（GitHub API 确认 spdx=AGPL-3.0）。事实核对：旧 UI 已于 2026-11-10 移除，`--ui-next` 不再是入口，README 写明直接双击即新界面。 |
-| 2026-11-15 | **README 按受众重写 + CONTRIBUTING 拆分**。README 128→91 行：删「开发辅助参数」「UI 硬规则」「文档」三节（用户判定：这是改代码的人才需要看的，不属于 README）。新增根 `CONTRIBUTING.md`（60 行）承接：环境、构建、调试开关表、日志位置与「上次未正常结束」提示、界面实现约束 6 条、文档索引、改动习惯。致谢栏按设置-关于页 `SetAboutPane.qml` credits 同步补齐 PCL2/HMCL/bangbang93/z0z0r4/MCBLOCK/ChunMoMo，两处口径一致。 |
-| 2026-11-15 | **关于页链接改到 v2 仓库 + Modrinth UA 去占位符**。`SetAboutPane.qml` 新增 `readonly property string repoUrl`（单一来源），「GNU AGPL v3 许可证」与「访问项目主页」两个按钮都改用它 —— 前者拼 `/blob/main/LICENSE`。`main_release.cpp` 的 Modrinth User-Agent 原来是 `YOUR_APP/1.0.0 (旧仓库)`，改成 `ShadowLauncher/<SHADOW_DISPLAY_VERSION> (v2 仓库)`。旧仓库即将归档，用户点「访问项目主页」不该再落到停止维护的仓库上。 |
-| 2026-11-15 | **强制侧栏完整模式（缩略/图标轨道模式下线）**。根因：`StageShell.qml` 的 `narrow: width < 900` 会自动把侧栏切成 64px 图标轨道；小屏/高 DPI 机器上 `Main.qml` 的「逻辑宽 < 1000 就收口」把窗口压到 <900，于是每次启动都是轨道态。轨道态下菜单图标与文字锚点对不上，且侧栏点击几乎失效 —— 进入「下载进度」页后点不回去（影报过）。改法：`narrow` 恒为 false、`sideW` 恒取 `Theme.sideW`；外观页侧栏示意图同步固定。页面内部各自的 `narrow`（padding/字号适配）保持不动。 |
-| 2026-11-15 | **小窗口真因：屏幕尺寸被除了两次 DPR**。`Main.qml` 的收口逻辑把 `Screen.width/height`（Qt 6 里**已经是逻辑像素**）又除了一次 `devicePixelRatio`：1440p@150% 逻辑宽 1280 被算成 853 → 落进「逻辑宽 < 1000」分支 → 窗口被压到 813。叠加上一轮删掉的侧栏轨道模式，就成了影看到的「小窗 + 图标栏」。改法：直接取 `Screen.width/height`，日志同时打印 dpr 便于下次核对；收口只在真正小屏时生效。实测本机 `screen logical 1536 x 864 (dpr 1.25) -> win 1100 x 720`。 |
-| 2026-11-15 | **CF 文件 downloadUrl=null 不等于「没有可下载文件」**。整合包作者关掉「允许第三方分发」后，`/mods/{id}/files` 对每个文件都返回 `downloadUrl: null`（官方与 MCIM 镜像一致），`/files/{fid}/download-url` 直接 403；但文件本体仍在 CDN：`https://mod.mcimirror.top/files/{fid/1000}/{fid%1000}/{fileName}`（实测 Mercury landing 三个文件 HEAD 200，长度与 fileLength 逐字节一致）。`cf_api.cpp` 以前把空串直接塞进 `url` → 详情页显示「该组合没有可下载文件」，把可下的文件判成死路。现在按 modpack_downloader 同一套规则自拼镜像直链。 |
-| 2026-11-15 | **禁止第三方分发的项目在列表层隐藏**（影的决定）。CF 的 `allowModDistribution=false` 是作者显式声明，不是接口故障；绕过镜像直链能下但违背作者意愿、且可能连累 API Key。`CfApi::search` 逐项检查该字段，false 直接 `continue`（不再进列表，用户看不到也点不进），并 qInfo 记录隐藏数量；同时**撤销**上一版「downloadUrl 为空就自拼镜像 CDN」的兜底（commit f848369 的该段）。实测某个整合包搜索页隐藏 2 项。影响面（CF 默认热门页 50 项里）：模组 2%、整合包 2%、数据包 26%、光影 42%。 |
-| 2026-11-15 | **MCIM 的 /files 不是文件副本，是 302 跳到 CF 自己的 S3**。链路实测：`mod.mcimirror.top/files/{id/1000}/{id%1000}/{name}` → 302 → `mediafilez.forgecdn.net/...`（AmazonS3，200，17.6MB，支持 Range 206）；`edge.forgecdn.net` 同样 302 到 mediafilez。结论：`allowModDistribution` 只在 **API 层**生效（API 不给签名直链），CDN 是公开桶、路径可推导、不看这个开关 —— 所以「镜像能下」不代表「作者允许」，只说明 CDN 没锁。注释已改正，避免以后再把「镜像缓存」当成证据。 |
-| 2026-11-17 | **Assets 下载接入空闲槽驱动分片（山海经）**。现象：assets 已按大小降序派发，但最大的文件撞上慢连接时，尾程只剩一两条在途，16 个槽全空转 → <1MB/s（与模组下载修复前同型）。做法与精卫一致：判断依据是「有没有空槽」而非「文件大不大」。① `probeRangeSupport()` 每 host 发一次 `Range: bytes=0-0` 探测，只对确认 206 的 host 分片；② `tryStartShard()` 派发时按空闲槽切段；③ `trySplitInFlight()` 对已在下载的大文件就地切分——**abort 前 `readAll()` 保存已收前缀作为第 0 段**，只对剩余部分发 Range；④ `handleShardReply()` 在 `metaDataChanged` 阶段校验 206 + Content-Range 起点，不符立刻 abort（未收 body，零浪费）；⑤ 合并后 SHA1 校验，失败整文件回退单连接并计入 `m_wastedBytes`。另修 `getHostLimit` 里 hostCanAccept 持锁再调会自锁的隐患（拆 `hostLimitLocked`）。实测 4 轮：作废 0 字节，assets 63–68s→64s（本机瓶颈在服务端，见 2026-11-17 记忆）。 |
-| 2026-11-17 | **山海经诊断仪表：主线程开销 / 真实派发率 / 吞吐心跳**。`onReplyFinished` 里的 `readAll()+SHA1` 累计耗时记入 `m_mainThreadWorkUs`，真实派发计数记入 `m_dispatchCount`，5s 心跳一行打出「速度 / 在途 / 待下载 / 大文件剩余 / 完成 / 派发 / 主线程占比 / SHA1 累计」。顺带修掉心跳借用 `m_speedTimer`（被 sampleSpeed 每 50ms restart）导致输出 `226929 MB/s` 的荒谬数字 —— 改用独立 `m_hbTimer`。实测结论：主线程只占 0.6–1.5%（961ms/176s），**SHA1 不是瓶颈**；真实派发 19 files/s（此前从 1/100 采样日志反推出 0.6/s 是错的）。 |
-| 2026-11-17 | **连接复用实测：本来就没问题（撤回「每请求重建连接」假设）**。用 OS 级 `Get-NetTCPConnection` 采样 90 秒 assets 下载：`distinct_local_ports=30 / avg_established=26 / reuse_ratio=1.03` —— 90 秒里只用了 30 条 TCP，说明 QNAM 的 keep-alive 池工作正常，0.6s/文件不是握手造成的。同时新增诊断：单请求耗时分布（`请求均` / `快请求(<500ms)` 占比）+ 心跳占位符修复（此前 `A + B + C` 让 `.arg()` 链只作用在最后一个操作数，日志出现 `完成=%1 派发=%2` 原样泄漏）。另加尾程小文件阶段并发提升（`SHADOW_ASSET_BOOST` 环境变量，默认关闭）：大文件清零后把并发与单主机上限一起放开。 |
-| 2026-11-17 | **撤回尾程并发提升（影实测更慢）**。`SHADOW_ASSET_BOOST` 那段全部删除：`m_boostCap`/`m_phaseBoost`/`effectiveConcurrent()`/accelTick 阶段判定/启动时环境变量解析，`m_targetInflight` 与 `hostLimitLocked` 的 16/8/4/32 全部还原。保留：心跳占位符修复、主线程耗时统计、单请求耗时分布、`hostLimitLocked` 拆锁（原是自锁 bug）、`throttledTick` 兜底、分片本体。 |
-| 2026-11-17 | **资源下载没记「成功」→ 主机被误判降级（本次真正的大坑）**。`onReplyFinished` 只在失败/校验失败时调 `recordHostResult(false)`，成功一次都不记；而 `recordHostResult` 靠「连续 3 次成功」才解除 degraded → `consecutiveFails` 只增不减 → 整轮里攒够 3 次任意失败就把官方源打成 degraded → `hostCanAccept()` 直接拒发 → 单源场景整个下载冻结 `kDegradeRetryMs=30s`，恢复后再攒 3 次又冻。这正是「前面快、后面越来越慢、最后卡住不动」。修法：`InFlight.firstByteMs` 记首字节，SHA1 通过后调 `recordHostResult(host,true,首字ms)`。附带新增 `[主机]` 摘要（成功/失败/首字均/并发上限），实测官方 CDN **首字均=283ms**。另修：`AssetDownloader` 补 500ms 周期性 `progressChanged`（原来只在文件下完时发，卡住时界面速度冻结在旧值，实测截图卡 0.1MB/s）；预检查 key 加自增序号（同 savePath\|sha1 重复任务会互相覆盖）。 |
-| 2026-11-17 | **分片「范围缩小」改为中止重发（零重复下载）**。`tryAddThread` 只改 `downloadEnd` 改不了已发出的请求 → 服务器按旧范围发完，多出来的字节被丢弃、新线程又下一遍（实测 icu4j 15.1MB 下了 22.6MB = 1.49x）。改法：新增 `DownloadThread::rangeShrunk`，切分时置位；worker 在进度回调里检测到就 abort，用缩小后的 Range 重发；`downloadDone` 语义改为「续传基线」（`attemptBase`），写临时文件改 `ReadWrite + seek(attemptBase)` 支持续传，未收满则 `continue` 不占重试预算。另加 `applySpeedLimit(delta, abortFlag)`：限速睡眠期间被置位即刻返回，少囤数据。验证：33 次中止重发，最大残余超额 0.87MB（此前 4–7MB），SHA1 全部通过。 |
-| 2026-11-17 | **分片彻底做到零多余：有界请求 + 只在未请求区间切分**。根因是首个线程 `downloadEnd = fileSize`（整文件一条请求），之后任何切分都在改「已发出的请求」。改法：①每次请求最多覆盖 `kRequestWindowBytes`(8MB)，用 `downloadDone` 续传链后续窗口；②`DownloadThread::requestedEnd` 记录已请求终点，`tryAddThread`/`trySplitSlowThread` 的切分点被夹到 `requestedEnd` 之后，且未发出首请求（requestedEnd<=start）的线程不许切。踩坑：worker 里加 `m_filesMutex` 会与 managerTick 全程持锁互锁（日志停 47s、jar 全没落地）；`needMoreData` 分支忘清 `sourceOk` 会让线程带着一个窗口就结束（校验报 2 个文件缺失）。实测：截断/超额 0 条、范围缩小重发 7 次、合并 9 个全 SHA1 通过、安装完成 1 失败 0、三个 jar 字节级一致。 |
-| 2026-11-18 | **按 HMCL 调研结果调优下载（源/并发/分片阈值/预检）**。① 新增 `region_utils.h`（时区+区域判定国内），`AutoSwitch` 改为按区域择优（国内镜像优先），设置默认 1→2，并对旧装做一次性迁移（`download/regionPolicyV1` 标记，1→2、16→核数×4）；② 默认并发 `defaultDownloadConcurrency()` = 核数×4 上限 64，settings 夹取 16/24→64，`version_downloader` 上限 24→64，`asset_downloader::hostLimitLocked` 不再写死 8/16 而是跟随总并发（bmclapi ≤32）；③ `kSegMinBytes` 2MB→8MB；④ 资产预检「存在+尺寸匹配」即命中，不再整文件 SHA1（下载后校验不变）。冷装实测：4117 文件全走网络，端到端 **71s**（此前同版本资产阶段单项 176s），峰值 141 文件/s、在途 64；但 bmclapi 在 64 并发下首字均 15.6s 并降级失败 18 次，89% 流量回落到官方源（首字均 189ms）。 |
-| 2026-11-18 | **纯 MC 下载引擎提速：58s → 16s（冷装 1.21.4：4041 资源 + 76 库 + 客户端 jar，4117 文件 / 535MB）**。先用独立参考引擎（`_bench_engine/ref_engine*.js`，HMCL 语义）量测定标：官方源 128 并发 21.5s、192 并发 16.7s、256 并发 16.4s；镜像优先 64 并发 105.7s（镜像 302 到第三方节点池，单连接仅 ~70KB/s）。据此改主引擎：① `source_policy.h` AutoSwitch 改为**官方优先**（推翻同日早上的「按区域镜像优先」）；② 并发默认 `qBound(32, 核数×12, 192)`，settings 上限 64→256 + `regionPolicyV2` 一次性校正；③ **QNAM 2 → 32**（Qt 每个连接对象只 6 条 channel，2×6=12 条真实连接，与声明的 192 并发差 16 倍）；④ 派发去掉节流（`kBurstSize` 4→64、`kAccelStep` 2→64、`toSend = target - inflight`），有槽就填满；⑤ 超时 20s/30s → 8s/12s；⑥ **校验步骤不再整文件重算 SHA1**（暖装实测这一步要 4123 次全读 = 23.7s，而每个文件下载完成时已校验过），只留存在性判定；⑦ 分片路径补记 `m_netOk`（审计长期「差 1 个」的根因）。实测两轮连续冷装：下载阶段 16.0s / 16.9s，审计 `总数=4117=网络成功4117`、失败 0、无尾部停顿。 |
-| 2026-11-18 | **按源码对齐修下载引擎（QNAM/超时/派发/尾程分片）**。先派两个子代理只读取证：`_research/jank-analysis.md`（自家引擎逐行，`accelTick` 一 tick 连发 192 次 fireNext、`QDir().mkpath` 每文件一次、SHA1 在主线程、Range 探测漏设 http1 配置）与 `_research/hmcl-download-architecture.md`（HMCL main@b104d73：`HttpURLConnection` 无 HTTP/2、虚拟线程 + Semaphore 默认 `min(4×CPU,64)`、单文件一次 GET 不分块、边下边算 SHA-1、静态源候选表）。据此推翻我两条前提：① Qt 6.5+ 的 `QHttp1Configuration::setNumberOfConnectionsPerHost` 能给到 255，我们本来就设了 128，**单个 QNAM 就够 192**，32 个 QNAM 只是 32 条线程；② 「34 MB/s 是线路上限」错，实测采样出现 **44.4 MB/s**。改动：QNAM 32→4、探测请求补 http1 配置（原先它把 host 锁成 6 通道且不自愈）、分片空闲/传输超时 30s→12s（尾部 21.3s→3.35s）、派发 tick 上限 24、目录创建加缓存、`tryAddThread` 的速度门限改成「本文件线程数 <4 时无视整机速度」（尾部 3.35s→**1.1s**，夸父 74MB 从 3.8MB/s 提到不再拖尾）。冷装实测：下载阶段 **15.67s**、校验 1.12s、尾部 1.13s、审计 4117/4117 失败 0。距 HMCL 11s 还差约 4.7s，其余量集中在前 5 秒只有 23MB/s（192 条连接建立期）。 |
-| 2026-11-18 | **下载上限的定量结论（含反证实验）**。`setMaxConcurrent`/`AssetDownloader` 并发夹取 256→1024（此前「填 384 实际只跑 256」）。随后测了所有能突破吞吐上限的路：① 镜像并行（`ref_split2.js`：官方128+BMCL64 = 39.56s、96+96 = 20.90s，且数据少收 1.9MB / 20MB）→ 排除；② 单流带宽（单条连接 27MB 拉满 15.1MB/s，4 条并发 34.7MB/s）→ 说明不是带宽瓶颈；③ 并发扫描（Node 192/256/384/512 → 274/275/284/274 请求每秒，几乎恒定）→ 说明是**请求速率**限制；④ 双栈（IPv4+IPv6 各 192 → 349 请求/秒，但同分钟单栈 384 也到 349）→ 是网络波动不是双栈红利；⑤ Qt 384 真并发 = 18.31s（请求均延迟涨到 2618ms），Qt 拐点仍是 192。**结论：单机最优请求速率约 350/秒，4041 个资产文件 ⇒ 11.5 秒是纯资产的数学下限，整装（库+校验+爬坡）实际地板约 12.5~14 秒，11 秒在这条线路上不可达。** 当前最好整装 15.13s。 |
-| 2026-11-18 | **整合包下载三项修复（Range 探测 / 绑定循环 / 速度冻结）+ 新增 `--test-import`**。现场：422 模组导入时 ① `smc-1.1.3.jar 回退单连接：源不支持分段（HTTP 404）累计浪费 18772 KB`——源不认 Range 要先把几 MB 下完才发现，且 404（源没这个文件）被误记成「不支持分段」；② `ProgressPage.qml:605 Binding loop detected for property stepDetail` 累计 368 条——`steps` 是 ListModel **数组角色**，每读一次返回新数组，任何 `stepField(steps,…)` 绑定都被判循环；③ 卡片速度冻结在 1.x MB/s。修法：① 每 host 发 **1 字节 Range 探测**只认 206，已知不认的不再分片，404/403 单独措辞且不污染表；② steps 移出模型存进普通 JS 表，delegate 只绑**标量 revision**；③ `installSpeedOf` 只在 `loaderDownloadActive` 时采信 mlSpeed（该值窗口间刻意保留旧值从不归零）；④ 新增 `[速度]` 心跳日志暴露 `卡片=20.94MB/s 而 2s 字节增量仅 65536` → 速度采样**无最小时间窗口**，5ms 内 1MB 即算出 200MB/s（实测飙到 247MB/s），改为窗口 ≥200ms 才采样。验证：同一整合包全量导入，Binding loop **368→0**、Range 回退 **2→0**、模组 423 完成 0 失败、速度 `卡片=36.19MB/s` 与 `2s增量=69MB(34.5MB/s)` 自洽、MC 组件在 MC 阶段结束后归 0、导入 09:27:44→09:30:22 完成。 |
-| 2026-11-18 | **MC 下载期间界面卡顿排查（GUI 线程取证）**。现象：影报告「MC 下载导致界面极度卡顿」；他的日志里卡顿探针记录 **618ms / 2077ms / 2046ms**，而我干净复现只有 15~100ms。新增单次停顿打点后复现到一次：`[卡顿] GUI 线程停顿 1569ms 在途=192 待下载=4867`，发生在开头（夸父反复切分 33MB client.jar 时）。**逐项排除**：① 日志写入——改成缓冲（普通行 1 秒/16KB 批量落盘，W/E 仍即时），errors.log 由「每条警告 open/write/close」改为内存缓冲 → 改完仍复现，**不是主因**（但每行一次 flush + 持锁确实该摘，保留）；② `OutputDebugStringA` 每行一次、调试端口被第三方占用时会阻塞 → 改为仅在 `IsDebuggerPresent()` 或 `SHADOW_DEBUG_OUTPUT=1` 时输出；③ 两个引擎的 GUI 定时器——给 `夸父 managerTick` 与 `山海经 accelTick` 加耗时探针，全程 0 次超 200ms。**修法**：把建目录整个移出 GUI 线程——`fireNext()` 不再 `QDir().mkpath()`，改由 IO 池在建文件前 `ensureDir()`（`m_createdDirs` 加 mutex）。磁盘被几百 MB 写满时一次 mkpath 几十毫秒，几百个目录叠加即秒级停顿。复测：连续 3 轮冷装 26.2，最大卡顿 **99 / 76 / 89ms**，无停顿打点、无 tick 超时（改前 5 轮里 2 轮 >1.5s）。 |
-| 2026-11-19 | **卡片丢失 / 令牌过期启动离线 两处修复 + 撤回 HTTP/2**。① 卡片异常丢失：`installVersion()` 扫描 `m_downloadSessions` 里「mcVersion 相同的合并会话」来判定本次是否为整合包的 MC 部分，但**没判该会话是否已结束**；已结束的合并会话不会被清出这张表（只在 `dismissCard` 时清），于是刚装完基础版本同为 26.2 的整合包、紧接着装原版 26.2 时被误判成合并子任务 → **建卡分支被跳过**；下载器是独立对象照常下载，表现即「卡片没了、下载还在跑」。修法：只有**仍在进行中**的合并会话（未失败、`mcDownloadDone` 为假、进度 <0.999）才算父任务；复用到的已完成会话先 `reset()`，否则新卡片一出生就是 100% 被进度页当终态收起。② 正版账号启动进离线：主启动路径 `launch()` 直接把 `mcToken()` 塞进启动参数，**不校验时效不刷新**（只有导出脚本那条路有校验）；微软 accessToken 约 24 小时，开着放一夜再启动即送过期令牌。修法：启动前 `msMcTokenValid()` 为假则同步刷新（最长 15s），失败才**明确告知并降级离线**。③ 撤回官方源 HTTP/2：26.2（5059 资源）实测 `Server stopped accepting new streams` + 成片 `Connection closed` 连锁取消；收益仅 15.67s→15.13s，风险收益不成比例 → 回 HTTP/1.1。验证：26.2 冷装 26.4s、**5134/5134 文件 0 失败**、h2 拒绝 0 次、四个步骤卡正常写入。 |
-| 2026-11-19 | **全下载引擎审计 + 夸父三处修复（commit ba91501）**。4 个只读审计员并行读代码（报告 `_research/audit-{kuafu,shanhaijing,jingwei,yidao}.md`），每条结论都要求 file:line 证据。**实测确认并修复**：① `FileDownloader::setMaxThreads` 把并发夹在 **24**，而调用方传 192（山海经生效、夸父不生效），连带 per-host 守卫 `qBound(8,m_maxThreads,64)` 退化成 24 → 改为 256；② 快速失败守卫要求 `elapsed<5500ms` 而单次超时 12s，**永不成立** → 同源死磕 5 次（60s），改为「连续 2 次零进展超时即换源」；③ `workerQnam()` 是 thread_local 跨文件复用，半死 keep-alive 连接被反复派新请求 → 超时且无响应头时 `clearConnectionCache()` 强制重建；④ 汇总「缓存命中」读的是 start() 已清零的计数器，恒为 0 → 保留基数。**定向测试**（junction 复用 assets，只让 126MB 库走网络）4 轮：改前 32.4/98.6/50.3/20.2s（超时 0/6/0/0），改后 **14.4/14.1/12.1/12.1s（零超时）**。**未修复（审计发现但无测试证据，按用户要求不动）**：山海经 allFinished 不等 IO 落盘、allBlocked 截止时间被清零、downloadedBytes 双计、缓存预检只比大小、fireNext 对 end() 迭代器写；精卫 retryFailedModFiles 漏复位 m_finalizing、覆盖先删后下且部分失败不回滚、Range 探测不带 x-api-key 毒化支持表；驿道 续传写入 .tmp 后 rename 覆盖正式文件、分片失败降级不可达、阶段 A 预检缺取消守卫。每条都附了「用哪行日志/什么最小测试可证实」。 |
-| 2026-11-20 | **第二轮：审计问题逐条证实并修复（commit c9d2539）**。山海经：① `hostStats` 首次派发对 `end()` 迭代器写（UB 且不计 per-host 并发）→ `m_hostStats[host]`；② `m_allBlockedSinceMs` 每 tick 无条件清零，120s 全拒兜底永不触发 → 改到真派发处清零；③ `checkAllFinished` 不等 IO 写盘（完成计数在写回调里才加）→ 加 `m_ioPending` 闸门。精卫：④ Range 探测不带 `x-api-key`（edge 2026-07-16 起强制）→ 401 被记成「不认 Range」永久关分片 → 补 key，仅 200/403/404/405/416 判不支持，401/429/5xx 撤销探测稍后重探；⑤ `kModStallMs` 120s < 引擎自愈预算 ~230s → 240s；⑥ 覆盖回调由 void 改 bool，备份失败留痕。驿道：⑦ 续传 Range 起点取正式文件大小、字节却写 `.tmp`、收尾 `remove(savePath)+rename` → 自更新续传把 exe 换成半截文件；改为先把前缀播种进 tmp，失败则整段重下。盘古：⑧ 阶段 A 预检回调缺取消守卫（取消后下载复活）→ 补 `m_state == Cancelled`；⑨ 下载起点新增 `[盘古] 生效配置: 并发/限速/源策略`（用 qCInfo，logMessage 不进日志文件）。**设置耦合实测**（只下 126MB 库）：并发8+限速2MB/s → 64.6s（1.95MB/s 正好压着限速）；并发192+不限 → 14.1s。**回归**：生效配置 并发=192、山海经 5209=5209、夸父 15/15 @28.7MB/s、校验 274ms、零超时零失败。未修（无复现且无代码级确定缺陷）：夸父短写/合并校验、200 忽略 Range 的分片落盘、山海经字节双计、缓存预检只比大小、分片合并内存翻倍。 |
-| 2026-11-20 | **坏镜像场景实测（commit 518dd80）**：自建本地 HTTP 坏镜像（24MB，三个端点：正常 206 分段 / 忽略 Range 恒回 200 整包 / 认 Range 但只发一半就断），配只指向它的版本 JSON（复用真实 26.3 结构并写入版本列表缓存），让夸父真跑。**结论：两条指控被证伪** —— ①服务器忽略 Range 回 200 时，日志打「服务器返回全文件(忽略Range)，整文件使用」，产物 24MB、SHA1 逐字节正确（有/无 sha1 都对），不存在「按分片偏移落盘」；②短分片（声明 8MB 只发 4MB）重试到上限后直接判失败，**磁盘上没有半截文件**，合并层根本没被调用。自动修复只跑 1 轮，不是死循环。**顺带补的真实缺陷**：`mergeFile` 逐片 `readAll` 追加后直接 rename，除 sha1 外无任何长度校验（无 sha1 的文件等于无人管）→ 补「合并总长 vs 落盘」与「落盘 vs 声明大小」两道校验。**教训**：`downloadEnd` 是**排他**上界（区间 0..16777216 实际写 16777216 字节），第一版按闭区间算期望值，把每个正常多分片文件都误判——改完必须用正常样本回归，否则会把好文件全拦下。 |
-| 2026-11-20 | **整合包 Forge 依赖库卡 95% 的真因（commit 0ab64b0）**。实跑 351MB 整合包复现：`下载 Forge 依赖库 95% / 0 MB/s`，日志 30ms 一轮循环 —— `[驿道] 镜像源失败…切换到官方源 libraries.minecraft.net` 的**下一行仍在请求 bmclapi**。两个缺陷：① `buildRequest()` 从没关 HTTP/2（夸父/山海经早回退，驿道漏了），bmclapi 对 H2 每条请求都报 `HTTP/2 protocol error`；② 「切官方」兜底调用 `startSingle(url)`，而它内部又走 `mirrorUrl()` 映射回同一镜像 → 官方源永远到不了，无限重试。修法：`buildRequest` 设 `Http2Allowed=false` + 单主机 255；`startSingle` 增 `noMirror`，两处兜底都传 true。验证：Forge 依赖库 0%→100% 3 秒、安装 Forge 26 秒、`整合包导入完成`；HTTP2 错误 ~500/30s → 0，日志首次出现 `开始下载(单连接) https://libraries.minecraft.net/...`。同 commit 还含六条审计修复（精卫 m_finalizing、盘古切镜像重下 assets、精卫覆盖不先删、launchSegment 越界、山海经异步分片**已回退**——它紧邻一次静默退出，未排除嫌疑前保持同步）。 |
-| 2026-11-20 | **三条 UI/进度修复（commit 781f2c8）**。① 校验 100% 还转圈：worker 报 done==total（100%），但步骤要等 finished 才标绿 → 封顶 n-1，100% 由 completed 给出。② 422 个小模组收尾卡 UI：`fileFinished` 每文件 `emit modItemsChanged()` + `syncCardAttachments()` → 150ms 合并一次。③ 安装 Forge 恒 0%：**两个独立原因** —— `runBootstrapperSync` 两处调用都传 `nullptr`（关键词→进度映射整段死代码）；接上后 merged 路径 `stepIndexByKey` 可能返回 -1 把百分比静默丢弃 → 按「名称以 安装 开头」兜底 + 每次映射落日志。实测 step=3 pct 27/28/38/50/55/67/80/98 → idx=7。④ 整合包卡片 Forge 阶段整列灰：`syncMcSteps()` 只在 init/结束调用，卡片拿着陈旧 pending 副本 → 1 秒定时同步。 |
-| 2026-11-20 | **下载/校验/UI 四项（commit e7efaf8）**。① 校验卡 99% 的真身：日志 10:52:23→10:54:11，校验本身 0.75 秒就结束了（失败 4），随后「换镜像重下」跑了 **105 秒**，而步骤一直冻在 99%。现 `VersionDownloader::repairProgress(done,total)` 把修复轮进度投给同一步骤（先置 pending 再 active，绕过百分比防回退契约），日志 `[校验] 修复进度 1/1`。② 下载游戏库闲置：4 条/文件上限下同一 126MB 同一链路实测 **4.6s / 38.3s 双峰**（一条慢连接拖死整个文件）；改为按剩余大小给（每 6MB 一条，上限 12），**且仅当整机速度 <8MB/s（链路真闲着）时才放开**，忙时保持 4 条防打爆 CDN。改后连测 5 轮 4.28/4.39/5.07/4.57/4.83s（25–38MB/s），稳定不再双峰。③ 单次尝试 141 秒：会「滴字节」的连接让空闲超时与 transferTimeout 双双续命（bmclapi client.jar 实测 141s / 0B）。加 45 秒墙钟上限 + 20 秒/24KB/s 起步龟速判定，**挂在 500ms 看门狗定时器上**（挂数据回调上永远不会触发）；慢速分片最低粒度 32KB→512KB（55KB 碎片片会干掉一条可用连接并让整个文件失败）。④ 重复下载同版本不再弹「下载完成」：`ProgressPage._doneAt` 以 iid 为键，而版本卡 iid 就是版本号，首次完成写入后永不清除 → 后续全被吞。回到运行态或卡片退场时清键。**遗留**：piston-data/bmclapi 的 client.jar 本身仍会 stall（curl 同文件 14MB/s 正常），现由 45s 上限 + 一轮修复自愈；4 条上限下同样复现，非本次改动引入。 |
-| 2026-11-20 | **client.jar `13/14 + 一轮修复` 全链根因（commits 389c619 / 3d01dc6）**。三个缺陷叠加：① `if (m_modpackMode && anyFailed)` —— 「丢弃失败分片重下」只在模组模式生效，MC 模式一个分片被对端 `Connection closed` 就判整个 37MB 文件失败；② `trySplitSlowThread` **没有每文件 4 条上限**（managerTick 的加分片有），慢速分片每 500ms 切一次把 client.jar 切成 7~8 段、每次 abort 一条正在用的连接，对端以 `Connection closed / 无响应头` 回应，合并出的 jar SHA1 不符；③ 合并前没有覆盖率闸门。修法：分片重下对全模式生效（最多 3 次）+ 慢速切分守 4 条上限 + 切出来的后半段 ≥512KB + 合并前按区间首尾相接验「铺满 [0,fileSize)」（不铺满则整文件单连接兜底一次）+ 慢连接不烧尝试次数/不禁源头（清连接缓存换新连接，180s 线程总时限）。**验证：三次连续冷装 26.2 全部 14/14、校验失败 0、零修复轮、慢切 0（34s/29s/33s 含启动 8s）；改前每次都是 13/14。** |
-| 2026-11-21 | **版本号 v2.0.0-beta + 组织名改 ShadowLauncher Dev Team**。① `src/version.h` v1.0.4→v2.0.0-beta（唯一版本源：侧栏/关于页/联机 vendor/更新比对全读它；`UpdateManager::parseTag` 会砍掉 `-beta` 再比数字，预发布号不影响「已是最新」判定）；② `CMakeLists.txt` project VERSION 1.0.1→2.0.0、`resources/app.rc` FILEVERSION/PRODUCTVERSION `2,0,0,0`、FileVersion `2.0.0.0`、ProductVersion `2.0.0-beta`；③ 组织名 `ShadowTeam`→`ShadowLauncher Dev Team`（app.rc CompanyName / LegalCopyright，OrganizationDomain 改 shadowlauncher.cn）。**故意不动 `setOrganizationName("ShadowTeam")`**：它是 QSettings 与 `%APPDATA%\ShadowTeam\Shadow Launcher`（账号令牌/壁纸/日志）的存储键，改了等于让老用户设置「搬家」，必须配套一次性迁移才可动，代码里已写注释说明。验收：exe 属性 FileVersion=2.0.0.0 / ProductVersion=2.0.0-beta / CompanyName=ShadowLauncher Dev Team；运行日志首行 `=== Shadow Launcher v2.0.0-beta 启动 ===`。 |
-| 2026-11-21 | **仓库链接跟随组织迁移**：GitHub 把仓库迁到了 `ShadowLauncher-Dev-Team/Shadow-Launcher-UI-Next`（旧 `xiaole1173/...` 只剩 301）。`SetAboutPane.qml` 的 `repoUrl`（「访问项目主页」「许可证」两个按钮的唯一来源）与 `main_release.cpp` 启动日志里的仓库地址同步改到新组织；`git remote origin` 本地也改到新地址。**没动** README 里「一代仓库 xiaole1173/shadow-launcher」——那是一代项目的历史地址，不是本仓库。 |
+离屏测量（无窗口、可量内存）需要把 Qt 的 `qoffscreen.dll` 放进部署目录的 `platforms/`，再设 `QT_QPA_PLATFORM=offscreen`；否则进程会静默退出、量到的是空壳。
