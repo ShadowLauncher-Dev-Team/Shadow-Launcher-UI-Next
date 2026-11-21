@@ -13,7 +13,7 @@ Item {
     readonly property var b: (typeof backend !== "undefined") ? backend : null
 
     // 项目地址单一来源：许可证与主页两个按钮都从这里取，别再各写一份
-    readonly property string repoUrl: "https://github.com/xiaole1173/Shadow-Launcher-UI-Next"
+    readonly property string repoUrl: "https://github.com/ShadowLauncher-Dev-Team/Shadow-Launcher-UI-Next"
 
     // 鸣谢条目：name 有 url 时可点击；badge 非空时显示小徽标
     readonly property var credits: [

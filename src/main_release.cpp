@@ -573,7 +573,7 @@ int main(int argc, char *argv[])
     // Modrinth 要求 UA 能标识调用方；原来是占位符 YOUR_APP + 旧仓库地址
     HttpClient::instance().setUserAgent(
         QStringLiteral("ShadowLauncher/%1"
-                       " (https://github.com/xiaole1173/Shadow-Launcher-UI-Next)")
+                       " (https://github.com/ShadowLauncher-Dev-Team/Shadow-Launcher-UI-Next)")
             .arg(QString::fromLatin1(SHADOW_DISPLAY_VERSION)));
 
     // ── 启动封面窗（启动动画方案 A 的静态那一半）────────────────────────────
