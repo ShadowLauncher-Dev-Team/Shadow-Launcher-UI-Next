@@ -26,7 +26,8 @@ Item {
         anchors.leftMargin: 11
         anchors.verticalCenter: parent.verticalCenter
         text: root.placeholder
-        visible: edit.text.length === 0
+        // 输入法组字期间 text 仍是空的，只看 text 会让占位压在候选文字上
+        visible: edit.text.length === 0 && !edit.inputMethodComposing
         color: Theme.line3
         font.family: Theme.fontFamily
         font.pixelSize: 12

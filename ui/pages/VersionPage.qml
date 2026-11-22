@@ -727,7 +727,7 @@ Item {
 
                     Text {
                         anchors.fill: parent
-                        visible: searchInput.text.length === 0
+                        visible: searchInput.text.length === 0 && !searchInput.inputMethodComposing
                         text: qsTr("搜索版本 / 加载器")
                         color: Theme.fg3
                         font.family: Theme.fontFamily

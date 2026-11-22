@@ -581,7 +581,7 @@ Item {
                             onAccepted: page.doJoin()
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
-                                visible: joinInput.text.length === 0
+                                visible: joinInput.text.length === 0 && !joinInput.inputMethodComposing
                                 text: qsTr("粘贴房间码") + "  U/0000-0000-0000-0000"
                                 color: Theme.fg3
                                 font.family: Theme.fontFamily
