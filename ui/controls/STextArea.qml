@@ -22,15 +22,13 @@ Item {
         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
     }
 
-    Text {
+    SPlaceholder {
         anchors.fill: parent
         anchors.margins: 11
-        // 输入法组字期间 text 仍是空的，只看 text 会让占位压在候选文字上
-        visible: root.text.length === 0 && !edit.inputMethodComposing
-        text: root.placeholder
+        target: edit
+        label: root.placeholder
         color: Theme.line3
         wrapMode: Text.WordWrap
-        font.family: Theme.fontFamily
         font.pixelSize: 11
     }
 

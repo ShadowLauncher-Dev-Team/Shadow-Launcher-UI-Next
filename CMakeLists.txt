@@ -259,6 +259,7 @@ set_source_files_properties(ui/controls/SCard.qml PROPERTIES QT_RESOURCE_ALIAS c
 set_source_files_properties(ui/controls/SRow.qml PROPERTIES QT_RESOURCE_ALIAS controls/SRow.qml)
 set_source_files_properties(ui/controls/STextArea.qml PROPERTIES QT_RESOURCE_ALIAS controls/STextArea.qml)
 set_source_files_properties(ui/controls/SInput.qml PROPERTIES QT_RESOURCE_ALIAS controls/SInput.qml)
+set_source_files_properties(ui/controls/SPlaceholder.qml PROPERTIES QT_RESOURCE_ALIAS controls/SPlaceholder.qml)
 set_source_files_properties(ui/pages/ResourcePage.qml PROPERTIES QT_RESOURCE_ALIAS pages/ResourcePage.qml)
 set_source_files_properties(ui/pages/JavaPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/JavaPage.qml)
 set_source_files_properties(ui/pages/MultiplayerPage.qml PROPERTIES QT_RESOURCE_ALIAS pages/MultiplayerPage.qml)
@@ -340,6 +341,7 @@ qt_add_qml_module(ShadowLauncher
         ui/controls/SRow.qml
         ui/controls/STextArea.qml
         ui/controls/SInput.qml
+        ui/controls/SPlaceholder.qml
         ui/controls/SSlider.qml
         ui/pages/VsMemoryPane.qml
         ui/pages/VsToolsPane.qml

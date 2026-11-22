@@ -21,15 +21,13 @@ Item {
         border.color: edit.activeFocus ? Theme.accent : Theme.line2
         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
     }
-    Text {
+    SPlaceholder {
         anchors.left: parent.left
         anchors.leftMargin: 11
         anchors.verticalCenter: parent.verticalCenter
-        text: root.placeholder
-        // 输入法组字期间 text 仍是空的，只看 text 会让占位压在候选文字上
-        visible: edit.text.length === 0 && !edit.inputMethodComposing
+        target: edit
+        label: root.placeholder
         color: Theme.line3
-        font.family: Theme.fontFamily
         font.pixelSize: 12
     }
     TextInput {
