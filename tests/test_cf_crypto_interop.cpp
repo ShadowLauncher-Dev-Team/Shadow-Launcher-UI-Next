@@ -56,7 +56,8 @@ int main(int argc, char** argv)
     }
 
     // 2) 真实 cf_api_key_local.h（仅本地存在时）
-    if (HAVE_CF_LOCAL) {
+#if HAVE_CF_LOCAL
+    {
         const QString key = CfKeyCrypto::decryptEmbeddedCfKey(
             SHADOW_CF_ENC_IKM_HEX, SHADOW_CF_ENC_SALT_HEX,
             SHADOW_CF_ENC_NONCE_HEX, SHADOW_CF_ENC_CIPHER_HEX, SHADOW_CF_ENC_TAG_HEX);
@@ -64,9 +65,10 @@ int main(int argc, char** argv)
         std::printf("[%s] 真实本地头文件解密: 长度=%d%s\n", ok ? "PASS" : "FAIL",
                     key.size(), ok ? "" : " (解密失败)");
         if (!ok) ++failures;
-    } else {
-        std::printf("[SKIP] 真实本地头文件不存在（cf_api_key_local.h 未生成）\n");
     }
+#else
+    std::printf("[SKIP] 真实本地头文件不存在（cf_api_key_local.h 未生成）\n");
+#endif
 
     std::printf(failures == 0 ? "总结果: PASS\n" : "总结果: FAIL (%d)\n", failures);
     return failures == 0 ? 0 : 1;
