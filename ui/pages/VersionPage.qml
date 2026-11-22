@@ -416,6 +416,12 @@ Item {
             }
         }
         function onSelectedVersionChanged() { page.rev++ }
+        // 已安装集合变化（删除版本 / 装完新版本）：立即重建列表。
+        // 删除走的是 shadow_backend::deleteVersion → refreshInstalled()，只发这个信号；
+        // 原先本页没有监听，删完那条仍留在列表里，直到用户退出页面再进来。
+        // refreshLocal(true) 会绕过陈旧阈值；若正撞上扫描，它记 forceRefreshPending，
+        // 由下面的 onScanningChanged 补发，不会丢。
+        function onInstalledVersionsChanged() { page.refreshLocal(true) }
         // 扫描结束：补发之前因"扫描中"没排上的强制刷新（导入完成那一刻常常正撞上扫描）
         function onScanningChanged() {
             if (page.scanning) return

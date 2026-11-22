@@ -3072,6 +3072,10 @@ void ShadowBackend::deleteVersion(const QString& versionId) {
     m_settings->deleteVersion(versionId);
     // Refresh the installed list (deleted version disappears)
     m_version->refreshInstalled();
+    // 2026-11-22：同时重建 versionDetails —— 版本选择列表直接绑定这个属性。
+    // 只刷 refreshInstalled 的话列表停在旧快照，要退出页面再进来才刷新；
+    // 用户在旧列表里点中已删版本，回主页启动就会失败。
+    refreshVersionDetails();
     // If the deleted version was selected, reset to unselected
     if (m_version->selectedVersion() == versionId) {
         m_version->setSelectedVersion(QString());
