@@ -3921,7 +3921,7 @@
         <location filename="../src/backend/launch_backend.cpp" line="164"/>
         <location filename="../src/backend/launch_backend.cpp" line="890"/>
         <source>正在准备...</source>
-        <translation type="unfinished"></translation>
+        <translation>Preparing...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="167"/>
@@ -3952,7 +3952,7 @@
         <location filename="../src/backend/launch_backend.cpp" line="544"/>
         <location filename="../src/backend/launch_backend.cpp" line="586"/>
         <source>Java 自动安装</source>
-        <translation type="unfinished"></translation>
+        <translation>Java auto-install</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="544"/>
@@ -3969,7 +3969,7 @@
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="566"/>
         <source>正在下载 Java %1 (%2%)...</source>
-        <translation type="unfinished"></translation>
+        <translation>Downloading Java %1 (%2%)...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="584"/>
@@ -4005,39 +4005,39 @@
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="704"/>
         <source>检查登录状态</source>
-        <translation type="unfinished"></translation>
+        <translation>Checking sign-in status</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="705"/>
         <source>检查 Java 环境</source>
-        <translation type="unfinished"></translation>
+        <translation>Checking Java environment</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="706"/>
         <location filename="../src/backend/launch_backend.cpp" line="1027"/>
         <source>检查版本文件</source>
-        <translation type="unfinished"></translation>
+        <translation>Checking version files</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="707"/>
         <source>检查依赖文件</source>
-        <translation type="unfinished"></translation>
+        <translation>Checking dependency files</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="708"/>
         <location filename="../src/backend/launch_backend.cpp" line="1029"/>
         <source>检查内存分配</source>
-        <translation type="unfinished"></translation>
+        <translation>Checking memory allocation</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="712"/>
         <source>准备外置登录组件</source>
-        <translation type="unfinished"></translation>
+        <translation>Preparing external sign-in component</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="713"/>
         <source>启动游戏进程</source>
-        <translation type="unfinished"></translation>
+        <translation>Starting the game process</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="946"/>
@@ -4095,7 +4095,7 @@
         <location filename="../src/backend/launch_backend.cpp" line="1868"/>
         <location filename="../src/backend/launch_backend.cpp" line="1869"/>
         <source>启动完成</source>
-        <translation type="unfinished"></translation>
+        <translation>Launch complete</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1025"/>
@@ -4137,7 +4137,7 @@
         <location filename="../src/backend/launch_backend.cpp" line="1130"/>
         <location filename="../src/backend/launch_backend.cpp" line="1131"/>
         <source>令牌刷新超时，重试(%1/3)...</source>
-        <translation type="unfinished"></translation>
+        <translation>Sign-in token refresh timed out, retrying (%1/3)...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1139"/>
@@ -4148,7 +4148,7 @@
         <location filename="../src/backend/launch_backend.cpp" line="1154"/>
         <location filename="../src/backend/launch_backend.cpp" line="1155"/>
         <source>正版授权验证通过</source>
-        <translation type="unfinished"></translation>
+        <translation>Microsoft account verified</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1156"/>
@@ -4179,13 +4179,13 @@
         <location filename="../src/backend/launch_backend.cpp" line="1179"/>
         <location filename="../src/backend/launch_backend.cpp" line="1180"/>
         <source>令牌刷新失败(%1)，重试(%2/3)...</source>
-        <translation type="unfinished"></translation>
+        <translation>Sign-in token refresh failed (%1), retrying (%2/3)...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1194"/>
         <location filename="../src/backend/launch_backend.cpp" line="1195"/>
         <source>正在刷新正版登录令牌(%1/3)...</source>
-        <translation type="unfinished"></translation>
+        <translation>Refreshing Microsoft sign-in token (%1/3)...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1209"/>
@@ -4207,7 +4207,7 @@
         <location filename="../src/backend/launch_backend.cpp" line="1236"/>
         <location filename="../src/backend/launch_backend.cpp" line="1238"/>
         <source>检查登录状态...</source>
-        <translation type="unfinished"></translation>
+        <translation>Checking sign-in status...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1246"/>
@@ -4218,7 +4218,7 @@
         <location filename="../src/backend/launch_backend.cpp" line="1276"/>
         <location filename="../src/backend/launch_backend.cpp" line="1277"/>
         <source>正在刷新正版登录令牌...</source>
-        <translation type="unfinished"></translation>
+        <translation>Refreshing Microsoft sign-in token...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1293"/>
@@ -4229,12 +4229,12 @@
         <location filename="../src/backend/launch_backend.cpp" line="1304"/>
         <location filename="../src/backend/launch_backend.cpp" line="1306"/>
         <source>检查 Java 环境...</source>
-        <translation type="unfinished"></translation>
+        <translation>Checking Java environment...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1313"/>
         <source>正在检测 Java 环境...</source>
-        <translation type="unfinished"></translation>
+        <translation>Detecting Java environment...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1349"/>
@@ -4244,7 +4244,7 @@
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1354"/>
         <source>Java 可执行文件</source>
-        <translation type="unfinished"></translation>
+        <translation>Java executable</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1355"/>
@@ -4260,7 +4260,7 @@
         <location filename="../src/backend/launch_backend.cpp" line="1371"/>
         <location filename="../src/backend/launch_backend.cpp" line="1373"/>
         <source>检查版本文件...</source>
-        <translation type="unfinished"></translation>
+        <translation>Checking version files...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1377"/>
@@ -4277,7 +4277,7 @@
         <location filename="../src/backend/launch_backend.cpp" line="1388"/>
         <location filename="../src/backend/launch_backend.cpp" line="1398"/>
         <source>版本配置</source>
-        <translation type="unfinished"></translation>
+        <translation>Version configuration</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1384"/>
@@ -4298,7 +4298,7 @@
         <location filename="../src/backend/launch_backend.cpp" line="1415"/>
         <location filename="../src/backend/launch_backend.cpp" line="2449"/>
         <source>核心 Jar</source>
-        <translation type="unfinished"></translation>
+        <translation>Core jar</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1415"/>
@@ -4315,7 +4315,7 @@
         <location filename="../src/backend/launch_backend.cpp" line="1434"/>
         <location filename="../src/backend/launch_backend.cpp" line="1436"/>
         <source>检查依赖文件...</source>
-        <translation type="unfinished"></translation>
+        <translation>Checking dependency files...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1442"/>
@@ -4326,18 +4326,18 @@
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1443"/>
         <source>依赖库文件</source>
-        <translation type="unfinished"></translation>
+        <translation>Dependency libraries</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1450"/>
         <source>运行库文件</source>
-        <translation type="unfinished"></translation>
+        <translation>Runtime libraries</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1460"/>
         <location filename="../src/backend/launch_backend.cpp" line="1462"/>
         <source>检查内存分配...</source>
-        <translation type="unfinished"></translation>
+        <translation>Checking memory allocation...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1477"/>
@@ -4363,17 +4363,17 @@
         <location filename="../src/backend/launch_backend.cpp" line="1494"/>
         <location filename="../src/backend/launch_backend.cpp" line="1496"/>
         <source>准备启动环境...</source>
-        <translation type="unfinished"></translation>
+        <translation>Preparing launch environment...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1504"/>
         <source>验证外置登录服务器...</source>
-        <translation type="unfinished"></translation>
+        <translation>Verifying external sign-in server...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1518"/>
         <source>外置登录服务器</source>
-        <translation type="unfinished"></translation>
+        <translation>External sign-in server</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1519"/>
@@ -4384,13 +4384,13 @@
         <location filename="../src/backend/launch_backend.cpp" line="1547"/>
         <location filename="../src/backend/launch_backend.cpp" line="1548"/>
         <source>正在下载 authlib-injector.jar...</source>
-        <translation type="unfinished"></translation>
+        <translation>Downloading authlib-injector.jar...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1591"/>
         <location filename="../src/backend/launch_backend.cpp" line="1650"/>
         <source>正在下载 authlib-injector.jar (%1%)...</source>
-        <translation type="unfinished"></translation>
+        <translation>Downloading authlib-injector.jar (%1%)...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1593"/>
@@ -4406,12 +4406,12 @@
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1674"/>
         <source>下载失败，外置登录可能不可用</source>
-        <translation type="unfinished"></translation>
+        <translation>Download failed; external sign-in may be unavailable</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1693"/>
         <source>正在启动...</source>
-        <translation type="unfinished"></translation>
+        <translation>Starting...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1695"/>
@@ -4421,7 +4421,7 @@
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1758"/>
         <source>进程已启动，等待窗口...</source>
-        <translation type="unfinished"></translation>
+        <translation>Process started, waiting for the window...</translation>
     </message>
     <message>
         <location filename="../src/backend/launch_backend.cpp" line="1774"/>
@@ -8108,7 +8108,7 @@
     <message>
         <location filename="../ui/StageShell.qml" line="70"/>
         <source>松开以填入外置登录地址</source>
-        <translation>Release to fill in the external login address</translation>
+        <translation>Release to fill in the external sign-in address</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="73"/>
