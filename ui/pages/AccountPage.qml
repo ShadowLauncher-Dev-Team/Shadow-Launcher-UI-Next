@@ -1722,7 +1722,7 @@ Item {
                             onTextChanged: page.offlineInput = text
                             Text {
                                 anchors.fill: parent
-                                visible: offlineField.text.length === 0
+                                visible: offlineField.text.length === 0 && !offlineField.inputMethodComposing
                                 text: qsTr("用户名")
                                 color: Theme.imageFgFaint
                                 font.family: Theme.fontFamily
@@ -1862,7 +1862,7 @@ Item {
                                 }
                                 Text {
                                     anchors.fill: parent
-                                    visible: f.text.length === 0
+                                    visible: f.text.length === 0 && !f.inputMethodComposing
                                     text: modelData.ph
                                     color: Theme.imageFgFaint
                                     font.family: Theme.fontFamily

@@ -25,7 +25,8 @@ Item {
     Text {
         anchors.fill: parent
         anchors.margins: 11
-        visible: root.text.length === 0
+        // 输入法组字期间 text 仍是空的，只看 text 会让占位压在候选文字上
+        visible: root.text.length === 0 && !edit.inputMethodComposing
         text: root.placeholder
         color: Theme.line3
         wrapMode: Text.WordWrap
