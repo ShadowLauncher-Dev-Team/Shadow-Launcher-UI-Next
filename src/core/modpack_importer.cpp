@@ -231,15 +231,15 @@ void ModpackImporter::loadApiKeyFromConfig()
     // 密文存储：HKDF-SHA256 + AES-256-GCM 解密（见 cf_key_crypto.h）。
     // 注：此处只做读取不告警——是否真的需要 CF Key 由下载器在遇到 CF 文件时判定，
     // 避免 Modrinth 等纯第三方包导入时出现无关的 CF Key 提示。
-    if (SHADOW_HAS_CF_ENC) {
-        key = CfKeyCrypto::decryptEmbeddedCfKey(
-            SHADOW_CF_ENC_IKM_HEX, SHADOW_CF_ENC_SALT_HEX,
-            SHADOW_CF_ENC_NONCE_HEX, SHADOW_CF_ENC_CIPHER_HEX, SHADOW_CF_ENC_TAG_HEX);
-        if (!key.isEmpty()) {
-            setCurseForgeApiKey(key);
-            return;
-        }
+#if SHADOW_HAS_CF_ENC
+    key = CfKeyCrypto::decryptEmbeddedCfKey(
+        SHADOW_CF_ENC_IKM_HEX, SHADOW_CF_ENC_SALT_HEX,
+        SHADOW_CF_ENC_NONCE_HEX, SHADOW_CF_ENC_CIPHER_HEX, SHADOW_CF_ENC_TAG_HEX);
+    if (!key.isEmpty()) {
+        setCurseForgeApiKey(key);
+        return;
     }
+#endif
 
     // 无内嵌 key 时不在此告警（交由 ModpackDownloader 在确有 CF 文件时提示）
 }
