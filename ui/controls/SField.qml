@@ -66,7 +66,9 @@ Item {
         id: labelBox
         x: root.active ? 26 : icon.x + icon.width + 9
         y: root.active ? -7 : (parent.height - labelText.height) / 2
-        width: labelText.implicitWidth + 8
+        // 上限锁在框内：英文占位文案比中文长得多（"No search needed for Java"），
+        // 不封顶会溢出到右侧按钮上；超出的部分由下面 Text 省略号收尾
+        width: Math.min(labelText.implicitWidth + 8, root.width - x - 12)
         height: labelText.height
         Behavior on y { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
         Behavior on x { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
@@ -79,6 +81,8 @@ Item {
         Text {
             id: labelText
             anchors.centerIn: parent
+            width: Math.min(implicitWidth, parent.width - 8)
+            elide: Text.ElideRight
             text: root.label
             color: Theme.fg3
             font.family: Theme.fontFamily
