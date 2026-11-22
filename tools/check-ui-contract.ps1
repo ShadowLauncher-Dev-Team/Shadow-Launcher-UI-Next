@@ -1,4 +1,4 @@
-# UI 契约检查：把"已经踩过并且已经修好"的坑，变成构建期硬失败。
+﻿# UI 契约检查：把"已经踩过并且已经修好"的坑，变成构建期硬失败。
 # 用法：powershell -File tools/check-ui-contract.ps1 -UiDir <ui 目录>
 param(
     [Parameter(Mandatory = $true)][string]$UiDir
