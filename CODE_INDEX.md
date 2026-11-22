@@ -342,6 +342,7 @@ tools/                    一次性脚本（抓数据/出图/验证），不属�
 | `ui/controls/SField.qml` | 浮动标签搜索框 | text, edited, blur |
 | `ui/controls/SIcon.qml` | Lucide SVG 图标着色 | name, color |
 | `ui/controls/SInput.qml` | 单行输入框 | text, edited |
+| `ui/controls/SPlaceholder.qml` | 输入框占位文字（空态显示，输入法组字时隐藏） | target, label |
 | `ui/controls/SLoadingBar.qml` | 顶部不确定进度条 | running |
 | `ui/controls/SMinecraftHead.qml` | 方形 MC 头像（头图/皮肤兜底） | source, rawSource |
 | `ui/controls/SRipple.qml` | 点击涟漪 | burst |

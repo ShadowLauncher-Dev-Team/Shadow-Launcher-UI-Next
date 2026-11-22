@@ -1720,14 +1720,14 @@ Item {
                             selectionColor: Theme.accent
                             clip: true
                             onTextChanged: page.offlineInput = text
-                            Text {
+                            SPlaceholder {
                                 anchors.fill: parent
-                                visible: offlineField.text.length === 0 && !offlineField.inputMethodComposing
-                                text: qsTr("用户名")
+                                target: offlineField
                                 color: Theme.imageFgFaint
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 13
                                 verticalAlignment: Text.AlignVCenter
+                                label: qsTr("用户名")
                             }
                         }
                     }
@@ -1860,14 +1860,14 @@ Item {
                                     else if (modelData.key === 1) page.emailInput = text
                                     else page.passwordInput = text
                                 }
-                                Text {
+                                SPlaceholder {
                                     anchors.fill: parent
-                                    visible: f.text.length === 0 && !f.inputMethodComposing
-                                    text: modelData.ph
+                                    target: f
                                     color: Theme.imageFgFaint
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 13
                                     verticalAlignment: Text.AlignVCenter
+                                    label: modelData.ph
                                 }
                             }
                         }

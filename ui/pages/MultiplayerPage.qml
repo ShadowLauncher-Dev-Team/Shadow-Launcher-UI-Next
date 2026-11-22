@@ -579,13 +579,13 @@ Item {
                             clip: true
                             selectByMouse: true
                             onAccepted: page.doJoin()
-                            Text {
+                            SPlaceholder {
                                 anchors.verticalCenter: parent.verticalCenter
-                                visible: joinInput.text.length === 0 && !joinInput.inputMethodComposing
-                                text: qsTr("粘贴房间码") + "  U/0000-0000-0000-0000"
+                                target: joinInput
                                 color: Theme.fg3
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 13
+                                label: qsTr("粘贴房间码") + "  U/0000-0000-0000-0000"
                             }
                         }
                     }

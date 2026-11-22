@@ -725,14 +725,14 @@ Item {
                     clip: true
                     onTextChanged: page.query = text
 
-                    Text {
+                    SPlaceholder {
                         anchors.fill: parent
-                        visible: searchInput.text.length === 0 && !searchInput.inputMethodComposing
-                        text: qsTr("搜索版本 / 加载器")
+                        target: searchInput
                         color: Theme.fg3
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
                         verticalAlignment: Text.AlignVCenter
+                        label: qsTr("搜索版本 / 加载器")
                     }
                 }
             }
