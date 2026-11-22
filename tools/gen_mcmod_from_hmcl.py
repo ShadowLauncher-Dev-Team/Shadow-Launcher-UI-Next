@@ -10,7 +10,7 @@ import io, json, os, sys, shutil, datetime
 
 # 用环境变量指定，避免把本机路径写进仓库
 HMCL_TXT = os.environ.get("HMCL_MOD_DATA_TXT", r"C:\path\to\HMCL\src\main\resources\assets\mod_data.txt")
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "qml", "mcmod_map.json")
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "data", "mcmod_map.json")
 
 def parse_hmcl(path):
     entries = []

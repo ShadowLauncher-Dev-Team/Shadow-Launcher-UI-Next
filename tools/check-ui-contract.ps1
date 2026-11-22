@@ -1,4 +1,4 @@
-﻿# UI 契约检查：把"已经踩过并且已经修好"的坑，变成构建期硬失败。
+# UI 契约检查：把"已经踩过并且已经修好"的坑，变成构建期硬失败。
 # 用法：powershell -File tools/check-ui-contract.ps1 -UiDir <ui 目录>
 param(
     [Parameter(Mandatory = $true)][string]$UiDir
@@ -37,7 +37,7 @@ foreach ($f in $files) {
         $isComment = $t.TrimStart().StartsWith('//')
         $code = ($t -replace '\s//.*$', '')
         if (-not $isComment -and ($code -match '[\uD800-\uDFFF]' -or $code -match '[\u2190-\u21FF\u2600-\u27BF\u2B00-\u2BFF]')) {
-            Add-Problem $rel $ln '疑似 emoji/符号做图标，图标须用 qml/icons/lucide 下的 SVG'
+            Add-Problem $rel $ln '疑似 emoji/符号做图标，图标须用 icons/lucide 下的 SVG'
         }
 
         # 3) SpringAnimation 实测数值发散到 ±Infinity
