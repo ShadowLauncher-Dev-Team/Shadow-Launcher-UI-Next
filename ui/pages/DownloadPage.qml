@@ -18,6 +18,9 @@ Item {
     // 窗口宽度而非自身宽度：侧栏收起/展开时自身宽度会变，用它判断会在动画最后一帧
     // 突然从宽布局切到窄布局（用户看到的「最后一刻震动卡一下」）
     readonly property bool narrow: (Window.window ? Window.window.width : width) < 900
+    // tab 横向内边距：英文标签比中文长（Packs / Modpacks / Data 加起来多出 ~50px），
+    // 13 个字符量级的差异靠"缩搜索框"补不完，英文态同时把 tab 内边距收到 10
+    readonly property int tabPad: compactTabs ? 10 : 14
     // 宽布局左右各 48：1100 窗口下内容区能到 796，三列卡片才不至于挤成一团
     readonly property int padH: narrow ? 32 : 48
     readonly property int padR: narrow ? 28 : 48
@@ -423,6 +426,23 @@ Item {
         anchors.top: parent.top
         height: page.topH
 
+        // ── 顶栏横向预算 ──
+        // tab 是导航（必须全部可达），搜索框是次要控件 —— 先给 tab 区留够，剩下的才给搜索框。
+        // 之前搜索框写死 220 且右保留位写死 padR + 96：
+        //   英文 7 个标签要 ~378px，tab 区却只剩 ~307px，tabClip 把最后两个（Data / Java）
+        //   直接裁掉，用户看到的就是「Java 安装入口凭空消失」。
+        // 而窗口按钮实际只占 76px（2 × 32 + 间距 4 + 右边距 8），所以 padR + 96 = 144 白留了 68px。
+        // 按实际占用预留后，1100 默认窗口下：中文/英文都是 7 个 tab + 完整 220 搜索框。
+        readonly property int winBtnReserve: 76 + 8   // 窗口按钮实际占用 + 与搜索框的间隙
+        readonly property real tabsNeed: tabsRow ? tabsRow.implicitWidth : 0
+        readonly property real searchRoom: {
+            const fixed = page.padH + topLeft.width + 16 + 14 + 8 + 32 + winBtnReserve
+            return width - fixed - tabsNeed
+        }
+        // 再窄就把搜索框整个收起来：宁可少一个搜索入口，也不能让 tab 被裁
+        readonly property bool showSearch: searchRoom >= 120
+        readonly property real searchW: Math.max(120, Math.min(220, searchRoom))
+
         // 空白处拖动窗口。无边框窗口没有系统标题栏，必须显式请求系统接管移动
         // （backend.beginWindowMove 内部走 QWindow::startSystemMove，保留贴边吸附）。
         // 放在最前面声明：后面的标题 / tab / 搜索框 / 窗口按钮都盖在它上面，
@@ -472,8 +492,9 @@ Item {
             visible: page.mode === 0
             anchors.left: topLeft.right
             anchors.leftMargin: 16
-            anchors.right: headerSearch.left
-            anchors.rightMargin: 14
+            // 搜索框收起时，tab 区直接吃到右边保留位，把空间全让给 tab
+            anchors.right: topBar.showSearch ? headerSearch.left : parent.right
+            anchors.rightMargin: topBar.showSearch ? 14 : topBar.winBtnReserve
             anchors.verticalCenter: parent.verticalCenter
             // 必须要高度：clip 容器高度默认 0 时，里面整排 tab 会被裁没（表现为"tab 消失"）
             height: parent.height
@@ -506,7 +527,7 @@ Item {
                     model: page.tabs
                     delegate: Rectangle {
                         height: 28
-                        width: tabTxt.implicitWidth + 14
+                        width: tabTxt.implicitWidth + page.tabPad
                     radius: Theme.rSm
                     function syncTabGeom() { page.reportTabGeom(index, this) }
                     Component.onCompleted: syncTabGeom()
@@ -537,15 +558,16 @@ Item {
         // 搜索 + 刷新（列表态）：搜索框全 tab 常驻，位置固定在顶栏右侧
         Row {
             id: headerSearch
-            visible: page.mode === 0
+            visible: page.mode === 0 && topBar.showSearch
             anchors.right: parent.right
-            anchors.rightMargin: page.padR + 96
+            anchors.rightMargin: topBar.winBtnReserve
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
 
             SField {
                 id: globalSearch
-                width: 220; height: 34
+                width: topBar.showSearch ? topBar.searchW : 0
+                height: 34
                 anchors.verticalCenter: parent.verticalCenter
                 label: page.tab === 6 ? qsTr("Java 无需搜索")
                      : page.tab === 0 ? qsTr("搜索版本号")
