@@ -42,6 +42,8 @@ Item {
     property real msiSpeed: 0
     property string msiSavedPath: ""
     property string transLabel: ""    // 传输条标题快照（重选后 selVersion 会被清空，不能现拼）
+    // 用户主动点「取消」时不弹失败提示（后端会把 abort 上报成"下载失败: 已取消"）
+    property bool cancelRequested: false
 
     // ── 动效状态（与资源库/下载页同一套语言） ──
     property real reveal: 1        // 当前步骤内容的入场进度（0..1）
@@ -165,10 +167,10 @@ Item {
     }
     function transferCancel() {
         if (zipBusy) {
+            // 不在这里清 installingMajor：后端还在收尾，本地先清会让传输条闪一下再回来。
+            // 终态一律由 onJavaInstallStateChanged / onJavaInstallFinished 驱动。
+            page.cancelRequested = true
             if (java) java.cancelJavaInstall()
-            installingMajor = ""
-            installStatus = ""
-            transLabel = ""
             return
         }
         if (msiBusy) {
@@ -304,6 +306,20 @@ Item {
             if (page.installingMajor.length === 0) { page.transLabel = ""; page.refreshLocal() }
         }
         function onJavaCacheListChanged() { page.refreshLocal() }
+        // 审计修复（2026-11-25）：安装失败/取消原来对用户完全静默 —— 进度条消失、
+        // 没有文案、没有 toast，用户以为装好了。后端 javaInstallFinished 此前零消费者。
+        function onJavaInstallFinished(ok, error) {
+            page.installingMajor = ""
+            page.installStatus = ""
+            page.transLabel = ""
+            if (!ok && !page.cancelRequested && page.toast) {
+                page.toast.show(error && error.length > 0
+                                ? qsTr("Java 安装失败：%1").arg(error)
+                                : qsTr("Java 安装失败，请检查网络后重试"))
+            }
+            page.cancelRequested = false
+            page.refreshLocal()
+        }
         function onSystemJavaScanFinished() { page.finishScan() }
         function onJavaArchsChanged() { page.autoPickArchOs() }
         function onJavaOSesChanged() { page.autoPickArchOs() }

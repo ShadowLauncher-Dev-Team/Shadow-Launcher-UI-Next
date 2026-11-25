@@ -15,16 +15,15 @@ Item {
     id: page
     property var toast: null
     readonly property var b: (typeof backend !== "undefined") ? backend : null
-    // 窗口宽度而非自身宽度：侧栏收起/展开时自身宽度会变，用它判断会在动画最后一帧
-    // 突然从宽布局切到窄布局（用户看到的「最后一刻震动卡一下」）
-    readonly property bool narrow: (Window.window ? Window.window.width : width) < 900
+    // 2026-11-25：删掉 narrow（width<900 的窄布局开关）。无边框窗口用户拖不动边界、程序也不提供改尺寸入口，
+    // 它唯一存在的理由是为旧的 800×550"最小尺寸"让路，留着只会制造「窄屏破版」这类假缺陷。
     // tab 横向内边距：英文标签比中文长（Packs / Modpacks / Data 加起来多出 ~50px），
     // 13 个字符量级的差异靠"缩搜索框"补不完，英文态同时把 tab 内边距收到 10
-    readonly property int tabPad: compactTabs ? 10 : 14
+    readonly property int tabPad: 14
     // 宽布局左右各 48：1100 窗口下内容区能到 796，三列卡片才不至于挤成一团
-    readonly property int padH: narrow ? 32 : 48
-    readonly property int padR: narrow ? 28 : 48
-    readonly property int topH: narrow ? 56 : 64
+    readonly property int padH: 48
+    readonly property int padR: 48
+    readonly property int topH: 64
     signal close()
     /// 资源库点了卡片：交给外壳打开详情页
     signal openResourceDetail(string kind, var item)
@@ -94,16 +93,16 @@ Item {
     property var optifineList: []
     property string expandedLoader: ""
 
-    // 英文比中文长得多（"Resource packs" / "Data packs"），7 个 tab 并排会把右边的搜索框和刷新按钮挤出屏幕。
-    // 所以标签按语言收缩：中文维持原样，英文用短形式。探针就是译文本身，不必额外传语言。
-    readonly property bool compactTabs: qsTr("%1 万").indexOf("万") < 0
+    // 2026-11-25：删掉「按语言收缩标签」的 compactTabs 分支。它拿 qsTr("%1 万") 里的「万」字当语言探针，
+    // 港台译文写作「萬」就整排变成「資源包（短）」（审计实测的真实缺陷）；而且窗口本来就不支持调整尺寸，
+    // 不存在"7 个 tab 挤不下"的场景。标签一律用完整形式。
     readonly property var tabs: [
         qsTr("MC 版本"),
         "Mod",
         qsTr("光影"),
-        compactTabs ? qsTr("资源包（短）") : qsTr("资源包"),
-        compactTabs ? qsTr("整合包（短）") : qsTr("整合包"),
-        compactTabs ? qsTr("数据包（短）") : qsTr("数据包"),
+        qsTr("资源包"),
+        qsTr("整合包"),
+        qsTr("数据包"),
         "Java"
     ]
 
@@ -340,7 +339,8 @@ Item {
         } else {
             b.installVersion(page.picked)
         }
-        if (toast) toast.show(qsTr("已开始安装 %1").arg(name), 2600, "info")
+        // force=true：这是用户点按钮的直接结果，连点两次必须两次都有反馈
+        if (toast) toast.show(qsTr("已开始安装 %1").arg(name), 2600, "info", true)
         page.openProgress()
     }
 
@@ -398,11 +398,11 @@ Item {
             page.refreshPending = false
             refreshTimer.stop()
             if (page.toast)
-                page.toast.show(ok ? qsTr("版本列表刷新成功") : qsTr("版本列表刷新失败"), 2200, ok ? "info" : "warning")
+                page.toast.show(ok ? qsTr("版本列表刷新成功") : qsTr("版本列表刷新失败"), 2200, ok ? "info" : "warning", true)
         }
         function onCancelNotification(installId, message) {
             if (page.toast && message && message.length > 0)
-                page.toast.show(message, 3000, "warning")
+                page.toast.show(message, 3000, "warning", true)
         }
     }
 
@@ -1337,7 +1337,7 @@ Item {
                                             } else if (page.selectLoader(loaderCard.lkey, parent.ver)) {
                                                 page.expandedLoader = ""
                                                 if (page.toast)
-                                                    page.toast.show(loaderCard.llabel + " " + parent.ver, 1600, "info")
+                                                    page.toast.show(loaderCard.llabel + " " + parent.ver, 1600, "info", true)
                                             }
                                         }
                                     }

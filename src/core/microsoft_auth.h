@@ -69,6 +69,10 @@ private:
     QString m_msRefreshToken;
     QString m_msMcToken;
     int m_msTokenExpiresIn = 86400;
+    // OAuth state：发起时生成、回调时比对。不校验就等于允许任意本机进程/网页把
+    // 别人的授权码灌进回调端口（登录 CSRF。实测 2026-11-25：state 完全错误
+    // 的 code 也会直接进入"换取令牌"流程）。
+    QString m_expectedState;
     QTcpServer* m_localServer = nullptr;
     QTcpServer* m_localServer6 = nullptr;   // IPv6/::1 监听（浏览器可能先连 ::1）
     QProcess* m_wv2Process = nullptr;

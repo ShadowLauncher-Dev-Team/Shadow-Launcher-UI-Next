@@ -198,6 +198,12 @@ signals:
 
 private slots:
     void onLaunchProgress(const QString& message);
+    /// 游戏日志增量监视（2s）：26.2 改 LAN 文案 + 组播漏包时的最终兜底，
+    /// 也是「启动器重启接管进程（无 stdout）」时唯一能拿到端口的通道。
+    void onLanLogWatchTick();
+    /// 运行中进程轮询（2s）：被接管（detach 后重新 adopt）的游戏没有 QProcess，
+    /// 退出时不会发 finished；不轮询的话启动页会永远显示「游戏运行中」。
+    void onGameProcessPoll();
 
     // ── Async pre-launch check steps ──
     void runNextCheck();
@@ -230,6 +236,23 @@ private:
     Launcher* m_activeLauncher = nullptr;  // only accept progress from this launcher
     QList<Launcher*> m_runningLaunchers;
     int m_lastMcLanPort = 0;   // 最近一次 LAN 开放端口（JVM 输出解析，0=未开放）
+
+    /// 懒启动进程轮询器（有游戏在跑才跑）
+    void ensureGamePoller();
+    /// 把 m_runningLaunchers 重新落盘成 detached 记录（进程退出后同步清理）
+    void persistRunningGamesAsDetached();
+    QTimer* m_gamePoller = nullptr;
+
+    // ── 游戏日志增量监视（2026-11-25）──
+    void startLanLogWatch();
+    void stopLanLogWatch();
+    /// 找当前最新的游戏 logs/latest.log（优先版本隔离目录，其次按 mtime 取最近 3 个实例）
+    QString resolveGameLogPath() const;
+    QTimer* m_lanLogWatch = nullptr;
+    QString m_lanLogPath;         // 当前监视的日志文件
+    qint64 m_lanLogPos = -1;      // 已读到第几字节（-1 = 下次重建）
+    qint64 m_lanLogPathAtMs = 0;  // 上次解析路径的时间（每 15s 重新找一次）
+    QString m_lanLogLineBuf;      // 跨块半行缓冲
     QString m_gameDir;
     bool m_launching = false;
     int m_launchProgress = 0;

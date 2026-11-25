@@ -303,6 +303,9 @@ private:
     mutable QMutex m_speedMutex;
     double m_emaMbps = 0.0;
     qint64 m_instantBps = 0;   // 最近一次差分速度（主流启动器 Speed 语义，200ms 采样）——速度门限用
+    // 连续「零字节」采样计数：用于契约 §4 的空闲归零（1.5s 无新字节 → 速度 0）
+    int m_speedIdleTicks = 0;
+    static constexpr int kSpeedIdleZeroMs = 1500;
     QAtomicInteger<qint64> m_currentSpeedBps{0};  // 对外速度单值（bytes/s，speedTick 写入；禁止上层二次平滑）
     QAtomicInteger<qint64> m_speedFloorBps{256 * 1024};
     qint64 m_lastFloorIncreaseMs = 0;

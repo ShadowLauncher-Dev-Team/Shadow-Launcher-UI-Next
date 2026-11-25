@@ -226,6 +226,8 @@ public:
     Q_INVOKABLE QString getVersionGameDir(const QString& versionId) const;
 
     Q_INVOKABLE void verifyVersion(const QString& versionId);
+    /// 本次/最近一次校验或修复针对的版本 id（校验报告用它写"版本"字段）
+    QString verifyTargetId() const { return m_verifyTargetId; }
     Q_INVOKABLE void cancelVerify();
     // 校验/修复的根目录：merged 安装中 MC 版本在 tempDir，修复须在 tempDir 上进行
     QString repairRootFor(const QString& versionId) const;
@@ -513,6 +515,8 @@ private:
     int findLoaderInstallStep(const QString& installId);
     /// 精确查找 loader 安装器库下载步骤（"下载 X 安装器库"）
     int findLoaderLibsStep(const QString& installId);
+    /// 取消/收尾时把仍 active/pending 的步骤置为终态（保留当时的百分比）
+    void finishStepsAsTerminal(const QString& installId, const QString& status);
     void rebuildInstallCards();
     void doRebuildInstallCards();
     void activateVerifyOnDownloadsDone(const QString& versionId);
@@ -536,7 +540,15 @@ private:
     VerifyWorker* m_verifyWorker = nullptr;
     /// 并发校验守卫的排队位：调用方在等 verifyFinished，静默 return 会永久挂住
     QString m_pendingVerifyId;
+    /// 本次校验/修复针对的版本 id：校验报告在 ShadowBackend 落盘，需要它写对"版本"字段
+    QString m_verifyTargetId;
+    /// 补发排队的那次校验（校验完成 / 修复完成后都必须排空，否则排队请求永远不执行）
+    void drainPendingVerify();
     QStringList m_failedPathsCache;
+    /// 本次进程里"由本启动器安装新建"的版本目录（QDir::cleanPath 绝对值）。
+    /// cleanupCanceledVersion 只肯删这些目录：取消/失败清理不得波及用户已有的版本目录
+    /// （2026-11-25：OptiFine 安装成功后把用户原版 1.21.4 目录整删了）。
+    QSet<QString> m_installCreatedDirs;
     QString m_autoRepairVersionId;  // 安装失败后自动修复的版本ID
     bool m_autoRepairVerifyDone = false; // 自动修复的verify阶段已完成的标记
     QAtomicInt m_verifyRunning = 0;

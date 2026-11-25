@@ -16,6 +16,7 @@
 #include <QCryptographicHash>
 #include <QNetworkRequest>
 #include "yggdrasil_skin_fetcher.h"
+#include "../utils/token_crypto.h"
 
 Q_LOGGING_CATEGORY(logYggBackend, "shadow.yggdrasil.backend")
 
@@ -559,13 +560,44 @@ void YggdrasilBackend::restoreSession(const QString &apiRoot, const QString &acc
     fetchSkin();
 }
 
+// ── 落盘凭据的读写：一律走 TokenCrypto（AES-256-GCM + DPAPI 保护的密钥）──
+// 2026-11-25 审计实测：session.json 里 accessToken / clientToken 原来是**明文**，
+// 用一份假 authlib 服务器登录后文件里直接就是 '"accessToken": "AUDITFAKE-..."'。
+// 同目录的 accounts.json 早就加密了，只有这份 session 漏了。
+static QString encryptForDisk(const QString &plain, const char *what)
+{
+    if (plain.isEmpty()) return {};
+    const QString enc = TokenCrypto::encrypt(plain);
+    if (enc.isEmpty()) {
+        qCWarning(logYggBackend) << QStringLiteral("令牌加密失败，本次不落盘（避免明文写盘）: ") << what;
+        return {};
+    }
+    return enc;
+}
+
+static QString readSecretFromDisk(const QJsonObject &root, const QString &key, bool &needMigrate)
+{
+    const QString raw = root.value(key).toString();
+    if (raw.isEmpty()) return {};
+    const QString dec = TokenCrypto::decrypt(raw);
+    if (!dec.isEmpty()) return dec;
+    if (!TokenCrypto::looksEncrypted(raw)) {
+        // 旧版本明文落盘：先读进来，loadSession 末尾会以加密形式重写
+        needMigrate = true;
+        return raw;
+    }
+    qCWarning(logYggBackend) << QStringLiteral("会话令牌解密失败，按空处理: ") << key;
+    return {};
+}
+
 void YggdrasilBackend::saveSession()
 {
     QJsonObject obj;
     obj[QStringLiteral("apiRoot")]         = m_session.apiRoot;
     obj[QStringLiteral("email")]           = m_session.email;
-    obj[QStringLiteral("accessToken")]     = m_session.accessToken;
-    obj[QStringLiteral("clientToken")]     = m_session.clientToken;
+    obj[QStringLiteral("accessToken")]     = encryptForDisk(m_session.accessToken, "accessToken");
+    obj[QStringLiteral("clientToken")]     = encryptForDisk(m_session.clientToken, "clientToken");
+    obj[QStringLiteral("encrypted")]       = true;
     obj[QStringLiteral("username")]        = m_session.username;
     obj[QStringLiteral("uuid")]            = m_session.uuid;
     obj[QStringLiteral("profileIndex")]    = m_session.selectedProfileIndex;
@@ -605,10 +637,11 @@ void YggdrasilBackend::loadSession()
     if (err.error != QJsonParseError::NoError) return;
 
     QJsonObject root = doc.object();
+    bool needMigrate = false;
     m_session.apiRoot          = root.value(QStringLiteral("apiRoot")).toString();
     m_session.email            = root.value(QStringLiteral("email")).toString();
-    m_session.accessToken      = root.value(QStringLiteral("accessToken")).toString();
-    m_session.clientToken      = root.value(QStringLiteral("clientToken")).toString();
+    m_session.accessToken      = readSecretFromDisk(root, QStringLiteral("accessToken"), needMigrate);
+    m_session.clientToken      = readSecretFromDisk(root, QStringLiteral("clientToken"), needMigrate);
     m_session.username         = root.value(QStringLiteral("username")).toString();
     m_session.uuid             = root.value(QStringLiteral("uuid")).toString();
     m_session.selectedProfileIndex = root.value(QStringLiteral("profileIndex")).toInt();
@@ -631,6 +664,12 @@ void YggdrasilBackend::loadSession()
         deleteSavedSession();
         emit stateChanged();
         return;
+    }
+
+    // 明文旧文件：立刻以加密形式重写，别让明文多留一秒钟
+    if (needMigrate && m_session.isValid()) {
+        qCInfo(logYggBackend) << QStringLiteral("迁移明文会话至加密存储: ") << sessionFilePath();
+        saveSession();
     }
 
     if (m_session.isValid()) {

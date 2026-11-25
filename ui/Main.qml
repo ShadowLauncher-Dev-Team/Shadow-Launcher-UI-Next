@@ -6,8 +6,9 @@ Window {
     id: appWindow
     visible: true
     flags: Qt.FramelessWindowHint | Qt.Window
-    minimumWidth: 800
-    minimumHeight: 550
+    // 无边框窗口没有可拖拽的边界，用户本来就调不了尺寸，所以不设 minimumWidth/minimumHeight
+    // （2026-11-25：旧代码留了个 800×550 的"最小尺寸"，只为小屏收口和 --ui-size 测试钩子服务，
+    //  反而制造出一整类"窄屏破版"的假缺陷）。
     width: 1100
     height: 720
     title: "Shadow Launcher"
@@ -34,8 +35,8 @@ Window {
         var lh = (scr && scr.height) ? Math.floor(scr.height) : 0
         // 所有数值都要校验——算出 NaN 会让窗口变成 0x0 直接不可见。
         if (lw > 0 && lh > 0) {
-            if (lh < 640) appWindow.height = Math.max(appWindow.minimumHeight, lh - 40)
-            if (lw < 1000) appWindow.width = Math.max(appWindow.minimumWidth, lw - 40)
+            if (lh < 640) appWindow.height = lh - 40
+            if (lw < 1000) appWindow.width = lw - 40
             console.info("[ui] screen logical", lw, "x", lh, "(dpr", dpr + ")",
                          "-> win", appWindow.width, "x", appWindow.height)
         } else {
@@ -50,8 +51,8 @@ Window {
         var w = parseInt(parts[0], 10)
         var h = parseInt(parts[1], 10)
         if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) return
-        appWindow.width = Math.max(appWindow.minimumWidth, w)
-        appWindow.height = Math.max(appWindow.minimumHeight, h)
+        appWindow.width = w
+        appWindow.height = h
         console.info("[ui] window size ->", appWindow.width, "x", appWindow.height)
     }
 

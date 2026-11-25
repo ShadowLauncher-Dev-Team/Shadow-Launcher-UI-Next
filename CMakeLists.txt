@@ -771,6 +771,18 @@ if(SHADOW_BUILD_MODPACK_SELFTEST)
     target_include_directories(FDTest PRIVATE src)
     target_link_libraries(FDTest PRIVATE Qt6::Core Qt6::Network Qt6::Concurrent)
 
+    # 下载引擎核心单测（2026-11-25 上线前审计 DL-CORE）
+    #   B3 = 空闲 1.5s 速度归零（DOWNLOAD_CONTRACT §4）
+    #   B2 = 取消落在合并期：目标文件 / .shadow_merge 不得残留、取消后无信号（契约 §5）
+    # 用法：DLCoreEngineTest.exe [b3|b2|all]   退出码 0=PASS 1=FAIL 2=INCONCLUSIVE
+    add_executable(DLCoreEngineTest
+        tests/test_dl_core_engine.cpp
+        src/core/file_downloader.cpp
+        src/utils/logger.cpp
+    )
+    target_include_directories(DLCoreEngineTest PRIVATE src)
+    target_link_libraries(DLCoreEngineTest PRIVATE Qt6::Core Qt6::Network Qt6::Concurrent)
+
     # CF 适配器自测：搜索统一模型 + 文件→版本转换 + 分类表
     add_executable(CfApiTest
         tests/test_cf_api.cpp

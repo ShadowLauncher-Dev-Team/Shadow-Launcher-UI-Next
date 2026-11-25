@@ -30,19 +30,25 @@ Item {
     function _subjectOf(msg) {
         return String(msg).replace(/\s*(下载完成|安装完成|下载失败|安装失败)$/, "")
     }
+    // 只读检查：不写时间戳。写了就等于"滑动窗口"——用户每 3 秒点一次同一个按钮，
+    // 每次被吞掉的调用都会把窗口再推后 5 秒，于是第一次之后再也不会弹（实测：
+    // 同一句"版本列表刷新失败"连点 3 次，只有第 1 次上屏，第 3 次距第 1 次已 6.2 秒仍被吞）。
     function _seenRecently(msg) {
-        var key = root._subjectOf(msg)
+        var prev = root._recent[root._subjectOf(msg)] || 0
+        return prev > 0 && (Date.now() - prev) < 5000
+    }
+    // 只有"真的上屏了"才记时间戳，窗口从最后一次可见的 toast 起算。
+    function _markRecent(msg) {
         var now = Date.now()
-        var prev = root._recent[key] || 0
         var m = {}
-        for (var k in root._recent) if (now - root._recent[k] < 6000) m[k] = root._recent[k]
-        m[key] = now
+        for (var k in root._recent) if (now - root._recent[k] < 5000) m[k] = root._recent[k]
+        m[root._subjectOf(msg)] = now
         root._recent = m
-        return prev > 0 && (now - prev) < 5000
     }
     // force=true：用户主动点击触发的反馈，绕开"5 秒同文去重"（否则连点两次第二次静默）
     function show(message, duration, style, force) {
         if (force !== true && root._seenRecently(message)) return
+        if (message) root._markRecent(message)
         root.add(message, duration, style, null)
     }
 

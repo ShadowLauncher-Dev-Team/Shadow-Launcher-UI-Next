@@ -30,6 +30,16 @@ struct ZipArchiveData {
 
 namespace {
 
+// ── 解压体积预算（2026-11-25 上线前审计）──
+// 旧实现对解压体积完全没有上限：实测一个 299 KB 的整合包解出 300 MB（压缩比 1029:1）并
+// 直接判"导入成功"；同样手法几十 MB 的包足以写满磁盘。这里三道闸：
+//   单条目上限 / 压缩比上限（仅对"大到值得怀疑"的条目查）/ 单次解压总量上限。
+// 超限条目跳过并告警；总量超限按致命错误中止（-4），任务层据此报"体积超限"而不是静默继续。
+constexpr qint64 kMaxEntryBytes = 2LL * 1024 * 1024 * 1024;   // 单条目 2 GiB
+constexpr qint64 kMaxTotalBytes = 8LL * 1024 * 1024 * 1024;   // 单次解压合计 8 GiB
+constexpr qint64 kRatioCheckMin = 64LL * 1024 * 1024;         // 小于 64 MiB 的条目不查压缩比
+constexpr qint64 kMaxRatio      = 1000;                       // 压缩比上限（正常内容远低于此）
+
 // Windows 下用宽字符 fopen 打开 zip，避免中文路径在 ANSI 代码页下打不开
 // （旧实现用 PowerShell 也是这个原因绕不过去，导致解压失效）。
 bool openZipFileHandle(const QString& path, FILE** out)
@@ -160,11 +170,39 @@ int ZipArchive::extractPrefixTo(const QString& prefix, const QString& destDir,
     // 预扫描目标条目数（central directory，开销可忽略）
     struct Target { mz_uint index; QString rel; };
     QList<Target> targets;
+    qint64 plannedBytes = 0;   // 中央目录声明的解压总量（预扫描预算）
     const mz_uint count = mz_zip_reader_get_num_files(&m_data->zip);
     for (mz_uint i = 0; i < count; ++i) {
         if (cancelFlag && cancelFlag->load()) return -2;
         mz_zip_archive_file_stat st;
         if (!mz_zip_reader_file_stat(&m_data->zip, i, &st)) continue;
+
+        if (!st.m_is_directory) {
+            const qint64 uncomp = static_cast<qint64>(st.m_uncomp_size);
+            const qint64 comp = static_cast<qint64>(st.m_comp_size);
+            // 命中任何一道闸都按致命错误中止整包，而不是"跳过这个文件继续导入"。
+            // 2026-11-25 复验（新构建实测）：只 continue 的话恶意包仍被判「导入完成」，
+            // 版本列表里出现一个缺文件的实例——攻击者拿不到东西，但用户看到的是"成功"。
+            // overrides 里出现 >2 GiB 或 >1000 倍压缩比的条目不存在合法场景，直接判失败。
+            if (uncomp > kMaxEntryBytes) {
+                qCWarning(logMod) << "[zip] 拒绝解压超大条目（中止整包）:" << QString::fromUtf8(st.m_filename)
+                                  << uncomp << "bytes >" << kMaxEntryBytes;
+                m_error = QStringLiteral("压缩包内含超大条目，已中止");
+                return -4;
+            }
+            if (comp > 0 && uncomp > kRatioCheckMin && uncomp / comp > kMaxRatio) {
+                qCWarning(logMod) << "[zip] 拒绝解压可疑压缩比条目（中止整包）:" << QString::fromUtf8(st.m_filename)
+                                  << uncomp << "/" << comp << "=" << (uncomp / comp) << "x";
+                m_error = QStringLiteral("压缩包含可疑高压缩比条目，已中止");
+                return -4;
+            }
+            plannedBytes += uncomp;
+            if (plannedBytes > kMaxTotalBytes) {
+                qCWarning(logMod) << "[zip] 解压总体积超出预算，中止:" << plannedBytes
+                                  << "bytes >" << kMaxTotalBytes;
+                return -4;
+            }
+        }
 
         QString name = QString::fromUtf8(st.m_filename);
         name.replace(QLatin1Char('\\'), QLatin1Char('/'));
@@ -194,6 +232,7 @@ int ZipArchive::extractPrefixTo(const QString& prefix, const QString& destDir,
 
     const int total = targets.size();
     int done = 0;
+    qint64 totalWritten = 0;   // 实际写盘总量（中央目录可谎报，按真实写入再掐一道）
     if (progress) progress(0, total);
     qCInfo(logMod) << "[zip] 解压开始:" << m_path << "prefix=" << (extractAll ? QStringLiteral("<all>") : p)
                    << "条目数=" << total << "→" << destDir;
@@ -233,6 +272,7 @@ int ZipArchive::extractPrefixTo(const QString& prefix, const QString& destDir,
         bool ok = true;
         char buf[256 * 1024];
         qint64 chunkCounter = 0;
+        qint64 written = 0;
         for (;;) {
             if (cancelFlag && cancelFlag->load()) {
                 ok = false;
@@ -246,6 +286,16 @@ int ZipArchive::extractPrefixTo(const QString& prefix, const QString& destDir,
                 outFile.close();
                 outFile.remove();
                 return -3;  // 致命写盘错误（区别于取消 -2），任务层必须中止导入
+            }
+            written += static_cast<qint64>(got);
+            totalWritten += static_cast<qint64>(got);
+            if (written > kMaxEntryBytes || totalWritten > kMaxTotalBytes) {
+                qCWarning(logMod) << "[zip] 解压体积超出预算，中止:" << t.rel
+                                  << written << "/" << totalWritten;
+                mz_zip_reader_extract_iter_free(iter);
+                outFile.close();
+                outFile.remove();
+                return -4;
             }
             chunkCounter += static_cast<qint64>(got);
             if (chunkCounter >= 4 * 1024 * 1024) {

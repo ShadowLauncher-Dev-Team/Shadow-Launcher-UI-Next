@@ -50,6 +50,10 @@ Item {
     readonly property bool inRoom: role !== 0
     // 错误态：只留错误卡（房间码/成员/徽章都不该出现，否则像"房间还在"）
     readonly property bool isError: errorText !== ""
+    // 「在房间里 + 成员列表」只在真正入房后显示（已连通/等开服/等玩家/验证中）。
+    // role 在失败回退路径上可能残留（已在后端修），这里再兜一层：
+    // 只要状态不是 5..8，就不该出现一个 0/5 的空房间。
+    readonly property bool showRoom: inRoom && !isError && st >= 5 && st <= 8
     readonly property bool busy: st >= 1 && st <= 4
 
     // 阶段光条 0..4（4 = 全部走完）：
@@ -602,7 +606,9 @@ Item {
                 Column {
                     width: parent.width
                     spacing: 6
-                    visible: page.inRoom && !page.isError
+                    // 只在实际已入房（已连通/等开服/等玩家/验证中）时显示：
+                    // 加入失败回退后如果 role 残留，也不该再挂着「在房间里」。
+                    visible: page.showRoom
 
                     Item {
                         width: parent.width
@@ -629,6 +635,7 @@ Item {
                     Repeater {
                         model: page.members
                         delegate: Rectangle {
+                            id: memberRow
                             width: parent.width
                             height: 50
                             radius: 9
@@ -653,47 +660,65 @@ Item {
                                     font.pixelSize: 11
                                 }
                             }
-                            Text {
-                                id: memberName
+
+                            // 身份行（昵称 + 灰色标签）与右侧状态同锚「整行垂直中心」。
+                            // 2026-11-25：两行结构（身份行 + 来源小字）无论整体居中还是身份行居中都会
+                            // 一边偏，所以并成一行——来源小字（启动器标识）挪到行尾、状态左边，仍在同一中线。
+                            Item {
+                                id: memberNameLine
                                 anchors.left: av.right
                                 anchors.leftMargin: 10
-                                anchors.top: parent.top
-                                anchors.topMargin: 8
-                                text: String(modelData.name || "?")
-                                color: Theme.fg
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 13
-                            }
-                            Text {
-                                id: memberTag
-                                anchors.left: memberName.right
-                                anchors.leftMargin: 8
-                                anchors.verticalCenter: memberName.verticalCenter
-                                text: {
-                                    var k = String(modelData.kind || "")
-                                    var base = (k === "HOST") ? qsTr("房主") : qsTr("访客")
-                                    if (page.isMe(modelData)) base = qsTr("%1 · 这台设备").arg(base)
-                                    return base
+                                anchors.right: memberRight.left
+                                anchors.rightMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                height: 18
+
+                                Text {
+                                    id: memberName
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    // 昵称是访客自报的，长度不受控（实测 4000 字符会把行撑出
+                                    // 卡片、压住右侧延迟）。留出"标签"的宽度再省略。
+                                    width: Math.max(0, parent.width - memberTag.width - memberVendor.width - 24)
+                                    elide: Text.ElideRight
+                                    text: String(modelData.name || "?")
+                                    color: Theme.fg
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 13
                                 }
-                                color: Theme.fg3
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 10
+                                Text {
+                                    id: memberTag
+                                    anchors.left: memberName.right
+                                    anchors.leftMargin: 8
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    // 只表示身份（房主/访客）。「是不是本机」由右侧状态负责，不在标签里重复。
+                                    text: (String(modelData.kind || "") === "HOST") ? qsTr("房主") : qsTr("访客")
+                                    // 「自己」那一行是蓝底（accentSoft）。fg3 灰字在深蓝上
+                                    // 对比度只有 ~2.5:1，基本看不清 → 自己那行提亮到 fg2。
+                                    color: page.isMe(modelData) ? Theme.fg2 : Theme.fg3
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                }
+                                // 来源小字（协议里的 vendor = 启动器标识）：跟在灰色标签后面，
+                                // 与身份行同一条中线（即整行垂直中心），不放第二行
+                                Text {
+                                    id: memberVendor
+                                    anchors.left: memberTag.right
+                                    anchors.leftMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: page.vendorText(modelData)
+                                    color: page.isMe(modelData) ? Theme.fg2 : Theme.line3
+                                    opacity: page.isMe(modelData) ? 0.8 : 0.95
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                }
                             }
-                            // 来源小字：协议里的 vendor 字段（Terracotta 会写 "Terracotta 0.4.2, EasyTier v…"）
+
                             Text {
-                                anchors.left: memberName.left
-                                anchors.top: memberName.bottom
-                                anchors.topMargin: 2
-                                width: Math.max(0, parent.width - 90)
-                                text: page.vendorText(modelData)
-                                color: Theme.line3
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 10
-                                elide: Text.ElideRight
-                            }
-                            Text {
+                                id: memberRight
                                 anchors.right: parent.right
                                 anchors.rightMargin: 12
+                                // 与灰色标签同一基线：三者都对齐整行中心
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: page.isMe(modelData) ? qsTr("本机") : page.latencyText(modelData)
                                 color: page.latencyColor(modelData)
@@ -787,7 +812,8 @@ Item {
                         width: parent.width
                         height: 36
                         kind: 1
-                        visible: (page.st === 7 || page.st === 6 || page.st === 5) && page.role === 1
+                        // st===9：后端隧道失败时页面只剩这一条出路（见 onEasyTierError 的收尾）
+                        visible: (page.st === 7 || page.st === 6 || page.st === 5 || page.st === 9) && page.role === 1
                         text: qsTr("关闭房间")
                         onClicked: if (page.mp) page.mp.leaveRoom()
                     }

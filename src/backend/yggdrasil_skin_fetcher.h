@@ -52,6 +52,9 @@ private:
     int m_skinVariant = 0;  // 0=classic/steve, 1=slim/alex
     QNetworkAccessManager *m_nam = nullptr;
     QString m_pendingUuid;   // 下载中暂存 uuid，用于写缓存文件名
+    // 当前 m_skinPath 属于哪个 uuid：换账号时必须清掉，否则新账号拉取失败会继续
+    // 显示上一个账号的脸（实测：404 后 skinPath 仍指向上一个账号的缓存）
+    QString m_skinOwnerUuid;
     QStringList m_pendingSkinDomains;  // 本次拉取的域名白名单（随请求走）
     int m_pendingVariant = 0;
 };

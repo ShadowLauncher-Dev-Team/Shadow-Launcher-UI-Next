@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 #include "launcher.h"
+#include "../version.h"       // SHADOW_DISPLAY_VERSION：${launcher_version} 的真实值
 #include "../utils/logger.h"
+#include "../utils/mc_lan_log.h"   // 「对局域网开放」日志行两种文案的唯一判定处
 #include "mc_language.h"
 
 #include <QDir>
@@ -693,14 +695,12 @@ void Launcher::onReadyReadStdout()
     // ── 启动器日志：JVM 标准输出（逐行，避免超长行撑爆单条日志）──
     {
         const QStringList lines = QString::fromUtf8(data).split(QLatin1Char('\n'));
-        // 局域网开放/关闭检测（2026-11-08）：原版 IntegratedServer 会打印
-        //   [net.minecraft.client.server.IntegratedServer/]: Started serving on 52968
-        // 退出世界时打印 “Stopping the server”。这行不依赖网络与语言，比 UDP 组播可靠。
-        static const QRegularExpression lanOpenRx(
-            QStringLiteral("Started serving on ([0-9]+)"));
-        static const QRegularExpression lanStopRx(
-            QStringLiteral("Stopping the server|Stopping server"));
-
+        // 局域网开放/关闭检测（2026-11-08 起，2026-11-25 补 26.2 新文案）：
+        //   <=26.1：Started serving on 52968
+        //   >=26.2：Published LAN server on port 57759   ← 26.2 起 Mojang 改了日志文案
+        // 文案判定集中在 utils/mc_lan_log.h，启动器 stdout 与日志文件兜底共用一份。
+        // 这行不依赖网络与语言，比 UDP 组播可靠。
+        //
         // 跨块拼接完整行（最后一段可能是不完整的半行，留到下次）
         m_lanLineBuf += QString::fromUtf8(data);
         const QStringList lanLines = m_lanLineBuf.split(QLatin1Char('\n'));
@@ -710,15 +710,11 @@ void Launcher::onReadyReadStdout()
         for (int li = 0; li + 1 < lanLines.size(); ++li) {
             const QString t = lanLines.at(li).trimmed();
             if (t.isEmpty()) continue;
-            const auto openMatch = lanOpenRx.match(t);
-            if (openMatch.hasMatch()) {
-                bool ok = false;
-                const int port = openMatch.captured(1).toInt(&ok);
-                if (ok && port > 0 && port < 65536) {
-                    qCInfo(logLaunch) << QStringLiteral("[启动] 检测到游戏已对局域网开放 端口=%1").arg(port);
-                    emit minecraftLanOpened(port);
-                }
-            } else if (lanStopRx.match(t).hasMatch()) {
+            const int port = McLanLog::openPort(t);
+            if (port > 0) {
+                qCInfo(logLaunch) << QStringLiteral("[启动] 检测到游戏已对局域网开放 端口=%1").arg(port);
+                emit minecraftLanOpened(port);
+            } else if (McLanLog::isCloseLine(t)) {
                 emit minecraftLanClosed();
             }
         }
@@ -1383,6 +1379,12 @@ QStringList Launcher::buildArgs(const QString& versionId, int maxMemoryMB,
         arg.replace(QStringLiteral("${classpath_separator}"), classpathSep);
         arg.replace(QStringLiteral("${version_name}"), versionId);
         arg.replace(QStringLiteral("${natives_directory}"), nativesDir);
+        // MC 26.x 的 arguments.jvm 里也带 ${launcher_name}/${launcher_version}
+        // （-Dminecraft.launcher.brand=… / -Dminecraft.launcher.version=…）。原来只在下面的
+        // 游戏参数循环里替换，JVM 侧把字面量原样传给了游戏（实测启动日志里就是
+        // "-Dminecraft.launcher.brand=${launcher_name}"），崩溃报告/日志里显示的品牌是占位符。
+        arg.replace(QStringLiteral("${launcher_name}"), QStringLiteral("ShadowLauncher"));
+        arg.replace(QStringLiteral("${launcher_version}"), QStringLiteral(SHADOW_DISPLAY_VERSION));
         // Fabric 26.x：jvm 参数 "-DFabricMcEmu= net.minecraft.client.main.Main " 等号后带空格，
         // 透传到命令行会被拆成两个参数（-DFabricMcEmu= 空值 + mainClass 提前 → JVM 把
         // mainClass 当主类、-cp 失效 → ClassNotFoundException）。对齐主流启动器实现 ModLaunch
@@ -1875,7 +1877,7 @@ QStringList Launcher::buildArgs(const QString& versionId, int maxMemoryMB,
             arg.replace(QStringLiteral("${clientid}"), QStringLiteral(""));
             arg.replace(QStringLiteral("${auth_xuid}"), QStringLiteral(""));
             arg.replace(QStringLiteral("${launcher_name}"), QStringLiteral("ShadowLauncher"));
-            arg.replace(QStringLiteral("${launcher_version}"), QStringLiteral("1.0"));
+            arg.replace(QStringLiteral("${launcher_version}"), QStringLiteral(SHADOW_DISPLAY_VERSION));
             arg.replace(QStringLiteral("${profile_name}"), versionId);
             arg.replace(QStringLiteral("${quickPlayPath}"), QString());  // not used
 

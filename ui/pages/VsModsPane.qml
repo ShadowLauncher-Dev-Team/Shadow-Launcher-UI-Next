@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // 版本设置 · Mod 管理（定稿甲：单列卡片）
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Dialogs
 import ShadowLauncher.Next
 
@@ -14,6 +15,7 @@ Item {
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     property var allMods: []
     property string query: ""
+    property string pendingDelete: ""   // 待删除的 Mod 文件名（删除确认弹层用）
     property bool wasLoading: false
 
     readonly property var shown: {
@@ -235,7 +237,7 @@ Item {
                 Column {
                     anchors.left: ico.right
                     anchors.leftMargin: 12
-                    anchors.right: sw.left
+                    anchors.right: rightBox.left
                     anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 5
@@ -277,16 +279,42 @@ Item {
                         font.pixelSize: 11
                     }
                 }
-                SSwitch {
-                    id: sw
+                // 右侧固定区域：启停开关 + 删除。
+                // 2026-11-25 审计：本页原来只有开关，没有任何删除入口（资源包/光影/存档三页都有），
+                // 后端 backend.deleteMod() 早已存在却无人调用 —— 模组删不掉只能去文件管理器。
+                // 用一块固定区域承接子项 anchors（Row 之类 positioner 里放 anchors 不成立）。
+                Item {
+                    id: rightBox
+                    width: 128
+                    height: 28
                     anchors.right: parent.right
-                    anchors.rightMargin: 14
+                    anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    checked: parent.on
-                    onToggled: (v) => {
-                        if (!pane.b) return
-                        pane.b.setModEnabled(modelData.fileName, pane.versionId, v)
-                        pane.reload()
+
+                    SButton {
+                        id: delBtn
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        kind: 1
+                        danger: true
+                        height: 28
+                        radius: 2
+                        text: qsTr("删除")
+                        onClicked: {
+                            pane.pendingDelete = modelData.fileName
+                            confirmPop.open()
+                        }
+                    }
+                    SSwitch {
+                        anchors.right: delBtn.left
+                        anchors.rightMargin: 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        checked: modRow.on
+                        onToggled: (v) => {
+                            if (!pane.b) return
+                            pane.b.setModEnabled(modelData.fileName, pane.versionId, v)
+                            pane.reload()
+                        }
                     }
                 }
                 HoverHandler { id: hov }
@@ -336,6 +364,76 @@ Item {
                 pane.toast.show((enable ? qsTr("已启用 %1 / %2 个 Mod") : qsTr("已禁用 %1 / %2 个 Mod")).arg(n).arg(total), -1, "info", true)
             pane.reload()
         })
+    }
+
+    // 删除确认：删文件不可撤销，必须先问一句（体例与资源包/光影/存档三页一致）
+    Popup {
+        id: confirmPop
+        parent: pane
+        anchors.centerIn: parent
+        width: 360
+        modal: true
+        padding: 0
+        closePolicy: Popup.CloseOnEscape
+        // 只做入场不做退场：退场会让"取消/删除"之后弹窗还挂着播完才消失
+        transformOrigin: Item.Center
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+                NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.durBase; easing.type: Theme.easeEnter }
+            }
+        }
+        background: Rectangle {
+            radius: Theme.rMd
+            color: Theme.bgCard2
+            border.width: 1
+            border.color: Theme.line2
+        }
+        contentItem: Column {
+            width: 360
+            padding: 18
+            spacing: 12
+            Text {
+                text: qsTr("删除 Mod？")
+                color: Theme.fg
+                font.family: Theme.fontFamily
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+            }
+            Text {
+                width: parent.width - 36
+                text: qsTr("%1\n这个操作不能撤销。").arg(pane.pendingDelete)
+                color: Theme.fg2
+                wrapMode: Text.Wrap
+                font.family: Theme.fontFamily
+                font.pixelSize: 12
+            }
+            Row {
+                spacing: 8
+                SButton {
+                    kind: 1
+                    height: 32
+                    radius: 2
+                    text: qsTr("取消")
+                    onClicked: confirmPop.close()
+                }
+                SButton {
+                    kind: 1
+                    danger: true
+                    height: 32
+                    radius: 2
+                    text: qsTr("删除")
+                    onClicked: {
+                        var name = pane.pendingDelete
+                        confirmPop.close()
+                        if (pane.b) pane.b.deleteMod(name, pane.versionId)
+                        if (pane.toast) pane.toast.show(qsTr("已删除 %1").arg(name), -1, "info", true)
+                        pane.pendingDelete = ""
+                        pane.reload()
+                    }
+                }
+            }
+        }
     }
 
     FileDialog {

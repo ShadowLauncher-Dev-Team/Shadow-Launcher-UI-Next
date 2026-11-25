@@ -29,6 +29,11 @@ Item {
     property int repairing: 0
     property bool renaming: false
     property string renameText: ""
+    // 用户主动取消校验 → 本次不产生"通过/异常"结论。
+    // 旧实现里 worker 取消后还会补发 finished(false)，面板据此弹「发现 0 个文件异常」，
+    // 状态点却因为 failedFiles 为空显示绿色「未发现异常」—— 同一次取消给出两个矛盾结论。
+    // 后端已改为"取消不发校验结论"，这里再兜一层：万一还有终态信号到达，也不渲染成结论。
+    property bool cancelRequested: false
     // 删除版本要先确认：版本目录连同里面的模组/存档/配置一起删，不可撤销。
     property bool confirmingDelete: false
     // 删完这个版本就不存在了，设置页必须退出（由 VersionSettingsPage 接住）
@@ -45,6 +50,14 @@ Item {
             pane.resultOk = pane.failedFiles.length === 0
         }
         function onVerifyFinished(allPassed) {
+            if (pane.cancelRequested) {
+                pane.cancelRequested = false
+                pane.failedFiles = []
+                pane.hasResult = false
+                pane.resultOk = false
+                if (pane.toast) pane.toast.show(qsTr("已取消校验"))
+                return
+            }
             pane.hasResult = true
             pane.resultOk = allPassed
             if (pane.failedFiles.length === 0 && allPassed) pane.failedFiles = []
@@ -206,6 +219,7 @@ Item {
                             if (!pane.b) return
                             // 先本地进"校验中"，后端信号来了再校准 ——
                             // 否则点下去到第一条进度之间是完全无反馈的
+                            pane.cancelRequested = false
                             pane.failedFiles = []
                             pane.hasResult = false
                             pane.verifyingLocal = true
@@ -228,6 +242,7 @@ Item {
                         }
                         onClicked: {
                             if (!pane.b) return
+                            pane.cancelRequested = true
                             pane.b.cancelVerify()
                             pane.verifyingLocal = false
                         }

@@ -167,3 +167,5 @@ i18n/_oldui_backup/
 # 临时对比截图（连拍验证留下的）
 /screenshots/_tmp_*
 /design/update-card/onscreen-explorer.png
+
+audit/

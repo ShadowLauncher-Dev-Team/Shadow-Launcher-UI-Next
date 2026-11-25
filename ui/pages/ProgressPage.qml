@@ -15,7 +15,7 @@ Item {
         if (d.state === "done") return qsTr("已完成")
         if (d.state === "fail") return d.error ? qsTr("失败 · %1").arg(d.error) : qsTr("失败")
         var pct = d.total > 0 ? Math.round(d.received / d.total * 100) : 0
-        return pct + "%" + (d.speed > 0 ? (" · " + (d.speed / 1048576).toFixed(1) + " MB/s") : "")
+        return pct + "%" + (d.speed > 0 ? (" · " + page.fmtSpeed(d.speed)) : "")
     }
     readonly property var b: (typeof backend !== "undefined") ? backend : null
     // 窗口宽度而非自身宽度：侧栏收起/展开时自身宽度会变，用它判断会在动画最后一帧
@@ -42,6 +42,16 @@ Item {
         if (sec < 60) return qsTr("%1 秒").arg(sec)
         if (sec < 3600) return qsTr("%1 分钟").arg(Math.round(sec / 60))
         return qsTr("%1 小时 %2 分").arg(Math.floor(sec / 3600)).arg(Math.round((sec % 3600) / 60))
+    }
+
+    // 速度格式化（DOWNLOAD_CONTRACT §4：内部一律 bytes/s，只在 QML 里转 KB/s / MB/s 一位小数）。
+    // 之前一律按 MB/s 输出 —— 低于 52 KB/s 的真实下载、以及刚起步那一刻，都会显示成
+    // "0.0 MB/s"，和"连接卡死"完全无法区分（实测 dl-ui-14：进度在涨，总速度写着 0.0 MB/s）。
+    function fmtSpeed(bps) {
+        var v = Number(bps || 0)
+        if (v <= 0) return qsTr("0 KB/s")
+        if (v < 1048576) return (v / 1024).toFixed(1) + " KB/s"
+        return (v / 1048576).toFixed(1) + " MB/s"
     }
 
     // steps 可能是数组，也可能被 QML 包装成 ListModel（有 get/length）——两种都兼容
@@ -151,11 +161,15 @@ Item {
                     if (page.toast) page.toast.show(isFile ? qsTr("%1 下载完成").arg(cleanNm) : qsTr("%1 安装完成").arg(cleanNm), 2600, "success")
                     if (page.b.refreshInstalled) page.b.refreshInstalled()
                 }
-                continue
+                // 完成态必须看得见：让卡片在 100% / "已完成" 停留 2.5s 再退场。
+                // 之前 done 直接 continue —— 卡片会在同一轮（≤400ms）就被移出列表，
+                // 用户永远看不到完成态（实测 dl-ui-17：进度刚跳到 100%，整页立刻变成"当前没有下载任务"）。
+                if (Date.now() - page._doneAt[r.iid] > 2500) continue
+            } else if (page._doneAt[r.iid]) {
+                // 同一版本第二次下载不再弹「下载完成」：_doneAt 以 iid 为键，而版本卡片的 iid 就是版本号，
+                // 第一次完成写进去后没人清，第二次就会被当成「已播报」吞掉。卡片回到未完成态必须清标记。
+                delete page._doneAt[r.iid]
             }
-            // 同一版本第二次下载不再弹「下载完成」：_doneAt 以 iid 为键，而版本卡片的 iid 就是版本号，
-            // 第一次完成写进去后没人清，第二次就会被当成「已播报」吞掉。卡片回到未完成态必须清标记。
-            if (page._doneAt[r.iid]) delete page._doneAt[r.iid]
             // 失败 / 取消的卡片自动退场：给 3 秒让用户看清终态再 dismissCard；
             // 想立刻关的仍有卡片上的「关闭」按钮。
             var iidKey = String(r.iid)
@@ -178,13 +192,17 @@ Item {
                 steps: (r.steps || []).map(function(s) {
                     return { name: s.name, detail: s.detail, status: s.status, percentage: s.percentage, show: s.show }
                 }), failed: r.failed, error: r.error || "",
-                canCancel: r.canCancel, canRetry: r.canRetry
+                // 已完成的卡片在滞留期内不许显示"取消"（后端对已完成任务仍然回 canCancel=true）
+                canCancel: r.canCancel && !done, canRetry: r.canRetry
             })
             if (!r.failed) {
-                run++
-                sp += (r.speed || 0)
+                // 完成态卡片停在 100%：总进度跟着到 100%，但不再计入"进行中/速度/剩余"
                 prog = Math.max(prog, r.progress || 0)
-                eta = Math.max(eta, r.eta || 0)
+                if (!done) {
+                    run++
+                    sp += (r.speed || 0)
+                    eta = Math.max(eta, r.eta || 0)
+                }
             }
         }
         // 同步进 ListModel：已存在则原地 set（role 变化会通知 delegate），否则 append
@@ -212,7 +230,9 @@ Item {
             var goneIid = cardModel.get(d).iid
             if (!seenIds[goneIid]) {
                 cardModel.remove(d)
-                delete page._doneAt[goneIid]   // 卡片退场后清标记，防止下次同 id 被吞
+                // 这里**不能**清 _doneAt：完成态卡片退场后就走到这条分支，
+                // 清了下一轮 recalc 会重新判定成"刚完成"→ 再弹一次 toast、再把卡片加回来，
+                // 变成每 2.5 秒循环一次的鬼影。标记只在"卡片回到未完成态"时清（见上面的 else if）。
             }
         }
         page.totalSpeed = sp
@@ -337,7 +357,7 @@ Item {
                     Text { text: qsTr("总速度"); color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 11 }
                     Text {
                         width: parent.width
-                        text: (page.totalSpeed / 1048576).toFixed(1) + " MB/s"
+                        text: page.fmtSpeed(page.totalSpeed)
                         color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 18
@@ -480,6 +500,9 @@ Item {
                 readonly property string cardIid: iid
                 readonly property bool cardCanRetry: canRetry
                 readonly property bool cardCanCancel: canCancel
+                // 本卡自己的剩余时间。之前右下角直接绑 page.remainText（页面级最大值），
+                // 多任务时每张卡都显示同一个数（实测：把 remainText 改成哨兵，卡片右下角同步变成哨兵）。
+                readonly property real cardEta: eta || 0
 
                 // 速度归零持续 1.2s 才算"停滞"（避免刚开始还没测速时闪一下流光）
                 property bool stalled: false
@@ -543,8 +566,10 @@ Item {
                     anchors.verticalCenter: headRow.verticalCenter
                     spacing: 6
                     Text {
-                        text: tcard.isFailed ? "0 MB/s"
-                              : ((tcard.sp / 1048576).toFixed(1) + " MB/s · "
+                        // 失败/取消不再伪造 "0 MB/s"：那读起来像"正在下但很慢"，
+                        // 实际是已经停了。只报停在了百分之几，用户才知道还剩多少要补。
+                        text: tcard.isFailed ? (Math.round(tcard.pv * 100) + "%")
+                              : (page.fmtSpeed(tcard.sp) + " · "
                                  + Math.round(tcard.pv * 100) + "%")
                         color: tcard.isFailed ? Theme.dangerText : Theme.accentText
                         font.family: Theme.fontFamily
@@ -690,7 +715,7 @@ Item {
                     anchors.rightMargin: 14
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 18
-                    text: tcard.isFailed ? "" : page.remainText
+                    text: tcard.isFailed ? "" : page.fmtEta(tcard.cardEta)
                     color: Theme.fg3
                     font.family: Theme.fontFamily
                     font.pixelSize: 11

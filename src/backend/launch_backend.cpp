@@ -6,6 +6,7 @@
 #include "../core/launcher.h"
 #include "../core/crash_detector.h"
 #include "../utils/logger.h"
+#include "../utils/mc_lan_log.h"   // 「对局域网开放」日志行两种文案的唯一判定处
 
 #include <QDir>
 #include <QDirIterator>
@@ -250,10 +251,16 @@ void LaunchBackend::killGameProcess()
 {
     qCDebug(logLaunch) << "[PROCESS] killGameProcess() called —" << m_runningLaunchers.size() << "games to kill";
     for (Launcher* launcher : m_runningLaunchers) {
+        // 摘掉 m_activeLauncher 并断开回调：TerminateProcess 之后 QProcess 还会发
+        // finished(1, Crashed)，不掐掉就会走进 handleLaunchFinished，把"用户结束游戏"
+        // 当成启动失败弹诊断面板；同时 deleteLater 之后也不该再有裸指针回调。
+        if (launcher == m_activeLauncher) m_activeLauncher = nullptr;
+        launcher->disconnect();
         launcher->killProcess();  // Kill immediately with taskkill /F /T
         launcher->deleteLater();
     }
     m_runningLaunchers.clear();
+    if (m_gamePoller) m_gamePoller->stop();
 
     m_launching = false;
     m_launchFinishedOk = false;  // 与 launching 一起落，否则浮层卡在'完成态'不消失
@@ -290,6 +297,7 @@ void LaunchBackend::detachAllGames()
         }
     }
     m_runningLaunchers.clear();
+    if (m_gamePoller) m_gamePoller->stop();
     m_activeLauncher = nullptr;
     m_launching = false;
     m_launchFinishedOk = false;  // 与 launching 一起落，否则浮层卡在'完成态'不消失
@@ -345,12 +353,90 @@ void LaunchBackend::adoptDetachedGames()
         qCInfo(logLaunch) << QStringLiteral("[启动] 接管 %1 个上次分离后仍存活的游戏进程")
                                  .arg(adopted);
         writeDetachedGamesJson(path, alive);
+        // 接管来的进程没有 QProcess stdout 管道：联机端口只能从 latest.log 增量读
+        startLanLogWatch();
+        // 接管来的进程也没有 finished 信号：必须轮询 PID 才知道它何时退出
+        ensureGamePoller();
         emit runningCountChanged();
         emit isRunningChanged();
     } else if (!arr.isEmpty()) {
         // 全部已退出：清理残留记录
         writeDetachedGamesJson(path, QJsonArray());
     }
+}
+
+// ── 运行中进程轮询（2026-11-25）──
+// 为什么需要：启动器退出时会把游戏 detach 掉，下次启动用 adoptDetachedGames() 接管。
+// 这种「幽灵」Launcher 只有 PID、没有 QProcess，游戏退出时不会发 finished 信号，
+// m_runningLaunchers 永远不收缩 → 启动页一直显示「游戏运行中 / 运行中 1」，
+// 点强制结束又因为进程早没了而什么都没发生（影实测）。
+void LaunchBackend::ensureGamePoller()
+{
+    if (!m_gamePoller) {
+        m_gamePoller = new QTimer(this);
+        m_gamePoller->setInterval(2000);
+        connect(m_gamePoller, &QTimer::timeout, this, &LaunchBackend::onGameProcessPoll);
+    }
+    if (!m_gamePoller->isActive()) {
+        m_gamePoller->start();
+        qCInfo(logLaunch) << QStringLiteral("[启动] 进程轮询已启动（2s）");
+    }
+}
+
+void LaunchBackend::persistRunningGamesAsDetached()
+{
+    if (m_gameDir.isEmpty())
+        return;
+    QJsonArray persisted;
+    for (Launcher* launcher : m_runningLaunchers) {
+        if (!launcher) continue;
+        const qint64 pid = launcher->pid();
+        if (pid <= 0) continue;
+        QJsonObject o;
+        o.insert(QStringLiteral("pid"), double(pid));
+        o.insert(QStringLiteral("version"), launcher->property("launchVersion").toString());
+        o.insert(QStringLiteral("created"), double(processCreationTimeMs(pid)));
+        persisted.append(o);
+    }
+    writeDetachedGamesJson(detachedGamesFilePath(m_gameDir), persisted);
+}
+
+void LaunchBackend::onGameProcessPoll()
+{
+    if (m_runningLaunchers.isEmpty()) {
+        if (m_gamePoller) m_gamePoller->stop();
+        return;
+    }
+
+    bool removed = false;
+    for (int i = m_runningLaunchers.size() - 1; i >= 0; --i) {
+        Launcher* launcher = m_runningLaunchers.at(i);
+        if (!launcher) {
+            m_runningLaunchers.removeAt(i);
+            removed = true;
+            continue;
+        }
+        if (!launcher->isDetached())
+            continue;                        // 有 QProcess 托管：退出由 finished 回调收尾
+        const qint64 pid = launcher->pid();
+        const qint64 created = pid > 0 ? processCreationTimeMs(pid) : -1;
+        qCDebug(logLaunch) << "[PROCESS] 轮询接管进程 pid=" << pid << "created=" << created;
+        if (pid <= 0 || created >= 0)
+            continue;                        // 进程还活着
+        qCInfo(logLaunch) << QStringLiteral("[启动] 接管的游戏进程已退出 PID=%1").arg(pid);
+        m_runningLaunchers.removeAt(i);
+        QTimer::singleShot(0, launcher, &QObject::deleteLater);
+        removed = true;
+    }
+    if (!removed)
+        return;
+
+    // 顺手清掉 detached 记录：进程都没了，下次启动不该再「接管」一次
+    persistRunningGamesAsDetached();
+    emit runningCountChanged();
+    emit isRunningChanged();
+    emit minecraftStopped();
+    qCDebug(logLaunch) << "[PROCESS] 轮询移除已退出的接管进程，剩余" << m_runningLaunchers.size();
 }
 
 void LaunchBackend::setAuthInfo(const QString& username, const QString& uuid,
@@ -1750,6 +1836,10 @@ void LaunchBackend::handleLaunchStarted(Launcher* launcher)
     launcher->setProperty("launchStartedAt", QDateTime::currentSecsSinceEpoch());
     m_runningLaunchers.append(launcher);
     qCDebug(logLaunch) << "[PROCESS] Game added to running list (total:" << m_runningLaunchers.size() << ")";
+    // 联机：游戏在跑就盯住它的 latest.log（26.2 新文案 / 接管进程无 stdout 时的唯一可靠通道）
+    startLanLogWatch();
+    // 进程轮询：接管来的游戏没有 QProcess，退出只能靠轮询发现
+    ensureGamePoller();
     emit runningCountChanged();
     emit isRunningChanged();
 
@@ -1837,27 +1927,46 @@ void LaunchBackend::onLaunchProgress(const QString& message)
 
 void LaunchBackend::handleLaunchFinished(Launcher* launcher, bool success, const QString& errorMsg)
 {
-    // Guard: launcher may have been removed by killGameByPid already
-    if (!m_runningLaunchers.contains(launcher)) {
-        qCDebug(logLaunch) << "[PROCESS] handleLaunchFinished skipped (already removed by kill)";
+    // 三种"结束"必须区分开（2026-11-25 实测）：
+    //   1) 进程跑起来过 → launcher 在运行列表里；
+    //   2) 进程根本没起来（Launcher::start 里 validateLaunch / 版本 JSON 读取 / QProcess
+    //      FailedToStart 这些同步或异步早退分支）→ 不在列表里，但它仍是本轮启动
+    //      （m_activeLauncher 指向它）→ 必须按启动失败收尾；
+    //   3) 已被 killGameByPid / killGameProcess 摘除 → 用户主动结束，忽略。
+    // 原实现把 2) 和 3) 一起 early-return，于是"版本核心文件缺失"这类失败既不落日志、
+    // 也不出诊断面板、也不复位 m_launching：浮层永远停在「启动游戏进程 进行中」，
+    // 之后每次点启动都被"已在启动中"挡回去（实测 versions/<坏版本> 可稳定复现）。
+    const bool everStarted = m_runningLaunchers.contains(launcher);
+    if (everStarted) {
+        // Remove from running list
+        m_runningLaunchers.removeOne(launcher);
+        qCDebug(logLaunch) << "[PROCESS] Game removed from running list (total:" << m_runningLaunchers.size() << ") success=" << success;
+        // BUGFIX: defer deletion — QProcess may still have pending queued signals
+        // Deferred via singleShot to a clean event-loop iteration
+        launcher->disconnect();
+        QTimer::singleShot(0, launcher, &QObject::deleteLater);
+        emit runningCountChanged();
+        if (m_runningLaunchers.isEmpty()) emit isRunningChanged();
+
+        // Always emit stopped for UI to react
+        emit minecraftStopped();
+        qCDebug(logLaunch) << "[PROCESS] minecraftStopped emitted";
+
+        if (!m_launching) {          // 已启动后的正常/异常退出：由死亡检查与 minecraftStopped 收尾
+            m_activeLauncher = nullptr;
+            return;
+        }
+    } else if (launcher != m_activeLauncher || m_cancelled) {
+        qCDebug(logLaunch) << "[PROCESS] handleLaunchFinished skipped (killed or superseded)";
         return;
+    } else {
+        qCWarning(logLaunch) << QStringLiteral("[PROCESS] 进程未能启动即失败: %1").arg(errorMsg);
+        m_activeLauncher = nullptr;
+        // 这个 Launcher 从没进过运行列表，没有别的地方会删它 —— 这里补上，
+        // 否则每次启动早退都泄漏一个 Launcher + 一个 QProcess。
+        launcher->disconnect();
+        QTimer::singleShot(0, launcher, &QObject::deleteLater);
     }
-
-    // Remove from running list
-    m_runningLaunchers.removeOne(launcher);
-    qCDebug(logLaunch) << "[PROCESS] Game removed from running list (total:" << m_runningLaunchers.size() << ") success=" << success;
-    // BUGFIX: defer deletion — QProcess may still have pending queued signals
-    // Deferred via singleShot to a clean event-loop iteration
-    launcher->disconnect();
-    QTimer::singleShot(0, launcher, &QObject::deleteLater);
-    emit runningCountChanged();
-    if (m_runningLaunchers.isEmpty()) emit isRunningChanged();
-
-    // Always emit stopped for UI to react
-    emit minecraftStopped();
-    qCDebug(logLaunch) << "[PROCESS] minecraftStopped emitted";
-
-    if (!m_launching) return;  // Already handled in handleLaunchStarted death check
 
     // Cancel any pending refresh timeout — game already finished
     if (m_refreshTimeoutTimer) m_refreshTimeoutTimer->stop();
@@ -1876,6 +1985,9 @@ void LaunchBackend::handleLaunchFinished(Launcher* launcher, bool success, const
         emit launchCheckFailed(tr("启动失败"), errorMsg);
         qCCritical(logLaunch) << QStringLiteral("[启动] Minecraft 启动失败 原因=%1").arg(errorMsg);
         emit logMessage(tr("启动失败: %1").arg(errorMsg));
+        // 失败原因必须落到浮层的诊断面板上：m_launchFailed 只有 failPipelineStep 会置位，
+        // 不调它的话崩溃报告已经算好（lastCrash 有效）却没有面板显示，用户只看到节点全绿。
+        failPipelineStep(errorMsg);
 
         // ── Crash detection: async full analysis ──
         // 1) Immediately notify QML (toast: "启动失败，正在分析日志信息…")
@@ -1891,6 +2003,11 @@ void LaunchBackend::handleLaunchFinished(Launcher* launcher, bool success, const
     }
     m_launching = false;
     m_launchFinishedOk = false;  // 与 launching 一起落，否则浮层卡在'完成态'不消失
+    m_activeLauncher = nullptr;
+    // 必须显式发：QML 侧 launching / launchFinishedOk / launchFailed 全靠这个 NOTIFY 刷新。
+    // 漏了这一发时启动器内部状态已经复位，界面却永远停在「100% · 游戏已启动 · 取消启动」
+    // （实测：进程秒退后截图仍是全绿完成态，无法关闭，只能重启启动器）。
+    emit launchStateChanged();
 }
 
 // ============================================================
@@ -2260,6 +2377,8 @@ void LaunchBackend::killGameByPid(qint64 pid)
     for (int i = 0; i < m_runningLaunchers.size(); ++i) {
         if (m_runningLaunchers[i]->pid() == pid) {
             Launcher* launcher = m_runningLaunchers.takeAt(i);
+            if (launcher == m_activeLauncher) m_activeLauncher = nullptr;
+            launcher->disconnect();
             launcher->killProcess();
             launcher->deleteLater();
             emit runningCountChanged();
@@ -2586,13 +2705,173 @@ QString LaunchBackend::exportLaunchScript(const QString& versionId, const QStrin
                                       effectiveJvmArgs, gameArgs, highPerfGpu);
 }
 
-// ── 从游戏日志文件兜底探测 LAN 端口（2026-11-08）──
+// ── 游戏日志增量监视（2026-11-25）──
+// 为什么加这条通道：
+//   1) 26.2 起「对局域网开放」的日志文案从 "Started serving on <port>" 变成
+//      "Published LAN server on port <port>"（见 utils/mc_lan_log.h），旧正则静默失效；
+//   2) 进程是被接管来的（启动器重启过）时没有 QProcess stdout 管道，只能读日志文件；
+//   3) UDP 组播本身不可靠：实测 MC 的广播会从「已断开但仍留着 DHCP 地址」的网卡发出，
+//      扫描器绑在另一块网卡上时一个包都收不到（2026-11-25 本机复现：有线网卡已断开
+//      → 广播仍从它出去；绑在 WLAN 地址上的 socket 0 包）。
+// 做法：游戏在跑时每 2 秒读一次最新 latest.log 的新增字节（记录偏移，只读增量），
+// 命中开服行 emit mcLanOpened，命中关服行 emit mcLanClosed。
+void LaunchBackend::startLanLogWatch()
+{
+    if (!m_lanLogWatch) {
+        m_lanLogWatch = new QTimer(this);
+        m_lanLogWatch->setInterval(2000);
+        connect(m_lanLogWatch, &QTimer::timeout, this, &LaunchBackend::onLanLogWatchTick);
+    }
+    m_lanLogPath.clear();
+    m_lanLogPos = -1;
+    m_lanLogPathAtMs = 0;
+    m_lanLogLineBuf.clear();
+    if (!m_lanLogWatch->isActive())
+        m_lanLogWatch->start();
+
+    // 启动瞬间补一次：接管进程时世界可能早就开着。
+    // probeLanPortFromLogs() 会验证端口仍在监听，不会把上一个已关闭世界的端口带出来。
+    QTimer::singleShot(0, this, [this]() {
+        const int port = probeLanPortFromLogs();
+        if (port > 0) {
+            m_lastMcLanPort = port;
+            emit mcLanOpened(port);
+        }
+    });
+}
+
+void LaunchBackend::stopLanLogWatch()
+{
+    if (m_lanLogWatch)
+        m_lanLogWatch->stop();
+    m_lanLogPath.clear();
+    m_lanLogPos = -1;
+    m_lanLogLineBuf.clear();
+}
+
+// 当前最新的游戏日志：优先版本隔离目录；其次游戏根目录；再按 mtime 取最近改动的实例。
+// 版本隔离下每局游戏的 latest.log 在 versions/<id>/logs/，启动器重启后 m_versionGameDir 可能为空。
+QString LaunchBackend::resolveGameLogPath() const
+{
+    QString best;
+    qint64 bestMs = -1;
+    const auto consider = [&best, &bestMs](const QString& p) {
+        QFileInfo fi(p);
+        if (!fi.exists() || !fi.isFile())
+            return;
+        const qint64 ms = fi.lastModified().toMSecsSinceEpoch();
+        if (ms > bestMs) {
+            bestMs = ms;
+            best = fi.absoluteFilePath();
+        }
+    };
+    if (!m_versionGameDir.isEmpty())
+        consider(m_versionGameDir + QStringLiteral("/logs/latest.log"));
+    if (!m_gameDir.isEmpty()) {
+        consider(m_gameDir + QStringLiteral("/logs/latest.log"));
+        QDir vroot(m_gameDir + QStringLiteral("/versions"));
+        const QFileInfoList dirs =
+            vroot.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::NoSort);
+        for (const QFileInfo& d : dirs)
+            consider(d.absoluteFilePath() + QStringLiteral("/logs/latest.log"));
+    }
+    return best;
+}
+
+void LaunchBackend::onLanLogWatchTick()
+{
+    if (!m_lanLogWatch)
+        return;
+    if (m_runningLaunchers.isEmpty()) {   // 游戏全退了：没有日志可看
+        stopLanLogWatch();
+        return;
+    }
+
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    if (m_lanLogPath.isEmpty() || nowMs - m_lanLogPathAtMs > 15000
+        || !QFileInfo::exists(m_lanLogPath)) {
+        const QString resolved = resolveGameLogPath();
+        m_lanLogPathAtMs = nowMs;
+        if (resolved != m_lanLogPath) {
+            m_lanLogPath = resolved;
+            m_lanLogPos = -1;
+            m_lanLogLineBuf.clear();
+        }
+    }
+    if (m_lanLogPath.isEmpty())
+        return;
+
+    QFile f(m_lanLogPath);
+    if (!f.open(QIODevice::ReadOnly))
+        return;
+    const qint64 size = f.size();
+    if (size < 0) {
+        f.close();
+        return;
+    }
+
+    // 首次开始 / 日志被截断（换了一局）：只回看尾部 128 KB，历史行只用来定位不当作新事件
+    const bool reset = (m_lanLogPos < 0 || size < m_lanLogPos);
+    bool startedMidFile = false;
+    if (reset) {
+        const qint64 tailStart = qMax<qint64>(0, size - 128 * 1024);
+        startedMidFile = (tailStart > 0);
+        m_lanLogPos = tailStart;
+        m_lanLogLineBuf.clear();
+    }
+
+    f.seek(m_lanLogPos);
+    const QByteArray chunk = f.readAll();
+    m_lanLogPos = f.pos();
+    f.close();
+    if (chunk.isEmpty())
+        return;
+
+    QString text = QString::fromUtf8(chunk);
+    if (startedMidFile) {
+        const int nl = text.indexOf(QLatin1Char('\n'));
+        if (nl < 0)
+            return;                      // 整块都在半行里，下次一并丢
+        text.remove(0, nl + 1);          // 丢掉从行中间开始的第一段
+    }
+
+    m_lanLogLineBuf += text;
+    const QStringList lines = m_lanLogLineBuf.split(QLatin1Char('\n'));
+    m_lanLogLineBuf = lines.last();      // 最后一段可能是不完整的半行
+    if (m_lanLogLineBuf.size() > 8192)   // 异常超长行保护
+        m_lanLogLineBuf.clear();
+
+    if (reset)
+        return;                          // 历史由 probeLanPortFromLogs() 负责确认
+
+    for (int i = 0; i + 1 < lines.size(); ++i) {
+        const QString t = lines.at(i).trimmed();
+        if (t.isEmpty())
+            continue;
+        const int port = McLanLog::openPort(t);
+        if (port > 0) {
+            if (port == m_lastMcLanPort)
+                continue;
+            m_lastMcLanPort = port;
+            qCInfo(logLaunch) << QStringLiteral("[联机] 从游戏日志检测到 LAN 端口 %1").arg(port);
+            emit mcLanOpened(port);
+        } else if (McLanLog::isCloseLine(t)) {
+            if (m_lastMcLanPort == 0)
+                continue;
+            m_lastMcLanPort = 0;
+            qCInfo(logLaunch) << QStringLiteral("[联机] 游戏已关闭对局域网开放");
+            emit mcLanClosed();
+        }
+    }
+}
+
+// ── 从游戏日志文件兜底探测 LAN 端口（2026-11-08，2026-11-25 兼容 26.2 文案）──
 // 用途：游戏已经开着、但启动器重启过（detach 接管，没有 QProcess stdout 管道）时，
-// 仍能从 logs/latest.log 里找到最近一次 "Started serving on <port>"。
+// 仍能从 logs/latest.log 里找到最近一次「对局域网开放」的行：
+//   <=26.1 "Started serving on <port>"  /  >=26.2 "Published LAN server on port <port>"
 // 会校验该端口当前是否真的在监听，避免拿到上一个已关闭世界的旧端口。
 int LaunchBackend::probeLanPortFromLogs() const
 {
-    static const QRegularExpression rx(QStringLiteral("Started serving on ([0-9]+)"));
 
     QStringList candidates;
     if (!m_versionGameDir.isEmpty())
@@ -2631,9 +2910,17 @@ int LaunchBackend::probeLanPortFromLogs() const
         f.close();
 
         int lastPort = 0;
-        auto it = rx.globalMatch(text);
-        while (it.hasNext())
-            lastPort = it.next().captured(1).toInt();
+        const QStringList lines = text.split(QLatin1Char('\n'));
+        for (const QString& line : lines) {
+            const QString t = line.trimmed();
+            if (t.isEmpty())
+                continue;
+            const int p = McLanLog::openPort(t);
+            if (p > 0)
+                lastPort = p;
+            else if (McLanLog::isCloseLine(t))
+                lastPort = 0;   // 关过世界之后的开服行才算数
+        }
 
         if (lastPort <= 0 || lastPort >= 65536)
             continue;

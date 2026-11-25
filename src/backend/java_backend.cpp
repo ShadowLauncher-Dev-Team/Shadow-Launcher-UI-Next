@@ -418,7 +418,9 @@ void JavaBackend::installJavaRuntime(int major, const QString& type, const QStri
             m_installingMajor.clear();
             emit javaInstallStateChanged();
             emit javaCacheListChanged();
-            emit javaInstallFinished(ok, err.isEmpty() ? exe : err);
+            // 审计修复：成功时第二参数原本塞的是 java.exe 路径（这个参数在 QML 里叫 error，
+            // 一旦有页面把它当错误文案显示，"安装成功"会变成一段路径文字）
+            emit javaInstallFinished(ok, ok ? QString() : err);
         },
         arch);
 }

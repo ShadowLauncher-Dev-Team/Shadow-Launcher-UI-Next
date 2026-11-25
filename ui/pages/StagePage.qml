@@ -42,6 +42,9 @@ Item {
 
     function refreshRunningList() {
         page.runningList = (b && b.runningCount > 0) ? b.runningGames() : []
+        // nowSec 只在面板开着时按 15s 走表，列表刷新时也要一起对齐，
+        // 否则刚打开面板那一拍显示的是建页面时的旧时间（长时间在跑的实例会显示"0 秒"）。
+        page.nowSec = Date.now() / 1000
         if (page.runningList.length === 0) page.procOpen = false
     }
     // startedAt 是 epoch 秒；没有这个字段时只显示 PID
@@ -291,7 +294,11 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: page.procOpen = !page.procOpen
+                onClicked: {
+                    page.procOpen = !page.procOpen
+                    // 展开即对齐一次计时，避免先看到"0 秒"再跳
+                    if (page.procOpen) page.nowSec = Date.now() / 1000
+                }
             }
         }
         SButton { tone: "dark"; kind: 1; text: qsTr("版本"); iconName: "list"; onClicked: page.openVersions() }
@@ -503,7 +510,9 @@ Item {
         anchors.leftMargin: page.padL
         anchors.bottomMargin: 15
         spacing: 9
-        visible: page.kicker.length > 0
+        // 实例面板（procPanel）是底对齐、按内容向上长的，展开时会正好压在 kicker 这一行上；
+        // 半截字形露在面板边缘外比整行消失更难看，所以面板开着时整行收起。
+        visible: page.kicker.length > 0 && !page.procOpen
         opacity: page.seg(0.12, 0.62)
         transform: Translate { y: 10 * (1 - page.seg(0.12, 0.62)) }
 

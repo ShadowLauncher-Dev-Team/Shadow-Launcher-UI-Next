@@ -570,6 +570,10 @@ Item {
                                     // 每次选择都会**追加**到图库（同内容自动去重），不覆盖已导入的
                                     if (pane.b.chooseBgImage()) {
                                         if (pane.toast) pane.toast.show(qsTr("已加入图库并启用"), 2000)
+                                    } else if (pane.toast) {
+                                        // 非图片 / 读不出来的文件会被后端拒绝（settings_backend importBgFile）。
+                                        // 不提示的话表现为「点了没反应」。
+                                        pane.toast.show(qsTr("这个文件不是可用的图片，换一张试试"), 2600, "warning")
                                     }
                                 }
                             }

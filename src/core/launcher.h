@@ -40,6 +40,10 @@ public:
     void adoptDetachedProcess(qint64 pid);
     qint64 pid() const { return m_pid; }
     bool isRunning() const { return m_process && m_process->state() != QProcess::NotRunning; }
+    /// 是否已脱离 QProcess 托管（接管来的「幽灵」进程只有 PID）。
+    /// 注意：m_process 在构造函数里就创建了，不能拿它判断；要看 m_detached。
+    /// 幽灵进程的退出不会发 finished 信号，必须由 LaunchBackend 轮询 PID 才能感知。
+    bool isDetached() const { return m_detached; }
 
     // ---- Configuration ----
     void setGameDir(const QString& dir) { m_gameDir = dir; }

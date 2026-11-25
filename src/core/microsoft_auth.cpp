@@ -97,6 +97,10 @@ void MicrosoftAuth::emitProgress(const QString& step, const QString& detail) {
 void MicrosoftAuth::cancelLogin() {
     qCInfo(logAccount) << QStringLiteral("取消登录");
     if (m_localServer) { m_localServer->close(); m_localServer->deleteLater(); m_localServer = nullptr; }
+    // ::1 那个监听以前没关：取消一次之后它就一直在 49152 上守着，
+    // 新流程再也拿不到 IPv6 回调端口（实测 netstat：cancel 之后只剩 ::1 在 listen）
+    if (m_localServer6) { m_localServer6->close(); m_localServer6->deleteLater(); m_localServer6 = nullptr; }
+    m_expectedState.clear();
     if (m_wv2Process) {
         m_wv2Process->kill();
         m_wv2Process->deleteLater();
@@ -183,6 +187,15 @@ void MicrosoftAuth::startLogin(const QString& clientId) {
             return;
         }
 
+        // state 必须与本次流程生成的一致：否则这就是别人塞进来的授权码
+        const QString gotState = QUrlQuery(callbackUrl).queryItemValue(QStringLiteral("state"));
+        if (m_expectedState.isEmpty() || gotState != m_expectedState) {
+            qCWarning(logAccount) << QStringLiteral("[MSA] 回调 state 校验失败，丢弃该授权码");
+            respondAndStop("登录失败：回调校验未通过");
+            fail(tr("登录回调校验未通过（state 不匹配），请重新登录"));
+            return;
+        }
+        m_expectedState.clear();   // 一次性
         const QString code = QUrlQuery(callbackUrl).queryItemValue(QStringLiteral("code"), QUrl::FullyDecoded);
         if (code.isEmpty()) {
             respondAndStop("登录失败：回调里没有授权码");
@@ -203,7 +216,8 @@ void MicrosoftAuth::startLogin(const QString& clientId) {
         m_localServer6 = nullptr;
     }
 
-    QString state = createState();
+    m_expectedState = createState();
+    const QString state = m_expectedState;
     QUrl url(kAuthUrl);
     QUrlQuery q;
     q.addQueryItem("client_id", m_clientId);

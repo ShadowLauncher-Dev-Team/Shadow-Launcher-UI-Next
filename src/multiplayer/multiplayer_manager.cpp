@@ -20,6 +20,7 @@
 #include <QCoreApplication>
 #include <QRegularExpression>
 #include <QUdpSocket>
+#include <QNetworkInterface>
 #include <QDateTime>
 #include <QSettings>
 #include "../version.h"   // SHADOW_DISPLAY_VERSION：联机 profile 的 vendor 里带上启动器版本
@@ -174,9 +175,16 @@ void MultiplayerManager::createRoom()
     // Scaffold protocol port: separate from MC port (align with Terracotta)
     QByteArray scaffoldSeed = m_networkKey.toUtf8();
     QByteArray scaffoldHash = QCryptographicHash::hash(scaffoldSeed, QCryptographicHash::Sha256);
-    m_centerPort = 20000 + (static_cast<quint16>(scaffoldHash[0]) << 8 | scaffoldHash[1]) % 10000;
-    if (m_centerPort < 20000)
-        m_centerPort = 20001;  // safety fallback
+    // QByteArray::operator[] is a *signed* char on MSVC: casting it straight to
+    // quint16 sign-extends (0x80..0xFF become 0xFF80..0xFFFF), the OR result goes
+    // negative, "% 10000" goes negative too, and the old "if (< 20000) 20001"
+    // fallback then fired for ~half of all rooms — every such room got port 20001
+    // (实测 2026-11-25: 房间码 CPLH-V4RW-13FN-AWHM 与 L0HD-4PQ1 都拿到 20001,
+    // 而同公式按无符号字节算应为 23154 / 29129). Cast through quint8.
+    const quint16 hash16 = static_cast<quint16>(
+        (static_cast<quint16>(static_cast<quint8>(scaffoldHash.at(0))) << 8)
+        | static_cast<quint16>(static_cast<quint8>(scaffoldHash.at(1))));
+    m_centerPort = static_cast<quint16>(20000 + hash16 % 10000);
 
     QString hostname = Scaffolding::kCenterHostnamePrefix + QString::number(m_centerPort);
 
@@ -552,6 +560,11 @@ void MultiplayerManager::onEasyTierError(const QString& msg)
         m_discoverTimeoutTimer->stop();
     setState(Error, msg);
     emitError(QStringLiteral("network"), msg);
+    // 隧道起不来/中途挂掉必须整房收尾：只 setState(Error) 会把 state 留在 Error、
+    // role/房间码还留着，MultiplayerPage 在 st===9 一个按钮都不显示（既退不了房
+    // 也重建不了，createRoom 只回"请先退出当前房间"），实测只能重启启动器。
+    // 顺序与 handleHostLost 一致：先抛错（页面记下 errorText），再完整拆房回 Idle。
+    leaveRoom();
 }
 
 // ─────────────────────────────────────────
@@ -569,6 +582,11 @@ void MultiplayerManager::startHostServer()
     // Terracotta's ScaffoldingServer binds Ipv4Addr::UNSPECIFIED for the same reason.
     if (!m_server->listen(QHostAddress::Any, m_centerPort)) {
         emitError(QStringLiteral("server_start"), tr("无法启动联机服务: %1").arg(m_server->errorString()));
+        // 端口被占用时这里原来只抛错、不收尾：state 停在 CreatingRoom(1)，页面
+        // 永久显示"正在创建房间…"（只剩一个 取消 按钮）。收尾回 Idle 才能重试。
+        m_server->deleteLater();
+        m_server = nullptr;
+        leaveRoom();
         return;
     }
 
@@ -881,7 +899,9 @@ void MultiplayerManager::onPeerListReady()
             quint16 localPort = PortRequest::requestFree(21234);
             if (!m_easyTier->addPortForward(QStringLiteral("0.0.0.0"), localPort,
                                             ipv4, port, QStringLiteral("tcp"))) {
+                // 收尾必须走 leaveRoom：只抛错会留下 role=Guest，页面继续显示房间
                 emitError(QStringLiteral("tunnel"), tr("无法创建联机隧道端口"));
+                leaveRoom();
                 return;
             }
 
@@ -897,17 +917,13 @@ void MultiplayerManager::onPeerListReady()
 
 void MultiplayerManager::onDiscoverTimeout()
 {
-    qCWarning(logNet) << QStringLiteral("[联机] 发现超时 30秒");
-    m_discoverTimer->stop();
-    m_discoverTimeoutTimer->stop();
-    m_easyTier->stop();
-
-    setState(Idle, QString());
-    m_centerIp.clear();
-    m_centerPort = 0;
-    m_roomCode.clear();
-    emit roomCodeChanged();
+    qCWarning(logNet) << QStringLiteral("[联机] 发现超时 60秒");
+    // 先抛错让页面记下文案，再整房收尾（2026-11-25）：
+    // 原实现只 setState(Idle)+清 roomCode，m_role 仍是 Guest、玩家列表也没清；
+    // 页面 5 秒后 toast 文案清空，就成了「标题是『和朋友一起玩』、
+    // 下面还挂着『在房间里 0/5』」——影实测截图。
     emitError(QStringLiteral("center_not_found"), tr("未找到联机中心，请确认房主已创建房间"));
+    leaveRoom();
 }
 
 void MultiplayerManager::onIdleTimeout()
@@ -983,6 +999,7 @@ void MultiplayerManager::onSocketDisconnected()
                     connectToCenter(QStringLiteral("127.0.0.1"), localPort);
                 } else {
                     emitError(QStringLiteral("reconnect"), tr("重连失败：无法创建联机隧道"));
+                    leaveRoom();
                 }
             }
         });
@@ -999,7 +1016,10 @@ void MultiplayerManager::onSocketDisconnected()
         qCWarning(logNet) << QStringLiteral("[联机] 宾客TCP断开(已验证) 房主已离开");
         handleHostLost(QStringLiteral("房主已离开，房间已自动退出"));
     } else {
-        setState(Error, QStringLiteral("与联机中心的连接已断开"));
+        // 连接过程结束就必须收尾：只 setState(Error) 会留下 role=Guest，
+        // 页面 toast 一消失又变成「在房间里」（2026-11-25 修复）。
+        emitError(QStringLiteral("network"), tr("与联机中心的连接已断开"));
+        leaveRoom();
     }
 }
 
@@ -1018,6 +1038,8 @@ void MultiplayerManager::onSocketError(QAbstractSocket::SocketError err)
     }
     emitError(QStringLiteral("network"), tr("网络错误: %1").arg(
         m_socket ? m_socket->errorString() : QStringLiteral("unknown")));
+    // 同样必须整房收尾，否则 role/玩家列表会留在页面上（2026-11-25）
+    leaveRoom();
 }
 
 void MultiplayerManager::onSocketReadyRead()
@@ -1338,7 +1360,11 @@ void MultiplayerManager::handlePlayerPing(const QByteArray& body, QTcpSocket* so
     QJsonDocument doc = QJsonDocument::fromJson(body);
     if (!doc.isObject()) return;
     QJsonObject obj = doc.object();
-    QString name = obj[QStringLiteral("name")].toString();
+    // 宾客可以发任意长度/带控制字符的昵称，成员行不会截断（实测 4000 字符
+    // 直接把卡片撑破、盖住右侧延迟）。按本机同一套规则收敛，再落进列表。
+    QString name = sanitizeDeviceName(obj[QStringLiteral("name")].toString());
+    if (name.isEmpty())
+        name = QStringLiteral("玩家");
     QString mid = obj[QStringLiteral("machine_id")].toString();
 
     qint64 now = QDateTime::currentMSecsSinceEpoch();
@@ -1638,24 +1664,64 @@ void MultiplayerManager::startFakeServer(quint16 port)
 {
     stopFakeServer();
 
-    m_fakeServerSocket = new QUdpSocket(this);
-    m_fakeServerSocket->setSocketOption(QAbstractSocket::MulticastTtlOption, 4);
-
     // MC LAN discovery: UDP multicast 224.0.2.60:4445
     // Format: [MOTD]server_name[/MOTD][AD]port[/AD]
-    QByteArray data = QStringLiteral("[MOTD]\u8054\u673A MC\u670D\u52A1\u5668[/MOTD][AD]%1[/AD]")
-                         .arg(port).toUtf8();
+    const QByteArray data = QStringLiteral("[MOTD]\u8054\u673A MC\u670D\u52A1\u5668[/MOTD][AD]%1[/AD]")
+                                .arg(port).toUtf8();
+    const QHostAddress group(QStringLiteral("224.0.2.60"));
+
+    // 对齐 Terracotta fakeserver.rs：给每个本机 IPv4 各开一个 socket、各发一份，
+    // 最后再用 0.0.0.0 兜底（让系统按当前多播路由选口）。
+    // MC 只会收到「它 joinGroup 时那块网卡」上的包，所以必须铺满所有网卡：
+    // 单发一路时只要 MC 的组成员关系落在别的网卡（EasyTier TUN 后出现 / 网卡切换 /
+    // 已断开但仍留 DHCP 地址的有线网卡被系统选为多播出口），游戏里就一条都看不到。
+    QStringList announce;
+    QList<QHostAddress> sources;
+    for (const QNetworkInterface& iface : QNetworkInterface::allInterfaces()) {
+        const auto flags = iface.flags();
+        if (!(flags & QNetworkInterface::IsUp) || !(flags & QNetworkInterface::IsRunning))
+            continue;
+        if (flags & QNetworkInterface::IsLoopBack)
+            continue;
+        for (const QNetworkAddressEntry& entry : iface.addressEntries()) {
+            const QHostAddress ip = entry.ip();
+            if (ip.protocol() != QAbstractSocket::IPv4Protocol || ip.isLoopback())
+                continue;
+            if (!sources.contains(ip))
+                sources << ip;
+        }
+    }
+    sources << QHostAddress(QHostAddress::AnyIPv4);   // 兜底：默认路由/默认多播出口
+
+    for (const QHostAddress& src : sources) {
+        auto* sock = new QUdpSocket(this);
+        if (!sock->bind(src, 0)) {
+            // 单块网卡绑不上（刚拔线/地址在回收）不影响其它网卡
+            sock->deleteLater();
+            continue;
+        }
+        sock->setSocketOption(QAbstractSocket::MulticastTtlOption, 4);
+        sock->setSocketOption(QAbstractSocket::MulticastLoopbackOption, 1);  // 本机 MC 也要收到
+        m_fakeServerSockets << sock;
+        announce << src.toString();
+    }
 
     m_fakeServerTimer = new QTimer(this);
-    connect(m_fakeServerTimer, &QTimer::timeout, this, [this, data]() {
-        if (!m_fakeServerSocket)
-            return;
-        // Broadcast to MC LAN discovery multicast address
-        m_fakeServerSocket->writeDatagram(data,
-            QHostAddress(QStringLiteral("224.0.2.60")), 4445);
+    connect(m_fakeServerTimer, &QTimer::timeout, this, [this, data, group]() {
+        for (QUdpSocket* sock : m_fakeServerSockets) {
+            if (sock)
+                sock->writeDatagram(data, group, 4445);
+        }
     });
 
-    qCInfo(logNet) << QStringLiteral("[联机] FakeServer已启动 端口=%1").arg(port);
+    qCInfo(logNet) << QStringLiteral("[联机] FakeServer已启动 端口=%1 广播源=%2")
+        .arg(port).arg(announce.join(QStringLiteral(", ")));
+
+    // 立刻先发一轮：玩家的「多人游戏」页可能正开着在扫
+    for (QUdpSocket* sock : m_fakeServerSockets) {
+        if (sock)
+            sock->writeDatagram(data, group, 4445);
+    }
     m_fakeServerTimer->start(1500);  // every 1.5s per MC protocol
 }
 
@@ -1666,10 +1732,12 @@ void MultiplayerManager::stopFakeServer()
         m_fakeServerTimer->deleteLater();
         m_fakeServerTimer = nullptr;
     }
-    if (m_fakeServerSocket) {
-        m_fakeServerSocket->deleteLater();
-        m_fakeServerSocket = nullptr;
+    for (QUdpSocket* sock : m_fakeServerSockets) {
+        if (!sock) continue;
+        sock->disconnect(this);
+        sock->deleteLater();
     }
+    m_fakeServerSockets.clear();
 }
 
 void MultiplayerManager::broadcastPlayers()

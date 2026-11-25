@@ -10,6 +10,7 @@
 #include <QElapsedTimer>
 #include <QLockFile>
 #include <functional>
+#include <atomic>
 
 #include "http_client.h"
 
@@ -142,7 +143,8 @@ private:
 
     QString m_cpuArch;
     bool m_running = false;
-    bool m_cancelled = false;
+    /// 解压工作线程里每写一个条目都要读它（取消检查），必须是原子量，否则是数据竞争
+    std::atomic<bool> m_cancelled{false};
     bool m_scanThreadRunning = false;
     bool m_waitingForScan = false;
     bool m_retriedThisRound = false;   // 当前版本已自动重试过（每个版本仅重试 1 次）

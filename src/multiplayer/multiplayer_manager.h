@@ -238,7 +238,11 @@ private:
     static constexpr int kMcPresenceTimeoutMs = 120000;
 
     // FakeServer: UDP LAN multicast (224.0.2.60:4445) for MC auto-discovery
-    // Sends [MOTD]...[/MOTD][AD]{port}[/AD] every 1.5s on guest side
+    // 每个本机 IPv4 各一个 socket、各发一份（对齐 Terracotta fakeserver.rs）。
+    // 只发一份的坑（2026-11-25 实测定性）：MC 的 LanServerDetector 用
+    // MulticastSocket(4445) + joinGroup(224.0.2.60) 加的是「那时系统的默认多播接口」，
+    // 而 EasyTier 的 TUN 开房后才出现、会改多播路由 → 单发一路时机/接口一错，
+    // 游戏里就永远看不到「局域网世界」。
     void startFakeServer(quint16 port);
     void stopFakeServer();
 
@@ -261,7 +265,7 @@ private:
     QQueue<QString> m_pendingResponses;
     QTimer* m_heartbeatTimer = nullptr;
     QTimer* m_fakeServerTimer = nullptr;  // FakeServer broadcast timer
-    QUdpSocket* m_fakeServerSocket = nullptr;
+    QList<QUdpSocket*> m_fakeServerSockets;  // 每个本机 IPv4 一个发送 socket
     QTimer* m_discoverTimer = nullptr;
     QTimer* m_discoverTimeoutTimer = nullptr;  // 60s discovery timeout
     QTimer* m_idleTimer = nullptr;             // 5min idle timeout (host only)

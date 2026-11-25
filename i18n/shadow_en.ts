@@ -1672,7 +1672,7 @@
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="743"/>
         <source>关闭</source>
-        <translation type="unfinished"></translation>
+        <translation>Close</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="754"/>
@@ -8133,7 +8133,7 @@
     <message>
         <location filename="../ui/StageShell.qml" line="78"/>
         <source>松开以导入整合包</source>
-        <translation type="unfinished">Release to import the modpack</translation>
+        <translation>Release to import the modpack</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="82"/>
@@ -8173,34 +8173,34 @@
     <message>
         <location filename="../ui/StageShell.qml" line="107"/>
         <source>Mod 管理</source>
-        <translation type="unfinished">Mods</translation>
+        <translation>Mods</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="108"/>
         <source>光影管理</source>
-        <translation type="unfinished">Shaders</translation>
+        <translation>Shaders</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="109"/>
         <location filename="../ui/StageShell.qml" line="118"/>
         <source>资源包</source>
-        <translation type="unfinished">Resource packs</translation>
+        <translation>Resource packs</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="110"/>
         <location filename="../ui/StageShell.qml" line="119"/>
         <source>存档</source>
-        <translation type="unfinished">Saves</translation>
+        <translation>Saves</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="116"/>
         <source>Mod</source>
-        <translation type="unfinished">Mods</translation>
+        <translation>Mod</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="117"/>
         <source>光影包</source>
-        <translation type="unfinished">Shader packs</translation>
+        <translation>Shader packs</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="120"/>
@@ -8220,7 +8220,7 @@
     <message>
         <location filename="../ui/StageShell.qml" line="184"/>
         <source>开始导入整合包：%1</source>
-        <translation type="unfinished">Importing modpack: %1</translation>
+        <translation>Importing modpack: %1</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="186"/>
@@ -8307,7 +8307,7 @@
     <message>
         <location filename="../ui/StageShell.qml" line="1143"/>
         <source>这里不接受这种文件</source>
-        <translation type="unfinished"></translation>
+        <translation>This file type is not accepted here</translation>
     </message>
 </context>
 <context>
@@ -8374,7 +8374,7 @@
     <message>
         <location filename="../ui/UpdateCardWindow.qml" line="208"/>
         <source>完成</source>
-        <translation type="unfinished">Done</translation>
+        <translation>Done</translation>
     </message>
 </context>
 <context>

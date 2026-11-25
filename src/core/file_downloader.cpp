@@ -328,6 +328,15 @@ void FileDownloader::cancel()
             if (f->targetWritten && !f->committed) {
                 if (QFile::remove(f->localPath))
                     qCInfo(logDownload) << QStringLiteral("[夸父] 取消清理未完成文件 %1").arg(f->localPath);
+                // 2026-11-25（审计 DL-CORE-02）：合并中间文件也要清。
+                // mergeFile 先写 <目标>.shadow_merge，校验通过才 rename —— 取消发生在
+                // 合并中途时，只删目标文件会把这个满尺寸的中间文件留在磁盘上
+                // （HANDOFF §13「取消后目标文件可能残留满尺寸」的成因之一）。
+                const QString mergeTmp = f->localPath + QStringLiteral(".shadow_merge");
+                if (QFileInfo::exists(mergeTmp)) {
+                    QFile::remove(mergeTmp);
+                    qCInfo(logDownload) << QStringLiteral("[夸父] 取消清理合并中间文件 %1").arg(mergeTmp);
+                }
             }
         }
     }
@@ -893,6 +902,10 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
     // 对端会间歇性给出 180KB/s 的连接（curl 同样能复现），换一条新连接往往就 3~11MB/s。
     const qint64 threadStartMs = getElapsedMs();
     bool sourceOk = false;
+    // 2026-11-25（审计 DL-CORE-01b）：本次线程是否已判定「对端半截响应/零增长挂死」。
+    // 置位后不再跑「最终兜底」整轮重试 —— 对端每次都会发出同样的一半再挂住，
+    // 兜底只会白烧三倍时间（实测把 20s 的确定性挂死拖成 123s）。
+    bool stalledOut = false;
     bool modRetriedOnce = false;   // 模组专项：全部源耗尽后重置源列表整体重试一轮（PCL Retried 同款）
     for (int sourceIdx = 0; sourceIdx < file->orderedSources.size() && !sourceOk; ++sourceIdx) {
         if (m_cancelled.loadRelaxed()) goto cleanup;
@@ -920,6 +933,11 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
         // 连续「超时且零字节进展」次数（2026-11-19）：用于快速换源，
         // 见下方守卫注释（旧守卫要求 elapsed<5500，而一次超时就有 12s，永不成立）。
         int consecutiveTimeouts = 0;
+        // 2026-11-25（审计 DL-CORE-01c）：本源的「半截响应」次数（对端声明了完整长度却中途静默）
+        int incompleteTimeouts = 0;
+        // 已见过一次半截响应 → 下一次重试把空闲超时收紧到 6s（默认 12s）：
+        // 对端已经表现出会把响应截断，再给满 12s 只是拖时间。成功一次即失效。
+        int retryTimeoutOverride = 0;
         int slowAbortCount = 0;   // 本线程「龟速」放弃次数（2026-11-20）
         for (int attempt = 0; attempt < attemptLimit && !sourceOk; ++attempt) {
             if (m_cancelled.loadRelaxed()) goto cleanup;
@@ -1016,6 +1034,7 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             // 连尾程看门狗都不会来救。结果就是「看起来卡死、其实在龟速滴」。
             const qint64 attStart = getElapsedMs();
             bool slowAbort = false;
+            bool stalledIdle = false;   // 本次 slowAbort 是否由「零增长空闲」触发（DL-CORE-01b）
             QNetworkReply* reply = mgr.get(req);
 
             QEventLoop loop;
@@ -1039,18 +1058,23 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             // 大文件不被固定超时误杀（主流启动器: 传输阶段取消固定超时，靠速度监控；
             // 无数据超过 Timeout 才断开）。旧实现 MC 模式 QTimer 不随数据重置，
             // 大文件下载中 12s 必被掐断（严重 bug）。
+            // 2026-11-25（DL-CORE-01c）：见过半截响应的源，重试窗口收紧到 6s
+            const int effTimeoutMs =
+                (retryTimeoutOverride > 0) ? qMin(timeoutMs, retryTimeoutOverride) : timeoutMs;
             if (m_modpackMode) {
                 // 模组专项：空闲无数据超时——每次收到数据包重置，连续 30s 无数据才断
                 timeout.start(kChunkTimeoutMs);
                 connect(reply, &QNetworkReply::readyRead, &timeout,
                         [&timeout]() { timeout.start(kChunkTimeoutMs); });
             } else {
-                timeout.start(timeoutMs);
+                timeout.start(effTimeoutMs);
                 connect(reply, &QNetworkReply::readyRead, &timeout,
-                        [&timeout, timeoutMs]() { timeout.start(timeoutMs); });
+                        [&timeout, effTimeoutMs]() { timeout.start(effTimeoutMs); });
             }
 
             qint64 lastProgressEmitMs = getElapsedMs();
+            // 看门狗「零增长」基线：每次真正收到新字节时刷新（2026-11-25 审计 DL-CORE-01）
+            qint64 attLastGrowthMs = getElapsedMs();
 
             connect(reply, &QNetworkReply::downloadProgress,
                     [&](qint64 received, qint64 total) {
@@ -1066,7 +1090,7 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                     // 限速 sleep 期间可能被取消/暂停打断：醒来后再确认一次，绝不写统计
                     if (m_cancelled.loadRelaxed() || m_paused.loadRelaxed()) return;
                     // 限速 sleep 会阻塞本线程事件循环：醒来后重置空闲超时，避免被自己的限速误杀
-                    timeout.start(m_modpackMode ? kChunkTimeoutMs : timeoutMs);
+                    timeout.start(m_modpackMode ? kChunkTimeoutMs : effTimeoutMs);
                     // 首包数据到达 → 线程进入 downloading（state 2）。
                     // 分片调度（managerTick Phase2）以 state<2=prep / state==2=dl 判断
                     // 是否可加片——6129062 基线仅模组模式置 state=2，MC 模式 prep>dl 恒成立
@@ -1088,8 +1112,9 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                     if (sourceIdx < file->sourceFailCounts.size())
                         file->sourceFailCounts[sourceIdx] = 0;
                 }
-                th->lastReceiveTime = getElapsedMs();
-                qint64 now = getElapsedMs();
+                attLastGrowthMs = getElapsedMs();   // 看门狗「零增长」判据的基线
+                th->lastReceiveTime = attLastGrowthMs;
+                qint64 now = attLastGrowthMs;
                 if (now - lastProgressEmitMs >= kProgressEmitThrottleMs) {
                     lastProgressEmitMs = now;
                     emit progressChanged(m_completedFiles.loadRelaxed(), m_totalFiles.loadRelaxed(),
@@ -1155,6 +1180,13 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             // 主线程慢速扫描可能置 th->watchdogAbort 请求中止当前连接：
             // 切分后让本线程以缩小后的范围重试（换新连接，有机会命中快边缘）。
             // worker 自己 abort 自己的 reply（线程安全），不跨线程碰 QNetworkReply。
+            // 2026-11-25（审计 DL-CORE-01）：判据改看「增量」。
+            // 旧判据用 reply->bytesAvailable()==0 判卡死，只抓得住「一个字节都没收到」；
+            // 对端发一半就挂住时缓冲里躺着几 MB、bytesAvailable 恒 >0（永不缩小），
+            // 于是既不触发本看门狗、也不触发 transferTimeout（readyRead 已续过命），
+            // 实测 8MB 半截响应在 MC 模式要 110 秒才判失败（见 audit 报告）。
+            // 现在按「距上次收到新字节的时长」判：20s 零增长即放弃本次尝试换连接。
+            // （基线 attLastGrowthMs 在本 attempt 起始处声明，downloadProgress 更新它）
             QTimer watchdogPoll;
             watchdogPoll.setSingleShot(true);
             connect(&watchdogPoll, &QTimer::timeout, [&]() {
@@ -1184,10 +1216,17 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 // 多跑一轮修复（实测总耗时 144s）。现在：
                 //   ① 20 秒**一个字节都没收到**才判定卡死；
                 //   ② 45 秒墙钟上限只对「收 <256KB」的无效尝试生效。
-                const bool stalledStart = (el >= kSlowAttemptWindowMs && gotNow == 0);
+                // ① 起步就停：20 秒一个字节都没收到；
+                // ①b 收到过一半后彻底不动：距上次新增字节 ≥20s（2026-11-25 审计补齐，
+                //     这一条才抓得住「发一半就挂住」——此时 gotNow 已经是几 MB）。
+                const qint64 idleMs = getElapsedMs() - attLastGrowthMs;
+                const bool stalledStart = (el >= kSlowAttemptWindowMs
+                                           && (gotNow == 0
+                                               || (!rangeFilled && idleMs >= kSlowAttemptWindowMs)));
                 const bool overWall = (el >= kMaxAttemptWallMs && gotNow < 256 * 1024);
                 if (stalledStart || overWall) {
                     slowAbort = true;
+                    stalledIdle = (gotNow == 0 || idleMs >= kSlowAttemptWindowMs);
                     qCWarning(logDownload)
                         << QStringLiteral("[夸父] 放弃本次尝试（%1）文件=%2 收=%3B 用时=%4ms")
                                .arg(overWall ? QStringLiteral("超过单次上限") : QStringLiteral("龟速"))
@@ -1290,6 +1329,25 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 // 保留 downloadDone 作为续传基线：已收的字节不重下
                 //（原来是清零，撞上「被饿→掐→重下」就是白扔带宽）
                 ++slowAbortCount;
+                // 2026-11-25（审计 DL-CORE-01b，第 3 轮复验抓到的回归）：
+                // 只补「20s 零增长 → 中止本次尝试」还不够 —— 中止后走的是
+                // 「不消耗尝试次数、原地重发」，而对端每次仍只发一半再挂住，
+                // 于是重发到 180s 线程总时限：实测 123.4s（比修复前的 110s 更差）。
+                // 判据必须区分两种中止：
+                //   · 零增长空闲（确定性挂死）→ 直接判该源不可用，别让龟速重试兜着；
+                //   · 有进展但慢（偶发劣化）→ 保留既有「清连接池 + 原地重发」，
+                //     这条是 2026-11-20 为「BMCLAPI 间歇 11KB/s」加的，不能一起砍掉。
+                if (stalledIdle) {
+                    qCWarning(logDownload)
+                        << QStringLiteral("[夸父] 源持续无新增字节，判该源不可用 文件=%1 收=%2B 用时=%3ms")
+                               .arg(file->localName)
+                               .arg(th->downloadDone)
+                               .arg(getElapsedMs() - threadStartMs);
+                    if (sourceIdx < file->sourceFailCounts.size())
+                        file->sourceFailCounts[sourceIdx] = 5;
+                    stalledOut = true;
+                    break;
+                }
                 const qint64 spent = getElapsedMs() - threadStartMs;
                 if (spent >= kMaxThreadTotalMs) {
                     qCWarning(logDownload)
@@ -1336,6 +1394,45 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                     .arg(bytesSeen)
                     .arg(getElapsedMs() - startTimeMs)
                     .arg(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt());
+                // ── 2026-11-25（审计 DL-CORE-01c，第 4 轮复验抓到的真正分层错误）──
+                // 实测日志（build\Release\logs\shadow_launcher_2026-11-25_21-49-52.log）：
+                //   [夸父] 请求失败 ... 错误=超时 重试=1 | 归因: 响应头=有 已收=239440B 耗时=12597ms 状态=200
+                //   …重试=2…6，每次都是「空转 12.6s 超时」，6 次烧满 75.8s 后才走「最终兜底」。
+                // 结论：12s 的空闲超时永远先于看门狗 20s 判据触发 → DL-CORE-01b 的
+                // stalledIdle 分支在这条路径上根本走不到（它是慢速中止分支，不是超时分支）。
+                // 真正的判据要放在这里：**对端声明了完整 Content-Length，却只给了一小半
+                // 就静默 12s**，且本次尝试净增 <256KB → 这是「半截响应」，不是"网络抖一下"。
+                // 反过来，真实 CDN 中途掉线时本次尝试通常已净增几百 KB~几 MB（downloadDone
+                // 会推进），不会被这里判死，仍走原有的续传重试。
+                {
+                    const qint64 declaredLen =
+                        reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
+                    // 「半截响应」= 声明了完整长度、确实收到过字节、但没到声明长度就静默超时。
+                    // 单次不算：真实 CDN 掉线也会是这个形状，靠续传重试能救回来（2026-11-20 的
+                    // 「换条新连接往往就 3~11MB/s」）。但**连续两次**都在同一条资源上截断，
+                    // 说明对端每次都只吐一半就挂住 —— 再重试只是继续烧 12s×N。
+                    const bool incomplete = timedOut && declaredLen > 0
+                                            && bytesSeen > 0 && bytesSeen < declaredLen;
+                    if (incomplete && ++incompleteTimeouts >= 2) {
+                        qCWarning(logDownload)
+                            << QStringLiteral("[夸父] 对端连续半截响应（声明=%1B 实收=%2B 第%3次），判该源不可用 文件=%4")
+                                   .arg(declaredLen).arg(bytesSeen).arg(incompleteTimeouts)
+                                   .arg(file->localName);
+                        if (sourceIdx < file->sourceFailCounts.size())
+                            file->sourceFailCounts[sourceIdx] = 5;
+                        stalledOut = true;     // 已知对端半截 → 不再跑「最终兜底」整轮
+                        reply->abort();
+                        reply->deleteLater();
+                        break;
+                    }
+                    if (incomplete) {
+                        // 第一次半截：下一次重试收紧窗口（12s → 6s），让"再试一次"也便宜
+                        retryTimeoutOverride = 6000;
+                    } else {
+                        incompleteTimeouts = 0;
+                        retryTimeoutOverride = 0;
+                    }
+                }
                 if (timedOut && bytesSeen == 0) ++consecutiveTimeouts;
                 else consecutiveTimeouts = 0;
                 reply->abort();
@@ -1574,7 +1671,9 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
     // 2026-11-05：以前这里还要求 expectedSha1 非空 —— CurseForge 的文件大多没有 sha1，
     // 于是一旦常规尝试耗尽就再也不会被兜底救回（"失败后永远不恢复"的直接原因之一）。
     // 现在按"有 sha1 用 sha1，没 sha1 用大小"接受数据（见 download_accept.h）。
-    if (!sourceOk && !m_modpackMode && file->orderedSources.size() > 0) {
+    // 2026-11-25（审计 DL-CORE-01b）：已知对端「发一半就挂住」时不要再兜底整轮 ——
+    // 兜底每源 3 次尝试、首次超时还是 60s，实测把 20s 就能判定的挂死拖到 123s。
+    if (!sourceOk && !m_modpackMode && file->orderedSources.size() > 0 && !stalledOut) {
         qCInfo(logDownload) << QStringLiteral("[夸父] 最终兜底：全部源逐个重试一轮 %1").arg(file->localName);
         for (int si = 0; si < file->orderedSources.size() && !sourceOk; ++si) {
             const QString url = file->orderedSources[si];
@@ -1982,6 +2081,13 @@ bool FileDownloader::mergeFile(std::shared_ptr<FileDownload> file)
     // 提交器：close + SHA1 校验 + rename。返回 false 时调用方负责删除 mergeTmp。
     auto commitTmp = [&]() -> bool {
         out.close();
+        // 2026-11-25（审计 DL-CORE-02）：取消后不得把合并结果 rename 进目标路径。
+        // 旧实现没有这道闸：取消恰好落在合并期间时，worker 仍会写完整 + rename，
+        // 于是「取消后磁盘上反而多出一个满尺寸文件」（契约 §5 要求 in-flight 回调早退）。
+        if (m_cancelled.loadRelaxed()) {
+            qCInfo(logDownload) << QStringLiteral("[夸父] 合并被取消，丢弃中间文件 %1").arg(file->localName);
+            return false;
+        }
         if (!file->expectedSha1.isEmpty()) {
             QFile chk(mergeTmp);
             if (!chk.open(QIODevice::ReadOnly)) return false;
@@ -2050,6 +2156,13 @@ bool FileDownloader::mergeFile(std::shared_ptr<FileDownload> file)
         }
         // 注意：downloadEnd 是**排他**上界（实测区间 0..16777216 实际写 16777216 字节），
         // 所以这里不按区间重算期望长度，只累加分片实际长度，最后与声明的文件大小比对。
+        // 2026-11-25（审计 DL-CORE-02）：合并循环按分片粒度响应取消（大文件逐片写盘）。
+        if (m_cancelled.loadRelaxed()) {
+            tf.close();
+            out.close();
+            QFile::remove(mergeTmp);
+            return false;
+        }
         expectedBytes += tf.size();
         out.write(tf.readAll());
         tf.close();
@@ -2100,6 +2213,26 @@ void FileDownloader::speedTick()
     if (bytes < 0) bytes = 0;   // 分片重下/截断修正时 m_downloadedBytes 瞬时回退 → 钳零，避免负速度
     m_lastSpeedBytes = now;
     m_speedTimer.restart();
+
+    // ── 空闲归零（契约 §4：1.5s 无新字节 → 速度归零，不是衰减）──
+    // 旧实现只有 30×100ms 加权窗口：停流 1.5s 时窗口里仍有一半非零样本，
+    // 读数还剩 15·16/2/(30·31/2) ≈ 26%，要 ~3s 才滑到 0 —— 用户看到的是「停了还有速度」。
+    if (bytes == 0) {
+        if (++m_speedIdleTicks * kSpeedTickMs >= kSpeedIdleZeroMs) {
+            m_currentSpeedBps.storeRelaxed(0);
+            m_emaMbps = 0.0;
+            m_instantBps = 0;
+            {
+                QMutexLocker lock(&m_speedMutex);
+                m_speedRecords.clear();
+            }
+            emit progressChanged(m_completedFiles.loadRelaxed(), m_totalFiles.loadRelaxed(),
+                                  m_downloadedBytes.loadRelaxed(), m_totalBytes.loadRelaxed());
+            return;
+        }
+    } else {
+        m_speedIdleTicks = 0;
+    }
 
     qint64 actualBps = bytes * 1000 / elapsed;
     m_instantBps = actualBps;   // 主流启动器 Speed 语义：瞬时差分（速度门限用，响应快）

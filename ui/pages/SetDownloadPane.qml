@@ -34,7 +34,9 @@ Item {
                 SetRow {
                     width: parent.width
                     label: qsTr("游戏文件下载源")
-                    desc: qsTr("影响 MC 本体与资源文件；加载器另有独立策略")
+                    // 消费点：VersionDownloader 选镜像（jar / libraries / assets）。
+                    // 模组与整合包不跟随此项（契约 DOWNLOAD_CONTRACT §11），别写成「影响全部下载」。
+                    desc: qsTr("影响 MC 本体与资源文件；加载器与模组下载另有独立策略")
                     SSegmented {
                         itemHeight: 28
                         items: [qsTr("镜像优先"), qsTr("官方优先"), qsTr("自动切换")]
@@ -46,8 +48,12 @@ Item {
                 SetRow {
                     width: parent.width
                     divider: false
-                    label: qsTr("资源列表源")
-                    desc: qsTr("Mod / 光影 / 资源包等的索引与详情")
+                    // 名字跟契约对齐（原先叫「资源列表源」容易被读成模组平台源）。
+                    // 消费点只有 MC 版本清单域：version_manifest / 版本 JSON / 资源索引
+                    // （VersionBackend::setListDownloadSource、version_downloader.cpp:682）。
+                    // Mod / 光影 / 资源包的搜索走 Modrinth/CurseForge，不受此项影响。
+                    label: qsTr("版本列表源")
+                    desc: qsTr("MC 版本清单、版本 JSON 与资源索引的来源；模组搜索不跟随此项")
                     SSegmented {
                         itemHeight: 28
                         items: [qsTr("镜像优先"), qsTr("官方优先"), qsTr("自动切换")]
@@ -64,18 +70,17 @@ Item {
                 SetRow {
                     width: parent.width
                     label: qsTr("最大并发连接")
-                    // 实测依据（官方源 5173 文件 / 566MB）：192 并发 16.7s 是拐点，256 并发 16.4s、收益消失；
-                    // 再往上只会拉长服务端排队。真正会限流的是第三方镜像（BMCLAPI/CF），不是官方源。
-                    // 所以 desc 按实测口径写，不给「调高会出问题」的暗示。
-                    desc: qsTr("越高越快，官方源实测 192 最快；第三方镜像并发过高可能被限流")
+                    // 上界 = 引擎契约上限 24（version_downloader.cpp:192，DOWNLOAD_CONTRACT §7）。
+                    // 原先滑块画到 256、desc 写「192 最快」，而后端读注册表夹到 512、引擎又夹到 24，
+                    // 于是「滑到最大」「显示 512」和「实际 24」三个数字互不相同（审计 SET-01）。
+                    // 现在三处同一个常量：SettingsBackend::kMaxDownloadConcurrency。
+                    desc: qsTr("上限 24（下载引擎的硬上限）；第三方镜像并发过高会被限流")
                     SSlider {
                         width: 260
                         from: 1
-                        // 上界要盖住默认并发（核数×12，夹取 [32,192]），写小了滑块会贴右端、
-                        // 右侧数字却显示真实值，看起来「拖不动也看不出」。
-                        to: 256
+                        to: 24
                         step: 1
-                        value: pane.s ? pane.s.maxDownloadThreads : 192
+                        value: pane.s ? pane.s.maxDownloadThreads : 24
                         // maxDownloadThreads 是 Q_PROPERTY 的 WRITE 访问器，只能赋值；
                     // 当方法调用会抛 TypeError，滑块动了但右侧数字不变。
                     onMoved: (v) => { if (pane.s) pane.s.maxDownloadThreads = v }
@@ -84,7 +89,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: 46
                         horizontalAlignment: Text.AlignRight
-                        text: (pane.s ? pane.s.maxDownloadThreads : 192)
+                        text: (pane.s ? pane.s.maxDownloadThreads : 24)
                         color: Theme.fg
                         font.family: Theme.fontFamily
                         font.pixelSize: 12

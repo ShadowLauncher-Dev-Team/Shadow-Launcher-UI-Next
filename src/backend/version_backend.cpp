@@ -45,6 +45,7 @@
 
 #include <QDir>
 #include <QDirIterator>
+#include <QStandardPaths>
 #include <QNetworkProxy>
 #include <QNetworkProxyFactory>
 #include <QFileInfo>
@@ -374,7 +375,15 @@ void VersionBackend::setGameDir(const QString& dir)
 
         m_gameDir = dir;
 
-        m_versionMgr->setDataDir(dir + QStringLiteral("/.."));
+        // 版本清单缓存的落点 = 应用数据目录（与 AppBackend::dataDir() 同一套规则）。
+        // 旧实现是 dir + "/.."（游戏目录的上级）：游戏目录指到 D:\Minecraft\.minecraft 时，
+        // 清单缓存被写成 D:\Minecraft\versions.json —— 落在游戏目录之外、会随游戏目录一起
+        // 被导出/迁走；游戏目录只读（如装在 Program Files）时写入静默失败，缓存形同虚设。
+        const QString manifestDataDir =
+            QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+            + QStringLiteral("/shadow");
+        QDir().mkpath(manifestDataDir);
+        m_versionMgr->setDataDir(manifestDataDir);
 
         m_versionMgr->setGameDir(dir);
 
@@ -510,6 +519,11 @@ void VersionBackend::refreshVersionList()
 
     emit logMessage(tr("正在获取版本列表..."));
 
+    // SET-04：主源策略每次刷新都重新读一次设置。旧实现只在构造时 setPreferOfficial 一次，
+    // 改「版本列表源」后必须重启启动器才生效（设置页也没有任何"重启生效"的提示）。
+    // 这里即时同步，UI 改完点刷新即可看到主源变化。
+    m_versionMgr->setPreferOfficial(listPreferOfficial());
+
     // Re-scan local versions directory so installed status reflects reality
 
     // (user may have manually deleted version folders)
@@ -532,7 +546,11 @@ void VersionBackend::refreshInstalled()
     m_refreshInstalledBusy = true;
 
     const QString gameDir = m_gameDir;
-    QtConcurrent::run([this, gameDir]() {
+    // 扫描开始时的选中项：删除路径的顺序是「先 refreshInstalled()（异步扫盘）→ 紧接着清空
+    // selectedVersion」，等扫描落地时已经看不到"被删掉的那个 id"，只能靠这份快照判断
+    // "原来选中的版本在这次扫描后消失了"。
+    const QString selectedAtStart = m_selectedVersion;
+    QtConcurrent::run([this, gameDir, selectedAtStart]() {
         // 纯读扫描（线程安全）：遍历 versions 目录，fast path 只 stat jar/json
         QStringList found;
         if (!gameDir.isEmpty()) {
@@ -558,9 +576,15 @@ void VersionBackend::refreshInstalled()
             }
         }
 
-        QMetaObject::invokeMethod(this, [this, found]() {
+        QMetaObject::invokeMethod(this, [this, found, selectedAtStart]() {
             m_installedIds = found;
             m_refreshInstalledBusy = false;
+            // 原本选中的版本在本次扫描后不存在了（删除 / 目录被手动删掉）→ 自愈到第一个可用版本。
+            // 不自愈就会停在"selectedVersion 为空"：版本列表页仍把首行画成选中态
+            // （VersionPage.sel 的兜底），点「启动」却拿空 id 去解析版本 → 启动失败。
+            if (!selectedAtStart.isEmpty()
+                && (m_selectedVersion.isEmpty() || !m_installedIds.contains(m_selectedVersion)))
+                ensureSelectedVersionValid();
             emit installedVersionsChanged();
         });
     });
@@ -645,6 +669,11 @@ void VersionBackend::installVersion(const QString& versionId)
                                + QStringLiteral("/versions/")
 
                                + versionId;
+
+    // 登记"本次安装新建了版本目录"：取消清理（cleanupCanceledVersion）只允许删这类目录，
+    // 用户已有的版本目录一律不动（2026-11-25 数据丢失事故的根因就是没有这层区分）。
+    if (!QDir(versionDir).exists())
+        m_installCreatedDirs.insert(QDir::cleanPath(versionDir));
 
     const QString progressMarker = versionDir
 
@@ -1616,6 +1645,24 @@ void VersionBackend::cancelActiveDownload(const QString& versionId)
 
 
 
+/// 把会话里仍停在 active/pending 的步骤收尾（已完成/已失败/已跳过的步骤不动）。
+/// 用途：取消安装后，卡片的步骤列表不能还有步骤在转圈 —— 旧实现只 markFailed 卡片，
+/// 纯原版路径一个步骤都不收尾，ProgressPage 上就是「已取消 + 下载游戏库 18% active」（dl-ui 实测 10/10）。
+/// 百分比保留取消那一刻的值（归零会让用户以为"什么都没做"）。
+void VersionBackend::finishStepsAsTerminal(const QString& installId, const QString& status)
+{
+    auto* ds = dlSession(installId);
+    if (!ds) return;
+    for (int i = 0; i < ds->steps.size(); ++i) {
+        const QVariantMap s = ds->steps[i].toMap();
+        const QString cur = s.value(QStringLiteral("status")).toString();
+        if (cur == QStringLiteral("completed") || cur == QStringLiteral("failed")
+            || cur == QStringLiteral("skipped"))
+            continue;
+        updateStep(installId, i, status, s.value(QStringLiteral("percentage")).toInt());
+    }
+}
+
 void VersionBackend::cancelVersionInstall(const QString& versionId)
 
 {
@@ -1930,6 +1977,7 @@ void VersionBackend::cancelVersionInstall(const QString& versionId)
         if (jsonDs && !jsonDs->isMerged()) {
             jsonDs->markFailed(tr("已取消"));
             jsonDs->resetSpeed();
+            finishStepsAsTerminal(resolvedId, QStringLiteral("failed"));
             updateCardFromSession(resolvedId, versionId, QStringLiteral("version"));
         }
         emit cancelNotification(versionId, tr("已取消 %1 的安装").arg(versionId));
@@ -1958,6 +2006,8 @@ void VersionBackend::cancelVersionInstall(const QString& versionId)
     if (cancelDs && !cancelDs->isMerged()) {
         cancelDs->markFailed(tr("已取消"));
         cancelDs->resetSpeed();
+        // 取消后步骤必须一起收尾，否则卡片写「已取消」、步骤还在 18%/active 转圈
+        finishStepsAsTerminal(resolvedId, QStringLiteral("failed"));
         updateCardFromSession(resolvedId, versionId, QStringLiteral("version"));
     }
 
@@ -1970,15 +2020,62 @@ void VersionBackend::cleanupCanceledVersion(const QString& versionId, const QStr
 
 {
 
-    // On cancel/fail: delete the entire version folder
+    // On cancel/fail: delete the version folder — 但只允许删"本次安装新建、且没有任何用户数据"的目录。
+    //
+    // 2026-11-25 数据丢失事故（launch 实测）：OptiFine 安装**成功**后走到这里，
+    // 目标是 ds->mcVersion（用户原本就有的原版版本目录），唯一保护是"有 saves/ 才跳过"，
+    // 于是 1.21.4 被整目录递归删除；同一次会话里 26.2 仅因为有 saves/ 才幸存。
+    // 结论：取消清理不能靠启发式保护，必须先证明"这个目录是我这次建的空壳"。
+    const QString versionDir = gameDir + QStringLiteral("/versions/") + versionId;
+
+    {
+        const QString cleanDir = QDir::cleanPath(versionDir);
+
+        // 守卫 1：只有本次安装新建的目录才允许清理（installVersion / merged 拷贝处登记）
+        if (!m_installCreatedDirs.contains(cleanDir)) {
+            qCInfo(logVersion).noquote()
+                << QStringLiteral("[cancel-cleanup] %1: 不是本次安装新建的目录, 拒绝清理").arg(versionId);
+            return;
+        }
+
+        // 守卫 2：隔离标记 = 启动器已经把这个目录当用户数据在用（game/ 里有存档/配置）
+        if (QFileInfo::exists(cleanDir + QStringLiteral("/.isolated"))) {
+            qCInfo(logVersion).noquote()
+                << QStringLiteral("[cancel-cleanup] %1: 存在 .isolated 标记, 拒绝清理").arg(versionId);
+            return;
+        }
+
+        // 守卫 3：已经放进了用户的模组/配置（哪怕只是几 KB）就不当半成品处理
+        for (const QString& sub : { QStringLiteral("/mods"), QStringLiteral("/config"),
+                                    QStringLiteral("/game"), QStringLiteral("/saves") }) {
+            const QDir d(cleanDir + sub);
+            if (d.exists() && !d.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot).isEmpty()) {
+                qCInfo(logVersion).noquote()
+                    << QStringLiteral("[cancel-cleanup] %1: %2 非空, 拒绝清理").arg(versionId, sub);
+                return;
+            }
+        }
+
+        // 守卫 4：上次游玩记录里出现过的版本一律不删（用户真的玩过）
+        const QString lastPlayedPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                                       + QStringLiteral("/shadow/last-played.json");
+        QFile lp(lastPlayedPath);
+        if (lp.open(QIODevice::ReadOnly)) {
+            const QJsonObject obj = QJsonDocument::fromJson(lp.readAll()).object();
+            lp.close();
+            if (obj.contains(versionId)) {
+                qCInfo(logVersion).noquote()
+                    << QStringLiteral("[cancel-cleanup] %1: 有上次游玩记录, 拒绝清理").arg(versionId);
+                return;
+            }
+        }
+    }
 
     // Safety guard: if saves/ already exists, the version has been played — don't touch it.
     // 2026-11-05 修：原来只看 versions/<id>/saves，但本仓存在两种别的布局：
     //   隔离布局  versions/<id>/game/saves
     //   共享根    <gameDir>/saves
     // 只认一种会把"能玩的整版"连存档一起删掉（取消一次重装/修复即触发）。
-    const QString versionDir = gameDir + QStringLiteral("/versions/") + versionId;
-
     if (ShadowLauncher::CleanupGuard::dirHasUserSaves(versionDir, gameDir)) {
 
         qCInfo(logVersion).noquote()
@@ -2004,6 +2101,9 @@ void VersionBackend::cleanupCanceledVersion(const QString& versionId, const QStr
     QDir dir(versionDir);
 
     if (dir.exists()) {
+
+        // 删成功后清掉登记：同一个目录不做第二次"本次新建"声明
+        m_installCreatedDirs.remove(QDir::cleanPath(versionDir));
 
         if (!dir.removeRecursively()) {
 
@@ -2226,6 +2326,17 @@ void VersionBackend::onVersionDownloadFinished(bool success,
 
         setInstallPhase(tr("取消"));
 
+        // 取消后步骤必须一起收尾：卡片写「已取消」而步骤还停在 active 是同一类用户可见缺陷
+        // （ProgressPage 上「下载游戏库 18% active」一直转圈）。这条路径覆盖不经 UI 取消按钮的取消。
+        {
+            auto* cancelCs = dlSession(finishedId);
+            if (cancelCs && !cancelCs->isMerged()) {
+                cancelCs->markFailed(tr("已取消"));
+                finishStepsAsTerminal(finishedId, QStringLiteral("failed"));
+                updateCardFromSession(finishedId, finishedId, QStringLiteral("version"));
+            }
+        }
+
         refreshInstalled();
 
         return;
@@ -2274,6 +2385,10 @@ void VersionBackend::onVersionDownloadFinished(bool success,
                 tr("[重试] %1 安装失败 (%2)，正在尝试自动修复损坏文件...")
                     .arg(finishedId, errDetail));
             m_autoRepairVersionId = finishedId;
+            // 两阶段标记必须在这里复位：m_autoRepairVerifyDone 只在阶段1收尾时置 true 且从不清零，
+            // 于是同一次进程里第二次安装失败时，阶段1 的 verifyFinished 会被当成
+            // "阶段2（修复完成）"直接收尾 → 自动修复从此不再下载任何文件。
+            m_autoRepairVerifyDone = false;
             repairVersion(finishedId);
             return;  // repairVersion 完成后会通过 verifyFinished -> installFinished 发射结果
 
@@ -4023,6 +4138,9 @@ void VersionBackend::verifyVersion(const QString& versionId)
     // merged 安装：MC 版本在 tempDir，校验/修复须在该根上进行
     const QString rootDir = repairRootFor(versionId);
 
+    // 记下"这次校验/修复针对哪个版本"：校验报告由 ShadowBackend 落盘，它只拿得到
+    // selectedVersion（可能是别的版本），必须能问到这里（verifyTargetId()）。
+    m_verifyTargetId = versionId;
 
     // Guard: 修复进行中不得并发校验（修复会先删文件再下载，边删边读会得到随机结果）
     if (m_repairRunning.loadRelaxed()) {
@@ -4053,6 +4171,8 @@ void VersionBackend::verifyVersion(const QString& versionId)
     setInstallPhase(tr("校验中"));
 
     m_repairCancelRequested.storeRelease(0);
+
+    m_verifyCancelled.storeRelease(0);
 
     m_verifyChecked = 0;
 
@@ -4499,7 +4619,26 @@ void VersionBackend::verifyVersion(const QString& versionId)
 
                    const QStringList& failedPaths) {
 
-                if (allPassed) {
+                // ── 取消的校验没有结论 ──
+                // worker 取消后仍会补发 finished(false)，旧实现把它当失败走完整失败分支：
+                // critical「校验完成 失败=0/5225」、verifyFailedFiles([])（生成一份空报告）、
+                // 后端 verifyResultText 被写成"存在损坏/缺失文件"，而面板因为 failedFiles 为空
+                // 显示绿色"未发现异常" —— 同一次取消给出两个互相矛盾的状态。
+                const bool wasCancelled = (m_verifyCancelled.loadRelaxed() != 0);
+                m_verifyCancelled.storeRelease(0);
+                // 安装失败后的自动修复正等着这次校验的终态信号（onVersionDownloadFinished →
+                // repairVersion 之后靠 verifyFinished 收尾）。那种情况下即使取消也必须发一次，
+                // 否则安装卡片永久停在"处理中"。用户手动校验被取消时不发，避免把
+                // "存在损坏/缺失文件"写进后端结论。
+                const bool pipelineWaiting = !m_autoRepairVersionId.isEmpty();
+
+                if (wasCancelled) {
+
+                    qCInfo(logVersion) << QStringLiteral("校验已取消，不产生结论 版本数=%1").arg(m_verifyTotal);
+
+                    emit logMessage(tr("[警告] 校验已取消，本次没有产生校验结论"));
+
+                } else if (allPassed) {
 
                     qCInfo(logVersion) << QStringLiteral("校验完成 文件全部通过 数量=%1").arg(m_verifyTotal);
 
@@ -4542,7 +4681,10 @@ void VersionBackend::verifyVersion(const QString& versionId)
 
                 setInstallPhase(tr("空闲"));
 
-                emit verifyFinished(allPassed);
+                // 用户取消且没有管线在等：不写 verifyFinished（否则后端结论被写成"存在损坏文件"）；
+                // 其余情况（含取消但自动修复在等）必须发，管线终态只能发一次。
+                if (!wasCancelled || pipelineWaiting)
+                    emit verifyFinished(allPassed);
 
 
 
@@ -4565,12 +4707,7 @@ void VersionBackend::verifyVersion(const QString& versionId)
                 }
 
                 // 排空待校验请求（并发守卫期间进来的那个）：不排空就永久挂着
-                if (!m_pendingVerifyId.isEmpty()) {
-                    const QString pending = m_pendingVerifyId;
-                    m_pendingVerifyId.clear();
-                    qCInfo(logVersion) << QStringLiteral("补跑排队的校验 版本=%1").arg(pending);
-                    QTimer::singleShot(0, this, [this, pending]() { verifyVersion(pending); });
-                }
+                drainPendingVerify();
 
             }, Qt::QueuedConnection);
 
@@ -4592,6 +4729,17 @@ void VersionBackend::verifyVersion(const QString& versionId)
 
 
 
+/// 补发并发守卫期间排队的那次校验（不排空就永远挂在那里）
+void VersionBackend::drainPendingVerify()
+{
+    if (m_pendingVerifyId.isEmpty())
+        return;
+    const QString pending = m_pendingVerifyId;
+    m_pendingVerifyId.clear();
+    qCInfo(logVersion) << QStringLiteral("补跑排队的校验 版本=%1").arg(pending);
+    QTimer::singleShot(0, this, [this, pending]() { verifyVersion(pending); });
+}
+
 void VersionBackend::cancelVerify()
 
 {
@@ -4600,10 +4748,22 @@ void VersionBackend::cancelVerify()
 
         m_verifyWorker->cancel();
 
+        // 标记"本次是取消"：worker 取消后仍会补发一次 finished(false)，
+        // 不标记就会被当成"校验失败"上报（见 verifyVersion 的 finished 处理）。
+        m_verifyCancelled.storeRelease(1);
+
         m_verifyRunning.storeRelease(0);
 
         emit logMessage(tr("正在取消校验..."));
 
+    }
+
+    // 主动取消 = 用户不想再校验了：并发守卫排队进来的"补跑"请求必须一起丢掉。
+    // 否则取消后后端会立刻补跑一遍完整校验（实测日志：取消 → 校验完成 → 补跑排队的校验 →
+    // 校验开始），用户看到的是"点了取消却又跑了一遍"。
+    if (!m_pendingVerifyId.isEmpty()) {
+        qCInfo(logVersion) << QStringLiteral("取消校验: 丢弃排队的校验 版本=%1").arg(m_pendingVerifyId);
+        m_pendingVerifyId.clear();
     }
 
     if (m_repairRunning.loadRelaxed()) {
@@ -4693,6 +4853,7 @@ void VersionBackend::repairVersion(const QString& versionId)
 
     // merged 安装：MC 版本在 tempDir，校验/修复须在该根上进行
     const QString rootDir = repairRootFor(versionId);
+    m_verifyTargetId = versionId;   // 修复报告同样要能查到"修的是哪个版本"
 
 
     if (m_failedPathsCache.isEmpty()) {
@@ -5154,6 +5315,11 @@ void VersionBackend::repairVersion(const QString& versionId)
         }
         emit self->verifyFinished(allPassed);
 
+        // 修复期间排队进来的校验请求（repairRunning 守卫把它记在 m_pendingVerifyId 里）：
+        // 只有这里能补发。旧实现只在"校验完成"分支排空，修复路径永不排空 ——
+        // 界面提示"修复完成后自动继续"，实际那个校验永远不会再跑。
+        self->drainPendingVerify();
+
         state->deleteLater();
     };
 
@@ -5321,6 +5487,56 @@ void VersionBackend::repairVersion(const QString& versionId)
 
 
 
+namespace {
+
+// 版本 id 会直接拼成 <gameDir>/versions/<id>，只允许单段目录名。
+// 与 settings_backend.cpp 的 isSafeVersionId 同源，另加 Windows 非法字符、结尾空格/点
+// （Windows 会静默裁掉结尾空格与点，导致真实目录名和函数认为的名字不一致）与长度上限。
+bool isValidVersionName(const QString& id)
+{
+    if (id.isEmpty() || id.size() > 128) return false;
+    if (id == QLatin1String(".") || id == QLatin1String("..")) return false;
+    if (id.contains(QLatin1String(".."))) return false;
+    static const QString kIllegal = QStringLiteral("\\/:*?\"<>|");
+    for (const QChar c : id) {
+        if (c.unicode() < 0x20) return false;
+        if (kIllegal.contains(c)) return false;
+    }
+    if (id.endsWith(QLatin1Char(' ')) || id.endsWith(QLatin1Char('.'))) return false;
+    return true;
+}
+
+}  // namespace
+
+// 把版本目录里的 <from>.json/.jar 改成 <to>.*，并改写 JSON 的 id 字段。
+// 用途：OptiFine 的 QProcess 安装器只按自己的名字产物命名（1.21.4-OptiFine_HD_U_J3），
+// 而用户填的安装名才是版本列表/启动要用的名字。旧实现按安装器名复制 → 用户填的名字只剩空壳。
+static bool rewireVersionDirToId(const QString& verDir, const QString& fromId, const QString& toId)
+{
+    if (fromId == toId) return true;
+    const QString fromJson = verDir + QLatin1Char('/') + fromId + QStringLiteral(".json");
+    const QString toJson = verDir + QLatin1Char('/') + toId + QStringLiteral(".json");
+    if (!QFileInfo::exists(fromJson) || QFileInfo::exists(toJson))
+        return false;
+    QFile jf(fromJson);
+    if (!jf.open(QIODevice::ReadOnly)) return false;
+    QJsonObject obj = QJsonDocument::fromJson(jf.readAll()).object();
+    jf.close();
+    if (obj.isEmpty()) return false;
+    obj[QStringLiteral("id")] = toId;
+    QFile out(toJson);
+    if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) return false;
+    const bool wrote = out.write(QJsonDocument(obj).toJson()) > 0;
+    out.close();
+    if (!wrote) { QFile::remove(toJson); return false; }
+    QFile::remove(fromJson);
+    const QString fromJar = verDir + QLatin1Char('/') + fromId + QStringLiteral(".jar");
+    const QString toJar = verDir + QLatin1Char('/') + toId + QStringLiteral(".jar");
+    if (QFileInfo::exists(fromJar) && !QFileInfo::exists(toJar))
+        QFile::rename(fromJar, toJar);
+    return true;
+}
+
 bool VersionBackend::renameVersion(const QString& oldId, const QString& newId)
 
 {
@@ -5335,11 +5551,34 @@ bool VersionBackend::renameVersion(const QString& oldId, const QString& newId)
 
 
 
+    // 实测（审计 R1）：newId 传 "../zz-audit-version-out" 会把整个版本目录搬到 versions/ 之外，
+    // 列表里那个版本凭空消失、文件却留在游戏目录根部 —— 必须先做单段目录名校验。
+    if (!isValidVersionName(newId)) {
+
+        emit logMessage(tr("重命名失败: 版本 ID 非法（不能含 \\ / : * ? \" < > | 或 ..，不能以空格/点结尾，最长 128 字符）"));
+
+        return false;
+
+    }
+
+
+
     const QString versionsDir = m_gameDir + QStringLiteral("/versions");
 
     const QString oldDir = versionsDir + QStringLiteral("/") + oldId;
 
     const QString newDir = versionsDir + QStringLiteral("/") + newId;
+
+
+
+    // 兜底：清理路径后仍必须落在 versions/ 内（防 ".."、盘符、绝对路径）
+    if (!QDir::cleanPath(newDir).startsWith(QDir::cleanPath(versionsDir) + QLatin1Char('/'))) {
+
+        emit logMessage(tr("重命名失败: 目标路径越界"));
+
+        return false;
+
+    }
 
 
 
@@ -5375,31 +5614,49 @@ bool VersionBackend::renameVersion(const QString& oldId, const QString& newId)
 
 
 
-    // Rename JAR file inside
+    // Rename JAR / JSON file inside
+    // 旧实现不检查这两次改名的返回值：目录改名成功、文件改名失败时函数仍返回 true，
+    // 留下一个"列表里有、启动时找不到配置"的版本。失败就整体回滚。
+    bool innerOk = true;
 
     const QString oldJar = newDir + QStringLiteral("/") + oldId + QStringLiteral(".jar");
 
     const QString newJar = newDir + QStringLiteral("/") + newId + QStringLiteral(".jar");
 
-    if (QFileInfo::exists(oldJar)) {
+    if (QFileInfo::exists(oldJar) && !QFile::rename(oldJar, newJar))
 
-        QFile::rename(oldJar, newJar);
-
-    }
+        innerOk = false;
 
 
-
-    // Rename JSON file inside
 
     const QString oldJson = newDir + QStringLiteral("/") + oldId + QStringLiteral(".json");
 
     const QString newJson = newDir + QStringLiteral("/") + newId + QStringLiteral(".json");
 
-    if (QFileInfo::exists(oldJson)) {
+    if (innerOk && QFileInfo::exists(oldJson) && !QFile::rename(oldJson, newJson))
 
-        QFile::rename(oldJson, newJson);
+        innerOk = false;
+
+
+
+    if (!innerOk) {
+
+        QDir().rename(newDir, oldDir);
+
+        emit logMessage(tr("重命名失败: 无法重命名版本文件，已回滚"));
+
+        return false;
 
     }
+
+
+
+    // 选中项跟着改名：selectedVersion 仍指旧 id 的话，回主页点启动会解析不到版本。
+    const bool wasSelected = (m_selectedVersion == oldId);
+
+    if (wasSelected)
+
+        setSelectedVersion(newId);
 
 
 
@@ -5479,6 +5736,17 @@ bool VersionBackend::cloneVersion(const QString& sourceId, const QString& newId)
 
 
 
+    // 同 renameVersion：newId 直接拼进 versions/<id>，必须先做单段目录名校验
+    if (!isValidVersionName(newId)) {
+
+        emit logMessage(tr("克隆失败: 版本 ID 非法（不能含 \\ / : * ? \" < > | 或 ..，不能以空格/点结尾，最长 128 字符）"));
+
+        return false;
+
+    }
+
+
+
     const QString versionsDir = m_gameDir + QStringLiteral("/versions");
 
     const QString srcDir = versionsDir + QStringLiteral("/") + sourceId;
@@ -5510,6 +5778,9 @@ bool VersionBackend::cloneVersion(const QString& sourceId, const QString& newId)
     // Recursively copy
 
     if (!copyDirRecursive(srcDir, dstDir)) {
+
+        // 半截目录会被列表当成一个可启动版本（缺 jar/库），必须删掉
+        QDir(dstDir).removeRecursively();
 
         emit logMessage(tr("克隆失败: 复制过程中出错"));
 
@@ -6556,21 +6827,13 @@ ModLoaderInstaller* VersionBackend::createLoaderInstaller(const QString& install
             emit logMessage(tr("[\u5931\u8d25] \u6a21\u7ec4\u52a0\u8f7d\u5668\u5b89\u88c5\u5931\u8d25: %1").arg(errMsg));
         }
 
-        // MC version folder cleanup
-        if (success && !ds->mcVersion.isEmpty()) {
-            bool otherUsingSameMC = false;
-            for (auto it = m_downloadSessions.begin(); it != m_downloadSessions.end(); ++it) {
-                auto* d = dlSession(it.key());
-                if (it.key() != installId && d && !d->mcVersion.isEmpty() && d->mcVersion == ds->mcVersion) {
-                    otherUsingSameMC = true; break;
-                }
-            }
-            if (!otherUsingSameMC) {
-                qCInfo(logVersion) << QStringLiteral("MC \u7248\u672c\u6587\u4ef6\u5939\u6e05\u7406: %1 (\u65e0\u5176\u4ed6 session \u4f9d\u8d56)").arg(ds->mcVersion);
-                cleanupCanceledVersion(ds->mcVersion, m_gameDir);
-                refreshInstalled();
-            }
-        }
+        // MC version folder cleanup —— 已删除（P0 数据丢失，2026-11-25）
+        // 安装成功路径绝不调用 cleanupCanceledVersion：那里的目标是 ds->mcVersion，
+        // 也就是用户原本就有的原版版本目录。原来的唯一保护是"有 saves/ 才跳过"，
+        // 实测装一次 OptiFine 就把 1.21.4 整目录删了（26.2 仅因有 saves/ 幸存）。
+        // 取消/失败路径的清理见 cleanupCanceledVersion 自身的"本次新建目录"守卫。
+        if (success && ds && !ds->mcVersion.isEmpty())
+            refreshInstalled();   // 列表仍需对账，但不再删任何目录
 
         // finishInstall must be called for the success fall-through path
         // (Timeline B: MC finished before loader, so finishInstall wasn't
@@ -9201,6 +9464,11 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
                 const QString srcVer = tempDir + QStringLiteral("/versions/") + installId;
                 const QString dstVer = m_gameDir + QStringLiteral("/versions/") + installId;
                 bool copyOk = true;
+                // 记录"这个目录是本次安装新建的"：cleanupCanceledVersion 只肯删这类目录
+                // （用户已有的版本目录一律不动，见该函数开头的四个守卫）。
+                const bool dstVerExisted = QDir(dstVer).exists();
+                if (!dstVerExisted)
+                    m_installCreatedDirs.insert(QDir::cleanPath(dstVer));
                 qCInfo(logVersion) << QStringLiteral("[TRACE-f] copy: srcVer=%1 exists=%2 dstVer=%3")
                     .arg(srcVer).arg(QDir(srcVer).exists() ? 1 : 0).arg(dstVer);
                 if (QDir(srcVer).exists()) {
@@ -9214,28 +9482,44 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
                             .arg(QDir(dstVer).entryList(QDir::Files).join(QLatin1Char(',')));
                     }
                 } else {
-                    // ── OptiFine（QProcess 安装器模式）：实际版本文件夹名 ≠ installId ──
-                    // （如 1.12.2-OptiFine_HD_U_G5）。扫 tempDir/versions/ 下除原版
-                    // mcVersion 外的文件夹全部复制（合成模式写 installName 时 srcVer 已存在，不走这里）。
+                    // ── OptiFine（QProcess 安装器模式）：安装器自己决定产物文件夹名，
+                    //    它不等于用户填的安装名（如 1.21.4-OptiFine_HD_U_J3）。
+                    //    旧实现把产物按"安装器文件夹名"复制，用户填的 installName 只剩一个
+                    //    .isolated 空壳目录 —— 列表里点得动、点进去什么也没有（P1 实测）。
+                    //    新实现：产物落进 dstVer(=installName)，再把里面的 <producer>.json/.jar
+                    //    改名成 <installName>.* 并改写 JSON 的 id 字段。
                     const QString mcVerForScan = ds ? ds->mcVersion : QString();
                     QDir tvDir(tempDir + QStringLiteral("/versions"));
                     const QStringList extraDirs = tvDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-                    bool anyCopied = false;
+                    QString producerDir;
                     for (const QString& d : extraDirs) {
-                        if (d == mcVerForScan) continue;
-                        const QString s = tempDir + QStringLiteral("/versions/") + d;
-                        const QString t = m_gameDir + QStringLiteral("/versions/") + d;
-                        QDir().mkpath(t);
-                        if (!copyRecursiveMissing(s, t)) {
-                            copyOk = false;
-                            qCWarning(logVersion) << QStringLiteral("[安装] OptiFine 版本文件夹拷贝校验失败: %1").arg(s);
-                        } else {
-                            anyCopied = true;
-                            qCInfo(logVersion) << QStringLiteral("[安装] OptiFine 实际版本文件夹已复制: %1 -> %2").arg(s, t);
+                        if (d == mcVerForScan || d == installId) continue;
+                        const QString cand = tempDir + QStringLiteral("/versions/") + d;
+                        if (QFileInfo::exists(cand + QStringLiteral("/") + d + QStringLiteral(".json"))) {
+                            producerDir = d;
+                            break;
                         }
                     }
-                    if (!anyCopied) {
-                        qCWarning(logVersion) << QStringLiteral("[TRACE-f] srcVer 不存在，跳过版本文件夹拷贝: %1").arg(srcVer);
+                    if (producerDir.isEmpty()) {
+                        // 找不到可识别的产物：既不留空壳目录，也不能报"安装成功"（产物根本不存在）
+                        m_installCreatedDirs.remove(QDir::cleanPath(dstVer));
+                        if (!dstVerExisted) QDir(dstVer).removeRecursively();
+                        copyOk = false;
+                        qCWarning(logVersion) << QStringLiteral("[TRACE-f] srcVer 不存在且安装器无产物，版本文件夹拷贝失败: %1").arg(srcVer);
+                    } else {
+                        QDir().mkpath(dstVer);
+                        const QString producerPath = tempDir + QStringLiteral("/versions/") + producerDir;
+                        if (!copyRecursiveMissing(producerPath, dstVer)) {
+                            copyOk = false;
+                            qCWarning(logVersion) << QStringLiteral("[安装] OptiFine 版本文件夹拷贝校验失败: %1").arg(producerPath);
+                        } else if (!rewireVersionDirToId(dstVer, producerDir, installId)) {
+                            copyOk = false;
+                            qCWarning(logVersion) << QStringLiteral("[安装] OptiFine 产物改名失败(期望 %1): %2")
+                                .arg(installId, producerDir);
+                        } else {
+                            qCInfo(logVersion) << QStringLiteral("[安装] OptiFine 产物已落到用户安装名: %1 (安装器原名 %2)")
+                                .arg(installId, producerDir);
+                        }
                     }
                 }
 
@@ -9282,22 +9566,12 @@ MergedInstallContext* VersionBackend::createMergedContext(const QString& install
                     return;
                 }
 
-                // ── 清理原版 MC 版本文件夹（无其他任务使用同一 MC 时）──
-                // MC 下载在独立临时目录完成；安装成功后把真实游戏目录中残留的原版版本文件夹
-                // （含下载进度标记遗留的空壳目录）整体删除，恢复改造前"装完即删原版"的行为。
-                if (ds && !ds->mcVersion.isEmpty()) {
-                    bool otherUsingSameMC = false;
-                    for (auto cIt = m_mergedContexts.constBegin(); cIt != m_mergedContexts.constEnd(); ++cIt) {
-                        if (cIt.key() != installId && cIt.value() && cIt.value()->mcVersion == ds->mcVersion) {
-                            otherUsingSameMC = true; break;
-                        }
-                    }
-                    if (!otherUsingSameMC) {
-                        qCInfo(logVersion) << QStringLiteral("[安装] 清理原版 MC 版本文件夹: %1").arg(ds->mcVersion);
-                        cleanupCanceledVersion(ds->mcVersion, m_gameDir);
-                        refreshInstalled();
-                    }
-                }
+                // ── 清理原版 MC 版本文件夹 —— 已删除（P0 数据丢失，2026-11-25）──
+                // 旧实现：OptiFine/Forge 安装**成功**后调 cleanupCanceledVersion(ds->mcVersion)，
+                // 把用户原本就有的原版版本目录整目录删掉（1.21.4 消失；26.2 仅因有 saves/ 幸存）。
+                // 成功路径不允许删除任何用户已存在的目录（见 cleanupCanceledVersion 的"本次新建"守卫）。
+                if (ds && !ds->mcVersion.isEmpty())
+                    refreshInstalled();   // 列表对账，但不删任何目录
 
                 emit logMessage(tr("安装完成"));
                 setInstallPhase(tr("完成"));

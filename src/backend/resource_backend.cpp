@@ -621,7 +621,16 @@ void ResourceBackend::searchModsEx(const QString& query, const QString& loader,
     m_modSearchSource = source;
 
     // 搜索词/条件变化 → 重置池子与游标
-    if (key != m_modSearchKey) {
+    // 2026-11-25：「重试」也要重置 —— key 相同但池子空且双源都已耗尽（上一轮全部失败），
+    // 此时游标/More 标记停在"没有更多"，ensureModPool 直接发空池、连一个请求都不发，
+    // 「重新加载」按钮点了等于没点，网络恢复后列表依旧是空的。
+    if (key != m_modSearchKey
+        || (m_modPool.isEmpty() && !m_modMrMore && !m_modCfMore)) {
+        // 诊断（2026-11-25 复验）：这条日志用来分辨「重置分支到底有没有被编译/执行」——
+        // 同一 key 的空池重试若没有这行，说明该分支没进构建，而不是条件没命中。
+        qCInfo(logApp) << QStringLiteral("[池子] Mod 重置 keyChanged=%1 poolEmpty=%2 mrMore=%3 cfMore=%4")
+                              .arg(key != m_modSearchKey ? 1 : 0).arg(m_modPool.isEmpty() ? 1 : 0)
+                              .arg(m_modMrMore ? 1 : 0).arg(m_modCfMore ? 1 : 0);
         ++m_modGen;   // 新搜索代次：旧响应全部作废
         m_modSearchKey = key;
         m_modPending = 0;      // 新代次：旧在途请求的计数一并作废（否则卡死后续所有 ensure）
@@ -634,6 +643,7 @@ void ResourceBackend::searchModsEx(const QString& query, const QString& loader,
         m_modCfMore = true;
         m_mrFallbackUsed = false;
         m_modShownCount = 0;
+        // 本分支同时承担「重试」语义（上面空池条件），因此不能只当它是"新搜索"。
         emit logMessage(tr("[池子] Mod 搜索重置: q=%1 offset=%2 limit=%3").arg(query).arg(page * limit).arg(limit));
     }
 
@@ -1113,7 +1123,9 @@ void ResourceBackend::searchShadersEx(
     m_shaderSearchLoader = loader;
     m_shaderSearchSource = source;
 
-    if (key != m_shaderSearchKey) {
+    // 空池 + 双源耗尽 = 上一轮失败：重试时重置游标，否则「重新加载」不发请求（见 searchModsEx）
+    if (key != m_shaderSearchKey
+        || (m_shaderPool.isEmpty() && !m_shaderMrMore && !m_shaderCfMore)) {
         ++m_shaderGen;   // 新搜索代次：旧响应全部作废
         m_shaderSearchKey = key;
         m_shaderPending = 0;
@@ -1366,7 +1378,9 @@ void ResourceBackend::searchResourcepacks(const QString& query, const QString& g
     m_rpSearchCats = categories;
     m_rpSearchSource = source;
 
-    if (key != m_rpSearchKey) {
+    // 空池 + 双源耗尽 = 上一轮失败：重试时重置游标，否则「重新加载」不发请求（见 searchModsEx）
+    if (key != m_rpSearchKey
+        || (m_rpPool.isEmpty() && !m_rpMrMore && !m_rpCfMore)) {
         ++m_rpGen;   // 新搜索代次：旧响应全部作废
         m_rpSearchKey = key;
         m_rpPending = 0;
@@ -1620,7 +1634,9 @@ void ResourceBackend::searchModpacksEx(const QString& query, const QString& load
     m_packSearchVersions = gameVersions;
     m_packSearchSource = source;
 
-    if (key != m_packSearchKey) {
+    // 空池 + 双源耗尽 = 上一轮失败：重试时重置游标，否则「重新加载」不发请求（见 searchModsEx）
+    if (key != m_packSearchKey
+        || (m_packPool.isEmpty() && !m_packMrMore && !m_packCfMore)) {
         ++m_packGen;
         m_packSearchKey = key;
         m_packPending = 0;
@@ -1925,7 +1941,9 @@ void ResourceBackend::searchDatapacksEx(const QString& query, const QString& cat
     m_dpSearchSort = sort;
     m_dpSearchSource = source;
 
-    if (key != m_dpSearchKey) {
+    // 空池 + 双源耗尽 = 上一轮失败：重试时重置游标，否则「重新加载」不发请求（见 searchModsEx）
+    if (key != m_dpSearchKey
+        || (m_dpPool.isEmpty() && !m_dpMrMore && !m_dpCfMore)) {
         ++m_dpGen;
         m_dpSearchKey = key;
         m_dpPending = 0;
