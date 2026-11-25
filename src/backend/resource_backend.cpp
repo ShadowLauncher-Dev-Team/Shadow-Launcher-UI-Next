@@ -626,6 +626,11 @@ void ResourceBackend::searchModsEx(const QString& query, const QString& loader,
     // 「重新加载」按钮点了等于没点，网络恢复后列表依旧是空的。
     if (key != m_modSearchKey
         || (m_modPool.isEmpty() && !m_modMrMore && !m_modCfMore)) {
+        // 诊断（2026-11-25 复验）：这条日志用来分辨「重置分支到底有没有被编译/执行」——
+        // 同一 key 的空池重试若没有这行，说明该分支没进构建，而不是条件没命中。
+        qCInfo(logApp) << QStringLiteral("[池子] Mod 重置 keyChanged=%1 poolEmpty=%2 mrMore=%3 cfMore=%4")
+                              .arg(key != m_modSearchKey ? 1 : 0).arg(m_modPool.isEmpty() ? 1 : 0)
+                              .arg(m_modMrMore ? 1 : 0).arg(m_modCfMore ? 1 : 0);
         ++m_modGen;   // 新搜索代次：旧响应全部作废
         m_modSearchKey = key;
         m_modPending = 0;      // 新代次：旧在途请求的计数一并作废（否则卡死后续所有 ensure）
@@ -638,6 +643,7 @@ void ResourceBackend::searchModsEx(const QString& query, const QString& loader,
         m_modCfMore = true;
         m_mrFallbackUsed = false;
         m_modShownCount = 0;
+        // 本分支同时承担「重试」语义（上面空池条件），因此不能只当它是"新搜索"。
         emit logMessage(tr("[池子] Mod 搜索重置: q=%1 offset=%2 limit=%3").arg(query).arg(page * limit).arg(limit));
     }
 

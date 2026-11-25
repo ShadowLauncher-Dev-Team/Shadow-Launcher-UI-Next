@@ -282,6 +282,14 @@ Item {
         if (page.isCfProject) {
             if (page.cfDepsCache[page.slug]) { page.deps = page.cfDepsCache[page.slug]; return }
             if (page.cfDepsPending === page.slug) return
+            // 后端没把 fetchCfDependencies 转发给 QML 时（ShadowBackend 缺 Q_INVOKABLE 包装），
+            // 这里会抛 TypeError 并把 depsLoading 永久挂成 true。先探测再调用：
+            // 拿不到就当作「该资源的依赖不可用」，不进加载态、不影响批量安装。
+            if (typeof page.b.fetchCfDependencies !== "function") {
+                page.cfDepsPending = ""
+                page.depsLoading = false
+                return
+            }
             page.cfDepsPending = page.slug
             page.depsLoading = true
             page.b.fetchCfDependencies(page.slug)

@@ -3693,6 +3693,16 @@ void ShadowBackend::fetchVersionFile(const QString& versionId) {
     m_resource->fetchVersionFile(versionId);
 }
 
+// 2026-11-25 审计：CF 前置依赖的入口补转发（此前只有 ResourceBackend 有，
+// QML 侧 `backend.fetchCfDependencies` 为 undefined，详情页 CF 前置永不出现）。
+void ShadowBackend::fetchCfDependencies(const QString& modId) {
+    m_resource->fetchCfDependencies(modId);
+}
+
+void ShadowBackend::resolveCfDependencies(const QString& modId, const QVariantList& deps) {
+    m_resource->resolveCfDependencies(modId, deps);
+}
+
 // ═══ Wardrobe (衣帽间) ═══
 
 void ShadowBackend::initCapeCache() {

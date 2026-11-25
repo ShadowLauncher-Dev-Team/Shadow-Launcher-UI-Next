@@ -433,9 +433,13 @@ void ModpackInstallTask::runExtract()
                     break;
                 }
                 if (n == -4) {
-                    // 体积预算超限（zip bomb 防护，2026-11-25 审计）：同样必须中止，不能只跳过
+                    // 体积预算/压缩比超限（zip bomb 防护，2026-11-25 审计 + 复验）：
+                    // 必须中止整包，不能只跳过该条目——否则界面报「导入完成」而实例缺文件。
                     fatal = true;
-                    fatalError = tr("解压体积超出安全上限（疑似恶意压缩包），已中止导入");
+                    const QString zipErr = zip.error();
+                    fatalError = zipErr.isEmpty()
+                        ? tr("解压体积超出安全上限（疑似恶意压缩包），已中止导入")
+                        : tr("整合包被安全策略拒绝：%1").arg(zipErr);
                     break;
                 }
                 if (n == -2) break;  // 取消

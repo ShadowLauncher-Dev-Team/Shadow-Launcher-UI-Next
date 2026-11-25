@@ -600,6 +600,11 @@ public:
     Q_INVOKABLE void fetchVersionDependencies(const QString& slug, const QString& versionId);
     /// 按 versionId 取该版本主文件信息（url/filename/size/sha1）——一键安装前置用
     Q_INVOKABLE void fetchVersionFile(const QString& versionId);
+    /// 2026-11-25 审计：CF 前置依赖的两个入口此前只存在于 ResourceBackend，
+    /// QML 里 `backend.fetchCfDependencies` 是 undefined —— 详情页的 CF 前置因此永不出现
+    /// （信号 cfDependenciesResolved 却一直在转发，形成"有出口没有入口"）。补两条转发。
+    Q_INVOKABLE void fetchCfDependencies(const QString& modId);
+    Q_INVOKABLE void resolveCfDependencies(const QString& modId, const QVariantList& deps);
 
     // ═══ Wardrobe (衣帽间) ═══
     Q_INVOKABLE void browseSkin();  // File dialog

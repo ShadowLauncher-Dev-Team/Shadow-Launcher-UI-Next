@@ -185,8 +185,15 @@ void EasyTierProcess::start(const QString& networkName, const QString& networkKe
     args << "--p2p-only";
     args << "-l" << QStringLiteral("udp://0.0.0.0:0");
     args << "-l" << QStringLiteral("tcp://0.0.0.0:0");
-    // Explicit RPC port (align with Terracotta: PortRequest::EasyTierRPC)
-    args << "-r" << QString::number(m_rpcPort);
+    // Explicit RPC port, bound to LOOPBACK ONLY.
+    // Bare "-r <port>" makes easytier listen on 0.0.0.0:<port>; a loopback probe
+    // (PortRequest::requestSpecific) then reports "free" while the wildcard socket
+    // is already held by another core → the probe picks the occupied port and the
+    // child dies with "failed to listen ... os error 10048" (实测 2026-11-25
+    // 20:03:43，同机双实例）。With "127.0.0.1:<port>" the bind address matches the
+    // probe exactly (verified: duplicate loopback -r → 10048, distinct → both run),
+    // and the RPC is no longer reachable from the LAN.
+    args << "-r" << QStringLiteral("127.0.0.1:%1").arg(m_rpcPort);
 
     if (isHost) {
         args << "--ipv4" << QStringLiteral("10.144.144.1");

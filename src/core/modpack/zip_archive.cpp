@@ -180,15 +180,21 @@ int ZipArchive::extractPrefixTo(const QString& prefix, const QString& destDir,
         if (!st.m_is_directory) {
             const qint64 uncomp = static_cast<qint64>(st.m_uncomp_size);
             const qint64 comp = static_cast<qint64>(st.m_comp_size);
+            // 命中任何一道闸都按致命错误中止整包，而不是"跳过这个文件继续导入"。
+            // 2026-11-25 复验（新构建实测）：只 continue 的话恶意包仍被判「导入完成」，
+            // 版本列表里出现一个缺文件的实例——攻击者拿不到东西，但用户看到的是"成功"。
+            // overrides 里出现 >2 GiB 或 >1000 倍压缩比的条目不存在合法场景，直接判失败。
             if (uncomp > kMaxEntryBytes) {
-                qCWarning(logMod) << "[zip] 拒绝解压超大条目:" << QString::fromUtf8(st.m_filename)
+                qCWarning(logMod) << "[zip] 拒绝解压超大条目（中止整包）:" << QString::fromUtf8(st.m_filename)
                                   << uncomp << "bytes >" << kMaxEntryBytes;
-                continue;
+                m_error = QStringLiteral("压缩包内含超大条目，已中止");
+                return -4;
             }
             if (comp > 0 && uncomp > kRatioCheckMin && uncomp / comp > kMaxRatio) {
-                qCWarning(logMod) << "[zip] 拒绝解压可疑压缩比条目:" << QString::fromUtf8(st.m_filename)
+                qCWarning(logMod) << "[zip] 拒绝解压可疑压缩比条目（中止整包）:" << QString::fromUtf8(st.m_filename)
                                   << uncomp << "/" << comp << "=" << (uncomp / comp) << "x";
-                continue;
+                m_error = QStringLiteral("压缩包含可疑高压缩比条目，已中止");
+                return -4;
             }
             plannedBytes += uncomp;
             if (plannedBytes > kMaxTotalBytes) {
