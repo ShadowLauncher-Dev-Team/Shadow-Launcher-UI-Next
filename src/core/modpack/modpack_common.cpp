@@ -93,6 +93,12 @@ QString sanitizeRelPath(const QString& entryName)
     for (const QString& part : parts) {
         if (part == QLatin1String("..") || part == QLatin1String("."))
             return {};  // 路径穿越直接拒绝（主流启动器 同策略：越界即失败）
+        // 2026-11-25 审计：Win32 会剥掉每个路径分量结尾的空格与点，于是 ".. " 会被当成
+        // ".." 从而绕开上面那条判断。实测（evil.zip）该条目能通过净化走到写盘阶段，
+        // 只因为中间目录不存在才失败，但已把整包导入打成"解压失败"（fatal -1）。
+        // 一律按非法拒绝：Windows 上这类名字本来也建不出来。
+        if (part.endsWith(QLatin1Char(' ')) || part.endsWith(QLatin1Char('.')))
+            return {};
         for (const QChar c : part) {
             if (c == QLatin1Char(':') || c == QLatin1Char('*') || c == QLatin1Char('?')
                 || c == QLatin1Char('"') || c == QLatin1Char('<') || c == QLatin1Char('>')

@@ -52,6 +52,10 @@ Item {
     property var deps: []
     property var depChecked: ({})
     property bool depsLoading: false
+    // CurseForge 项目（纯数字 slug）：依赖走 /mods/{id} 的 latestFiles，不是版本级接口
+    readonly property bool isCfProject: /^[0-9]+$/.test(slug)
+    property var cfDepsCache: ({})      // slug → 依赖列表（同一资源的游戏版本/加载器切换不重复拉）
+    property string cfDepsPending: ""
     property var fileCache: ({})
     property var dlQueue: []
     property var pendingJob: null
@@ -212,7 +216,11 @@ Item {
             var d = details[key] || ({})
             var gv = d.game_version || ""
             arr.push({
-                id: d.id || "",
+                // CF 的 files 端点不返回 Modrinth 式的版本 id（见 cf_api.cpp fetchFilesAsVersions），
+                // 恒空会让 pickedId 永远是 ""：旧版本行点了没反应、选中态也亮不起来。
+                // 复合 key（mcVer|loader）在同一次列表内唯一，拿它兜底做行标识。
+                id: d.id || key,
+                serverId: d.id || "",
                 version: d.version_number || key,
                 date: (d.date_published || "").substring(0, 10),
                 gameVersions: gv,
@@ -267,10 +275,22 @@ Item {
     function refreshDeps() {
         page.deps = []
         page.depChecked = {}
+        if (!page.b) return
+        // CurseForge 走另一条链路：CF 的 files 端点 dependencies 恒空，只有 /mods/{id}
+        // 的 latestFiles 带依赖（cf_api.cpp fetchModDependencies），版本级接口拿不到。
+        // 放在「有没有版本」判断之前：CF 项目即使一个文件都没解析出来，前置依然要显示。
+        if (page.isCfProject) {
+            if (page.cfDepsCache[page.slug]) { page.deps = page.cfDepsCache[page.slug]; return }
+            if (page.cfDepsPending === page.slug) return
+            page.cfDepsPending = page.slug
+            page.depsLoading = true
+            page.b.fetchCfDependencies(page.slug)
+            return
+        }
         var v = page.currentFile
-        if (!v || !page.b || v.id.length === 0) return
+        if (!v || v.serverId.length === 0) return
         page.depsLoading = true
-        page.b.fetchVersionDependencies(page.slug, v.id)
+        page.b.fetchVersionDependencies(page.slug, v.serverId)
     }
 
     Connections {
@@ -279,6 +299,32 @@ Item {
         function onModVersionsPartial(s, vers, details) { page.applyVersions(s, vers, details) }
         function onShaderVersionsPartial(s, vers, details) { page.applyVersions(s, vers, details) }
         function onResourcepackVersionsPartial(s, vers, details) { page.applyVersions(s, vers, details) }
+        // CF 依赖走这条：后端映射出名称/图标，但不带前置文件的 url/filename，
+        // 所以只做展示提示（manualOnly），不进批量下载队列。
+        function onCfDependenciesResolved(modId, deps) {
+            if (modId !== page.slug) return
+            page.cfDepsPending = ""
+            page.depsLoading = false
+            var list = []
+            for (var i = 0; i < deps.length; ++i) {
+                var d = deps[i] || ({})
+                list.push({
+                    project_id: d.project_id || "",
+                    dependency_type: d.dependency_type || "required",
+                    title: d.title || d.project_id || "",
+                    icon_url: d.icon_url || "",
+                    slug: d.slug || "",
+                    source: d.source || "CurseForge",
+                    manualOnly: true
+                })
+            }
+            var c = {}
+            for (var k in page.cfDepsCache) c[k] = page.cfDepsCache[k]
+            c[modId] = list
+            page.cfDepsCache = c
+            page.deps = list
+            page.depChecked = {}
+        }
         function onVersionDependenciesResolved(versionId, deps) {
             if (!page.currentFile || versionId !== page.currentFile.id) return
             page.depsLoading = false
@@ -380,6 +426,7 @@ Item {
                         size: v.size || 0, sha1: v.sha1 || "" })
         for (var i = 0; i < page.deps.length; ++i) {
             var d = page.deps[i]
+            if (d.manualOnly === true) continue     // CF 前置没有文件信息，只是提示
             if (!page.depChecked[d.project_id]) continue
             var cached = page.fileCache[d.version_id] || null
             // 后端现在会直接带回前置文件（Modrinth 对多数前置不给 version_id，
@@ -1172,6 +1219,8 @@ Item {
                         Rectangle {
                             id: cb
                             x: 18; anchors.verticalCenter: parent.verticalCenter
+                            // CF 前置下载不了（后端无文件 url），不给假勾选框
+                            visible: modelData.manualOnly !== true
                             width: 16; height: 16; radius: 4
                             color: page.depChecked[modelData.project_id] ? Theme.accent : "transparent"
                             border.width: page.depChecked[modelData.project_id] ? 0 : 1
@@ -1218,8 +1267,11 @@ Item {
                             id: depType
                             anchors.right: parent.right; anchors.rightMargin: 18
                             anchors.verticalCenter: parent.verticalCenter
-                            text: modelData.dependency_type === "required" ? qsTr("必需") : qsTr("可选")
-                            color: modelData.dependency_type === "required" ? Theme.warn : Theme.fg3
+                            text: modelData.manualOnly === true
+                                  ? qsTr("仅提示")
+                                  : (modelData.dependency_type === "required" ? qsTr("必需") : qsTr("可选"))
+                            color: (modelData.manualOnly !== true && modelData.dependency_type === "required")
+                                   ? Theme.warn : Theme.fg3
                             font.family: Theme.fontFamily; font.pixelSize: 10
                         }
                     }

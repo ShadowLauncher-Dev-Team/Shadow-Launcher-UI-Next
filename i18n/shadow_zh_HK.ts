@@ -605,7 +605,7 @@
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="104"/>
         <source>资源包（短）</source>
-        <translation>資源包（短）</translation>
+        <translation>資源包</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="105"/>
@@ -615,7 +615,7 @@
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="105"/>
         <source>整合包（短）</source>
-        <translation>整合包（短）</translation>
+        <translation>整合包</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="106"/>
@@ -625,7 +625,7 @@
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="106"/>
         <source>数据包（短）</source>
-        <translation>資料包（短）</translation>
+        <translation>資料包</translation>
     </message>
     <message>
         <location filename="../ui/pages/DownloadPage.qml" line="117"/>
@@ -1672,7 +1672,7 @@
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="743"/>
         <source>关闭</source>
-        <translation type="unfinished"></translation>
+        <translation>關閉</translation>
     </message>
     <message>
         <location filename="../ui/pages/ProgressPage.qml" line="754"/>
@@ -8133,7 +8133,7 @@
     <message>
         <location filename="../ui/StageShell.qml" line="78"/>
         <source>松开以导入整合包</source>
-        <translation type="unfinished">放開以匯入整合包</translation>
+        <translation>放開以匯入整合包</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="82"/>
@@ -8173,34 +8173,34 @@
     <message>
         <location filename="../ui/StageShell.qml" line="107"/>
         <source>Mod 管理</source>
-        <translation type="unfinished">Mod 管理</translation>
+        <translation>Mod 管理</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="108"/>
         <source>光影管理</source>
-        <translation type="unfinished">光影管理</translation>
+        <translation>光影管理</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="109"/>
         <location filename="../ui/StageShell.qml" line="118"/>
         <source>资源包</source>
-        <translation type="unfinished">資源包</translation>
+        <translation>資源包</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="110"/>
         <location filename="../ui/StageShell.qml" line="119"/>
         <source>存档</source>
-        <translation type="unfinished">存檔</translation>
+        <translation>存檔</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="116"/>
         <source>Mod</source>
-        <translation type="unfinished">Mod</translation>
+        <translation>Mod</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="117"/>
         <source>光影包</source>
-        <translation type="unfinished">光影包</translation>
+        <translation>光影包</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="120"/>
@@ -8220,7 +8220,7 @@
     <message>
         <location filename="../ui/StageShell.qml" line="184"/>
         <source>开始导入整合包：%1</source>
-        <translation type="unfinished">開始匯入整合包：%1</translation>
+        <translation>開始匯入整合包：%1</translation>
     </message>
     <message>
         <location filename="../ui/StageShell.qml" line="186"/>
@@ -8307,7 +8307,7 @@
     <message>
         <location filename="../ui/StageShell.qml" line="1143"/>
         <source>这里不接受这种文件</source>
-        <translation type="unfinished"></translation>
+        <translation>這裡不接受這種檔案</translation>
     </message>
 </context>
 <context>
@@ -8374,7 +8374,7 @@
     <message>
         <location filename="../ui/UpdateCardWindow.qml" line="208"/>
         <source>完成</source>
-        <translation type="unfinished">完成</translation>
+        <translation>完成</translation>
     </message>
 </context>
 <context>

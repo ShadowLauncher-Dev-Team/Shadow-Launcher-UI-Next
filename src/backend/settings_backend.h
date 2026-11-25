@@ -256,9 +256,12 @@ public:
     int listDownloadSource() const { return m_listDownloadSource; }
     void setListDownloadSource(int v) { m_listDownloadSource = qBound(0, v, 2); saveSettings(); emit downloadSettingsChanged(); }
     int maxDownloadThreads() const { return m_maxDownloadThreads; }
-    /// 并发上限 1..24：默认 16。64 是旧值 —— BMCLAPI/CF 在 64 并发下会 429/饿死连接，
-    /// 且 64 个 worker 各自持有 QNAM，连接数与内存都失控（契约 S1）。
-    void setMaxDownloadThreads(int v) { m_maxDownloadThreads = qBound(1, v, 24); saveSettings(); emit downloadSettingsChanged(); }
+    /// 下载并发硬上限（单一来源）。引擎侧同样夹到 24：VersionDownloader::setDownloadConfig
+    /// （version_downloader.cpp:192，契约 DOWNLOAD_CONTRACT §7「默认 16，上限 24」）。
+    /// 三处必须都用它，否则「界面显示的数字」与「引擎真正用的数字」会再次分叉：
+    /// 读注册表（loadSettings）、一次性迁移的默认值、QML 滑块上界。
+    static constexpr int kMaxDownloadConcurrency = 24;
+    void setMaxDownloadThreads(int v) { m_maxDownloadThreads = qBound(1, v, kMaxDownloadConcurrency); saveSettings(); emit downloadSettingsChanged(); }
     double downloadSpeedLimitMB() const { return m_downloadSpeedLimitMB; }
     // 限速：<=0 一律表示不限速（-1）。
     // 旧实现用 v<0，导致 UI 拖到 0 想表示"不限速"时被夹成 0.1MB/s（几乎断网）。
@@ -266,7 +269,8 @@ public:
     void setIsolationGameDir(const QString& dir);
     VersionIsolation* isolation() const { return m_isolation; }
     QString gameDir() const { return m_gameDir; }
-    // 设置页要显示「游戏目录」绝对路径：QML 直接读 s.gameDir，缺 Q_PROPERTY 会拿到 undefined。
+    // 只读游戏目录绝对路径。当前消费方是版本管理页（backend.gameDir，VersionPage.qml:176），
+    // 设置页并没有任何分区显示它 —— 先前这条注释说「设置页要显示」是错的，别照着接 UI。
 
 
 signals:

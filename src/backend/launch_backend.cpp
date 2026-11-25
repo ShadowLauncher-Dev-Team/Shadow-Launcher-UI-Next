@@ -250,6 +250,11 @@ void LaunchBackend::killGameProcess()
 {
     qCDebug(logLaunch) << "[PROCESS] killGameProcess() called —" << m_runningLaunchers.size() << "games to kill";
     for (Launcher* launcher : m_runningLaunchers) {
+        // 摘掉 m_activeLauncher 并断开回调：TerminateProcess 之后 QProcess 还会发
+        // finished(1, Crashed)，不掐掉就会走进 handleLaunchFinished，把"用户结束游戏"
+        // 当成启动失败弹诊断面板；同时 deleteLater 之后也不该再有裸指针回调。
+        if (launcher == m_activeLauncher) m_activeLauncher = nullptr;
+        launcher->disconnect();
         launcher->killProcess();  // Kill immediately with taskkill /F /T
         launcher->deleteLater();
     }
@@ -1837,27 +1842,46 @@ void LaunchBackend::onLaunchProgress(const QString& message)
 
 void LaunchBackend::handleLaunchFinished(Launcher* launcher, bool success, const QString& errorMsg)
 {
-    // Guard: launcher may have been removed by killGameByPid already
-    if (!m_runningLaunchers.contains(launcher)) {
-        qCDebug(logLaunch) << "[PROCESS] handleLaunchFinished skipped (already removed by kill)";
+    // 三种"结束"必须区分开（2026-11-25 实测）：
+    //   1) 进程跑起来过 → launcher 在运行列表里；
+    //   2) 进程根本没起来（Launcher::start 里 validateLaunch / 版本 JSON 读取 / QProcess
+    //      FailedToStart 这些同步或异步早退分支）→ 不在列表里，但它仍是本轮启动
+    //      （m_activeLauncher 指向它）→ 必须按启动失败收尾；
+    //   3) 已被 killGameByPid / killGameProcess 摘除 → 用户主动结束，忽略。
+    // 原实现把 2) 和 3) 一起 early-return，于是"版本核心文件缺失"这类失败既不落日志、
+    // 也不出诊断面板、也不复位 m_launching：浮层永远停在「启动游戏进程 进行中」，
+    // 之后每次点启动都被"已在启动中"挡回去（实测 versions/<坏版本> 可稳定复现）。
+    const bool everStarted = m_runningLaunchers.contains(launcher);
+    if (everStarted) {
+        // Remove from running list
+        m_runningLaunchers.removeOne(launcher);
+        qCDebug(logLaunch) << "[PROCESS] Game removed from running list (total:" << m_runningLaunchers.size() << ") success=" << success;
+        // BUGFIX: defer deletion — QProcess may still have pending queued signals
+        // Deferred via singleShot to a clean event-loop iteration
+        launcher->disconnect();
+        QTimer::singleShot(0, launcher, &QObject::deleteLater);
+        emit runningCountChanged();
+        if (m_runningLaunchers.isEmpty()) emit isRunningChanged();
+
+        // Always emit stopped for UI to react
+        emit minecraftStopped();
+        qCDebug(logLaunch) << "[PROCESS] minecraftStopped emitted";
+
+        if (!m_launching) {          // 已启动后的正常/异常退出：由死亡检查与 minecraftStopped 收尾
+            m_activeLauncher = nullptr;
+            return;
+        }
+    } else if (launcher != m_activeLauncher || m_cancelled) {
+        qCDebug(logLaunch) << "[PROCESS] handleLaunchFinished skipped (killed or superseded)";
         return;
+    } else {
+        qCWarning(logLaunch) << QStringLiteral("[PROCESS] 进程未能启动即失败: %1").arg(errorMsg);
+        m_activeLauncher = nullptr;
+        // 这个 Launcher 从没进过运行列表，没有别的地方会删它 —— 这里补上，
+        // 否则每次启动早退都泄漏一个 Launcher + 一个 QProcess。
+        launcher->disconnect();
+        QTimer::singleShot(0, launcher, &QObject::deleteLater);
     }
-
-    // Remove from running list
-    m_runningLaunchers.removeOne(launcher);
-    qCDebug(logLaunch) << "[PROCESS] Game removed from running list (total:" << m_runningLaunchers.size() << ") success=" << success;
-    // BUGFIX: defer deletion — QProcess may still have pending queued signals
-    // Deferred via singleShot to a clean event-loop iteration
-    launcher->disconnect();
-    QTimer::singleShot(0, launcher, &QObject::deleteLater);
-    emit runningCountChanged();
-    if (m_runningLaunchers.isEmpty()) emit isRunningChanged();
-
-    // Always emit stopped for UI to react
-    emit minecraftStopped();
-    qCDebug(logLaunch) << "[PROCESS] minecraftStopped emitted";
-
-    if (!m_launching) return;  // Already handled in handleLaunchStarted death check
 
     // Cancel any pending refresh timeout — game already finished
     if (m_refreshTimeoutTimer) m_refreshTimeoutTimer->stop();
@@ -1876,6 +1900,9 @@ void LaunchBackend::handleLaunchFinished(Launcher* launcher, bool success, const
         emit launchCheckFailed(tr("启动失败"), errorMsg);
         qCCritical(logLaunch) << QStringLiteral("[启动] Minecraft 启动失败 原因=%1").arg(errorMsg);
         emit logMessage(tr("启动失败: %1").arg(errorMsg));
+        // 失败原因必须落到浮层的诊断面板上：m_launchFailed 只有 failPipelineStep 会置位，
+        // 不调它的话崩溃报告已经算好（lastCrash 有效）却没有面板显示，用户只看到节点全绿。
+        failPipelineStep(errorMsg);
 
         // ── Crash detection: async full analysis ──
         // 1) Immediately notify QML (toast: "启动失败，正在分析日志信息…")
@@ -1891,6 +1918,11 @@ void LaunchBackend::handleLaunchFinished(Launcher* launcher, bool success, const
     }
     m_launching = false;
     m_launchFinishedOk = false;  // 与 launching 一起落，否则浮层卡在'完成态'不消失
+    m_activeLauncher = nullptr;
+    // 必须显式发：QML 侧 launching / launchFinishedOk / launchFailed 全靠这个 NOTIFY 刷新。
+    // 漏了这一发时启动器内部状态已经复位，界面却永远停在「100% · 游戏已启动 · 取消启动」
+    // （实测：进程秒退后截图仍是全绿完成态，无法关闭，只能重启启动器）。
+    emit launchStateChanged();
 }
 
 // ============================================================
@@ -2260,6 +2292,8 @@ void LaunchBackend::killGameByPid(qint64 pid)
     for (int i = 0; i < m_runningLaunchers.size(); ++i) {
         if (m_runningLaunchers[i]->pid() == pid) {
             Launcher* launcher = m_runningLaunchers.takeAt(i);
+            if (launcher == m_activeLauncher) m_activeLauncher = nullptr;
+            launcher->disconnect();
             launcher->killProcess();
             launcher->deleteLater();
             emit runningCountChanged();

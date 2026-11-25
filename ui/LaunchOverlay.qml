@@ -49,7 +49,10 @@ Item {
         if (t === "precheck") return qsTr("启动前检查未通过")
         if (t === "jvm") return qsTr("JVM 崩溃")
         if (t === "minecraft") return qsTr("游戏崩溃")
-        if (t.length > 0) return t
+        // type="log" 是 CrashDetector 的兜底类型（无崩溃报告、只有 JVM 输出/latest.log），
+        // 文案与 analysis-report.md 里的「类型: 游戏日志」保持一致；
+        // 未知类型一律回落成人话，绝不把内部 key 原样显示给用户（原来会显示"类型 log"）。
+        if (t === "log") return qsTr("游戏日志")
         return root.failReason.length > 0 ? qsTr("启动失败") : ""
     }
     function crashReasonText() {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 #include "easytier_process.h"
+#include "port_request.h"
 #include "../utils/secure_wipe.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -96,12 +97,25 @@ void EasyTierProcess::start(const QString& networkName, const QString& networkKe
         return;
     }
 
-    // Pick a deterministic RPC port from network key (align with Terracotta: PortRequest::EasyTierRPC)
+    // RPC port: the network-key hash is only a STARTING POINT, never bound blindly.
+    // Host and guest of the same room share the network secret, so a key-derived
+    // port is identical on both sides — on one machine (host + guest, or two
+    // launcher windows) the second easytier-core dies at startup with
+    // "failed to listen ... os error 10048" (实测 2026-11-25 01:20:38).
+    // Probe upward from the hash until a port is actually bindable.
     QByteArray rpcSeed = m_networkKey.toUtf8();
     quint32 rpcHash = qChecksum(rpcSeed);
-    m_rpcPort = 15880 + (rpcHash % (65535 - 15880));
-    // Ensure distinct from other ports
-    if (m_rpcPort == 11010) m_rpcPort++;
+    const quint16 rpcBase = static_cast<quint16>(15880 + (rpcHash % (65535 - 15880)));
+    m_rpcPort = rpcBase;
+    for (quint16 off = 0; off < 32; ++off) {
+        const quint16 candidate = static_cast<quint16>(rpcBase + off);
+        if (candidate == 0 || candidate == 11010)   // 11010 = EasyTier's default listen port
+            continue;
+        if (PortRequest::requestSpecific(candidate) == candidate) {
+            m_rpcPort = candidate;
+            break;
+        }
+    }
 
     // NOTE: do NOT taskkill /f /im easytier-core.exe here. That kills EVERY
     // easytier-core on the machine — including another launcher's instance

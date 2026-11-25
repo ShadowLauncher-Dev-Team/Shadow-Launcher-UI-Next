@@ -22,6 +22,7 @@
 #include <QJsonDocument>
 #include <QPainter>
 #include <QPointer>
+#include <QRegularExpression>
 #include <QStandardPaths>
 #include <QUrl>
 #include <QUrlQuery>
@@ -198,6 +199,28 @@ void AccountBackend::offlineLogin(const QString &username)
     if (name.isEmpty()) {
         emit logMessage(tr("用户名不能为空"));
         return;
+    }
+    // 离线用户名规则（2026-11-25 审计定稿）：
+    //  · 长度 1–16（游戏侧 --username 的实际上限；200 字符那种会把标题顶出窗口）；
+    //  · **允许中文**——国内离线服普遍用中文 ID，照搬正版 [A-Za-z0-9_] 会把这类用户
+    //    直接挡在门外，是功能回退而不是加固；
+    //  · 仍拒绝路径分隔符、盘符、Windows 非法字符与控制字符，并且不允许首尾是点或空格：
+    //    这些名字会被拿去拼文件名/目录名，Win32 还会把尾随空格点剥掉（见 modpack 的同类教训）。
+    // 已在列表里的旧条目放行，否则历史数据会把用户锁在账号外（切号走同一条路径）。
+    static const QRegularExpression kOfflineNameRule(
+        QStringLiteral("^[^\\\\/:*?\"<>|\\x00-\\x1F]{1,16}$"));
+    const bool badEdge = name.startsWith(QLatin1Char('.')) || name.endsWith(QLatin1Char('.'))
+                         || name.endsWith(QLatin1Char(' '));
+    if (badEdge || !kOfflineNameRule.match(name).hasMatch()) {
+        bool known = false;
+        for (const StoredAccount &a : m_accounts) {
+            if (a.mode == 1 && a.name == name) { known = true; break; }
+        }
+        if (!known) {
+            qCWarning(logAccount) << QStringLiteral("离线用户名不合规，已拒绝 长度=%1").arg(name.size());
+            emit logMessage(tr("离线用户名需为 1-16 个字符，不能含 \\ / : * ? \" < > | 等字符"));
+            return;
+        }
     }
 
     // Offline identity — COMPLETELY separate from premium (m_username/m_uuid untouched)

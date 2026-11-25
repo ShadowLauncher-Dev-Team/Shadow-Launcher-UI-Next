@@ -1066,7 +1066,12 @@ Item {
                 spacing: 18
 
                 Row {
+                    id: titleRow
                     spacing: 16
+                    // 名字长度不可控（外置/离线名字来自用户或服务器）：给标题行一个
+                    // 明确宽度，否则 Text 用 implicitWidth 把整行顶出窗口 ——
+                    // 实测 200 字符离线名时标题直接冲出右边界被窗口裁掉。
+                    width: parent.width
                     SMinecraftHead {
                         size: 56
                         // 头像不跟着 acctView 快照走：快照在"切账号那一刻"生成，
@@ -1076,9 +1081,13 @@ Item {
                         fallbackText: page.acctView ? page.acctView.name : ""
                     }
                     Column {
+                        id: titleCol
+                        width: titleRow.width - 56 - titleRow.spacing
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 4
                         Text {
+                            width: titleCol.width
+                            elide: Text.ElideRight
                             text: page.acctView ? page.acctView.name : ""
                             color: "#ffffff"
                             font.family: Theme.fontFamily

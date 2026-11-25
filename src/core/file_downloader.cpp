@@ -328,6 +328,15 @@ void FileDownloader::cancel()
             if (f->targetWritten && !f->committed) {
                 if (QFile::remove(f->localPath))
                     qCInfo(logDownload) << QStringLiteral("[夸父] 取消清理未完成文件 %1").arg(f->localPath);
+                // 2026-11-25（审计 DL-CORE-02）：合并中间文件也要清。
+                // mergeFile 先写 <目标>.shadow_merge，校验通过才 rename —— 取消发生在
+                // 合并中途时，只删目标文件会把这个满尺寸的中间文件留在磁盘上
+                // （HANDOFF §13「取消后目标文件可能残留满尺寸」的成因之一）。
+                const QString mergeTmp = f->localPath + QStringLiteral(".shadow_merge");
+                if (QFileInfo::exists(mergeTmp)) {
+                    QFile::remove(mergeTmp);
+                    qCInfo(logDownload) << QStringLiteral("[夸父] 取消清理合并中间文件 %1").arg(mergeTmp);
+                }
             }
         }
     }
@@ -1051,6 +1060,8 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             }
 
             qint64 lastProgressEmitMs = getElapsedMs();
+            // 看门狗「零增长」基线：每次真正收到新字节时刷新（2026-11-25 审计 DL-CORE-01）
+            qint64 attLastGrowthMs = getElapsedMs();
 
             connect(reply, &QNetworkReply::downloadProgress,
                     [&](qint64 received, qint64 total) {
@@ -1088,8 +1099,9 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                     if (sourceIdx < file->sourceFailCounts.size())
                         file->sourceFailCounts[sourceIdx] = 0;
                 }
-                th->lastReceiveTime = getElapsedMs();
-                qint64 now = getElapsedMs();
+                attLastGrowthMs = getElapsedMs();   // 看门狗「零增长」判据的基线
+                th->lastReceiveTime = attLastGrowthMs;
+                qint64 now = attLastGrowthMs;
                 if (now - lastProgressEmitMs >= kProgressEmitThrottleMs) {
                     lastProgressEmitMs = now;
                     emit progressChanged(m_completedFiles.loadRelaxed(), m_totalFiles.loadRelaxed(),
@@ -1155,6 +1167,13 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
             // 主线程慢速扫描可能置 th->watchdogAbort 请求中止当前连接：
             // 切分后让本线程以缩小后的范围重试（换新连接，有机会命中快边缘）。
             // worker 自己 abort 自己的 reply（线程安全），不跨线程碰 QNetworkReply。
+            // 2026-11-25（审计 DL-CORE-01）：判据改看「增量」。
+            // 旧判据用 reply->bytesAvailable()==0 判卡死，只抓得住「一个字节都没收到」；
+            // 对端发一半就挂住时缓冲里躺着几 MB、bytesAvailable 恒 >0（永不缩小），
+            // 于是既不触发本看门狗、也不触发 transferTimeout（readyRead 已续过命），
+            // 实测 8MB 半截响应在 MC 模式要 110 秒才判失败（见 audit 报告）。
+            // 现在按「距上次收到新字节的时长」判：20s 零增长即放弃本次尝试换连接。
+            // （基线 attLastGrowthMs 在本 attempt 起始处声明，downloadProgress 更新它）
             QTimer watchdogPoll;
             watchdogPoll.setSingleShot(true);
             connect(&watchdogPoll, &QTimer::timeout, [&]() {
@@ -1184,7 +1203,13 @@ void FileDownloader::runWorker(std::shared_ptr<DownloadThread> th,
                 // 多跑一轮修复（实测总耗时 144s）。现在：
                 //   ① 20 秒**一个字节都没收到**才判定卡死；
                 //   ② 45 秒墙钟上限只对「收 <256KB」的无效尝试生效。
-                const bool stalledStart = (el >= kSlowAttemptWindowMs && gotNow == 0);
+                // ① 起步就停：20 秒一个字节都没收到；
+                // ①b 收到过一半后彻底不动：距上次新增字节 ≥20s（2026-11-25 审计补齐，
+                //     这一条才抓得住「发一半就挂住」——此时 gotNow 已经是几 MB）。
+                const qint64 idleMs = getElapsedMs() - attLastGrowthMs;
+                const bool stalledStart = (el >= kSlowAttemptWindowMs
+                                           && (gotNow == 0
+                                               || (!rangeFilled && idleMs >= kSlowAttemptWindowMs)));
                 const bool overWall = (el >= kMaxAttemptWallMs && gotNow < 256 * 1024);
                 if (stalledStart || overWall) {
                     slowAbort = true;
@@ -1982,6 +2007,13 @@ bool FileDownloader::mergeFile(std::shared_ptr<FileDownload> file)
     // 提交器：close + SHA1 校验 + rename。返回 false 时调用方负责删除 mergeTmp。
     auto commitTmp = [&]() -> bool {
         out.close();
+        // 2026-11-25（审计 DL-CORE-02）：取消后不得把合并结果 rename 进目标路径。
+        // 旧实现没有这道闸：取消恰好落在合并期间时，worker 仍会写完整 + rename，
+        // 于是「取消后磁盘上反而多出一个满尺寸文件」（契约 §5 要求 in-flight 回调早退）。
+        if (m_cancelled.loadRelaxed()) {
+            qCInfo(logDownload) << QStringLiteral("[夸父] 合并被取消，丢弃中间文件 %1").arg(file->localName);
+            return false;
+        }
         if (!file->expectedSha1.isEmpty()) {
             QFile chk(mergeTmp);
             if (!chk.open(QIODevice::ReadOnly)) return false;
@@ -2050,6 +2082,13 @@ bool FileDownloader::mergeFile(std::shared_ptr<FileDownload> file)
         }
         // 注意：downloadEnd 是**排他**上界（实测区间 0..16777216 实际写 16777216 字节），
         // 所以这里不按区间重算期望长度，只累加分片实际长度，最后与声明的文件大小比对。
+        // 2026-11-25（审计 DL-CORE-02）：合并循环按分片粒度响应取消（大文件逐片写盘）。
+        if (m_cancelled.loadRelaxed()) {
+            tf.close();
+            out.close();
+            QFile::remove(mergeTmp);
+            return false;
+        }
         expectedBytes += tf.size();
         out.write(tf.readAll());
         tf.close();
@@ -2100,6 +2139,26 @@ void FileDownloader::speedTick()
     if (bytes < 0) bytes = 0;   // 分片重下/截断修正时 m_downloadedBytes 瞬时回退 → 钳零，避免负速度
     m_lastSpeedBytes = now;
     m_speedTimer.restart();
+
+    // ── 空闲归零（契约 §4：1.5s 无新字节 → 速度归零，不是衰减）──
+    // 旧实现只有 30×100ms 加权窗口：停流 1.5s 时窗口里仍有一半非零样本，
+    // 读数还剩 15·16/2/(30·31/2) ≈ 26%，要 ~3s 才滑到 0 —— 用户看到的是「停了还有速度」。
+    if (bytes == 0) {
+        if (++m_speedIdleTicks * kSpeedTickMs >= kSpeedIdleZeroMs) {
+            m_currentSpeedBps.storeRelaxed(0);
+            m_emaMbps = 0.0;
+            m_instantBps = 0;
+            {
+                QMutexLocker lock(&m_speedMutex);
+                m_speedRecords.clear();
+            }
+            emit progressChanged(m_completedFiles.loadRelaxed(), m_totalFiles.loadRelaxed(),
+                                  m_downloadedBytes.loadRelaxed(), m_totalBytes.loadRelaxed());
+            return;
+        }
+    } else {
+        m_speedIdleTicks = 0;
+    }
 
     qint64 actualBps = bytes * 1000 / elapsed;
     m_instantBps = actualBps;   // 主流启动器 Speed 语义：瞬时差分（速度门限用，响应快）

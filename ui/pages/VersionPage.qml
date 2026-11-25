@@ -53,6 +53,14 @@ Item {
     // 否则会被 syncPendingFromList（rows 变化时把不存在的 pendingId 退回第一项）冲掉。
     property string selectAfterRefresh: ""
 
+    // ── 整合包部分失败：「补下失败项」入口 ──
+    // 后端 retryFailedModDownloads() / failedModFiles() 早已就绪（modpack_importer.h:85-87），
+    // 但一直没有任何 QML 调用方，而任务日志会打印"失败清单可用「补下失败项」重试"。
+    // failedModFiles() 是 Q_INVOKABLE 函数（不是带 NOTIFY 的属性），只能主动拉取。
+    property var modFailedFiles: []
+    property bool modFailedDismissed: false
+    property bool retryFailedPop: false
+
     // ── 自动刷新（进入页面拉一次，避免"装完新版本回来还是旧列表"）──
     // 这个页面实例是常驻的（StageShell 只切宿主 visible），Component.onCompleted 只在启动时跑一次，
     // 所以真正的刷新时机是「变可见」。用陈旧阈值节流：窗口期内反复进出不再重复请求后端。
@@ -323,12 +331,28 @@ Item {
         else page.b.refreshVersionDetails()
         return true
     }
+    // 拉一次"上次导入部分失败的文件清单"（函数式接口，没有 NOTIFY，必须主动刷新）
+    function refreshFailedMods() {
+        if (!page.importer) { page.modFailedFiles = []; return }
+        var f = []
+        try { f = page.importer.failedModFiles() || [] } catch (e) { f = [] }
+        page.modFailedFiles = f
+    }
+    function retryFailedMods() {
+        if (!page.importer) return
+        var n = page.modFailedFiles.length
+        var ok = page.importer.retryFailedModDownloads()
+        if (ok) page.flash(qsTr("已开始补下 %1 个文件，进度见「下载进度」").arg(n))
+        else page.flash(qsTr("无法补下：任务已结束或正在导入，请重新导入整合包"))
+        page.refreshFailedMods()
+    }
     // 页面被 StageShell 宿主切到可见：补一次数据对齐
     function onPageShown() {
         if (!page.b) return
         page.rev++
         if (page.mcFolder) page.mcFolder.refreshFolders()
         page.refreshLocal(false)
+        page.refreshFailedMods()
         Qt.callLater(page.syncPendingFromList)
     }
 
@@ -362,6 +386,8 @@ Item {
         }
         if (page.importing) { page.flash(qsTr("已有整合包正在导入，请等它完成")); return }
         page.selectAfterRefresh = ""
+        page.modFailedDismissed = false
+        page.modFailedFiles = []
         page.flash(qsTr("开始导入整合包：%1").arg(page.fileNameOf(p)))
         // 外部导入没有来源图标（空 url → 任务侧用占位图）；版本名留空让任务按包名自动生成
         page.importer.startImport(p, "", false, "")
@@ -390,6 +416,7 @@ Item {
         if (Qt.application.arguments.indexOf("--ui-folder-menu") >= 0)
             page.folderMenuOpen = true
         Qt.callLater(page.syncPendingFromList)
+        Qt.callLater(page.refreshFailedMods)
         if (page.visible) page.onPageShown()
     }
 
@@ -436,6 +463,8 @@ Item {
         target: page.importer
         enabled: page.importer !== null
         function onImportFinished(ok, name, info) {
+            page.modFailedDismissed = false
+            page.refreshFailedMods()
             if (ok) {
                 // 完成提示只由「下载进度」页发布（它会弹「%1 安装完成」）。
                 // 这里原来另弹一条「整合包已导入：%1」，两句主题不同，
@@ -449,6 +478,9 @@ Item {
                 page.flash(qsTr("整合包导入失败：%1").arg(info))
             }
         }
+        // 导入/补下结束（busy 落回 false）或步骤推进时重新拉一次失败清单
+        function onBusyChanged() { if (!page.importing) page.refreshFailedMods() }
+        function onStepChanged() { page.refreshFailedMods() }
     }
 
     // ---------- 底色 ----------
@@ -643,6 +675,131 @@ Item {
                 width: parent.width * page.importProgress
                 height: parent.height
                 color: Theme.accent
+            }
+        }
+    }
+
+    // ---------- 整合包部分失败：「补下失败项」入口 ----------
+    // 与 importBar 同一槽位（topBar 下沿），两者互斥：导入/补下进行中显示 importBar，
+    // 结束后仍有失败文件则显示本条。后端接口见 modpack_importer.cpp:135-150。
+    Rectangle {
+        id: failedBar
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: topBar.bottom
+        height: 38
+        visible: page.modFailedFiles.length > 0 && !page.importing && !page.modFailedDismissed
+        color: Theme.bgCard2
+        z: 200
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 1
+            color: Theme.line
+        }
+        SIcon {
+            anchors.left: parent.left
+            anchors.leftMargin: page.narrow ? 16 : 20
+            anchors.verticalCenter: parent.verticalCenter
+            name: "alert-triangle"
+            size: 14
+            color: Theme.warn
+        }
+        Text {
+            anchors.left: parent.left
+            anchors.leftMargin: (page.narrow ? 16 : 20) + 22
+            anchors.right: failedActions.left
+            anchors.rightMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            text: qsTr("有 %1 个文件未下载成功").arg(page.modFailedFiles.length)
+            color: Theme.fg
+            font.family: Theme.fontFamily
+            font.pixelSize: 12
+            elide: Text.ElideRight
+        }
+        Row {
+            id: failedActions
+            anchors.right: parent.right
+            anchors.rightMargin: page.narrow ? 16 : 20
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 8
+            SButton {
+                kind: 1
+                radius: 2
+                height: 26
+                text: qsTr("忽略")
+                onClicked: {
+                    page.modFailedDismissed = true
+                    page.flash(qsTr("已忽略未完成文件；需要时重新导入整合包即可"))
+                }
+            }
+            SButton {
+                kind: 0
+                radius: 2
+                height: 26
+                iconName: "refresh-cw"
+                text: qsTr("补下失败项")
+                onClicked: page.retryFailedPop = true
+            }
+        }
+    }
+
+    // 补下失败项：二次确认（只重下失败文件，已完成的不动）
+    Popup {
+        id: retryFailedPop
+        parent: page
+        anchors.centerIn: parent
+        width: 380
+        modal: true
+        padding: 0
+        visible: page.retryFailedPop
+        closePolicy: Popup.CloseOnEscape
+        background: Rectangle {
+            radius: Theme.rMd
+            color: Theme.bgCard2
+            border.width: 1
+            border.color: Theme.line2
+        }
+        contentItem: Column {
+            width: 380
+            padding: 18
+            spacing: 12
+            Text {
+                text: qsTr("补下失败项？")
+                color: Theme.fg
+                font.family: Theme.fontFamily
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+            }
+            Text {
+                width: parent.width - 36
+                text: qsTr("只会重新下载上次失败的 %1 个文件，已完成的版本与模组不会重下。\n补下过程可在「下载进度」查看，也可随时取消。").arg(page.modFailedFiles.length)
+                color: Theme.fg2
+                wrapMode: Text.Wrap
+                font.family: Theme.fontFamily
+                font.pixelSize: 12
+            }
+            Row {
+                spacing: 8
+                SButton {
+                    kind: 1
+                    height: 30
+                    radius: 2
+                    text: qsTr("取消")
+                    onClicked: page.retryFailedPop = false
+                }
+                SButton {
+                    kind: 0
+                    height: 30
+                    radius: 2
+                    text: qsTr("开始补下")
+                    onClicked: {
+                        page.retryFailedPop = false
+                        page.retryFailedMods()
+                    }
+                }
             }
         }
     }

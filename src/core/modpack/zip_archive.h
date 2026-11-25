@@ -50,7 +50,7 @@ public:
     //   prefix 为空字符串 => 解压整包（主流启动器 CF 包 overrides="." 场景）。
     //   目录条目自动创建，文件时间戳按 zip 记录恢复。
     // onBeforeWrite(destPath, existed)：写入前回调（任务层用于覆盖备份/回滚追踪）。
-    // 返回成功解压的文件数；发生致命错误返回 -1；被取消返回 -2。
+    // 返回成功解压的文件数；发生致命错误返回 -1；被取消返回 -2；写盘 -3；超体积预算 -4。
     // cancelFlag 非空时每解压一个文件检查一次。
     // progress(filesDone, filesTotal) 可选进度回调。
     int extractPrefixTo(const QString& prefix, const QString& destDir,

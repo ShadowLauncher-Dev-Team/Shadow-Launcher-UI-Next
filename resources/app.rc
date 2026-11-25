@@ -22,7 +22,7 @@ BEGIN
             VALUE "LegalCopyright", "ShadowLauncher Dev Team"
             VALUE "OriginalFilename", "ShadowLauncher.exe"
             VALUE "ProductName", "Shadow Launcher"
-            VALUE "ProductVersion", "2.0.0-beta"
+            VALUE "ProductVersion", "2.0.0"
         END
     END
     BLOCK "VarFileInfo"

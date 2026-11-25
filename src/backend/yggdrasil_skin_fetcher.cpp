@@ -13,6 +13,7 @@
 #include <QNetworkRequest>
 #include <QLoggingCategory>
 #include <QImage>
+#include <QCryptographicHash>
 #include <QDateTime>
 #include <QCoreApplication>
 #include "core/render_head_util.h"
@@ -26,6 +27,41 @@ static QString toImageUrl(const QString& filePath)
 {
     if (filePath.isEmpty()) return {};
     return QUrl::fromLocalFile(filePath).toString();
+}
+
+// ── 缓存文件名：uuid 来自服务器响应，绝不能直接拼进路径 ──
+// 实测（2026-11-25 审计）：authlib 服务器把 selectedProfile.id 回成
+// "../../../../PWNED_TRAVERSAL" 时，缓存被写到 %APPDATA%\PWNED_TRAVERSAL.png，
+// 即"远端可写任意路径的 .png"。这里只保留安全字符，异常值退化为哈希。
+static QString safeCacheStem(const QString &uuid)
+{
+    QString stem;
+    stem.reserve(qMin(uuid.size(), 64));
+    for (const QChar &ch : uuid) {
+        const ushort u = ch.unicode();
+        if ((u >= '0' && u <= '9') || (u >= 'a' && u <= 'z')
+            || (u >= 'A' && u <= 'Z') || u == QLatin1Char('-'))
+            stem.append(ch);
+    }
+    if (stem.isEmpty() || stem.size() > 64)
+        return QString::fromLatin1(QCryptographicHash::hash(uuid.toUtf8(), QCryptographicHash::Sha1)
+                                       .toHex().left(32));
+    return stem;
+}
+
+// ── 下载结果校验：不是 PNG / 太大 / 尺寸离谱一律不落盘 ──
+// 实测（同日审计）：站点对 /skin.png 回 200 + "<html>..." 时，这段 HTML 被写进
+// skins/<uuid>.png 并当成头像发布给 QML（头像永远的坏图，且下次命中缓存不再重下）。
+static bool isUsableSkinPng(const QByteArray &data)
+{
+    constexpr int kMaxSkinBytes = 4 * 1024 * 1024;
+    if (data.size() < 64 || data.size() > kMaxSkinBytes) return false;
+    if (!data.startsWith("\x89PNG\r\n\x1a\n")) return false;
+    QImage probe;
+    if (!probe.loadFromData(data, "PNG")) return false;
+    // 允许高清皮肤（128/256/512），只挡掉明显不是皮肤的尺寸
+    return probe.width() >= 32 && probe.height() >= 32
+        && probe.width() <= 1024 && probe.height() <= 1024;
 }
 
 // ── 头部渲染：复用了正版登录的 renderHead3D 逻辑 ──
@@ -88,13 +124,20 @@ void YggdrasilSkinFetcher::fetchSkin(const QString &apiRoot, const QString &uuid
 
     // PCL McSkinGetAddress: GET {apiRoot}/sessionserver/session/minecraft/profile/{uuid}
     // 缓存命中时先按上一轮的 variant 出图，等 profile 返回后再用其中的 model 校正
+    // 换账号：上一个账号的头像立刻作废。留着它只会让"新账号拉取失败"看起来
+    // 像"新账号就是这个脸"（也更不该在失败时回落到别人的皮肤）。
+    if (m_skinOwnerUuid != uuid) {
+        m_skinPath.clear();
+        m_skinVariant = 0;
+        m_skinOwnerUuid.clear();
+    }
     m_pendingUuid = uuid;
     m_pendingVariant = 0;
     m_pendingSkinDomains = allowedSkinDomains;
 
     // ── 缓存/兜底优先：先给 UI 一个可用头像。这样即使服务器不可达、令牌已失效，
     //    也不会让 MinecraftHead2D 因 skinPath 为空而无限转圈（旧实现只有网络成功才有头像）。
-    const QString preCache = cacheDir() + QStringLiteral("/") + uuid + QStringLiteral(".png");
+    const QString preCache = cacheDir() + QStringLiteral("/") + safeCacheStem(uuid) + QStringLiteral(".png");
     if (QFile::exists(preCache)) {
         QString preHead = preCache.left(preCache.length() - 4) + QStringLiteral("_head.png");
         if (!QFile::exists(preHead)) preHead = renderHead(preCache);
@@ -175,7 +218,7 @@ void YggdrasilSkinFetcher::onProfileReply()
     }
 
     // 再查一次缓存（第一次查时 variant 还未解析）
-    QString cachedPath = cacheDir() + QStringLiteral("/") + m_pendingUuid + QStringLiteral(".png");
+    QString cachedPath = cacheDir() + QStringLiteral("/") + safeCacheStem(m_pendingUuid) + QStringLiteral(".png");
     if (QFile::exists(cachedPath)) {
         QString headPath = cachedPath.left(cachedPath.length() - 4) + QStringLiteral("_head.png");
         if (!QFile::exists(headPath))
@@ -220,8 +263,17 @@ void YggdrasilSkinFetcher::onDownloadReply()
 
     QByteArray pngData = reply->readAll();
 
+    if (!isUsableSkinPng(pngData)) {
+        qCWarning(logYggSkin) << "Downloaded skin is not a usable PNG, discarding: bytes="
+                              << pngData.size();
+        // 坏图绝不留进缓存：留下就等于把"坏头像"固化成该账号的皮肤
+        if (m_skinPath.isEmpty()) applyFallbackSkin();
+        emit skinFailed(QStringLiteral("皮肤文件无效（不是有效的 PNG），已使用默认头像"));
+        return;
+    }
+
     // PCL: 下载到 .downloading → 重命名（防写一半进程崩）
-    QString cachedPath = cacheDir() + QStringLiteral("/") + m_pendingUuid + QStringLiteral(".png");
+    QString cachedPath = cacheDir() + QStringLiteral("/") + safeCacheStem(m_pendingUuid) + QStringLiteral(".png");
     QString tmpPath = cachedPath + QStringLiteral(".downloading");
 
     QFile file(tmpPath);
@@ -249,6 +301,7 @@ void YggdrasilSkinFetcher::setSkinFromFile(const QString &filePath, int variant)
     m_skinPath = toImageUrl(filePath)
                  + QStringLiteral("?t=%1").arg(QDateTime::currentMSecsSinceEpoch());
     m_skinVariant = variant;
+    m_skinOwnerUuid = m_pendingUuid;   // 这张图属于哪个账号：换账号时据此作废
     emit skinChanged();
     emit skinReady();
 }

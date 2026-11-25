@@ -101,15 +101,8 @@ VersionDownloader::VersionDownloader(QObject* parent)
         const int assetTotal     = m_assetDownloader ? m_assetDownloader->totalFiles() : 0;
         const qint64 assetBytes  = m_assetDownloader ? m_assetDownloader->downloadedBytes() : 0;
         const qint64 assetTotB   = m_assetDownloader ? m_assetDownloader->totalBytes() : 0;
-        const int mergedCompleted = completed + assetCompleted;
-        const int mergedTotal     = total + assetTotal;
-        const qint64 mergedBytes  = dlBytes + assetBytes;
-        const qint64 mergedTotB   = totBytes + assetTotB;
-        m_completedFiles.storeRelaxed(mergedCompleted);
-        m_totalFiles.storeRelaxed(mergedTotal);
-        m_downloadedBytes.storeRelaxed(mergedBytes);
-        m_totalBytes.storeRelaxed(mergedTotB);
-        emit progressChanged(mergedCompleted, mergedTotal, mergedBytes, mergedTotB);
+        publishProgress(completed + assetCompleted, total + assetTotal,
+                        dlBytes + assetBytes, totBytes + assetTotB);
     });
 
     connect(m_downloader, &ShadowDownloader::FileDownloader::logMessage,
@@ -134,15 +127,10 @@ VersionDownloader::VersionDownloader(QObject* parent)
             this, [this](int completed, int total, qint64 dlBytes, qint64 totBytes) {
         int libTotal = m_downloader ? m_downloader->totalFiles() : 0;
         int libCompleted = m_downloader ? m_downloader->completedFiles() : 0;
-        int mergedCompleted = libCompleted + completed;
-        int mergedTotal = libTotal + total;
-        qint64 libBytes = m_downloader ? m_downloader->downloadedBytes() : 0;
-        qint64 libTotalBytes = m_downloader ? m_downloader->totalBytes() : 0;
-        m_completedFiles.storeRelaxed(mergedCompleted);
-        m_totalFiles.storeRelaxed(mergedTotal);
-        m_downloadedBytes.storeRelaxed(libBytes + dlBytes);
-        m_totalBytes.storeRelaxed(libTotalBytes + totBytes);
-        emit progressChanged(mergedCompleted, mergedTotal, libBytes + dlBytes, libTotalBytes + totBytes);
+        const qint64 libBytes = m_downloader ? m_downloader->downloadedBytes() : 0;
+        const qint64 libTotalBytes = m_downloader ? m_downloader->totalBytes() : 0;
+        publishProgress(libCompleted + completed, libTotal + total,
+                        libBytes + dlBytes, libTotalBytes + totBytes);
     });
 
     connect(m_assetDownloader, &AssetDownloader::logMessage,
@@ -197,7 +185,11 @@ void VersionDownloader::setCacheFallbackDir(const QString& dir)
 void VersionDownloader::setDownloadConfig(const DownloadConfig& config)
 {
     m_downloadCfg = config;
-    m_maxWorkers = qBound(1, config.maxWorkers, 512);  // 上限 512（实测 192 为拐点，留余量给用户手调）
+    // 2026-11-25（审计 DL-CORE-03）：引擎侧必须自己夹取，不能只靠设置层。
+    // 契约 §7 定的是「默认 16，上限 24」；旧实现夹到 512，于是历史配置里的 192
+    // 一路穿过 SettingsBackend(qBound ..,512) → 本处(512) → 夸父 setMaxThreads(256)
+    // 原样生效（实测 FDTest 日志「最大线程=64」、backend.maxDownloadThreads=192）。
+    m_maxWorkers = qBound(1, config.maxWorkers, 24);
     if (m_downloader) {
         m_downloader->setMaxThreads(m_maxWorkers);
         m_downloader->setSpeedLimitMB(config.speedLimitMB);
@@ -949,6 +941,25 @@ bool VersionDownloader::isRunning() const
 // proceeding to integrity verification.
 // ═══════════════════════════════════════════════════════════
 
+// ── 单调进度出口（契约 §2/§3）──
+// 两个引擎各自的计数会在三种情况下回退：①镜像回退重建引擎（新引擎从 0 起算）；
+// ②阶段 B 发现 assets → 分母变大（百分比自然下跌）；③山海经 appendTasks 内部重建。
+// 契约要求「任务内总进度只增不减」，所以这里做一次性钳制：四个值都只允许上调。
+// 注意 downloadVersion() 会在任务开始时把它们清零，这是唯一的复位点。
+void VersionDownloader::publishProgress(int completed, int total,
+                                        qint64 bytes, qint64 totalBytes)
+{
+    const int c    = qMax(m_completedFiles.loadRelaxed(), completed);
+    const int t    = qMax(m_totalFiles.loadRelaxed(), total);
+    const qint64 b = qMax(m_downloadedBytes.loadRelaxed(), bytes);
+    const qint64 tb = qMax(m_totalBytes.loadRelaxed(), totalBytes);
+    m_completedFiles.storeRelaxed(c);
+    m_totalFiles.storeRelaxed(t);
+    m_downloadedBytes.storeRelaxed(b);
+    m_totalBytes.storeRelaxed(tb);
+    emit progressChanged(c, t, b, tb);
+}
+
 void VersionDownloader::checkBothDownloadersDone()
 {
 
@@ -1198,9 +1209,10 @@ void VersionDownloader::retryWithNextMirror(const QStringList& badPaths)
     const auto& next = m_fallbackChain[m_fallbackIndex];
     setMirror(next);
 
-    // Reset counters
-    m_completedFiles.storeRelaxed(0);
-    m_downloadedBytes.storeRelaxed(0);
+    // 2026-11-25（审计 DL-CORE-04）：**不清零**已下载计数。
+    // 契约 §2：镜像回退不得让进度回退。旧实现把 m_completedFiles/m_downloadedBytes
+    // 归零，而新引擎又从 0 起算 → 上层看到的百分比直接跌回起点（回退的根因）。
+    // 计数保留，靠 publishProgress() 的单调钳制吃掉回退的那一拍。
     m_taskDestPaths.clear();
 
     // Create fresh FileDownloader (old one is in Done/Failed state, can't reuse)
@@ -1219,12 +1231,8 @@ void VersionDownloader::retryWithNextMirror(const QStringList& badPaths)
         int assetTotal = m_assetDownloader ? m_assetDownloader->totalFiles() : 0;
         qint64 assetBytes = m_assetDownloader ? m_assetDownloader->downloadedBytes() : 0;
         qint64 assetTotalBytes = m_assetDownloader ? m_assetDownloader->totalBytes() : 0;
-        m_completedFiles.storeRelaxed(completed + assetCompleted);
-        m_totalFiles.storeRelaxed(total + assetTotal);
-        m_downloadedBytes.storeRelaxed(rx + assetBytes);
-        m_totalBytes.storeRelaxed(totalBytes + assetTotalBytes);
-        emit progressChanged(completed + assetCompleted, total + assetTotal,
-                             rx + assetBytes, totalBytes + assetTotalBytes);
+        publishProgress(completed + assetCompleted, total + assetTotal,
+                        rx + assetBytes, totalBytes + assetTotalBytes);
     });
     connect(m_downloader, &ShadowDownloader::FileDownloader::logMessage,
             this, &VersionDownloader::logMessage);

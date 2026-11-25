@@ -340,7 +340,8 @@ Item {
         } else {
             b.installVersion(page.picked)
         }
-        if (toast) toast.show(qsTr("已开始安装 %1").arg(name), 2600, "info")
+        // force=true：这是用户点按钮的直接结果，连点两次必须两次都有反馈
+        if (toast) toast.show(qsTr("已开始安装 %1").arg(name), 2600, "info", true)
         page.openProgress()
     }
 
@@ -398,11 +399,11 @@ Item {
             page.refreshPending = false
             refreshTimer.stop()
             if (page.toast)
-                page.toast.show(ok ? qsTr("版本列表刷新成功") : qsTr("版本列表刷新失败"), 2200, ok ? "info" : "warning")
+                page.toast.show(ok ? qsTr("版本列表刷新成功") : qsTr("版本列表刷新失败"), 2200, ok ? "info" : "warning", true)
         }
         function onCancelNotification(installId, message) {
             if (page.toast && message && message.length > 0)
-                page.toast.show(message, 3000, "warning")
+                page.toast.show(message, 3000, "warning", true)
         }
     }
 
@@ -1337,7 +1338,7 @@ Item {
                                             } else if (page.selectLoader(loaderCard.lkey, parent.ver)) {
                                                 page.expandedLoader = ""
                                                 if (page.toast)
-                                                    page.toast.show(loaderCard.llabel + " " + parent.ver, 1600, "info")
+                                                    page.toast.show(loaderCard.llabel + " " + parent.ver, 1600, "info", true)
                                             }
                                         }
                                     }

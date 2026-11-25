@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025-2026 影 / Shadow / xiaole1173
 #include "launcher.h"
+#include "../version.h"       // SHADOW_DISPLAY_VERSION：${launcher_version} 的真实值
 #include "../utils/logger.h"
 #include "mc_language.h"
 
@@ -1383,6 +1384,12 @@ QStringList Launcher::buildArgs(const QString& versionId, int maxMemoryMB,
         arg.replace(QStringLiteral("${classpath_separator}"), classpathSep);
         arg.replace(QStringLiteral("${version_name}"), versionId);
         arg.replace(QStringLiteral("${natives_directory}"), nativesDir);
+        // MC 26.x 的 arguments.jvm 里也带 ${launcher_name}/${launcher_version}
+        // （-Dminecraft.launcher.brand=… / -Dminecraft.launcher.version=…）。原来只在下面的
+        // 游戏参数循环里替换，JVM 侧把字面量原样传给了游戏（实测启动日志里就是
+        // "-Dminecraft.launcher.brand=${launcher_name}"），崩溃报告/日志里显示的品牌是占位符。
+        arg.replace(QStringLiteral("${launcher_name}"), QStringLiteral("ShadowLauncher"));
+        arg.replace(QStringLiteral("${launcher_version}"), QStringLiteral(SHADOW_DISPLAY_VERSION));
         // Fabric 26.x：jvm 参数 "-DFabricMcEmu= net.minecraft.client.main.Main " 等号后带空格，
         // 透传到命令行会被拆成两个参数（-DFabricMcEmu= 空值 + mainClass 提前 → JVM 把
         // mainClass 当主类、-cp 失效 → ClassNotFoundException）。对齐主流启动器实现 ModLaunch
@@ -1875,7 +1882,7 @@ QStringList Launcher::buildArgs(const QString& versionId, int maxMemoryMB,
             arg.replace(QStringLiteral("${clientid}"), QStringLiteral(""));
             arg.replace(QStringLiteral("${auth_xuid}"), QStringLiteral(""));
             arg.replace(QStringLiteral("${launcher_name}"), QStringLiteral("ShadowLauncher"));
-            arg.replace(QStringLiteral("${launcher_version}"), QStringLiteral("1.0"));
+            arg.replace(QStringLiteral("${launcher_version}"), QStringLiteral(SHADOW_DISPLAY_VERSION));
             arg.replace(QStringLiteral("${profile_name}"), versionId);
             arg.replace(QStringLiteral("${quickPlayPath}"), QString());  // not used
 

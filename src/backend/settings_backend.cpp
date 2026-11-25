@@ -11,6 +11,7 @@
 #include <QDirIterator>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QImageReader>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QSet>
@@ -164,7 +165,8 @@ void SettingsBackend::loadSettings()
     m_autoMemory = s.value(QStringLiteral("memory/autoMemory"), true).toBool();
     m_embeddedLoginEnabled = s.value(QStringLiteral("general/embeddedLogin"), false).toBool();
     // 0=简体 1=繁体(港澳) 2=繁体(台湾) 3=English；这四项都有词条。
-    // 越界值一律归 0，否则 UI 下拉与后端语义会错位。
+    // 越界值一律夹进 0..3（负数→0、超大→3），否则 UI 下拉与后端语义会错位。
+    // 注：main_release.cpp:514 读同一个键时也夹 0..3，两处必须一致。
     m_languageIndex = qBound(0, s.value(QStringLiteral("general/languageIndex"), 0).toInt(), 3);
     m_launchLanguageIndex = m_languageIndex;  // snapshot for restart detection
     m_lastLaunchedVersion = s.value(QStringLiteral("general/lastVersion"), QString()).toString();
@@ -273,8 +275,12 @@ void SettingsBackend::loadSettings()
     // 推翻它：镜像优先 105.7s vs 官方优先 16.7s，镜像慢 6 倍。
     m_fileDownloadSource = qBound(0, s.value(QStringLiteral("download/fileSource"), 2).toInt(), 2);
     m_listDownloadSource = qBound(0, s.value(QStringLiteral("download/listSource"), 2).toInt(), 2);
-    // 并发上限 512（默认 192；参考引擎实测 192 已是拐点，再高不再更快，留余量给用户手调）
-    m_maxDownloadThreads = qBound(1, s.value(QStringLiteral("download/threadLimit"), defaultDownloadConcurrency()).toInt(), 512);
+    // 并发上限与引擎一致（审计 SET-01）：读注册表时就夹到 kMaxDownloadConcurrency。
+    // 这里原先是 512，于是历史值 192/512 会被原样读进内存 → 设置页显示 192/512，
+    // 而 VersionDownloader::setDownloadConfig 又夹到 24（version_downloader.cpp:192），
+    // 用户看到的并发数从来不是引擎真正用的那个。
+    m_maxDownloadThreads = qBound(1, s.value(QStringLiteral("download/threadLimit"), kMaxDownloadConcurrency).toInt(),
+                                  kMaxDownloadConcurrency);
 
     // ── 一次性迁移（regionPolicyV1）──
     // 老版本把「官方优先(1)」写死成默认并存进了注册表，也把线程数写死成 16。
@@ -286,9 +292,12 @@ void SettingsBackend::loadSettings()
         const bool cn = RegionUtils::isChinaRegion();
         bool changed = false;
         if (m_fileDownloadSource == 1) { m_fileDownloadSource = 2; changed = true; }
-        // 16 是旧默认；64 是 2026-11-18 上午那版默认 —— 两个都迁到新默认（192）
-        if (m_maxDownloadThreads == 16 || m_maxDownloadThreads == 64) {
-            m_maxDownloadThreads = defaultDownloadConcurrency(); changed = true;
+        // 16 = 旧默认，64 = 2026-11-18 上午那版默认，>24 = 512 上限时代留下的历史值（192/512）。
+        // 三者统一迁到上限本身。不再沿用 defaultDownloadConcurrency()：它仍是
+        // 「核数×12 夹取 [32,192]」（types.h:65-69，契约 S1 之前的取值），照抄会把 192
+        // 写回注册表并绕过上面的读时夹取，界面与引擎又分叉。
+        if (m_maxDownloadThreads == 16 || m_maxDownloadThreads == 64 || m_maxDownloadThreads > kMaxDownloadConcurrency) {
+            m_maxDownloadThreads = kMaxDownloadConcurrency; changed = true;
         }
         s.setValue(QStringLiteral("download/fileSource"), m_fileDownloadSource);
         s.setValue(QStringLiteral("download/threadLimit"), m_maxDownloadThreads);
@@ -1768,6 +1777,18 @@ QString SettingsBackend::importBgFile(const QString& path)
     if (!fi.exists() || !fi.isFile()) {
         qCWarning(logUI) << QStringLiteral("[外观] 背景图不存在: %1").arg(path);
         return QString();
+    }
+    // 只接受 Qt 能解码的图片（审计 SET-04）：图库条目会直接铺满整屏启动页，
+    // 非图片文件（.txt / 压缩包 / 改错后缀）原先会被原样复制进 custom_bg 并设为当前图，
+    // 结果是「导入成功」却得到一张永远解不出来的背景，启动日志刷
+    // "QML QQuickImage: Error decoding ... Unsupported image format"，用户看不出哪里错了。
+    {
+        QImageReader probe(path);
+        if (!probe.canRead()) {
+            qCWarning(logUI) << QStringLiteral("[外观] 不是可解码的图片，拒绝导入: %1 (%2)")
+                                    .arg(path, probe.errorString());
+            return QString();
+        }
     }
 
     // 已经导入过同一张图（按内容 sha1 判定）就直接激活它，不重复占磁盘

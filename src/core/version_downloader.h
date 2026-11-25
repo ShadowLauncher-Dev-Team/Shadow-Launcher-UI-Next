@@ -157,6 +157,10 @@ private:
     // --- Cross-downloader coordination ---
     void checkBothDownloadersDone();
 
+    /// 统一出口：对外只发「单调不回退」的进度（契约 §2/§3）。
+    /// 镜像回退会新建引擎（计数从 0 起）、阶段 B 会抬高分母，两者都会造成回退。
+    void publishProgress(int completed, int total, qint64 bytes, qint64 totalBytes);
+
     // --- Members ---
     MirrorSource m_mirror;
     QString m_minecraftDir;

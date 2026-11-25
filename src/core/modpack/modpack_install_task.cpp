@@ -432,6 +432,12 @@ void ModpackInstallTask::runExtract()
                     fatalError = tr("解压失败：磁盘空间不足或文件写入被拒绝");
                     break;
                 }
+                if (n == -4) {
+                    // 体积预算超限（zip bomb 防护，2026-11-25 审计）：同样必须中止，不能只跳过
+                    fatal = true;
+                    fatalError = tr("解压体积超出安全上限（疑似恶意压缩包），已中止导入");
+                    break;
+                }
                 if (n == -2) break;  // 取消
                 totalExtracted += qMax(0, n);
             }
@@ -1087,9 +1093,13 @@ void ModpackInstallTask::completeImport()
 
     if (!m_cardSteps.isEmpty())
         setCardStep(m_cardSteps.size() - 1, QStringLiteral("completed"), 100);
+
+    // ⚠ 顺序不能反：finishCard() 会置 m_cardDone，而 setProgress() 首行就是
+    // "已收尾则直接返回"。旧顺序（先 finishCard 再 setProgress(1.0)）导致成功导入的
+    // 总进度永远停在合成值上（实测 0.95，UI 进度条从未到 100%）。
+    setProgress(1.0, tr("导入完成"), {});
     finishCard(true, {});
 
-    setProgress(1.0, tr("导入完成"), {});
     m_phase = Phase::Done;
     m_busy = false;
     emit stepChanged(tr("完成"));

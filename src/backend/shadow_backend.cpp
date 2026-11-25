@@ -659,7 +659,10 @@ ShadowBackend::ShadowBackend(QObject* parent)
             this, [this](const QStringList& failedFiles) {
                 // Generate error report
                 if (!failedFiles.isEmpty()) {
-                    QDir reportsDir(m_gameDir + QStringLiteral("/verify_reports"));
+                    // 2026-11-25 审计：这里原本用 ShadowBackend::m_gameDir，而该成员全类没有赋值点，
+                    // 于是路径变成相对路径 "/verify_reports"，被解析到当前工作盘根（实测 D:\verify_reports）。
+                    // 改用真正生效的游戏目录。
+                    QDir reportsDir(m_app->gameDir() + QStringLiteral("/verify_reports"));
                     if (!reportsDir.exists()) reportsDir.mkpath(QStringLiteral("."));
                     QString timestamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
                     m_verifyReportPath = reportsDir.filePath(
@@ -670,7 +673,9 @@ ShadowBackend::ShadowBackend(QObject* parent)
                         out << tr("Shadow Launcher — 版本完整性校验报告\n");
                         out << QStringLiteral("======================================\n");
                         out << tr("时间: ") << QDateTime::currentDateTime().toString(Qt::ISODate) << QStringLiteral("\n");
-                        out << tr("版本: ") << m_version->selectedVersion() << QStringLiteral("\n");
+                        // 2026-11-25 审计：报表头原本取"当前选中版本"，与本次被校验的版本无关（用户可在列表里
+                        // 随手点别的版本，报告就会张冠李戴）。改为取校验/修复入口写入的目标 id。
+                        out << tr("版本: ") << m_version->verifyTargetId() << QStringLiteral("\n");
                         out << tr("异常文件数: ") << failedFiles.size() << QStringLiteral("\n");
                         out << QStringLiteral("--------------------------------------\n");
                         for (int i = 0; i < failedFiles.size(); ++i) {

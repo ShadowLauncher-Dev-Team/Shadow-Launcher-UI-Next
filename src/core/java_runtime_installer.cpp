@@ -40,6 +40,39 @@ namespace ShadowLauncher {
 // 构造 / 架构检测
 // ============================================================
 
+// ── 2026-11-25 审计：ZIP 条目路径净化 ──
+// 规则与 core/modpack/modpack_common.cpp:80 的 sanitizeRelPath 完全一致（解压层同一套口径）。
+// 这里必须自带一份拷贝：JavaAutoInstallTest / JavaCancelTest 两个自测目标只链接本文件
+// + http_client，如果改成引用 modpack 的符号会直接链接失败。
+// 返回空字符串 = 非法条目（绝对路径 / 盘符 / ".." / Windows 非法字符 / 控制字符）。
+static QString safeZipEntryPath(const QString& entryName)
+{
+    QString name = entryName;
+    name.replace(QLatin1Char('\\'), QLatin1Char('/'));
+    if (name.startsWith(QLatin1Char('/')))
+        return {};
+    if (name.length() >= 2 && name[1] == QLatin1Char(':') && name[0].isLetter())
+        return {};
+    QStringList safe;
+    const QStringList parts = name.split(QLatin1Char('/'), Qt::SkipEmptyParts);
+    for (const QString& part : parts) {
+        if (part == QLatin1String("..") || part == QLatin1String("."))
+            return {};
+        // Win32 会剥掉每个分量结尾的空格与点，".. " 因此等价于 ".."
+        if (part.endsWith(QLatin1Char(' ')) || part.endsWith(QLatin1Char('.')))
+            return {};
+        for (const QChar c : part) {
+            if (c == QLatin1Char(':') || c == QLatin1Char('*') || c == QLatin1Char('?')
+                || c == QLatin1Char('"') || c == QLatin1Char('<') || c == QLatin1Char('>')
+                || c == QLatin1Char('|') || c.unicode() < 0x20) {
+                return {};
+            }
+        }
+        safe.append(part);
+    }
+    return safe.isEmpty() ? QString() : safe.join(QLatin1Char('/'));
+}
+
 // 从 Adoptium 文件名里抓版本号并按数值比较（2026-11-06）
 // 例：OpenJDK8U-jdk_x64_windows_hotspot_8u504b01.zip → (8, 504, 1)
 //     OpenJDK17U-jdk_x64_windows_hotspot_17.0.20.1_1.zip → (17, 20, 1)
@@ -389,8 +422,9 @@ QVariantList JavaRuntimeInstaller::scanSystemJavas()
             static const QRegularExpression verRe(QStringLiteral("version\\s+\"([^\"]+)\""));
             auto m = verRe.match(output);
             if (!m.hasMatch()) return;
-            QString ver = m.captured(1);
-            ver.replace(QLatin1Char('_'), QLatin1Char('.'));
+            const QString rawVer = m.captured(1);   // 显示用原值：1.8.0_512
+            QString ver = rawVer;
+            ver.replace(QLatin1Char('_'), QLatin1Char('.'));   // 仅用于解析主版本
             const QStringList parts = ver.split(QLatin1Char('.'));
             if (parts.isEmpty()) return;
             int major = parts[0].toInt();
@@ -412,7 +446,7 @@ QVariantList JavaRuntimeInstaller::scanSystemJavas()
 
             QVariantMap entry;
             entry[QStringLiteral("major")] = major;
-            entry[QStringLiteral("version")] = ver;
+            entry[QStringLiteral("version")] = rawVer;   // 审计修复：别再显示成 1.8.0.512
             entry[QStringLiteral("path")] = exePath;
             entry[QStringLiteral("isJdk")] = isJdk;
             results.append(entry);
@@ -661,6 +695,8 @@ void JavaRuntimeInstaller::installJavaAsync(int majorVersion, const QString& typ
         return;
     }
     m_jobActive = true;
+    // 每次任务起点复位取消标志：否则上一次的取消会让本次解压在第一个条目就中止
+    m_cancelled = false;
     m_job = InstallJob{};
     m_job.major = majorVersion;
     m_job.type = type;
@@ -816,6 +852,11 @@ void JavaRuntimeInstaller::stepDownloadZip()
                 failJob(tr("下载 Java %1 失败: %2").arg(m_job.major).arg(err));
                 return;
             }
+            // 下载刚结束就被取消 → 不再进入解压（否则用户点了取消，Java 照样装好）
+            if (m_cancelled) {
+                failJob(tr("已取消"));
+                return;
+            }
             stepExtractZip();
         });
 }
@@ -876,7 +917,13 @@ void JavaRuntimeInstaller::stepExtractZip()
             qCInfo(logJava) << QStringLiteral("[Java安装] %1 ZIP 顶层目录: %2，剥离").arg(major).arg(commonPrefix);
 
         int extracted = 0;
+        int rejected = 0;
+        bool cancelledEarly = false;
+        const QDir rootDir(javaDir);
         for (const auto& entry : entries) {
+            // 取消：解压是"点了取消还在装"的唯一阶段（下载阶段能 abort 句柄）。
+            // 已写出的文件由 failJob 的 removeRecursively 统一清掉。
+            if (m_cancelled) { cancelledEarly = true; break; }
             if (entry.isDir || entry.isSymLink) continue;
             QString rel = entry.filePath;
             if (!commonPrefix.isEmpty()) {
@@ -885,7 +932,21 @@ void JavaRuntimeInstaller::stepExtractZip()
                 else if (rel == commonPrefix)
                     continue;
             }
-            const QString outPath = javaDir + QStringLiteral("/") + rel;
+            // 路径净化（审计修复）：ZIP 条目名不再直接拼进 javaDir。
+            // 旧代码 javaDir + "/" + rel 允许 "../" 与盘符把文件写到 java_cache 之外
+            // （恶意/被替换的压缩包 = 任意文件写）。非法条目一律拒绝，包直接判失败。
+            const QString safeRel = safeZipEntryPath(rel);
+            if (safeRel.isEmpty()) {
+                ++rejected;
+                continue;
+            }
+            const QString outPath = rootDir.filePath(safeRel);
+            // 双保险：净化后仍必须落在 javaDir 内（大小写不敏感比较，Windows）
+            if (!QFileInfo(outPath).absoluteFilePath()
+                     .startsWith(QFileInfo(javaDir).absoluteFilePath() + QLatin1Char('/'), Qt::CaseInsensitive)) {
+                ++rejected;
+                continue;
+            }
             QDir().mkpath(QFileInfo(outPath).absolutePath());
             QFile out(outPath);
             if (out.open(QIODevice::WriteOnly)) {
@@ -895,7 +956,22 @@ void JavaRuntimeInstaller::stepExtractZip()
             }
         }
         reader.close();
-        qCInfo(logJava) << QStringLiteral("[Java安装] %1 解压完成: %2 个文件").arg(major).arg(extracted);
+        qCInfo(logJava) << QStringLiteral("[Java安装] %1 解压完成: %2 个文件，拒绝非法条目 %3 个")
+                               .arg(major).arg(extracted).arg(rejected);
+        if (cancelledEarly) {
+            QMetaObject::invokeMethod(this, [this, major]() {
+                failJob(m_cancelled ? tr("已取消") : tr("Java %1 解压已中止").arg(major));
+            }, Qt::QueuedConnection);
+            return;
+        }
+        if (rejected > 0) {
+            // 只跳过被拒绝的条目会让"半装"看起来装好了；直接判失败最安全
+            QMetaObject::invokeMethod(this, [this, major, rejected]() {
+                failJob(tr("Java %1 压缩包含 %2 个非法路径条目（疑似被篡改），已中止安装")
+                            .arg(major).arg(rejected));
+            }, Qt::QueuedConnection);
+            return;
+        }
 
         // ── 回主线程：验证 + 完成/失败 ──
         QMetaObject::invokeMethod(this, [this, javaExe, javaDir, major]() {
@@ -945,6 +1021,10 @@ void JavaRuntimeInstaller::failJob(const QString& error)
         delete m_job.lock;
         m_job.lock = nullptr;
     }
+    // 终态文案：旧代码失败后 m_statusText 永远停在"正在下载/正在解压…"，
+    // 界面上看起来像还在跑（installStatusText 是 QML 直接绑定的属性）
+    m_statusText = m_cancelled ? tr("已取消") : error;
+    emit progressChanged();
     auto cb = std::move(m_job.onDone);
     m_job = InstallJob{};
     m_jobActive = false;
@@ -964,6 +1044,9 @@ void JavaRuntimeInstaller::finishJob(const QString& javaExe)
         delete m_job.lock;
         m_job.lock = nullptr;
     }
+    // 终态文案：否则装好后 statusText 仍停在"正在解压 Java N…"
+    m_statusText = tr("Java %1 已就绪").arg(m_job.major);
+    emit progressChanged();
     auto cb = std::move(m_job.onDone);
     const QString exeCopy = javaExe;  // 拷贝：m_job 即将被清空
     m_job = InstallJob{};

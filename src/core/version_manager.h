@@ -30,8 +30,9 @@ public:
     QString gameDir() const { return m_gameDir; }
 
     // ── 版本获取 ──
-    /// 触发异步获取版本列表（先读缓存，缓存无或过期才请求网络）
-    /// 完成后发射 versionsReady
+    /// 触发异步获取版本列表：有缓存立即发一次 versionsReady（界面秒开），
+    /// 随后**总是**后台回源校验；内容有变化再发一次 versionsReady 并覆盖缓存。
+    /// 每次调用都会回源，所以"刷新版本列表"能真正拿到新版本。
     void fetchVersions();
 
     /// 返回已加载的版本列表（不触发网络请求）
@@ -66,6 +67,9 @@ signals:
     void fetchError(const QString& error);
 
 private:
+    /// 应用一份新清单：内容变化才发 versionsReady，并覆盖缓存
+    void applyManifest(const QVector<McVersion>& parsed, const QString& from);
+
     /// 解析 Mojang version_manifest.json
     QVector<McVersion> parseManifest(const QByteArray& rawJson) const;
 
@@ -75,6 +79,8 @@ private:
     QString m_dataDir;
     QString m_gameDir;
     bool m_preferOfficial = false;   // 版本清单源策略（官方优先 / 镜像优先）
+    bool m_fetching = false;         // 回源请求在途（防重复点击/重复 fetch 打出多份请求）
+    bool m_servedFromCache = false;  // 本轮已用缓存兜底过（决定失败时是否发 fetchError）
     std::future<void> m_cacheLoadFuture;
 };
 

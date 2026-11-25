@@ -174,9 +174,16 @@ void MultiplayerManager::createRoom()
     // Scaffold protocol port: separate from MC port (align with Terracotta)
     QByteArray scaffoldSeed = m_networkKey.toUtf8();
     QByteArray scaffoldHash = QCryptographicHash::hash(scaffoldSeed, QCryptographicHash::Sha256);
-    m_centerPort = 20000 + (static_cast<quint16>(scaffoldHash[0]) << 8 | scaffoldHash[1]) % 10000;
-    if (m_centerPort < 20000)
-        m_centerPort = 20001;  // safety fallback
+    // QByteArray::operator[] is a *signed* char on MSVC: casting it straight to
+    // quint16 sign-extends (0x80..0xFF become 0xFF80..0xFFFF), the OR result goes
+    // negative, "% 10000" goes negative too, and the old "if (< 20000) 20001"
+    // fallback then fired for ~half of all rooms — every such room got port 20001
+    // (实测 2026-11-25: 房间码 CPLH-V4RW-13FN-AWHM 与 L0HD-4PQ1 都拿到 20001,
+    // 而同公式按无符号字节算应为 23154 / 29129). Cast through quint8.
+    const quint16 hash16 = static_cast<quint16>(
+        (static_cast<quint16>(static_cast<quint8>(scaffoldHash.at(0))) << 8)
+        | static_cast<quint16>(static_cast<quint8>(scaffoldHash.at(1))));
+    m_centerPort = static_cast<quint16>(20000 + hash16 % 10000);
 
     QString hostname = Scaffolding::kCenterHostnamePrefix + QString::number(m_centerPort);
 
@@ -552,6 +559,11 @@ void MultiplayerManager::onEasyTierError(const QString& msg)
         m_discoverTimeoutTimer->stop();
     setState(Error, msg);
     emitError(QStringLiteral("network"), msg);
+    // 隧道起不来/中途挂掉必须整房收尾：只 setState(Error) 会把 state 留在 Error、
+    // role/房间码还留着，MultiplayerPage 在 st===9 一个按钮都不显示（既退不了房
+    // 也重建不了，createRoom 只回"请先退出当前房间"），实测只能重启启动器。
+    // 顺序与 handleHostLost 一致：先抛错（页面记下 errorText），再完整拆房回 Idle。
+    leaveRoom();
 }
 
 // ─────────────────────────────────────────
@@ -569,6 +581,11 @@ void MultiplayerManager::startHostServer()
     // Terracotta's ScaffoldingServer binds Ipv4Addr::UNSPECIFIED for the same reason.
     if (!m_server->listen(QHostAddress::Any, m_centerPort)) {
         emitError(QStringLiteral("server_start"), tr("无法启动联机服务: %1").arg(m_server->errorString()));
+        // 端口被占用时这里原来只抛错、不收尾：state 停在 CreatingRoom(1)，页面
+        // 永久显示"正在创建房间…"（只剩一个 取消 按钮）。收尾回 Idle 才能重试。
+        m_server->deleteLater();
+        m_server = nullptr;
+        leaveRoom();
         return;
     }
 
@@ -1338,7 +1355,11 @@ void MultiplayerManager::handlePlayerPing(const QByteArray& body, QTcpSocket* so
     QJsonDocument doc = QJsonDocument::fromJson(body);
     if (!doc.isObject()) return;
     QJsonObject obj = doc.object();
-    QString name = obj[QStringLiteral("name")].toString();
+    // 宾客可以发任意长度/带控制字符的昵称，成员行不会截断（实测 4000 字符
+    // 直接把卡片撑破、盖住右侧延迟）。按本机同一套规则收敛，再落进列表。
+    QString name = sanitizeDeviceName(obj[QStringLiteral("name")].toString());
+    if (name.isEmpty())
+        name = QStringLiteral("玩家");
     QString mid = obj[QStringLiteral("machine_id")].toString();
 
     qint64 now = QDateTime::currentMSecsSinceEpoch();

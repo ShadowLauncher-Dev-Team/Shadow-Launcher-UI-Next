@@ -659,6 +659,10 @@ Item {
                                 anchors.leftMargin: 10
                                 anchors.top: parent.top
                                 anchors.topMargin: 8
+                                // 昵称是访客自报的，长度不受控（实测 4000 字符会把行撑出
+                                // 卡片、压住右侧延迟）。留出"标签 + 延迟"的宽度再省略。
+                                width: Math.max(0, parent.width - 100 - memberTag.width - 8)
+                                elide: Text.ElideRight
                                 text: String(modelData.name || "?")
                                 color: Theme.fg
                                 font.family: Theme.fontFamily
@@ -787,7 +791,8 @@ Item {
                         width: parent.width
                         height: 36
                         kind: 1
-                        visible: (page.st === 7 || page.st === 6 || page.st === 5) && page.role === 1
+                        // st===9：后端隧道失败时页面只剩这一条出路（见 onEasyTierError 的收尾）
+                        visible: (page.st === 7 || page.st === 6 || page.st === 5 || page.st === 9) && page.role === 1
                         text: qsTr("关闭房间")
                         onClicked: if (page.mp) page.mp.leaveRoom()
                     }

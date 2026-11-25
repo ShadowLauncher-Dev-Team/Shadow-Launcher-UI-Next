@@ -55,7 +55,7 @@ void VersionManager::fetchVersions()
     // 1) Try cache synchronously on calling thread (main thread during startup).
     //    Reading/parsing ~900 versions takes ~10ms — negligible vs the 9–18s
     //    queued-connection delay that background-thread + invokeMethod caused.
-    qCInfo(logMgr) << QStringLiteral("[版本管理] 获取版本列表 优先使用缓存");
+    qCInfo(logMgr) << QStringLiteral("[版本管理] 获取版本列表");
     QVector<McVersion> parsed;
     const QString path = cacheFilePath();
     if (!path.isEmpty()) {
@@ -66,15 +66,20 @@ void VersionManager::fetchVersions()
             parsed = parseManifest(data);
         }
     }
-    if (!parsed.isEmpty()) {
+    m_servedFromCache = !parsed.isEmpty();
+    if (m_servedFromCache) {
         qCInfo(logMgr) << QStringLiteral("[版本管理] 缓存命中 解析=%1个版本 路径=%2").arg(parsed.size()).arg(path);
         m_versions = parsed;
         emit versionsReady(m_versions);
-        return;
     }
 
-    // 2) Cache miss — fetch from network (must run on main thread for QNetworkAccessManager)
-    qCInfo(logMgr) << QStringLiteral("[版本管理] 缓存未命中 发起网络请求");
+    // 2) 无论缓存新旧都要回源校验一次（缓存只用来秒开，不是真相源）。
+    //    旧实现在缓存命中时直接 return，等于把缓存写入那天的清单永久钉死：
+    //    镜像当晚还没发布的新版本（例如 26.3）此后再也不会出现，界面上的
+    //    「刷新版本列表」也调到这里、同样被缓存挡住，用户只能删文件。
+    if (m_fetching) return;   // 已有回源在途，分源竞速由它负责
+    m_fetching = true;
+    qCInfo(logMgr) << QStringLiteral("[版本管理] 回源校验 当前缓存=%1个版本").arg(m_versions.size());
     QMetaObject::invokeMethod(this, [this]() {
         doNetworkFetch();
     }, Qt::QueuedConnection);
@@ -102,10 +107,8 @@ void VersionManager::doNetworkFetch()
             const QByteArray data = reply->readAll();
             QVector<McVersion> parsed = parseManifest(data);
             if (!parsed.isEmpty()) {
-                m_versions = parsed;
-                saveToCache();
-                qCInfo(logMgr) << QStringLiteral("[版本管理] 主源获取成功 版本数=%1").arg(parsed.size());
-                emit versionsReady(m_versions);
+                applyManifest(parsed, QStringLiteral("主源"));
+                m_fetching = false;
                 return;
             }
         }
@@ -121,24 +124,38 @@ void VersionManager::doNetworkFetch()
         QNetworkReply* mirrorReply = m_nam->get(mirrorReq);
         connect(mirrorReply, &QNetworkReply::finished, this, [this, mirrorReply]() {
             mirrorReply->deleteLater();
+            m_fetching = false;
             if (mirrorReply->error() != QNetworkReply::NoError) {
                 qCCritical(logMgr) << QStringLiteral("[版本管理] 回退源也失败 错误=%1").arg(mirrorReply->errorString());
-                emit fetchError(mirrorReply->errorString());
+                // 缓存已经兜底过就不要再把错误往界面上抛：列表是好的，报错只会误导。
+                if (!m_servedFromCache)
+                    emit fetchError(mirrorReply->errorString());
                 return;
             }
             const QByteArray data = mirrorReply->readAll();
             QVector<McVersion> parsed = parseManifest(data);
             if (parsed.isEmpty()) {
                 qCCritical(logMgr) << QStringLiteral("[版本管理] 回退源返回无法解析的数据");
-                emit fetchError(QStringLiteral("Failed to parse version manifest"));
+                if (!m_servedFromCache)
+                    emit fetchError(QStringLiteral("Failed to parse version manifest"));
                 return;
             }
-            m_versions = parsed;
-            saveToCache();
-            qCInfo(logMgr) << QStringLiteral("[版本管理] 回退源成功 版本数=%1").arg(parsed.size());
-            emit versionsReady(m_versions);
+            applyManifest(parsed, QStringLiteral("回退源"));
         });
     });
+}
+
+void VersionManager::applyManifest(const QVector<McVersion>& parsed, const QString& from)
+{
+    // 只有内容真的变了才刷新界面，避免每次启动都白白重建一遍列表（QML 侧会整表重排）。
+    const bool same = parsed.size() == m_versions.size()
+                      && (parsed.isEmpty() || parsed.first().id == m_versions.first().id);
+    m_versions = parsed;
+    saveToCache();
+    qCInfo(logMgr) << QStringLiteral("[版本管理] %1获取成功 版本数=%2 变化=%3")
+                          .arg(from).arg(parsed.size()).arg(same ? QStringLiteral("否") : QStringLiteral("是"));
+    if (!same)
+        emit versionsReady(m_versions);
 }
 
 // ============================================================
