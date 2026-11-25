@@ -260,6 +260,7 @@ void LaunchBackend::killGameProcess()
         launcher->deleteLater();
     }
     m_runningLaunchers.clear();
+    if (m_gamePoller) m_gamePoller->stop();
 
     m_launching = false;
     m_launchFinishedOk = false;  // 与 launching 一起落，否则浮层卡在'完成态'不消失
@@ -296,6 +297,7 @@ void LaunchBackend::detachAllGames()
         }
     }
     m_runningLaunchers.clear();
+    if (m_gamePoller) m_gamePoller->stop();
     m_activeLauncher = nullptr;
     m_launching = false;
     m_launchFinishedOk = false;  // 与 launching 一起落，否则浮层卡在'完成态'不消失
@@ -353,12 +355,88 @@ void LaunchBackend::adoptDetachedGames()
         writeDetachedGamesJson(path, alive);
         // 接管来的进程没有 QProcess stdout 管道：联机端口只能从 latest.log 增量读
         startLanLogWatch();
+        // 接管来的进程也没有 finished 信号：必须轮询 PID 才知道它何时退出
+        ensureGamePoller();
         emit runningCountChanged();
         emit isRunningChanged();
     } else if (!arr.isEmpty()) {
         // 全部已退出：清理残留记录
         writeDetachedGamesJson(path, QJsonArray());
     }
+}
+
+// ── 运行中进程轮询（2026-11-25）──
+// 为什么需要：启动器退出时会把游戏 detach 掉，下次启动用 adoptDetachedGames() 接管。
+// 这种「幽灵」Launcher 只有 PID、没有 QProcess，游戏退出时不会发 finished 信号，
+// m_runningLaunchers 永远不收缩 → 启动页一直显示「游戏运行中 / 运行中 1」，
+// 点强制结束又因为进程早没了而什么都没发生（影实测）。
+void LaunchBackend::ensureGamePoller()
+{
+    if (!m_gamePoller) {
+        m_gamePoller = new QTimer(this);
+        m_gamePoller->setInterval(2000);
+        connect(m_gamePoller, &QTimer::timeout, this, &LaunchBackend::onGameProcessPoll);
+    }
+    if (!m_gamePoller->isActive()) {
+        m_gamePoller->start();
+        qCInfo(logLaunch) << QStringLiteral("[启动] 进程轮询已启动（2s）");
+    }
+}
+
+void LaunchBackend::persistRunningGamesAsDetached()
+{
+    if (m_gameDir.isEmpty())
+        return;
+    QJsonArray persisted;
+    for (Launcher* launcher : m_runningLaunchers) {
+        if (!launcher) continue;
+        const qint64 pid = launcher->pid();
+        if (pid <= 0) continue;
+        QJsonObject o;
+        o.insert(QStringLiteral("pid"), double(pid));
+        o.insert(QStringLiteral("version"), launcher->property("launchVersion").toString());
+        o.insert(QStringLiteral("created"), double(processCreationTimeMs(pid)));
+        persisted.append(o);
+    }
+    writeDetachedGamesJson(detachedGamesFilePath(m_gameDir), persisted);
+}
+
+void LaunchBackend::onGameProcessPoll()
+{
+    if (m_runningLaunchers.isEmpty()) {
+        if (m_gamePoller) m_gamePoller->stop();
+        return;
+    }
+
+    bool removed = false;
+    for (int i = m_runningLaunchers.size() - 1; i >= 0; --i) {
+        Launcher* launcher = m_runningLaunchers.at(i);
+        if (!launcher) {
+            m_runningLaunchers.removeAt(i);
+            removed = true;
+            continue;
+        }
+        if (!launcher->isDetached())
+            continue;                        // 有 QProcess 托管：退出由 finished 回调收尾
+        const qint64 pid = launcher->pid();
+        const qint64 created = pid > 0 ? processCreationTimeMs(pid) : -1;
+        qCDebug(logLaunch) << "[PROCESS] 轮询接管进程 pid=" << pid << "created=" << created;
+        if (pid <= 0 || created >= 0)
+            continue;                        // 进程还活着
+        qCInfo(logLaunch) << QStringLiteral("[启动] 接管的游戏进程已退出 PID=%1").arg(pid);
+        m_runningLaunchers.removeAt(i);
+        QTimer::singleShot(0, launcher, &QObject::deleteLater);
+        removed = true;
+    }
+    if (!removed)
+        return;
+
+    // 顺手清掉 detached 记录：进程都没了，下次启动不该再「接管」一次
+    persistRunningGamesAsDetached();
+    emit runningCountChanged();
+    emit isRunningChanged();
+    emit minecraftStopped();
+    qCDebug(logLaunch) << "[PROCESS] 轮询移除已退出的接管进程，剩余" << m_runningLaunchers.size();
 }
 
 void LaunchBackend::setAuthInfo(const QString& username, const QString& uuid,
@@ -1760,6 +1838,8 @@ void LaunchBackend::handleLaunchStarted(Launcher* launcher)
     qCDebug(logLaunch) << "[PROCESS] Game added to running list (total:" << m_runningLaunchers.size() << ")";
     // 联机：游戏在跑就盯住它的 latest.log（26.2 新文案 / 接管进程无 stdout 时的唯一可靠通道）
     startLanLogWatch();
+    // 进程轮询：接管来的游戏没有 QProcess，退出只能靠轮询发现
+    ensureGamePoller();
     emit runningCountChanged();
     emit isRunningChanged();
 

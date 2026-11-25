@@ -899,7 +899,9 @@ void MultiplayerManager::onPeerListReady()
             quint16 localPort = PortRequest::requestFree(21234);
             if (!m_easyTier->addPortForward(QStringLiteral("0.0.0.0"), localPort,
                                             ipv4, port, QStringLiteral("tcp"))) {
+                // 收尾必须走 leaveRoom：只抛错会留下 role=Guest，页面继续显示房间
                 emitError(QStringLiteral("tunnel"), tr("无法创建联机隧道端口"));
+                leaveRoom();
                 return;
             }
 
@@ -915,17 +917,13 @@ void MultiplayerManager::onPeerListReady()
 
 void MultiplayerManager::onDiscoverTimeout()
 {
-    qCWarning(logNet) << QStringLiteral("[联机] 发现超时 30秒");
-    m_discoverTimer->stop();
-    m_discoverTimeoutTimer->stop();
-    m_easyTier->stop();
-
-    setState(Idle, QString());
-    m_centerIp.clear();
-    m_centerPort = 0;
-    m_roomCode.clear();
-    emit roomCodeChanged();
+    qCWarning(logNet) << QStringLiteral("[联机] 发现超时 60秒");
+    // 先抛错让页面记下文案，再整房收尾（2026-11-25）：
+    // 原实现只 setState(Idle)+清 roomCode，m_role 仍是 Guest、玩家列表也没清；
+    // 页面 5 秒后 toast 文案清空，就成了「标题是『和朋友一起玩』、
+    // 下面还挂着『在房间里 0/5』」——影实测截图。
     emitError(QStringLiteral("center_not_found"), tr("未找到联机中心，请确认房主已创建房间"));
+    leaveRoom();
 }
 
 void MultiplayerManager::onIdleTimeout()
@@ -1001,6 +999,7 @@ void MultiplayerManager::onSocketDisconnected()
                     connectToCenter(QStringLiteral("127.0.0.1"), localPort);
                 } else {
                     emitError(QStringLiteral("reconnect"), tr("重连失败：无法创建联机隧道"));
+                    leaveRoom();
                 }
             }
         });
@@ -1017,7 +1016,10 @@ void MultiplayerManager::onSocketDisconnected()
         qCWarning(logNet) << QStringLiteral("[联机] 宾客TCP断开(已验证) 房主已离开");
         handleHostLost(QStringLiteral("房主已离开，房间已自动退出"));
     } else {
-        setState(Error, QStringLiteral("与联机中心的连接已断开"));
+        // 连接过程结束就必须收尾：只 setState(Error) 会留下 role=Guest，
+        // 页面 toast 一消失又变成「在房间里」（2026-11-25 修复）。
+        emitError(QStringLiteral("network"), tr("与联机中心的连接已断开"));
+        leaveRoom();
     }
 }
 
@@ -1036,6 +1038,8 @@ void MultiplayerManager::onSocketError(QAbstractSocket::SocketError err)
     }
     emitError(QStringLiteral("network"), tr("网络错误: %1").arg(
         m_socket ? m_socket->errorString() : QStringLiteral("unknown")));
+    // 同样必须整房收尾，否则 role/玩家列表会留在页面上（2026-11-25）
+    leaveRoom();
 }
 
 void MultiplayerManager::onSocketReadyRead()
