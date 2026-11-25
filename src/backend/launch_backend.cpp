@@ -6,6 +6,7 @@
 #include "../core/launcher.h"
 #include "../core/crash_detector.h"
 #include "../utils/logger.h"
+#include "../utils/mc_lan_log.h"   // 「对局域网开放」日志行两种文案的唯一判定处
 
 #include <QDir>
 #include <QDirIterator>
@@ -350,6 +351,8 @@ void LaunchBackend::adoptDetachedGames()
         qCInfo(logLaunch) << QStringLiteral("[启动] 接管 %1 个上次分离后仍存活的游戏进程")
                                  .arg(adopted);
         writeDetachedGamesJson(path, alive);
+        // 接管来的进程没有 QProcess stdout 管道：联机端口只能从 latest.log 增量读
+        startLanLogWatch();
         emit runningCountChanged();
         emit isRunningChanged();
     } else if (!arr.isEmpty()) {
@@ -1755,6 +1758,8 @@ void LaunchBackend::handleLaunchStarted(Launcher* launcher)
     launcher->setProperty("launchStartedAt", QDateTime::currentSecsSinceEpoch());
     m_runningLaunchers.append(launcher);
     qCDebug(logLaunch) << "[PROCESS] Game added to running list (total:" << m_runningLaunchers.size() << ")";
+    // 联机：游戏在跑就盯住它的 latest.log（26.2 新文案 / 接管进程无 stdout 时的唯一可靠通道）
+    startLanLogWatch();
     emit runningCountChanged();
     emit isRunningChanged();
 
@@ -2620,13 +2625,173 @@ QString LaunchBackend::exportLaunchScript(const QString& versionId, const QStrin
                                       effectiveJvmArgs, gameArgs, highPerfGpu);
 }
 
-// ── 从游戏日志文件兜底探测 LAN 端口（2026-11-08）──
+// ── 游戏日志增量监视（2026-11-25）──
+// 为什么加这条通道：
+//   1) 26.2 起「对局域网开放」的日志文案从 "Started serving on <port>" 变成
+//      "Published LAN server on port <port>"（见 utils/mc_lan_log.h），旧正则静默失效；
+//   2) 进程是被接管来的（启动器重启过）时没有 QProcess stdout 管道，只能读日志文件；
+//   3) UDP 组播本身不可靠：实测 MC 的广播会从「已断开但仍留着 DHCP 地址」的网卡发出，
+//      扫描器绑在另一块网卡上时一个包都收不到（2026-11-25 本机复现：有线网卡已断开
+//      → 广播仍从它出去；绑在 WLAN 地址上的 socket 0 包）。
+// 做法：游戏在跑时每 2 秒读一次最新 latest.log 的新增字节（记录偏移，只读增量），
+// 命中开服行 emit mcLanOpened，命中关服行 emit mcLanClosed。
+void LaunchBackend::startLanLogWatch()
+{
+    if (!m_lanLogWatch) {
+        m_lanLogWatch = new QTimer(this);
+        m_lanLogWatch->setInterval(2000);
+        connect(m_lanLogWatch, &QTimer::timeout, this, &LaunchBackend::onLanLogWatchTick);
+    }
+    m_lanLogPath.clear();
+    m_lanLogPos = -1;
+    m_lanLogPathAtMs = 0;
+    m_lanLogLineBuf.clear();
+    if (!m_lanLogWatch->isActive())
+        m_lanLogWatch->start();
+
+    // 启动瞬间补一次：接管进程时世界可能早就开着。
+    // probeLanPortFromLogs() 会验证端口仍在监听，不会把上一个已关闭世界的端口带出来。
+    QTimer::singleShot(0, this, [this]() {
+        const int port = probeLanPortFromLogs();
+        if (port > 0) {
+            m_lastMcLanPort = port;
+            emit mcLanOpened(port);
+        }
+    });
+}
+
+void LaunchBackend::stopLanLogWatch()
+{
+    if (m_lanLogWatch)
+        m_lanLogWatch->stop();
+    m_lanLogPath.clear();
+    m_lanLogPos = -1;
+    m_lanLogLineBuf.clear();
+}
+
+// 当前最新的游戏日志：优先版本隔离目录；其次游戏根目录；再按 mtime 取最近改动的实例。
+// 版本隔离下每局游戏的 latest.log 在 versions/<id>/logs/，启动器重启后 m_versionGameDir 可能为空。
+QString LaunchBackend::resolveGameLogPath() const
+{
+    QString best;
+    qint64 bestMs = -1;
+    const auto consider = [&best, &bestMs](const QString& p) {
+        QFileInfo fi(p);
+        if (!fi.exists() || !fi.isFile())
+            return;
+        const qint64 ms = fi.lastModified().toMSecsSinceEpoch();
+        if (ms > bestMs) {
+            bestMs = ms;
+            best = fi.absoluteFilePath();
+        }
+    };
+    if (!m_versionGameDir.isEmpty())
+        consider(m_versionGameDir + QStringLiteral("/logs/latest.log"));
+    if (!m_gameDir.isEmpty()) {
+        consider(m_gameDir + QStringLiteral("/logs/latest.log"));
+        QDir vroot(m_gameDir + QStringLiteral("/versions"));
+        const QFileInfoList dirs =
+            vroot.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::NoSort);
+        for (const QFileInfo& d : dirs)
+            consider(d.absoluteFilePath() + QStringLiteral("/logs/latest.log"));
+    }
+    return best;
+}
+
+void LaunchBackend::onLanLogWatchTick()
+{
+    if (!m_lanLogWatch)
+        return;
+    if (m_runningLaunchers.isEmpty()) {   // 游戏全退了：没有日志可看
+        stopLanLogWatch();
+        return;
+    }
+
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    if (m_lanLogPath.isEmpty() || nowMs - m_lanLogPathAtMs > 15000
+        || !QFileInfo::exists(m_lanLogPath)) {
+        const QString resolved = resolveGameLogPath();
+        m_lanLogPathAtMs = nowMs;
+        if (resolved != m_lanLogPath) {
+            m_lanLogPath = resolved;
+            m_lanLogPos = -1;
+            m_lanLogLineBuf.clear();
+        }
+    }
+    if (m_lanLogPath.isEmpty())
+        return;
+
+    QFile f(m_lanLogPath);
+    if (!f.open(QIODevice::ReadOnly))
+        return;
+    const qint64 size = f.size();
+    if (size < 0) {
+        f.close();
+        return;
+    }
+
+    // 首次开始 / 日志被截断（换了一局）：只回看尾部 128 KB，历史行只用来定位不当作新事件
+    const bool reset = (m_lanLogPos < 0 || size < m_lanLogPos);
+    bool startedMidFile = false;
+    if (reset) {
+        const qint64 tailStart = qMax<qint64>(0, size - 128 * 1024);
+        startedMidFile = (tailStart > 0);
+        m_lanLogPos = tailStart;
+        m_lanLogLineBuf.clear();
+    }
+
+    f.seek(m_lanLogPos);
+    const QByteArray chunk = f.readAll();
+    m_lanLogPos = f.pos();
+    f.close();
+    if (chunk.isEmpty())
+        return;
+
+    QString text = QString::fromUtf8(chunk);
+    if (startedMidFile) {
+        const int nl = text.indexOf(QLatin1Char('\n'));
+        if (nl < 0)
+            return;                      // 整块都在半行里，下次一并丢
+        text.remove(0, nl + 1);          // 丢掉从行中间开始的第一段
+    }
+
+    m_lanLogLineBuf += text;
+    const QStringList lines = m_lanLogLineBuf.split(QLatin1Char('\n'));
+    m_lanLogLineBuf = lines.last();      // 最后一段可能是不完整的半行
+    if (m_lanLogLineBuf.size() > 8192)   // 异常超长行保护
+        m_lanLogLineBuf.clear();
+
+    if (reset)
+        return;                          // 历史由 probeLanPortFromLogs() 负责确认
+
+    for (int i = 0; i + 1 < lines.size(); ++i) {
+        const QString t = lines.at(i).trimmed();
+        if (t.isEmpty())
+            continue;
+        const int port = McLanLog::openPort(t);
+        if (port > 0) {
+            if (port == m_lastMcLanPort)
+                continue;
+            m_lastMcLanPort = port;
+            qCInfo(logLaunch) << QStringLiteral("[联机] 从游戏日志检测到 LAN 端口 %1").arg(port);
+            emit mcLanOpened(port);
+        } else if (McLanLog::isCloseLine(t)) {
+            if (m_lastMcLanPort == 0)
+                continue;
+            m_lastMcLanPort = 0;
+            qCInfo(logLaunch) << QStringLiteral("[联机] 游戏已关闭对局域网开放");
+            emit mcLanClosed();
+        }
+    }
+}
+
+// ── 从游戏日志文件兜底探测 LAN 端口（2026-11-08，2026-11-25 兼容 26.2 文案）──
 // 用途：游戏已经开着、但启动器重启过（detach 接管，没有 QProcess stdout 管道）时，
-// 仍能从 logs/latest.log 里找到最近一次 "Started serving on <port>"。
+// 仍能从 logs/latest.log 里找到最近一次「对局域网开放」的行：
+//   <=26.1 "Started serving on <port>"  /  >=26.2 "Published LAN server on port <port>"
 // 会校验该端口当前是否真的在监听，避免拿到上一个已关闭世界的旧端口。
 int LaunchBackend::probeLanPortFromLogs() const
 {
-    static const QRegularExpression rx(QStringLiteral("Started serving on ([0-9]+)"));
 
     QStringList candidates;
     if (!m_versionGameDir.isEmpty())
@@ -2665,9 +2830,17 @@ int LaunchBackend::probeLanPortFromLogs() const
         f.close();
 
         int lastPort = 0;
-        auto it = rx.globalMatch(text);
-        while (it.hasNext())
-            lastPort = it.next().captured(1).toInt();
+        const QStringList lines = text.split(QLatin1Char('\n'));
+        for (const QString& line : lines) {
+            const QString t = line.trimmed();
+            if (t.isEmpty())
+                continue;
+            const int p = McLanLog::openPort(t);
+            if (p > 0)
+                lastPort = p;
+            else if (McLanLog::isCloseLine(t))
+                lastPort = 0;   // 关过世界之后的开服行才算数
+        }
 
         if (lastPort <= 0 || lastPort >= 65536)
             continue;

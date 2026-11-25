@@ -38,6 +38,7 @@
 | QML 能访问的唯一后端对象（`backend`） | `src/backend/shadow_backend.{h,cpp}`（转发所有子后端信号/属性） |
 | 版本列表/安装/删除/校验/修复/隔离 | `src/backend/version_backend.{h,cpp}` |
 | 启动游戏（进程/参数/Token/日志） | `src/backend/launch_backend.{h,cpp}`、`src/core/launcher.{h,cpp}` |
+| 游戏「对局域网开放」端口检测（日志文案 + 增量监视） | `src/utils/mc_lan_log.h`、`src/backend/launch_backend.cpp`（probeLanPortFromLogs / onLanLogWatchTick） |
 | 账号（离线 / 微软正版 / 皮肤 / 披风） | `src/backend/account_backend.{h,cpp}`、`src/core/microsoft_auth.{h,cpp}` |
 | 外置登录（Yggdrasil / authlib-injector） | `src/backend/yggdrasil_backend.{h,cpp}`、`src/core/yggdrasil_auth.{h,cpp}` |
 | 内嵌微软登录窗口（WebView2） | `thirdparty/wv2login/src/AppWindow.{h,cpp}` |
@@ -118,7 +119,7 @@ tools/                    一次性脚本（抓数据/出图/验证），不属�
 | `src/backend/debug_logger.h` | DebugLogger 声明（QML_ELEMENT 单例） |  |
 | `src/backend/java_backend.cpp` | Adoptium 镜像目录列表 + Java 下载/安装转发 | ensureVersionsLoaded,installJavaRuntime,installJavaForLaunch |
 | `src/backend/java_backend.h` | JavaBackend 声明与 QML 属性/信号契约 |  |
-| `src/backend/launch_backend.cpp` | 启动状态机：七步预检、内存建议、崩溃分析 | runNextCheck,getAutoMemoryForVersion,runCrashAnalysis |
+| `src/backend/launch_backend.cpp` | 启动状态机：预检/内存/崩溃分析，游戏日志 LAN 端口监视 | runNextCheck, onLanLogWatchTick, probeLanPortFromLogs |
 | `src/backend/launch_backend.h` | 启动流程：阶段管线、Java 自动装、崩溃分析接口 | LaunchBackend::launch, launchStepRows, exportLaunchScript |
 | `src/backend/minecraft_folder_backend.cpp` | 外部 .minecraft 探测与游戏文件夹注册表实现 | probe, setActiveFolder, refreshFolders |
 | `src/backend/minecraft_folder_backend.h` | 外部 .minecraft 选择/识别与多文件夹注册表接口 | MinecraftFolderBackend, probeMinecraftFolder, folders |
@@ -231,9 +232,9 @@ tools/                    一次性脚本（抓数据/出图/验证），不属�
 | `src/multiplayer/connection_guard.h` | 限流阈值常量与守卫接口声明 | ConnectionGuard, kMaxConnPerMinute |
 | `src/multiplayer/easytier_process.cpp` | easytier-core 子进程启动与 peer/NAT 轮询 | start, parsePeerList, setTcpWhitelist |
 | `src/multiplayer/easytier_process.h` | EasyTier 进程管理与 NAT 类型声明 | EasyTierProcess, EasyTierNatType |
-| `src/multiplayer/mc_scanner.cpp` | LAN 组播扫描 Minecraft 服务器端口 | start, processDatagram, cleanupExpired |
+| `src/multiplayer/mc_scanner.cpp` | LAN 组播收包：通配绑定 + 逐网卡加组，解析 MC 端口 | start, processDatagram, refreshInterfaces |
 | `src/multiplayer/mc_scanner.h` | MC 扫描器接口与结果结构声明 | McScanner, McScanResult |
-| `src/multiplayer/multiplayer_manager.cpp` | 联机房间编排：发现/握手/心跳/端口转发 | startHostServer, doDiscoverCenter, notifyMcLanPort |
+| `src/multiplayer/multiplayer_manager.cpp` | 联机房间编排：发现/握手/心跳/端口转发/FakeServer | startHostServer, notifyMcLanPort, startFakeServer |
 | `src/multiplayer/multiplayer_manager.h` | 联机状态机、信号与成员声明 | MultiplayerManager, ConnectionDifficulty |
 | `src/multiplayer/port_request.cpp` | 本地端口探测与固定回退实现 | requestSpecific, requestFree |
 | `src/multiplayer/port_request.h` | 端口探测接口声明 | PortRequest |
@@ -257,6 +258,7 @@ tools/                    一次性脚本（抓数据/出图/验证），不属�
 | `src/utils/hash_utils.h` | SHA1 十六进制统一入口 | sha1Hex |
 | `src/utils/logger.cpp` | 会话日志落盘、重复折叠与告警摘要实现 | initLogger, installFileLogger |
 | `src/utils/logger.h` | 分模块日志分类与日志初始化接口 | initLogger, logApp |
+| `src/utils/mc_lan_log.h` | 「对局域网开放」日志行判定（≤26.1 / ≥26.2 两种文案） | McLanLog::openPort, isCloseLine |
 | `src/utils/secure_wipe.h` | 敏感字符串/字节的安全清零工具 | secureWipe |
 | `src/utils/temp_tracker.cpp` | 临时目录追踪文件读写与残留清理 | record, cleanupOrphans |
 | `src/utils/temp_tracker.h` | 下载临时目录追踪与孤儿清理接口 | record, cleanupOrphans |

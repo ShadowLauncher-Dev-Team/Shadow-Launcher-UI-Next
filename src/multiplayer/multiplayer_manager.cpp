@@ -20,6 +20,7 @@
 #include <QCoreApplication>
 #include <QRegularExpression>
 #include <QUdpSocket>
+#include <QNetworkInterface>
 #include <QDateTime>
 #include <QSettings>
 #include "../version.h"   // SHADOW_DISPLAY_VERSION：联机 profile 的 vendor 里带上启动器版本
@@ -1659,24 +1660,64 @@ void MultiplayerManager::startFakeServer(quint16 port)
 {
     stopFakeServer();
 
-    m_fakeServerSocket = new QUdpSocket(this);
-    m_fakeServerSocket->setSocketOption(QAbstractSocket::MulticastTtlOption, 4);
-
     // MC LAN discovery: UDP multicast 224.0.2.60:4445
     // Format: [MOTD]server_name[/MOTD][AD]port[/AD]
-    QByteArray data = QStringLiteral("[MOTD]\u8054\u673A MC\u670D\u52A1\u5668[/MOTD][AD]%1[/AD]")
-                         .arg(port).toUtf8();
+    const QByteArray data = QStringLiteral("[MOTD]\u8054\u673A MC\u670D\u52A1\u5668[/MOTD][AD]%1[/AD]")
+                                .arg(port).toUtf8();
+    const QHostAddress group(QStringLiteral("224.0.2.60"));
+
+    // 对齐 Terracotta fakeserver.rs：给每个本机 IPv4 各开一个 socket、各发一份，
+    // 最后再用 0.0.0.0 兜底（让系统按当前多播路由选口）。
+    // MC 只会收到「它 joinGroup 时那块网卡」上的包，所以必须铺满所有网卡：
+    // 单发一路时只要 MC 的组成员关系落在别的网卡（EasyTier TUN 后出现 / 网卡切换 /
+    // 已断开但仍留 DHCP 地址的有线网卡被系统选为多播出口），游戏里就一条都看不到。
+    QStringList announce;
+    QList<QHostAddress> sources;
+    for (const QNetworkInterface& iface : QNetworkInterface::allInterfaces()) {
+        const auto flags = iface.flags();
+        if (!(flags & QNetworkInterface::IsUp) || !(flags & QNetworkInterface::IsRunning))
+            continue;
+        if (flags & QNetworkInterface::IsLoopBack)
+            continue;
+        for (const QNetworkAddressEntry& entry : iface.addressEntries()) {
+            const QHostAddress ip = entry.ip();
+            if (ip.protocol() != QAbstractSocket::IPv4Protocol || ip.isLoopback())
+                continue;
+            if (!sources.contains(ip))
+                sources << ip;
+        }
+    }
+    sources << QHostAddress(QHostAddress::AnyIPv4);   // 兜底：默认路由/默认多播出口
+
+    for (const QHostAddress& src : sources) {
+        auto* sock = new QUdpSocket(this);
+        if (!sock->bind(src, 0)) {
+            // 单块网卡绑不上（刚拔线/地址在回收）不影响其它网卡
+            sock->deleteLater();
+            continue;
+        }
+        sock->setSocketOption(QAbstractSocket::MulticastTtlOption, 4);
+        sock->setSocketOption(QAbstractSocket::MulticastLoopbackOption, 1);  // 本机 MC 也要收到
+        m_fakeServerSockets << sock;
+        announce << src.toString();
+    }
 
     m_fakeServerTimer = new QTimer(this);
-    connect(m_fakeServerTimer, &QTimer::timeout, this, [this, data]() {
-        if (!m_fakeServerSocket)
-            return;
-        // Broadcast to MC LAN discovery multicast address
-        m_fakeServerSocket->writeDatagram(data,
-            QHostAddress(QStringLiteral("224.0.2.60")), 4445);
+    connect(m_fakeServerTimer, &QTimer::timeout, this, [this, data, group]() {
+        for (QUdpSocket* sock : m_fakeServerSockets) {
+            if (sock)
+                sock->writeDatagram(data, group, 4445);
+        }
     });
 
-    qCInfo(logNet) << QStringLiteral("[联机] FakeServer已启动 端口=%1").arg(port);
+    qCInfo(logNet) << QStringLiteral("[联机] FakeServer已启动 端口=%1 广播源=%2")
+        .arg(port).arg(announce.join(QStringLiteral(", ")));
+
+    // 立刻先发一轮：玩家的「多人游戏」页可能正开着在扫
+    for (QUdpSocket* sock : m_fakeServerSockets) {
+        if (sock)
+            sock->writeDatagram(data, group, 4445);
+    }
     m_fakeServerTimer->start(1500);  // every 1.5s per MC protocol
 }
 
@@ -1687,10 +1728,12 @@ void MultiplayerManager::stopFakeServer()
         m_fakeServerTimer->deleteLater();
         m_fakeServerTimer = nullptr;
     }
-    if (m_fakeServerSocket) {
-        m_fakeServerSocket->deleteLater();
-        m_fakeServerSocket = nullptr;
+    for (QUdpSocket* sock : m_fakeServerSockets) {
+        if (!sock) continue;
+        sock->disconnect(this);
+        sock->deleteLater();
     }
+    m_fakeServerSockets.clear();
 }
 
 void MultiplayerManager::broadcastPlayers()
