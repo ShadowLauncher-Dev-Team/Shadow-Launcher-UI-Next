@@ -829,6 +829,9 @@ signals:
     void resourceDownloadStateChanged();
     void resourcepackSearchCompleted(const QVariantList& results, int totalHits);
     void resourcepackSearchFailed(const QString& error);
+    /// D11：搜索失败（网络错误 / HTTP 非 2xx / 双源均无有效数据 / 源失联）。
+    /// kind: mod | shader | resourcepack | modpack | datapack；只转发，不含逻辑。
+    void resourceSearchFailed(const QString& kind, const QString& error);
     void resourcepackDownloadFinished(const QString& slug, bool success, const QString& filePath);
     void resourcepackVersionsLoaded(const QVariantMap& slugToVersions);
     void resourcepackVersionsPartial(const QString& slug, const QStringList& versions, const QVariantMap& details);

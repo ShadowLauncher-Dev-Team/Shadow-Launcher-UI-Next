@@ -852,6 +852,8 @@ ShadowBackend::ShadowBackend(QObject* parent)
             });
     connect(m_resource, &ResourceBackend::resourcepackSearchFailed,
             this, &ShadowBackend::resourcepackSearchFailed);
+    connect(m_resource, &ResourceBackend::resourceSearchFailed,
+            this, &ShadowBackend::resourceSearchFailed);
     connect(m_resource, &ResourceBackend::resourcepackDownloadFinished,
             this, &ShadowBackend::resourcepackDownloadFinished);
     connect(m_resource, &ResourceBackend::resourcepackVersionsLoaded,

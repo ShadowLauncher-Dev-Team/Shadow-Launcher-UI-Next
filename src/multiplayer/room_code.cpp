@@ -92,9 +92,17 @@ std::optional<Parts> parse(const QString& code)
     QList<QChar> chars;
     for (int i = 1; i <= 4; ++i) {
         for (QChar c : m.captured(i)) {
-            if (charToValue(c) < 0)
+            const int v = charToValue(c);
+            if (v < 0)
                 return std::nullopt;
-            chars.append(c.toUpper());
+            // 2026-11-27 修（审计 D16）：以前存的是 c.toUpper()，即**用户原始字母**。
+            // I/O 只是校验时按 1/0 算（charToValue 的兼容映射），于是 parse 回来的
+            // displayCode / networkName / networkKey 全是带 I/O 的原始形态：
+            //   · 回显给访客的码和房主的不一样（复制出去别人也加不进）；
+            //   · networkName 是 easytier 的网络名，房主是 1 版、访客是 I 版 —— 名字不同，
+            //     隧道根本对不上（原审计写「连通性不受影响」是错的）。
+            // 统一存回字符集里的规范字符：I→1、O→0，与房主生成的码完全一致。
+            chars.append(QChar::fromLatin1(kCharset[v]));
         }
     }
     if (codeMod7(chars) != 0)

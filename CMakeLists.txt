@@ -793,6 +793,16 @@ if(SHADOW_BUILD_MODPACK_SELFTEST)
     target_include_directories(PortProbeTest PRIVATE src)
     target_link_libraries(PortProbeTest PRIVATE Qt6::Core Qt6::Network)
 
+    # 房码 I/O 规范化单测（2026-11-27 审计 D16）
+    #   I/O 易混字符只在校验时映射，曾导致回显与 networkName 保留原始 I/O 形态
+    # 用法：RoomCodeTest.exe   退出码 0=PASS 1=FAIL
+    add_executable(RoomCodeTest
+        tests/test_room_code.cpp
+        src/multiplayer/room_code.cpp
+    )
+    target_include_directories(RoomCodeTest PRIVATE src)
+    target_link_libraries(RoomCodeTest PRIVATE Qt6::Core)
+
     # CF 适配器自测：搜索统一模型 + 文件→版本转换 + 分类表
     add_executable(CfApiTest
         tests/test_cf_api.cpp
