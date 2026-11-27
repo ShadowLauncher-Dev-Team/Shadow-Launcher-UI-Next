@@ -205,12 +205,25 @@ void MultiplayerManager::joinRoom(const QString& code)
 
     auto parts = RoomCode::parse(code);
     if (!parts) {
-        // Track failed join attempts (brute-force protection)
-        if (m_guard && !m_guard->allowJoinRoom(m_machineId)) {
-            emitError(QStringLiteral("too_frequent"), tr("操作过于频繁，请稍后再试"));
+        // 防爆破保留：格式错误的尝试照旧计数（kJoinCooldown 次 → 冷却 kJoinCooldownSec 秒）。
+        // 但文案要说实话：房码本身无效是主因，被限流只是「现在不能再试」（D6）。
+        ConnectionGuard::JoinGate gate;
+        if (m_guard)
+            gate = m_guard->tryJoinRoom(m_machineId);
+        if (!gate.allowed) {
+            qCWarning(logNet) << QStringLiteral("[联机] 入房尝试被限流 冷却=%1 剩余秒=%2")
+                                     .arg(gate.throttled ? 1 : 0).arg(gate.retryAfterSec);
+            if (gate.throttled) {
+                emitError(QStringLiteral("code_invalid_throttled"),
+                          tr("房间码无效或不存在；连续 %1 次失败已触发冷却，请 %2 秒后再试")
+                              .arg(ConnectionGuard::kJoinCooldown).arg(gate.retryAfterSec));
+            } else {
+                emitError(QStringLiteral("too_frequent"),
+                          tr("尝试过于频繁，请 %1 秒后再试").arg(gate.retryAfterSec));
+            }
             return;
         }
-        emitError(QStringLiteral("code_invalid"), tr("房间码无效，请检查后重试"));
+        emitError(QStringLiteral("code_invalid"), tr("房间码无效或不存在，请检查后重试"));
         return;
     }
 

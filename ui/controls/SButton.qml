@@ -41,7 +41,9 @@ Item {
         radius: root.radius
         color: {
             if (root.kind === 0) {
-                if (root.busy) return Theme.danger
+                // 忙碌态是红底白字：白字压 danger(#ef4444) 只有 3.76:1，压 dangerBot(#dc2626) 是 4.83:1。
+                // danger 本身按"墨色"用（图标/描边），深一档的 dangerBot 才是可承载白字的填充。
+                if (root.busy) return Theme.dangerBot
                 // 灰态按钮不能用"浅底 + 白字"：白色方案下就是白底白字（实测按钮整块消失）。
                 // 灰态统一走"弱底 + 次要文字色"，两套方案都可读。
                 if (root.dimmed || root.muted) return root._softFill
@@ -116,7 +118,8 @@ Item {
         border.color: root.danger ? Theme.danger : root._softBorder
     }
 
-    // 主按钮 hover 提亮（4% 白覆盖）：只解释"鼠标在这里"，不改变主色
+    // 主按钮 hover 提亮（#0dffffff = 5% 白覆盖）：只解释"鼠标在这里"，不改变主色。
+    // 注意这层覆盖也会压在白字下面：Theme.accentTop 已按"叠加后仍 ≥4.5:1"取值（4.73:1）。
     Rectangle {
         anchors.fill: parent
         radius: root.radius

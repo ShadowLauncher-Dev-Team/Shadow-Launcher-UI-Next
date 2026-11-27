@@ -172,11 +172,6 @@ void SettingsBackend::loadSettings()
     m_lastLaunchedVersion = s.value(QStringLiteral("general/lastVersion"), QString()).toString();
     m_lastSelectedVersion = s.value(QStringLiteral("general/lastSelectedVersion"), QString()).toString();
 
-    // Custom background
-    m_sidebarOpacity = qBound(0.0, s.value(QStringLiteral("customBg/sidebarOpacity"), 0.90).toDouble(), 1.0);
-    m_contentOpacity = qBound(0.0, s.value(QStringLiteral("customBg/contentOpacity"), 0.70).toDouble(), 1.0);
-    m_backgroundBlur = qBound(0.0, s.value(QStringLiteral("customBg/blur"), 0.0).toDouble(), 1.0);
-
     // ── 背景图库 ──
     // 结构变了：以前是「一个路径 + 一套取景」，切回默认就把路径清了（图就丢了）。
     // 现在是图库：每张图各自带 path + zoom/cropX/cropY，切换只改 active。
@@ -345,9 +340,6 @@ void SettingsBackend::saveSettings()
     // 图库整体序列化（每项含自己的 zoom/crop）；旧的单值 key 不再写，
     // 但读的时候还认一次（迁移），所以老用户升级后自定义图不会丢。
     saveBgLibraryTo(s);
-    s.setValue(QStringLiteral("customBg/sidebarOpacity"), m_sidebarOpacity);
-    s.setValue(QStringLiteral("customBg/contentOpacity"), m_contentOpacity);
-    s.setValue(QStringLiteral("customBg/blur"), m_backgroundBlur);
     s.setValue(QStringLiteral("appearance/scheme"), m_colorScheme);
 
     // Auto-language mode

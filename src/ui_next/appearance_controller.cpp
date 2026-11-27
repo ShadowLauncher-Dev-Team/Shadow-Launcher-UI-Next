@@ -76,6 +76,7 @@ void AppearanceController::loadPreferences()
     QSettings settings;
     const QString mode = settings.value(QStringLiteral("appearance/mode"), QStringLiteral("system")).toString();
     const QString density = settings.value(QStringLiteral("appearance/density"), QStringLiteral("comfortable")).toString();
+    // themeId 是常量：调色板真源在 ui/Theme.qml，本类不再恢复任何主题标识。
     m_themeId = QStringLiteral("midnight-blue");
     m_mode = (mode == QStringLiteral("light") || mode == QStringLiteral("dark")) ? mode : QStringLiteral("system");
     m_density = (density == QStringLiteral("compact") || density == QStringLiteral("spacious"))
@@ -88,7 +89,8 @@ void AppearanceController::savePreferences() const
     if (!m_persistenceEnabled)
         return;
     QSettings settings;
-    settings.setValue(QStringLiteral("appearance/themeId"), m_themeId);
+    // 不再写 appearance/themeId：loadPreferences() 无条件把它设回常量 "midnight-blue"，
+    // 这个键写了也永远不会被读回，只会在注册表里留垃圾。颜色本身从不持久化。
     settings.setValue(QStringLiteral("appearance/mode"), m_mode);
     settings.setValue(QStringLiteral("appearance/density"), m_density);
     settings.setValue(QStringLiteral("appearance/reducedMotion"), m_reducedMotion);
@@ -106,6 +108,9 @@ void AppearanceController::updateEffectiveMode()
     emit effectiveModeChanged();
 }
 
+// 非调色板真源。QML 唯一引用的颜色来源是 ui/Theme.qml（ui/ 下 'Appearance.' 引用数 0）。
+// 此表不持久化（savePreferences 不写 color 组），保留原因仅为本类 tokens() 的既有契约被
+// tests/test_appearance_controller.cpp:49-52 断言。改颜色请改 ui/Theme.qml。
 QVariantMap AppearanceController::colorTokens() const
 {
     if (m_effectiveMode == QStringLiteral("light")) {

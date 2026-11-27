@@ -184,9 +184,6 @@ class ShadowBackend : public QObject {
     Q_PROPERTY(QString customBgPath READ customBgPath NOTIFY customBgChanged)
     // 背景图的 file:/// URL（QML Image.source 直接用）；空 = 用内置默认图
     Q_PROPERTY(QString customBgUrl READ customBgUrl NOTIFY customBgChanged)
-    Q_PROPERTY(qreal sidebarOpacity READ sidebarOpacity NOTIFY customBgChanged)
-    Q_PROPERTY(qreal contentOpacity READ contentOpacity NOTIFY customBgChanged)
-    Q_PROPERTY(qreal backgroundBlur READ backgroundBlur NOTIFY customBgChanged)
     Q_PROPERTY(qreal cropX READ cropX WRITE setCropX NOTIFY customBgChanged)
     Q_PROPERTY(qreal cropY READ cropY WRITE setCropY NOTIFY customBgChanged)
     Q_PROPERTY(qreal bgZoom READ bgZoom WRITE setBgZoom NOTIFY customBgChanged)
@@ -306,12 +303,6 @@ public:
     QString customBgPath() const;
     QString customBgUrl() const;
     Q_INVOKABLE void setCustomBgPath(const QString& path);
-    qreal sidebarOpacity() const;
-    Q_INVOKABLE void setSidebarOpacity(qreal v);
-    qreal contentOpacity() const;
-    Q_INVOKABLE void setContentOpacity(qreal v);
-    qreal backgroundBlur() const;
-    Q_INVOKABLE void setBackgroundBlur(qreal v);
     qreal cropX() const;
     Q_INVOKABLE void setCropX(qreal v);
     qreal cropY() const;

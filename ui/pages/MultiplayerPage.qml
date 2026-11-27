@@ -831,7 +831,10 @@ Item {
                         width: parent.width
                         height: 40
                         visible: page.errorText !== ""
-                        text: (page.errorCode === "code_invalid" || page.errorCode === "too_frequent")
+                        // code_invalid_throttled：房码无效 + 已冷却，仍应引导用户改码重输
+                        text: (page.errorCode === "code_invalid"
+                               || page.errorCode === "code_invalid_throttled"
+                               || page.errorCode === "too_frequent")
                               ? qsTr("重新输入") : qsTr("知道了")
                         onClicked: page.errorText = ""
                     }

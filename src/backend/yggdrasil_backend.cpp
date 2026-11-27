@@ -248,8 +248,39 @@ void YggdrasilBackend::fetchMeta(const QString &apiRoot)
     connect(reply, &QNetworkReply::finished, this, &YggdrasilBackend::onMetaReply);
 }
 
+// 登录流程唯一收尾口。三处出口都必须经过它，pending 才不可能漏复位：
+//   ① onAuthenticateReply() —— 覆盖「应答成功」与「应答失败（含解析失败/取消）」两支；
+//   ② onLoginTimeout()     —— 覆盖「根本没有应答」；
+//   ③ doLogout()           —— 覆盖「登录途中被切号/登出」。
+// 反面教材：2026-11 那次「永远 busy」就是标记只在成功分支复位，失败与无应答两条路把它焊死。
+void YggdrasilBackend::finishLogin()
+{
+    if (m_loginTimer && m_loginTimer->isActive()) m_loginTimer->stop();
+    if (!m_loginPending) return;
+    m_loginPending = false;
+    emit loginPendingChanged();
+}
+
+void YggdrasilBackend::dropLoginReply()
+{
+    if (!m_loginReply) return;
+    QNetworkReply *r = m_loginReply.data();
+    m_loginReply = nullptr;
+    disconnect(r, nullptr, this, nullptr);
+    r->abort();
+    r->deleteLater();
+}
+
 void YggdrasilBackend::login(const QString &apiRoot, const QString &email, const QString &password)
 {
+    // 重入保护：连点 / 回车重发 / 脚本复用入口都挡在这里，服务端只会看到一条 authenticate。
+    // QML 侧按钮同时也被 loginPending 禁用（那道只是可视化的那半，不能当唯一防线）。
+    if (m_loginPending) {
+        qCInfo(logYggBackend) << QStringLiteral("[外置登录] 上一次认证还没结束，忽略重复请求");
+        emit loginFailed(QStringLiteral("正在登录中，请稍候"));
+        return;
+    }
+
     if (apiRoot.trimmed().isEmpty() || email.trimmed().isEmpty() || password.isEmpty()) {
         emit loginFailed(QStringLiteral("请填写完整的登录信息"));
         return;
@@ -263,11 +294,36 @@ void YggdrasilBackend::login(const QString &apiRoot, const QString &email, const
                                  .arg(apiRoot.trimmed(), m_pendingEmail)
                                  .arg(password.length());
 
+    m_loginPending = true;
+    emit loginPendingChanged();
+
+    // 超时兜底：QNetworkReply 没有设 transferTimeout（core/yggdrasil_auth.cpp 不设），
+    // 一个卡死的连接可以挂上几分钟。20s 到点强制收尾，宁可让用户重试，也不能永远 busy。
+    if (!m_loginTimer) {
+        m_loginTimer = new QTimer(this);   // 父对象 this：随 backend 一起销毁，不会有悬垂定时器
+        m_loginTimer->setSingleShot(true);
+        m_loginTimer->setInterval(20000);
+        connect(m_loginTimer, &QTimer::timeout, this, &YggdrasilBackend::onLoginTimeout);
+    }
+    m_loginTimer->start();
+
     QNetworkReply *reply = m_auth.authenticate(
         apiRoot.trimmed(), email.trimmed(), password,
         YggdrasilAuth::generateClientToken());
 
+    m_loginReply = reply;
     connect(reply, &QNetworkReply::finished, this, &YggdrasilBackend::onAuthenticateReply);
+}
+
+void YggdrasilBackend::onLoginTimeout()
+{
+    if (!m_loginPending) return;
+    qCWarning(logYggBackend) << QStringLiteral("[外置登录] 认证 20 秒无应答，强制收尾");
+    // 把在途请求摘掉，否则迟到的成功响应会在已经提示「超时」之后又把会话装上（半登录态）
+    dropLoginReply();
+    finishLogin();
+    setStatus(QString());
+    emit loginFailed(QStringLiteral("登录超时：20 秒内没有收到认证服务器响应，请检查地址与网络后重试"));
 }
 
 void YggdrasilBackend::refreshToken()
@@ -409,6 +465,11 @@ void YggdrasilBackend::logoutRevoking()
 // 否则 accounts.json 里存的那个 accessToken 会被吊销，下次恢复必然 403。
 void YggdrasilBackend::doLogout(bool invalidateRemote)
 {
+    // 登录途中被切号 / 登出：先把 pending 收掉。放在早退分支之前，
+    // 因为「登录还没完成」时 m_session 往往正是 invalid（早退会跳过下面的清理）。
+    finishLogin();
+    dropLoginReply();
+
     if (!m_session.isValid()) return;
 
     qCInfo(logYggBackend) << QStringLiteral("[登出] %1 令牌=%2")
@@ -831,6 +892,11 @@ void YggdrasilBackend::onMetaReply()
 
 void YggdrasilBackend::onAuthenticateReply()
 {
+    // 应答到了：先复位 pending（成功 / 失败 / 取消 / 解析失败全走这条），
+    // 同时把 20s 兜底定时器停掉（finishLogin 内部会 stop）。
+    m_loginReply = nullptr;
+    finishLogin();
+
     auto *reply = qobject_cast<QNetworkReply*>(sender());
     if (!reply) return;
     reply->deleteLater();

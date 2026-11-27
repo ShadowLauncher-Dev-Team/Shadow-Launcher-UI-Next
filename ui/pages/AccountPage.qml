@@ -28,6 +28,22 @@ Item {
         onTriggered: page.refreshBusy = false
     }
 
+    // 切号后滚到当前账号：只改 Flickable.contentY，不重建任何行。
+    NumberAnimation {
+        id: scrollAnim
+        target: menuFlick
+        property: "contentY"
+        duration: Theme.durBase
+        easing.type: Theme.easeEnter
+    }
+    Timer {
+        id: scrollToCurrentTimer
+        interval: 0
+        repeat: false
+        // 延迟一帧：accountsChanged 当下 Column 还没重新排版，contentHeight 是旧值
+        onTriggered: page.ensureCurrentVisible()
+    }
+
     Timer {
         id: removeProbeTimer
         interval: 1800
@@ -67,6 +83,14 @@ Item {
             page.loginPanel = false
             page.passwordInput = ""
             if (page.b) page.b.lastLoginMode = 2
+            // 列表已满时后端拒收新账号（只留一条日志）。写列表的是 ShadowBackend，
+            // 它的信号连接在 QML 之前建立，所以这里读到的已是写入之后的结果：
+            // 「名字不在列表 + 已到上限」⇒ 正是被拒收，必须说出来，不能只报登录成功。
+            if (!page.accountNameListed(page.yg ? page.yg.username : "")
+                    && page.accountCount >= page.accountLimit) {
+                page.flash(page.accountLimitText())
+                return
+            }
             page.flash(qsTr("外置账号登录成功"))
         }
         function onLoginFailed(err) {
@@ -113,7 +137,11 @@ Item {
     Connections {
         target: page.b
         ignoreUnknownSignals: true
-        function onAccountsChanged() { page.accRev++ }
+        function onAccountsChanged() {
+            page.accRev++
+            // 切号 / 新增 / 移除之后重新定位：账号一多，当前项就会落到可视区外（审计 account-09）
+            scrollToCurrentTimer.restart()
+        }
         // 衣柜失败（尺寸不对 / 上传失败）必须让用户看到，否则点"应用"像没反应
         function onWardrobeError(msg) { page.flash(msg) }
     }
@@ -132,6 +160,13 @@ Item {
     // 只信 yg.loggedIn 会出错——恢复会话时它立刻就 true，而校验还没回来。
     readonly property bool externalLive: !!yg && yg.loggedIn === true
         && !(curAcct && curAcct.needsRelogin === true)
+
+    // 外置登录请求在途中 —— 由后端 YggdrasilBackend::loginPending 驱动，不是本地标志。
+    // 按钮禁用与文案都读它：后端复位了、界面却还停着（或反过来）这类假死因此不可能发生。
+    readonly property bool ygLoginPending: (yg && yg.loginPending === true)
+    // 账号列表上限，与后端 AccountBackend 的 kMaxAccounts（account_backend.cpp:42）一致：
+    // 后端是权威判定，这里只负责在「点添加 / 提交登录」之前先把话说清楚。
+    readonly property int accountLimit: 20
 
     // 验收钩子用：待处理的拖入路径（等 backend 就绪后再喂）
     property string pendingDrop: ""
@@ -321,6 +356,38 @@ Item {
     }
     onLoginPanelChanged: if (!page.loginPanel) page.acctView = page.buildAcctView()
 
+    // ── 切号后把当前账号滚进可视区（审计 account-09：24 条时当前项在可视区外）──
+    // 只动 contentY，行的模型仍是 Repeater 的「行数」，不销毁不重建。
+    function ensureCurrentVisible() {
+        if (!menuFlick) return
+        var idx = (page.b && page.b.currentAccount >= 0) ? page.b.currentAccount : -1
+        if (idx < 0) return
+        var viewH = menuFlick.height
+        if (viewH <= 0) return
+        var top = idx * page.acctStride
+        var bottom = top + page.acctRowH
+        var y = menuFlick.contentY
+        if (top < y + 4) y = top - 4
+        else if (bottom > y + viewH - 4) y = bottom - viewH + 4
+        else return
+        var maxY = Math.max(0, menuFlick.contentHeight - viewH)
+        scrollAnim.to = Math.max(0, Math.min(y, maxY))
+        scrollAnim.restart()
+    }
+    // 名字是否已在账号列表里（大小写不敏感）。用来区分「新增」与「切回/重登」。
+    function accountNameListed(name) {
+        if (!page.b || !page.b.accounts || !name) return false
+        var n = String(name).toLowerCase()
+        for (var i = 0; i < page.b.accounts.length; ++i) {
+            var a = page.b.accounts[i]
+            if (a && String(a.name).toLowerCase() === n) return true
+        }
+        return false
+    }
+    function accountLimitText() {
+        return qsTr("账号数量已达上限（%1 个），请先移除不用的账号再添加").arg(page.accountLimit)
+    }
+
     // 反馈统一走 Toast（顶栏绿色文字会挤动右侧按钮，也留不住）
     // force=true：绕过 ToastHost 的"近期相同消息"去重。
     // 连续两次切披风成功文案一模一样，不去重的话第二次会被静默吞掉，
@@ -332,6 +399,12 @@ Item {
         if (!page.b) return
         var n = page.offlineInput.trim()
         if (n.length === 0) { page.flash(qsTr("先填一个用户名")); return }
+        // 后端也挡（account_backend.cpp 的 offlineLogin 上限判断），这里先给提示。
+        // 同名再登录一次是「切回」而不是「新增」，不受上限影响。
+        if (!page.accountNameListed(n) && page.accountCount >= page.accountLimit) {
+            page.flash(page.accountLimitText())
+            return
+        }
         page.b.lastLoginMode = 1
         page.b.offlineLogin(n)
         page.flash(qsTr("已切换到离线账户 %1").arg(n))
@@ -347,6 +420,8 @@ Item {
     property bool pendingLogin: false
     function doExternal() {
         if (!page.yg) return
+        // 后端在途时不再发起第二条 authenticate（后端 login() 里还有同一道判定）
+        if (page.ygLoginPending) { page.flash(qsTr("上一次登录还没结束，请稍候")); return }
         if (page.apiRootInput.length === 0 || page.emailInput.length === 0 || page.passwordInput.length === 0) {
             page.flash(qsTr("地址、账号、密码都要填"))
             return
@@ -358,7 +433,7 @@ Item {
             page.yg.resolveApiRoot(raw)
             return
         }
-        page.loginNow()
+        // 只发一次：这里原先连着调了两次 loginNow()，一按就发出两条 authenticate。
         // 不能在认证成功之前写 lastLoginMode：
         // 一旦写了，下次启动会按"上次是外置"去恢复那条（可能已失效的）会话，
         // 失败后又被判过期 —— 用户看到的就是"一点就说过期"的死循环。
@@ -399,6 +474,7 @@ Item {
 
     function loginNow() {
         if (!page.yg) return
+        if (page.ygLoginPending) return
         page.yg.login(page.apiRootInput.trim(), page.emailInput.trim(), page.passwordInput)
         page.flash(qsTr("正在登录外置账户…"))
     }
@@ -447,7 +523,15 @@ Item {
     Connections {
         target: page.b
         enabled: page.b !== null
-        function onMicrosoftLoginSuccess() { page.loginPanel = false; page.flash(qsTr("登录成功")) }
+        function onMicrosoftLoginSuccess(username) {
+            page.loginPanel = false
+            // 同上：正版登录写入列表在 microsoftLoginSuccess 之前完成（account_backend.cpp:142 先于 :150）
+            if (!page.accountNameListed(username) && page.accountCount >= page.accountLimit) {
+                page.flash(page.accountLimitText())
+                return
+            }
+            page.flash(qsTr("登录成功"))
+        }
         function onMicrosoftLoginFailed(err) { page.flash(qsTr("登录失败：%1").arg(err)) }
     }
 
@@ -664,15 +748,31 @@ Item {
                 font.weight: Font.DemiBold
             }
 
-            Column {
-                id: menu
+            // 左列必须可滚：账号上限 20 条时一屏放不下，当前账号可能落在可视区外
+            // （审计 account-09）。滚动只动 contentY，行的模型仍是下面 Repeater 的"行数"，
+            // 不会销毁重建任何一行。
+            Flickable {
+                id: menuFlick
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: listTitle.bottom
                 anchors.topMargin: 10
                 anchors.leftMargin: 8
                 anchors.rightMargin: 8
-                spacing: 2
+                anchors.bottom: parent.bottom
+                contentWidth: width
+                // 用 implicitHeight：Column 的高度由子项累加得来，写死 menu.height 会随
+                // 「行是否可见（loginPanel）」变化而出偏差
+                contentHeight: menu.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+            // 缩进比上面少一档：这整块（账号行 / 添加账号 / 三种登录方式 / 离线名历史）
+            // 只是换了容器，内容一行没改，不想为缩进改 230 行、把真正的 diff 淹掉。
+            Column {
+                id: menu
+                width: menuFlick.width
+                spacing: page.menuGap
 
                 // 账号列表：一行一个已保存账号，当前账号高亮 + 左侧强调条。
                 // 非当前账号没有真实皮肤（不缓存别人的头像），用名字首字母占位。
@@ -810,7 +910,15 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: { page.loginPanel = true; page.tab = 0 }
+                        onClicked: {
+                            // 到上限就把话说清楚，而不是让用户填完表单才被后端拒收
+                            if (page.accountCount >= page.accountLimit) {
+                                page.flash(page.accountLimitText())
+                                return
+                            }
+                            page.loginPanel = true
+                            page.tab = 0
+                        }
                     }
                 }
 
@@ -892,55 +1000,57 @@ Item {
                 }
             }
 
-            // ---- 当前账号指示条（唯一一根）----
-            // 和版本页同一套：换选中项时从旧行滑到新行，而不是"这根消失、那根出现"。
-            Item {
-                id: acctSelLayer
-                anchors.left: menu.left
-                anchors.top: menu.top
-                width: menu.width
-                height: Math.max(0, page.accountCount * page.acctStride - page.menuGap)
-                visible: !page.loginPanel && page.accountCount > 0
-                         && page.b && page.b.currentAccount >= 0
-                clip: true
-                z: 3
+                // ---- 当前账号指示条（唯一一根）----
+                // 和版本页同一套：换选中项时从旧行滑到新行，而不是"这根消失、那根出现"。
+                // 它必须和 menu 一样活在 Flickable 的 contentItem 里，才会跟着列表一起滚。
+                Item {
+                    id: acctSelLayer
+                    anchors.left: menu.left
+                    anchors.top: menu.top
+                    width: menu.width
+                    height: Math.max(0, page.accountCount * page.acctStride - page.menuGap)
+                    visible: !page.loginPanel && page.accountCount > 0
+                             && page.b && page.b.currentAccount >= 0
+                    clip: true
+                    z: 3
 
-                Rectangle {
-                    property real animIdx: (page.b && page.b.currentAccount >= 0)
-                                              ? page.b.currentAccount : 0
-                    Behavior on animIdx {
-                        NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
+                    Rectangle {
+                        property real animIdx: (page.b && page.b.currentAccount >= 0)
+                                                  ? page.b.currentAccount : 0
+                        Behavior on animIdx {
+                            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
+                        }
+                        width: 2
+                        height: 38
+                        radius: 1
+                        color: Theme.accent
+                        y: animIdx * page.acctStride + (page.acctRowH - height) / 2
                     }
-                    width: 2
-                    height: 38
-                    radius: 1
-                    color: Theme.accent
-                    y: animIdx * page.acctStride + (page.acctRowH - height) / 2
                 }
-            }
 
-            // ---- 登录方式指示条（同一套做法）----
-            Item {
-                anchors.left: menu.left
-                anchors.top: menu.top
-                width: menu.width
-                height: 3 * page.tabStride - page.menuGap
-                visible: !page.browsingAccounts
-                clip: true
-                z: 3
+                // ---- 登录方式指示条（同一套做法）----
+                Item {
+                    anchors.left: menu.left
+                    anchors.top: menu.top
+                    width: menu.width
+                    height: 3 * page.tabStride - page.menuGap
+                    visible: !page.browsingAccounts
+                    clip: true
+                    z: 3
 
-                Rectangle {
-                    property real animIdx: page.tab
-                    Behavior on animIdx {
-                        NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
+                    Rectangle {
+                        property real animIdx: page.tab
+                        Behavior on animIdx {
+                            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easeEnter }
+                        }
+                        width: 2
+                        height: 46
+                        radius: 1
+                        color: Theme.accent
+                        y: animIdx * page.tabStride + (page.tabRowH - height) / 2
                     }
-                    width: 2
-                    height: 46
-                    radius: 1
-                    color: Theme.accent
-                    y: animIdx * page.tabStride + (page.tabRowH - height) / 2
                 }
-            }
+            }   // Flickable 结束
         }
 
         // ===== 右侧 =====
@@ -1895,7 +2005,11 @@ Item {
                         kind: 0
                         height: 40
                         iconName: "globe"
-                        text: qsTr("登录")
+                        text: (page.ygLoginPending || page.pendingLogin) ? qsTr("登录中…") : qsTr("登录")
+                        // pending 期间禁用（SButton.dimmed 会同时关掉 MouseArea）。
+                        // 状态来自后端 loginPending，不是本地猜的；后端有 20s 超时兜底，
+                        // 所以这里不会出现"后端复位了界面还锁着"或"界面锁死后端已放手"的错位。
+                        dimmed: page.ygLoginPending || page.pendingLogin
                         onClicked: page.doExternal()
                     }
 

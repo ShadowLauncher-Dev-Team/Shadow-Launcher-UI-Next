@@ -129,7 +129,10 @@ Item {
     // 小方块是**实心色块**，不是文字：要的是饱和的主蓝，不是给文字用的浅蓝。
     // 原来这里是 #3b82f6（= Theme.accent 本色），黑白配色那次被换成了 accentText，
     // 方块立刻发白发虚 —— 和进度页 Spinner 是同一个错。
-    // 进行中用 accentTop(#4b8cf7)：原色 #60a5fa 比完成的 #3b82f6 更亮，保持这个关系。
+    // ⚠ 2026-11-27（审计 D3 副作用）：accentTop 为迁就白字对比度已从 #4b8cf7 压暗到 #2563eb，
+    // 现在它比完成的 accent(#3b82f6) **更暗**，原先"进行中更亮"的明暗关系已不成立。
+    // 这里暂时保留取值不动（节点是实心色块、不涉及白字对比度，改配色属视觉决策）；
+    // 若要恢复"进行中更醒目"，应把 s==1 换成 Theme.accent、s==2 换成 Theme.accentTop，并在亮/暗两套方案下各截一张图确认。
     function nodeColor(s) {
         if (s === 2) return Theme.accent
         if (s === 1) return Theme.accentTop

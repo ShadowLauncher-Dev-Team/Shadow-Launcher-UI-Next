@@ -71,6 +71,9 @@ struct FileDownload {
     QString localPath;
     QString localName;
     qint64 fileSize = -2;      // -2=unknown, -1=cannot determine
+    /// addFile 声明的原始大小（D12）：运行中 fileSize 会被 10MB 占位值 / Content-Length
+    /// 改写，二次 start() 只能回到这个基线，不能沿用上一轮的残留值。
+    qint64 declaredSize = -2;
     bool isUnknownSize = false;
     /// fileSize 是占位值（如未知大小时的 10MB 假值）：不能拿它做完整性判定。
     bool sizeIsPlaceholder = false;
@@ -266,6 +269,9 @@ private:
     bool mergeFile(std::shared_ptr<FileDownload> file);
     void onWorkerDone(std::shared_ptr<FileDownload> file);
     void updateStats();
+    /// D12：把 m_files[*] 与全部运行态计数复位到「刚 addFile 完」的基线。
+    /// 只由 start() 调用；首次 start() 时是恒等变换（行为不变）。
+    void resetRunState();
 
     /// 对全部在途 reply 排队 abort（abort 必须在 reply 所属 worker 线程执行）。
     void abortInFlightReplies();
@@ -300,6 +306,8 @@ private:
     QList<qint64> m_speedRecords;
     QElapsedTimer m_speedTimer;
     qint64 m_lastSpeedBytes = 0;
+    /// 本轮墙钟起点（D13：收尾打印「平均 MB/s」= 网络字节 / 本轮耗时）。
+    qint64 m_runStartMs = 0;
     mutable QMutex m_speedMutex;
     double m_emaMbps = 0.0;
     qint64 m_instantBps = 0;   // 最近一次差分速度（主流启动器 Speed 语义，200ms 采样）——速度门限用

@@ -26,18 +26,17 @@ bool ConnectionGuard::allowConnect(const QString& ip)
     return true;
 }
 
-bool ConnectionGuard::allowJoinRoom(const QString& ip)
+// 入房尝试：不再在这里 emit blocked()（那条信号会把中文文案直接推给 UI，
+// 调用方无法区分「房码无效」与「被限流」，也无法带上剩余秒数）。
+// 判定结果交给 MultiplayerManager::joinRoom 决定文案与错误码。
+ConnectionGuard::JoinGate ConnectionGuard::tryJoinRoom(const QString& ip)
 {
-    bool c;
-    if (!checkAndAdd(ip, m_joinLog, kMaxJoinPerMinute, 60000, c,
-                     kJoinCooldown)) {
-        if (c)
-            emit blocked(ip, QStringLiteral("操作过于频繁，请 %1 秒后再试").arg(kJoinCooldownSec));
-        else
-            emit blocked(ip, QStringLiteral("操作过于频繁，已被暂时限制"));
-        return false;
-    }
-    return true;
+    JoinGate gate;
+    int retryAfterSec = 0;
+    gate.allowed = checkAndAdd(ip, m_joinLog, kMaxJoinPerMinute, 60000,
+                               gate.throttled, kJoinCooldown, &retryAfterSec);
+    gate.retryAfterSec = gate.allowed ? 0 : qMax(1, retryAfterSec);
+    return gate;
 }
 
 bool ConnectionGuard::allowPacket(const QString& peerId)
@@ -54,9 +53,11 @@ bool ConnectionGuard::checkAndAdd(const QString& key,
                                    QHash<QString, RateEntry>& log,
                                    int maxCount, qint64 windowMs,
                                    bool& hitCooldown,
-                                   int cooldownThreshold)
+                                   int cooldownThreshold,
+                                   int* retryAfterSec)
 {
     hitCooldown = false;
+    if (retryAfterSec) *retryAfterSec = 0;
     qint64 now = QDateTime::currentMSecsSinceEpoch();
     auto& entry = log[key];
     qint64 cutoff = now - windowMs;
@@ -71,6 +72,9 @@ bool ConnectionGuard::checkAndAdd(const QString& key,
         qint64 cooldownUntil = lastAttempt + kJoinCooldownSec * 1000;
         if (now < cooldownUntil) {
             hitCooldown = true;
+            // 剩余秒数向上取整：还剩 0.2s 也要说「请 1 秒后再试」，不能说「请 0 秒」
+            if (retryAfterSec)
+                *retryAfterSec = static_cast<int>((cooldownUntil - now + 999) / 1000);
             return false;
         }
         // Cooldown expired, clear and retry
@@ -78,6 +82,9 @@ bool ConnectionGuard::checkAndAdd(const QString& key,
     }
 
     if (entry.times.size() >= maxCount) {
+        // 滑动窗口打满（窗口比冷却短时才会走到）：等最早一次记录滑出窗口
+        if (retryAfterSec && !entry.times.isEmpty())
+            *retryAfterSec = static_cast<int>((entry.times.first() + windowMs - now + 999) / 1000);
         return false;
     }
 

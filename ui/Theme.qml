@@ -10,8 +10,11 @@
 //   bg*            背景层（页面 < 卡片 < 输入框 < 悬停，由深到浅）
 //   line*          边框（line 最浅 → line3 最重）
 //   fg*            文字（fg 主 → fg4 最弱，占位符）
-//   accent*        品牌蓝（两种方案都用同一组蓝，保证按钮文字始终白字可读）
-//   accentFg       蓝底/实心按钮上的文字（永远白，两方案通用）
+//   accent*        品牌蓝，两套方案共用一组。注意 accent 与 accentTop/accentBot 职责不同：
+//                  accentTop/accentBot 是填充色（上面压 accentFg 白字），accent 主要是墨色
+//                  （ui/ 下 87 处引用，绝大多数是图标/描边/文字/焦点环）。白字可读性只对
+//                  前两者成立，详见 §品牌色。
+//   accentFg       填充色（accentTop/accentBot）上的文字，永远白，两方案通用
 //   imageFg        图片上的文字（两方案都偏白，配合 imageScrim*）
 //   imageScrim*    图片遮罩（两种方案都用固定暗遮罩，保证 imageFg 永远可读）
 pragma Singleton
@@ -41,13 +44,23 @@ QtObject {
     // ── 文字 ─────────────────────────────────────────────────
     readonly property color fg:  dark ? "#e8ebf2" : "#101827"
     readonly property color fg2: dark ? "#98a1ae" : "#3d4859"
-    readonly property color fg3: dark ? "#5d6673" : "#67718a"
-    readonly property color fg4: dark ? "#3f4753" : "#8a94a6"
+    // fg3/fg4 也必须 ≥4.5:1（占位符同样是"正文/小字"，WCAG 不给占位符豁免）。
+    // 2026-11-27 D3：原值深色 3.42 / 2.03、浅色 4.31 / 2.70 全部不达标，见下表调整后的实测值。
+    readonly property color fg3: dark ? "#868f9d" : "#58606f"
+    readonly property color fg4: dark ? "#7c8592" : "#606979"
 
     // ── 品牌色 ───────────────────────────────────────────────
+    // 2026-11-27（D3 对比度修复）。原注释写"两种方案都用同一组蓝，保证按钮文字始终白字可读"
+    // 与事实相反：白字压 accentTop(#4b8cf7) 只有 3.28:1、压 accent(#3b82f6) 3.68:1，都没到 4.5。
+    // 现在的分工（三者在两套方案下取值相同）：
+    //   accentTop/accentBot  填充色。白字压在上面必须 ≥4.5:1，且 SButton 悬停会再叠 5% 白
+    //                        （#0dffffff），叠加后仍要 ≥4.5 → 取 4.73 / 6.05；两者保持"上亮下暗"。
+    //   accent               墨色为主（ui/ 下 87 处引用，多为图标/描边/文字）。压在 #0d1016 上
+    //                        是 5.18:1；若为迁就白字压到 4.5 以下，这 87 处反而破 4.5（只剩 3.25）。
+    //                        职责冲突，故 accent 保持亮蓝不动，凡是"白字压 accent"的用法要换成填充色令牌。
     readonly property color accent:    "#3b82f6"
-    readonly property color accentTop: "#4b8cf7"
-    readonly property color accentBot: "#2563eb"
+    readonly property color accentTop: "#2563eb"
+    readonly property color accentBot: "#1d4ed8"
     readonly property color accentFg:  "#ffffff"
     readonly property color accentSoft: dark ? "#132340" : "#dce8ff"
     readonly property color accentText: dark ? "#a9c8ff" : "#1d4ed8"
