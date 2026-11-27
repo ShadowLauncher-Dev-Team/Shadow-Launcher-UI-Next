@@ -7,6 +7,8 @@
 #include <QVariantList>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
+#include <QPointer>
+#include <QTimer>
 
 #include "core/yggdrasil_auth.h"
 #include "yggdrasil_skin_fetcher.h"
@@ -34,6 +36,9 @@ class YggdrasilBackend : public QObject {
     Q_PROPERTY(QVariantList profiles READ profiles NOTIFY profilesChanged)
     Q_PROPERTY(int profileIndex READ profileIndex NOTIFY profilesChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
+    /// 认证请求在途中：QML 用它禁用登录按钮，login() 用它挡重入。
+    /// 复位覆盖「应答 / 失败 / 超时」三条出口，见 finishLogin()。
+    Q_PROPERTY(bool loginPending READ loginPending NOTIFY loginPendingChanged)
     Q_PROPERTY(bool hadSavedSession READ hadSavedSession CONSTANT)
     Q_PROPERTY(QString serverAddress READ serverAddress WRITE setServerAddress NOTIFY serverAddressChanged)
     Q_PROPERTY(bool serverAddressValid READ serverAddressValid NOTIFY serverAddressChanged)
@@ -66,6 +71,7 @@ public:
     QVariantList profiles() const;
     int profileIndex() const { return m_session.selectedProfileIndex; }
     QString statusMessage() const { return m_statusMessage; }
+    bool loginPending() const { return m_loginPending; }
 
     /// ALI（API 地址指示）解析 —— authlib-injector 规范：
     ///   用户输入可以是简写（如 littleskin.cn），客户端先规范化成 https://littleskin.cn，
@@ -155,6 +161,7 @@ signals:
     void stateChanged();
     void profilesChanged();
     void statusMessageChanged();
+    void loginPendingChanged();
     void serverAddressChanged();
     void serverNameChanged();
     void autoJoinServerChanged();
@@ -164,6 +171,8 @@ private slots:
     void onAliResolveReply();
     void onMetaReply();
     void onAuthenticateReply();
+    /// 认证 20s 无应答的兜底出口（QTimer 单发）
+    void onLoginTimeout();
     void onRefreshReply();
     void onBindReply();
     void onValidateReply();
@@ -173,6 +182,11 @@ private slots:
 private:
     void preloadNextSkin();
     void setStatus(const QString &msg);
+    /// 登录流程唯一收尾口：应答 / 失败 / 超时 / 登出都经它复位 m_loginPending
+    void finishLogin();
+    /// 丢掉在途的 authenticate 应答（超时 / 登出用）：先断开再 abort，
+    /// 迟到的应答既进不了 onAuthenticateReply，也不会在登出后把会话重新装上。
+    void dropLoginReply();
     void doRefresh(bool isValidation);
     /// 用 selectedProfile 刷新一次，换取“已绑定角色”的令牌
     void bindProfile();
@@ -204,6 +218,9 @@ private:
     bool m_loggingOut = false;
     bool m_pendingProfile = false;   // 登录成功等待选角色
     bool m_refreshing = false;          // 刷新/校验进行中（防重复请求）
+    bool m_loginPending = false;        // 登录请求在途（防重复点击的核心标记）
+    QTimer *m_loginTimer = nullptr;     // 20s 超时兜底；父对象是 this，随 backend 销毁，不会悬垂
+    QPointer<QNetworkReply> m_loginReply;  // 在途的 authenticate 应答（超时后摘掉，迟到的应答进不来）
     qint64 m_lastValidateMs = 0;        // 上次校验时间（节流，避免反复切换 tab 打接口）
     int m_preloadIdx = -1;
     int m_headSeq = 0;           // 头像预加载索引

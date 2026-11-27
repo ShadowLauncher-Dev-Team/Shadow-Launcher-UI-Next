@@ -64,6 +64,7 @@
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDateTime>
+#include <QLocale>
 #include <QDesktopServices>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -851,6 +852,8 @@ ShadowBackend::ShadowBackend(QObject* parent)
             });
     connect(m_resource, &ResourceBackend::resourcepackSearchFailed,
             this, &ShadowBackend::resourcepackSearchFailed);
+    connect(m_resource, &ResourceBackend::resourceSearchFailed,
+            this, &ShadowBackend::resourceSearchFailed);
     connect(m_resource, &ResourceBackend::resourcepackDownloadFinished,
             this, &ShadowBackend::resourcepackDownloadFinished);
     connect(m_resource, &ResourceBackend::resourcepackVersionsLoaded,
@@ -1299,12 +1302,6 @@ QString ShadowBackend::customBgUrl() const {
     // 当前使用的那张图的显示 URL：内置 → qrc，导入 → file:///
     return m_settings->activeBgSource();
 }
-qreal ShadowBackend::sidebarOpacity() const { return m_settings->sidebarOpacity(); }
-void ShadowBackend::setSidebarOpacity(qreal v) { m_settings->setSidebarOpacity(v); }
-qreal ShadowBackend::contentOpacity() const { return m_settings->contentOpacity(); }
-void ShadowBackend::setContentOpacity(qreal v) { m_settings->setContentOpacity(v); }
-void ShadowBackend::setBackgroundBlur(qreal v) { m_settings->setBackgroundBlur(v); }
-qreal ShadowBackend::backgroundBlur() const { return m_settings->backgroundBlur(); }
 
 qreal ShadowBackend::cropX() const { return m_settings->cropX(); }
 void ShadowBackend::setCropX(qreal v) { m_settings->setCropX(v); }
@@ -1386,6 +1383,18 @@ QString ShadowBackend::selectedVersion() const {
     return m_version->selectedVersion();
 }
 
+// 界面语言 → QLocale。索引口径与 settings_backend.cpp:167 的注释、
+// main_release.cpp:513 装翻译器的表一致（0=简体 1=繁体(港澳) 2=繁体(台湾) 3=English）。
+static QLocale uiLocaleFromIndex(int idx)
+{
+    switch (idx) {
+    case 1:  return QLocale(QLocale::Chinese, QLocale::HongKong);
+    case 2:  return QLocale(QLocale::Chinese, QLocale::Taiwan);
+    case 3:  return QLocale(QLocale::English, QLocale::UnitedStates);
+    default: return QLocale(QLocale::Chinese, QLocale::China);
+    }
+}
+
 // ── 上次游玩 ──────────────────────────────────────────────
 // 只用我们自己真正观测到的记录（游戏进程起来那一刻写一次），不去猜文件 mtime：
 // 非隔离版本的 logs/options.txt 是所有版本共用的，拿它当"上次玩这个版本"会撒谎。
@@ -1396,18 +1405,22 @@ QString ShadowBackend::formatLastPlayed(qint64 ms) const
     const QDateTime t = QDateTime::fromMSecsSinceEpoch(ms);
     const QDate today = QDate::currentDate();
     const qint64 days = t.date().daysTo(today);
+    // 语言分支一律看 QLocale::language()，不看 tr() 结果：
+    // en.ts 缺译文时 tr() 回落成中文原文，用译文当探针会判成「这是中文」，
+    // 「今天 01:20」就这样漏进了英文界面（审计实测）。
+    // 中文走相对词（今天/昨天/N 天前）；其他语言直接用 QLocale 的本地化日期时间，
+    // 不新增任何译文条目，也就不会因为漏译再退回中文。
+    const QLocale loc = uiLocaleFromIndex(m_settings ? m_settings->languageIndex() : 0);
+    if (loc.language() != QLocale::Chinese)
+        return loc.toString(t, QLocale::ShortFormat);
+
     const QString hm = t.toString(QStringLiteral("HH:mm"));
     if (days <= 0) return tr("今天 %1").arg(hm);
     if (days == 1) return tr("昨天 %1").arg(hm);
     if (days < 7) return tr("%1 天前").arg(days);
-    // 中文习惯「6 月 12 日」，英文习惯「Jun 12」。用译文当探针：
-    // 中文译文里带「月」字，英文译文（"%1"）不带。
-    if (t.date().year() == today.year()) {
-        const QString cn = tr("%1 月 %2 日");
-        if (cn.contains(QStringLiteral("月")))
-            return t.toString(QStringLiteral("M 月 d 日"));
-        return t.toString(QStringLiteral("MMM d"));
-    }
+    // 中文习惯「6月12日」，跨年用 ISO，避免年份歧义。
+    if (t.date().year() == today.year())
+        return loc.toString(t.date(), QStringLiteral("M月d日"));
     return t.toString(QStringLiteral("yyyy-MM-dd"));
 }
 

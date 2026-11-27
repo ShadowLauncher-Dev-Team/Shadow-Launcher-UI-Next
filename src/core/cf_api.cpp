@@ -13,6 +13,7 @@
 #include <QRegularExpression>
 #include <QDateTime>
 #include <QDebug>
+#include <algorithm>
 
 #if __has_include("cf_api_key_local.h")
 #include "cf_api_key_local.h"
@@ -158,8 +159,16 @@ void CfApi::search(int classId, const QString& query, int categoryId,
     const QString officialUrl = kCfOfficialBase + QStringLiteral("/mods/search?") + qs;
 
     getJsonWithFallback(mirrorUrl, officialUrl, true,
-        [done](int status, const QByteArray& body) {
-            if (status != 200) { if (done) done({}, 0); return; }
+        [done, fail](int status, const QByteArray& body) {
+            // 2026-11-27 修（审计 D11）：以前非 2xx 走 done({}, 0)，把「HTTP 失败」伪装成
+            // 「搜索成功但 0 条」——资源页因此永远分不出断网和真的搜不到。现在交给 fail()，
+            // 由 ResourceBackend::noteFail 归因成具体文案。
+            // 调用方没传 fail 时仍用 done 兜底结算，否则请求永不结算、上层 pending 清不掉。
+            if (status != 200) {
+                if (fail) fail(QStringLiteral("HTTP %1").arg(status));
+                else if (done) done({}, 0);
+                return;
+            }
             QJsonDocument doc = QJsonDocument::fromJson(body);
             QJsonArray arr = doc.object().value(QStringLiteral("data")).toArray();
             const int total = doc.object().value(QStringLiteral("pagination"))
@@ -211,9 +220,16 @@ void CfApi::fetchFilesAsVersions(const QString& modId, const QString& gameVersio
             QJsonDocument doc = QJsonDocument::fromJson(body);
             const QJsonArray files = doc.object().value(QStringLiteral("data")).toArray();
 
-            // 按 "mcVer|loader" 分组，每组取最新文件 → Modrinth 等价 version 结构
+            // ── 每个文件一条版本（D17，2026-11）──
+            // 以前 key 只由 "mcVer|loader" 构成、同组只留第一个文件；CF 的 files 端点默认最新在前，
+            // 于是同组合的旧文件被静默丢弃 —— 详情页永远看不到旧版本，用户想给老整合包找个兼容版本时无解。
+            // 现在 key 追加 CF 文件 id，每个文件独立一条；同组合的多条交给 QML 按日期倒序展示。
+            // 顶层便捷字段仍取**该文件自己**的值：QML 按日期倒序取第一条当最新（ResourceDetailPage.qml
+            // 的 comboList/latest），所以详情页头部的「最新」显示与改动前一致。
+            // 注意 CF 端点 pageSize 上限 50（见上），一次最多 50 个文件，未做翻页。
             QVariantMap detailMap;
-            QStringList compositeVersions;
+            QStringList versionKeys;
+            int fileSeq = 0;
             for (const QJsonValue& fv : files) {
                 QJsonObject f = fv.toObject();
                 QString mcVer, loaderName;
@@ -225,7 +241,16 @@ void CfApi::fetchFilesAsVersions(const QString& modId, const QString& gameVersio
                 }
                 if (mcVer.isEmpty()) mcVer = gameVersion;
                 if (loaderName.isEmpty()) loaderName = QStringLiteral("Any");
-                const QString keyStr = mcVer + QLatin1Char('|') + loaderName.toLower();
+                // key = mcVer|loader|文件id：文件 id 让同组合的每个文件各占一条。
+                // 缺失时退化成循环序号 —— 空串不行（toDouble() 会给 0，全部 key 撞成同一个，
+                // 又变回互相覆盖的老毛病）。
+                const QJsonValue idVal = f.value(QStringLiteral("id"));
+                const QString fileId = idVal.toDouble() > 0
+                                     ? QString::number((qlonglong)idVal.toDouble()) : QString();
+                const QString keyStr = mcVer + QLatin1Char('|') + loaderName.toLower()
+                                     + QLatin1Char('|')
+                                     + (fileId.isEmpty() ? QStringLiteral("seq%1").arg(fileSeq) : fileId);
+                ++fileSeq;
 
                 QVariantMap fileEntry;
                 // ── 下载地址：downloadUrl 为空时按 CF CDN 规则自拼镜像直链 ──
@@ -264,40 +289,39 @@ void CfApi::fetchFilesAsVersions(const QString& modId, const QString& gameVersio
                 }
                 fileEntry.insert(QStringLiteral("dependencies"), depList);
 
-                if (!detailMap.contains(keyStr)) {
-                    QVariantMap d;
-                    d.insert(QStringLiteral("game_version"), mcVer);
-                    d.insert(QStringLiteral("game_versions"), QVariantList{mcVer});
-                    d.insert(QStringLiteral("loaders"), QVariantList{loaderName.toLower()});
-                    d.insert(QStringLiteral("files"), QVariantList{fileEntry});
-                    // 顶层便捷字段（与 Modrinth 详情结构对齐，QML 直接读取）
-                    d.insert(QStringLiteral("version_number"), fileEntry.value(QStringLiteral("version_number")));
-                    d.insert(QStringLiteral("date_published"), fileEntry.value(QStringLiteral("date_published")));
-                    // ── 2026-08-15：CF 文件下载量字段是 downloadCount（原写死 0 → 详情卡全显 0）──
-                    d.insert(QStringLiteral("downloads"), static_cast<int>(f.value(QStringLiteral("downloadCount")).toDouble()));
-                    d.insert(QStringLiteral("url"), fileEntry.value(QStringLiteral("url")));
-                    d.insert(QStringLiteral("filename"), fileEntry.value(QStringLiteral("filename")));
-                    d.insert(QStringLiteral("size"), fileEntry.value(QStringLiteral("size")));
-                    d.insert(QStringLiteral("sha1"), fileEntry.value(QStringLiteral("sha1")));
-                    detailMap.insert(keyStr, d);
-                    compositeVersions.append(keyStr);
-                } else {
-                    // 同组已有文件：保留第一个（API 默认最新在前）
-                }
+                // 每个文件一条：不再有 contains 判重分支（key 已唯一，判重只会在未来某天再吞文件）
+                QVariantMap d;
+                d.insert(QStringLiteral("game_version"), mcVer);
+                d.insert(QStringLiteral("game_versions"), QVariantList{mcVer});
+                d.insert(QStringLiteral("loaders"), QVariantList{loaderName.toLower()});
+                // files 只装它自己那一个文件：QML 的 currentFile 直接取这条的顶层字段/文件
+                d.insert(QStringLiteral("files"), QVariantList{fileEntry});
+                // 顶层便捷字段（与 Modrinth 详情结构对齐，QML 直接读取）
+                d.insert(QStringLiteral("version_number"), fileEntry.value(QStringLiteral("version_number")));
+                d.insert(QStringLiteral("date_published"), fileEntry.value(QStringLiteral("date_published")));
+                // ── 2026-08-15：CF 文件下载量字段是 downloadCount（原写死 0 → 详情卡全显 0）──
+                d.insert(QStringLiteral("downloads"), static_cast<int>(f.value(QStringLiteral("downloadCount")).toDouble()));
+                d.insert(QStringLiteral("url"), fileEntry.value(QStringLiteral("url")));
+                d.insert(QStringLiteral("filename"), fileEntry.value(QStringLiteral("filename")));
+                d.insert(QStringLiteral("size"), fileEntry.value(QStringLiteral("size")));
+                d.insert(QStringLiteral("sha1"), fileEntry.value(QStringLiteral("sha1")));
+                detailMap.insert(keyStr, d);
+                versionKeys.append(keyStr);
             }
-            // 版本倒序（新版在前，与 Modrinth 体验一致）
-            std::sort(compositeVersions.begin(), compositeVersions.end(),
-                      [](const QString& a, const QString& b) {
-                          auto parse = [](const QString& v) -> std::tuple<int,int,int> {
-                              const QString ver = v.section(QLatin1Char('|'), 0, 0);
-                              const QStringList pts = ver.split(QLatin1Char('.'));
-                              return { pts.size() > 0 ? pts[0].toInt() : 0,
-                                       pts.size() > 1 ? pts[1].toInt() : 0,
-                                       pts.size() > 2 ? pts[2].toInt() : 0 };
-                          };
-                          return parse(a) > parse(b);
-                      });
-            if (done) done(compositeVersions, detailMap);
+            // 版本倒序：按文件发布时间（新→旧）。
+            // 每文件一条之后，按 MC 版本号排序已无区分度（同组合内 mcVer 全一样），日期才是
+            // 「哪个最新」的唯一依据。stable_sort 保住 CF 的原始顺序（接口默认最新在前），
+            // 于是同日同组合的多条也仍是新→旧，QML 取第一条当最新才稳定。
+            std::stable_sort(versionKeys.begin(), versionKeys.end(),
+                             [&detailMap](const QString& a, const QString& b) {
+                                 const QVariantMap da = detailMap.value(a).toMap();
+                                 const QString ta = da.value(QStringLiteral("date_published")).toString();
+                                 const QString tb = detailMap.value(b).toMap()
+                                                        .value(QStringLiteral("date_published")).toString();
+                                 if (ta != tb) return ta > tb;
+                                 return false;   // 同日：保持原顺序（不能返回 true，stable_sort 会误排）
+                             });
+            if (done) done(versionKeys, detailMap);
         },
         fail);
 }

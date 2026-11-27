@@ -9,6 +9,21 @@
 
 namespace ShadowLauncher {
 
+// 外观控制器单例（QML 名：Appearance）。
+//
+// 职责边界（2026-11-27 D10 收敛）：
+//   • 调色板不由这里提供。QML 侧唯一的颜色真源是 ui/Theme.qml —— 实测 ui/ 目录下
+//     'Appearance.' 的引用数为 0（唯一命中 Appearance 的是 SettingsPage.qml:338 的
+//     组件 id appearanceComp，指 SetAppearancePane，不是本单例）。
+//   • colorTokens() 里那套十六进制值与 Theme.qml 并存就是「双调色板」（改色两边会打架）。
+//     本类不再以它为真源，QSettings 也从不写颜色（savePreferences 只写 mode/density/reducedMotion）。
+//     它保留的原因只有一个：tests/test_appearance_controller.cpp:49-52 断言了 dark/light
+//     的 color.background 与 color.primary；测试文件不在本次改动边界内，删表会让该测试
+//     变红。新增或修改颜色一律改 ui/Theme.qml，不要往这里加。
+//   • 仍在用的功能（不要一起删）：mode(system/light/dark) / density / reducedMotion，
+//     以及 control/motion/radius/space/type/z 六组非颜色令牌，由 main_release 的
+//     --ui-next-mode、--ui-next-density 与 QSettings 的 appearance/* 驱动。
+//   • 壁纸不在这里：壁纸真源是 Theme.bgUrl() + ShadowBackend.customBgUrl。
 class AppearanceController : public QObject {
     Q_OBJECT
     QML_NAMED_ELEMENT(Appearance)

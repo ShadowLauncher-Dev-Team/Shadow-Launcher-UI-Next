@@ -9,6 +9,8 @@ Item {
     property string text: ""
     property string placeholder: ""
     property int areaHeight: 92
+    // 与 SInput/SField 对齐：暴露内部文本框，供页面聚焦、以及构建后键盘验收注入焦点用。
+    property alias input: edit
     signal edited(string text)
 
     implicitHeight: areaHeight
@@ -17,7 +19,8 @@ Item {
         anchors.fill: parent
         radius: Theme.rSm
         color: Theme.bgCard2
-        border.width: 1
+        // 聚焦视觉：把已有蓝边加粗到 Theme.focusRingWidth（输入类不另叠焦点环，见 SInput 说明）。
+        border.width: edit.activeFocus ? Theme.focusRingWidth : 1
         border.color: edit.activeFocus ? Theme.accent : Theme.line2
         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
     }
@@ -60,6 +63,30 @@ Item {
             selectedTextColor: Theme.accentFg
             wrapMode: TextEdit.WrapAnywhere
             selectByMouse: true
+            // Tab 必须是"离开本控件"：QtQuick 的 TextEdit 没有 tabChangesFocus（实测 6.8 属性不存在），
+            // 默认会把 Tab 当制表符插进正文。所以在 Keys 过滤器里消费 Tab，再走 Qt 自己的焦点头链
+            // （nextItemInFocusChain 与窗口 Tab 遍历用的是同一个内部函数，跨 FocusScope 也正确）。
+            Keys.onTabPressed: function(event) {
+                event.accepted = true
+                var next = edit.nextItemInFocusChain(true)
+                if (next && next !== edit) next.forceActiveFocus()
+            }
+            Keys.onBacktabPressed: function(event) {
+                event.accepted = true
+                var prev = edit.nextItemInFocusChain(false)
+                if (prev && prev !== edit) prev.forceActiveFocus()
+            }
+            // 真实的"不可用"判据是 enabled（本控件没有 dimmed）。
+            activeFocusOnTab: root.enabled
+            // Esc 分层：有内容 -> 清空并消费；已为空 -> 不消费，冒泡给 StageShell.escapeTopmost()。
+            Keys.onEscapePressed: function(event) {
+                if (edit.text.length > 0) {
+                    edit.text = ""
+                    event.accepted = true
+                } else {
+                    event.accepted = false
+                }
+            }
             font.family: "Consolas"
             font.pixelSize: 11
             onTextChanged: {

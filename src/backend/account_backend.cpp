@@ -32,6 +32,15 @@
 
 namespace ShadowLauncher {
 
+// ── 多账号列表上限 ──
+// 定 20 的依据：
+//   ① 同一模块的离线名历史就是 20 条上限（offlineLogin 里 m_offlineUsernames 截断到 20），
+//      账号列表沿用同一量级，用户心智一致；
+//   ② 行高 56px + 2px 间隔，20 条 ≈ 1160px ≈ 两屏（1080p 客户区约 700px），再多就翻不动、也认不全；
+//   ③ 每条外置账号都带令牌 + 头像快照，20 条足够覆盖「自己的几个号 + 借来的号」。
+// 只挡「新增」：已经存在的 24 条不会被裁剪（那等于替用户删数据）。
+static constexpr int kMaxAccounts = 20;
+
 // ────────────────────────────────────────────────────────────
 // Constructor
 // ────────────────────────────────────────────────────────────
@@ -221,6 +230,19 @@ void AccountBackend::offlineLogin(const QString &username)
             emit logMessage(tr("离线用户名需为 1-16 个字符，不能含 \\ / : * ? \" < > | 等字符"));
             return;
         }
+    }
+
+    // 上限在这里挡，而不是等 upsertAccount 拒绝：
+    // identity 一旦写下去，upsertAccount 再拒绝就变成「已登录但不在列表里」的错位状态。
+    // 已在列表里的同名离线账号照常放行，否则会把用户锁在自己的号外面（切号走同一条路径）。
+    bool knownOffline = false;
+    for (const StoredAccount &a : m_accounts) {
+        if (a.mode == 1 && a.name.compare(name, Qt::CaseInsensitive) == 0) { knownOffline = true; break; }
+    }
+    if (!knownOffline && m_accounts.size() >= kMaxAccounts) {
+        qCWarning(logAccount) << QStringLiteral("账号数量已达上限，拒绝新增离线账号:") << name;
+        emit logMessage(tr("账号数量已达上限（%1 个），请先移除不用的账号再添加").arg(kMaxAccounts));
+        return;
     }
 
     // Offline identity — COMPLETELY separate from premium (m_username/m_uuid untouched)
@@ -1795,6 +1817,14 @@ void AccountBackend::upsertAccount(const StoredAccount &a, bool makeCurrent)
         if (!a.accessToken.isEmpty()) dst.accessToken = a.accessToken;
         if (!a.clientToken.isEmpty()) dst.clientToken = a.clientToken;
     } else {
+        // 新增入口（正版登录 / 外置登录 / 离线登录最后都汇到这里）：到上限就拒绝并明确告知，
+        // 不能静默丢弃 —— 否则用户看到「登录成功」，列表里却没有这个号。
+        if (m_accounts.size() >= kMaxAccounts) {
+            qCWarning(logAccount) << QStringLiteral("账号数量已达上限 %1，拒绝新增: %2")
+                                         .arg(kMaxAccounts).arg(a.name);
+            emit logMessage(tr("账号数量已达上限（%1 个），请先移除不用的账号再添加").arg(kMaxAccounts));
+            return;
+        }
         m_accounts.append(a);
         found = m_accounts.size() - 1;
     }

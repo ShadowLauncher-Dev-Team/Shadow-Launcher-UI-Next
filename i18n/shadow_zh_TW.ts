@@ -4,501 +4,516 @@
 <context>
     <name>AccountPage</name>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="70"/>
+        <location filename="../ui/pages/AccountPage.qml" line="94"/>
         <source>外置账号登录成功</source>
         <translation>外置帳號登入成功</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="74"/>
-        <location filename="../ui/pages/AccountPage.qml" line="451"/>
+        <location filename="../ui/pages/AccountPage.qml" line="98"/>
+        <location filename="../ui/pages/AccountPage.qml" line="535"/>
         <source>登录失败：%1</source>
         <translation>登入失敗：%1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="74"/>
-        <location filename="../ui/pages/AccountPage.qml" line="95"/>
-        <location filename="../ui/pages/AccountPage.qml" line="104"/>
-        <location filename="../ui/pages/AccountPage.qml" line="109"/>
+        <location filename="../ui/pages/AccountPage.qml" line="98"/>
+        <location filename="../ui/pages/AccountPage.qml" line="119"/>
+        <location filename="../ui/pages/AccountPage.qml" line="128"/>
+        <location filename="../ui/pages/AccountPage.qml" line="133"/>
         <source>未知错误</source>
         <translation>未知錯誤</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="81"/>
+        <location filename="../ui/pages/AccountPage.qml" line="105"/>
         <source>这个账号有多个角色，请选择一个</source>
         <translation>這個帳號有多個角色，請選擇一個</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="85"/>
+        <location filename="../ui/pages/AccountPage.qml" line="109"/>
         <source>皮肤站元数据获取失败：%1</source>
         <translation>皮膚站中繼資料取得失敗：%1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="94"/>
+        <location filename="../ui/pages/AccountPage.qml" line="118"/>
         <source>披风已切换</source>
         <translation>披風已切換</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="95"/>
+        <location filename="../ui/pages/AccountPage.qml" line="119"/>
         <source>切换失败：%1</source>
         <translation>切換失敗：%1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="104"/>
+        <location filename="../ui/pages/AccountPage.qml" line="128"/>
         <source>状态已刷新</source>
         <translation>狀態已重新整理</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="104"/>
+        <location filename="../ui/pages/AccountPage.qml" line="128"/>
         <source>刷新失败：%1</source>
         <translation>重新整理失敗：%1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="109"/>
+        <location filename="../ui/pages/AccountPage.qml" line="133"/>
         <source>皮肤已更换</source>
         <translation>皮膚已更換</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="109"/>
+        <location filename="../ui/pages/AccountPage.qml" line="133"/>
         <source>上传失败：%1</source>
         <translation>上傳失敗：%1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="244"/>
-        <location filename="../ui/pages/AccountPage.qml" line="250"/>
-        <location filename="../ui/pages/AccountPage.qml" line="263"/>
+        <location filename="../ui/pages/AccountPage.qml" line="279"/>
+        <location filename="../ui/pages/AccountPage.qml" line="285"/>
+        <location filename="../ui/pages/AccountPage.qml" line="298"/>
         <source>未登录</source>
         <translation>未登入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="257"/>
-        <location filename="../ui/pages/AccountPage.qml" line="260"/>
+        <location filename="../ui/pages/AccountPage.qml" line="292"/>
+        <location filename="../ui/pages/AccountPage.qml" line="295"/>
         <source>Microsoft 正版账户</source>
         <translation>Microsoft 正版帳號</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="258"/>
-        <location filename="../ui/pages/AccountPage.qml" line="261"/>
+        <location filename="../ui/pages/AccountPage.qml" line="293"/>
+        <location filename="../ui/pages/AccountPage.qml" line="296"/>
         <source>外置账户</source>
         <translation>外置帳號</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="258"/>
+        <location filename="../ui/pages/AccountPage.qml" line="293"/>
         <source>外置账户（需重新登录）</source>
         <translation>外置帳號（需重新登入）</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="259"/>
-        <location filename="../ui/pages/AccountPage.qml" line="262"/>
-        <location filename="../ui/pages/AccountPage.qml" line="821"/>
-        <location filename="../ui/pages/AccountPage.qml" line="1688"/>
+        <location filename="../ui/pages/AccountPage.qml" line="294"/>
+        <location filename="../ui/pages/AccountPage.qml" line="297"/>
+        <location filename="../ui/pages/AccountPage.qml" line="929"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1807"/>
         <source>离线账户</source>
         <translation>離線帳號</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="290"/>
-        <location filename="../ui/pages/AccountPage.qml" line="303"/>
-        <location filename="../ui/pages/AccountPage.qml" line="307"/>
+        <location filename="../ui/pages/AccountPage.qml" line="325"/>
+        <location filename="../ui/pages/AccountPage.qml" line="338"/>
+        <location filename="../ui/pages/AccountPage.qml" line="342"/>
         <source>未设置</source>
         <translation>未設定</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="297"/>
+        <location filename="../ui/pages/AccountPage.qml" line="332"/>
         <source>已同步（皮肤站）</source>
         <translation>已同步（皮膚站）</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="297"/>
+        <location filename="../ui/pages/AccountPage.qml" line="332"/>
         <source>未获取</source>
         <translation>未取得</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="299"/>
-        <location filename="../ui/pages/AccountPage.qml" line="746"/>
-        <location filename="../ui/pages/AccountPage.qml" line="1514"/>
+        <location filename="../ui/pages/AccountPage.qml" line="334"/>
+        <location filename="../ui/pages/AccountPage.qml" line="846"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1633"/>
         <source>需重新登录</source>
         <translation>需重新登入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="303"/>
-        <location filename="../ui/pages/AccountPage.qml" line="307"/>
+        <location filename="../ui/pages/AccountPage.qml" line="338"/>
+        <location filename="../ui/pages/AccountPage.qml" line="342"/>
         <source>已同步</source>
         <translation>已同步</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="317"/>
+        <location filename="../ui/pages/AccountPage.qml" line="352"/>
         <source>已获取</source>
         <translation>已取得</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="317"/>
-        <location filename="../ui/pages/AccountPage.qml" line="319"/>
+        <location filename="../ui/pages/AccountPage.qml" line="352"/>
+        <location filename="../ui/pages/AccountPage.qml" line="354"/>
         <source>不需要（离线）</source>
         <translation>不需要（離線）</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="318"/>
+        <location filename="../ui/pages/AccountPage.qml" line="353"/>
         <source>已获取（皮肤站）</source>
         <translation>已取得（皮膚站）</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="318"/>
+        <location filename="../ui/pages/AccountPage.qml" line="353"/>
         <source>已失效，需重新登录</source>
         <translation>已失效，需重新登入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="334"/>
+        <location filename="../ui/pages/AccountPage.qml" line="388"/>
+        <source>账号数量已达上限（%1 个），请先移除不用的账号再添加</source>
+        <translation>帳號數量已達上限（%1 個），請先移除不用的帳號再新增</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/AccountPage.qml" line="401"/>
         <source>先填一个用户名</source>
         <translation>先填一個使用者名稱</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="337"/>
+        <location filename="../ui/pages/AccountPage.qml" line="410"/>
         <source>已切换到离线账户 %1</source>
         <translation>已切換到離線帳號 %1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="381"/>
+        <location filename="../ui/pages/AccountPage.qml" line="424"/>
+        <source>上一次登录还没结束，请稍候</source>
+        <translation>上一次登入還沒結束，請稍候</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/AccountPage.qml" line="456"/>
         <source>已从链接识别出 API 地址</source>
         <translation>已從連結辨識出 API 位址</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="403"/>
+        <location filename="../ui/pages/AccountPage.qml" line="479"/>
         <source>正在登录外置账户…</source>
         <translation>正在登入外置帳號…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="450"/>
+        <location filename="../ui/pages/AccountPage.qml" line="533"/>
         <source>登录成功</source>
         <translation>登入成功</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="541"/>
+        <location filename="../ui/pages/AccountPage.qml" line="625"/>
         <source>返回账户</source>
         <translation>返回帳號</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="541"/>
+        <location filename="../ui/pages/AccountPage.qml" line="625"/>
         <source>返回</source>
         <translation>返回</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="558"/>
-        <location filename="../ui/pages/AccountPage.qml" line="660"/>
+        <location filename="../ui/pages/AccountPage.qml" line="642"/>
+        <location filename="../ui/pages/AccountPage.qml" line="744"/>
         <source>账户</source>
         <translation>帳號</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="586"/>
+        <location filename="../ui/pages/AccountPage.qml" line="670"/>
         <source>刷新中</source>
         <translation>重新整理中</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="586"/>
+        <location filename="../ui/pages/AccountPage.qml" line="670"/>
         <source>刷新状态</source>
         <translation>重新整理狀態</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="605"/>
+        <location filename="../ui/pages/AccountPage.qml" line="689"/>
         <source>已校验外置登录会话</source>
         <translation>已校驗外置登入工作階段</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="611"/>
+        <location filename="../ui/pages/AccountPage.qml" line="695"/>
         <source>当前还没有账号</source>
         <translation>目前還沒有帳號</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="660"/>
+        <location filename="../ui/pages/AccountPage.qml" line="744"/>
         <source>登录方式</source>
         <translation>登入方式</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="802"/>
+        <location filename="../ui/pages/AccountPage.qml" line="902"/>
         <source>添加账号</source>
         <translation>新增帳號</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="820"/>
+        <location filename="../ui/pages/AccountPage.qml" line="928"/>
         <source>正版账户</source>
         <translation>正版帳號</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="820"/>
+        <location filename="../ui/pages/AccountPage.qml" line="928"/>
         <source>Microsoft 登录</source>
         <translation>Microsoft 登入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="821"/>
+        <location filename="../ui/pages/AccountPage.qml" line="929"/>
         <source>只用用户名</source>
         <translation>只用使用者名稱</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="822"/>
-        <location filename="../ui/pages/AccountPage.qml" line="1760"/>
+        <location filename="../ui/pages/AccountPage.qml" line="930"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1879"/>
         <source>外置登录</source>
         <translation>外置登入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="822"/>
+        <location filename="../ui/pages/AccountPage.qml" line="930"/>
         <source>皮肤站 / 第三方验证</source>
         <translation>皮膚站 / 第三方驗證</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="866"/>
+        <location filename="../ui/pages/AccountPage.qml" line="974"/>
         <source>用过的名字</source>
         <translation>用過的名稱</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1114"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1233"/>
         <source>账号类型</source>
         <translation>帳號類型</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1144"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1263"/>
         <source>复制</source>
         <translation>複製</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1149"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1268"/>
         <source>已复制 UUID</source>
         <translation>已複製 UUID</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1156"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1275"/>
         <source>访问令牌</source>
         <translation>存取權杖</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1164"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1283"/>
         <source>后台自动续期</source>
         <translation>背景自動續期</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1170"/>
-        <location filename="../ui/pages/AccountPage.qml" line="1198"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1289"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1317"/>
         <source>皮肤</source>
         <translation>皮膚</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1213"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1332"/>
         <source>模型</source>
         <translation>模型</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1224"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1343"/>
         <source>经典</source>
         <translation>經典</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1224"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1343"/>
         <source>纤细</source>
         <translation>纖細</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1237"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1356"/>
         <source>皮肤文件</source>
         <translation>皮膚檔案</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1248"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1367"/>
         <source>未选择（64x64 或 64x32 PNG）</source>
         <translation>未選擇（64x64 或 64x32 PNG）</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1262"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1381"/>
         <source>选择</source>
         <translation>選擇</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1283"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1402"/>
         <source>上传中</source>
         <translation>上傳中</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1283"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1402"/>
         <source>应用皮肤</source>
         <translation>套用皮膚</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1292"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1411"/>
         <source>正在上传皮肤</source>
         <translation>正在上傳皮膚</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1292"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1411"/>
         <source>皮肤已保存到本地</source>
         <translation>皮膚已儲存到本機</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1300"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1419"/>
         <source>导出当前皮肤</source>
         <translation>匯出目前皮膚</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1315"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1434"/>
         <source>披风</source>
         <translation>披風</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1326"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1445"/>
         <source>正在切换...</source>
         <translation>正在切換...</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1328"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1447"/>
         <source>点击切换，蓝框为当前使用</source>
         <translation>點擊切換，藍框為目前使用</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1330"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1449"/>
         <source>正在获取…</source>
         <translation>正在取得…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1332"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1451"/>
         <source>此账号没有可用披风</source>
         <translation>此帳號沒有可用披風</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1445"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1564"/>
         <source>卸下</source>
         <translation>卸下</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1445"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1564"/>
         <source>未穿戴</source>
         <translation>未穿戴</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1476"/>
-        <location filename="../ui/pages/AccountPage.qml" line="1552"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1595"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1671"/>
         <source>移除此账号</source>
         <translation>移除此帳號</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1484"/>
-        <location filename="../ui/pages/AccountPage.qml" line="1559"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1603"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1678"/>
         <source>已移除该账号</source>
         <translation>已移除該帳號</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1521"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1640"/>
         <source>这个账号的登录凭据已经失效
 （可能过期、或在别处登录过）。重新登录一次即可继续使用。</source>
         <translation>這個帳號的登入憑證已經失效
 （可能過期、或在別處登入過）。重新登入一次即可繼續使用。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1537"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1656"/>
         <source>重新登录</source>
         <translation>重新登入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1591"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1710"/>
         <source>用 Microsoft 账号登录</source>
         <translation>用 Microsoft 帳號登入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1599"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1718"/>
         <source>登录后可在正版服务器上玩，也会同步你的皮肤。</source>
         <translation>登入後可在正版伺服器上遊玩，也會同步你的皮膚。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1610"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1729"/>
         <source>取消登录</source>
         <translation>取消登入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1610"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1729"/>
         <source>开始登录</source>
         <translation>開始登入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1652"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1771"/>
         <source>正在登录 Microsoft 账号</source>
         <translation>正在登入 Microsoft 帳號</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1652"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1771"/>
         <source>登录状态</source>
         <translation>登入狀態</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1696"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1815"/>
         <source>只填一个用户名，不需要密码。</source>
         <translation>只填一個使用者名稱，不需要密碼。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1726"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1849"/>
         <source>用户名</source>
         <translation>使用者名稱</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1739"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1858"/>
         <source>使用这个用户名</source>
         <translation>使用這個使用者名稱</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1817"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1936"/>
         <source>· 还没有账号？去注册</source>
         <translation>· 還沒有帳號？去註冊</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1834"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1953"/>
         <source>邮箱</source>
         <translation>電子郵件</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1835"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1954"/>
         <source>密码</source>
         <translation>密碼</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1889"/>
+        <location filename="../ui/pages/AccountPage.qml" line="2008"/>
         <source>登录</source>
         <translation>登入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1901"/>
+        <location filename="../ui/pages/AccountPage.qml" line="2008"/>
+        <source>登录中…</source>
+        <translation>登入中…</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/AccountPage.qml" line="2024"/>
         <source>选择角色</source>
         <translation>選擇角色</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1973"/>
+        <location filename="../ui/pages/AccountPage.qml" line="2096"/>
         <source>取消</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="351"/>
+        <location filename="../ui/pages/AccountPage.qml" line="426"/>
         <source>地址、账号、密码都要填</source>
         <translation>地址、帳號、密碼都要填</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="387"/>
+        <location filename="../ui/pages/AccountPage.qml" line="462"/>
         <source>已从文件识别出 API 地址</source>
         <translation>已從檔案辨識出 API 位址</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="393"/>
+        <location filename="../ui/pages/AccountPage.qml" line="468"/>
         <source>已识别 authlib-injector，请再填站点地址（如 littleskin.cn）</source>
         <translation>已辨識 authlib-injector，請再填站點位址（如 littleskin.cn）</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="397"/>
+        <location filename="../ui/pages/AccountPage.qml" line="472"/>
         <source>没能从这个文件里识别出外置登录信息</source>
         <translation>無法從這個檔案辨識出外置登入資訊</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1768"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1887"/>
         <source>填皮肤站的地址与账号。地址可只写域名，登录前会自动识别完整 API 地址。</source>
         <translation>填皮膚站的位址與帳號。位址可只寫網域，登入前會自動辨識完整 API 位址。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1807"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1926"/>
         <source>点一下自动填好，也可只输入域名</source>
         <translation>點一下自動填好，也可只輸入網域</translation>
     </message>
     <message>
-        <location filename="../ui/pages/AccountPage.qml" line="1833"/>
+        <location filename="../ui/pages/AccountPage.qml" line="1952"/>
         <source>皮肤站地址，如 littleskin.cn</source>
         <translation>皮膚站位址，如 littleskin.cn</translation>
     </message>
@@ -583,113 +598,109 @@
 <context>
     <name>DownloadPage</name>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="99"/>
         <source>%1 万</source>
-        <translation>%1 萬</translation>
+        <translation type="vanished">%1 萬</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="101"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="100"/>
         <source>MC 版本</source>
         <translation>MC 版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="103"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="102"/>
         <source>光影</source>
         <translation>光影</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="104"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="103"/>
         <source>资源包</source>
         <translation>資源包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="104"/>
         <source>资源包（短）</source>
-        <translation>資源包</translation>
+        <translation type="vanished">資源包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="105"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="104"/>
         <source>整合包</source>
         <translation>整合包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="105"/>
         <source>整合包（短）</source>
-        <translation>整合包</translation>
+        <translation type="vanished">整合包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="106"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="105"/>
         <source>数据包</source>
         <translation>資料包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="106"/>
         <source>数据包（短）</source>
-        <translation>資料包</translation>
+        <translation type="vanished">資料包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="117"/>
-        <location filename="../ui/pages/DownloadPage.qml" line="160"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="116"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="159"/>
         <source>正式版</source>
         <translation>正式版</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="118"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="117"/>
         <source>快照版</source>
         <translation>快照版</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="119"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="118"/>
         <source>远古版</source>
         <translation>遠古版</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="120"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="119"/>
         <source>愚人节版</source>
         <translation>愚人節版</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="157"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="156"/>
         <source>快照</source>
         <translation>快照</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="158"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="157"/>
         <source>旧版</source>
         <translation>舊版</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="159"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="158"/>
         <source>愚人节</source>
         <translation>愚人節</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="302"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="301"/>
         <source>仅 Fabric 可用</source>
         <translation>僅 Fabric 可用</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="305"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="304"/>
         <source>与 %1 不兼容</source>
         <translation>與 %1 不兼容</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="307"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="306"/>
         <source>与 OptiFine 不兼容</source>
         <translation>與 OptiFine 不兼容</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="308"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="307"/>
         <source>已选 %1</source>
         <translation>已選 %1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="312"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="311"/>
         <source>原版</source>
         <translation>原版</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="313"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="312"/>
         <source>整合安装</source>
         <translation>整合安裝</translation>
     </message>
@@ -795,13 +806,13 @@
         <translation>沒有可用版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="1437"/>
-        <location filename="../ui/pages/DownloadPage.qml" line="1439"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="1440"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="1442"/>
         <source>开始安装</source>
         <translation>開始安裝</translation>
     </message>
     <message>
-        <location filename="../ui/pages/DownloadPage.qml" line="1439"/>
+        <location filename="../ui/pages/DownloadPage.qml" line="1442"/>
         <source>请选择版本</source>
         <translation>請選擇版本</translation>
     </message>
@@ -809,127 +820,137 @@
 <context>
     <name>JavaPage</name>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="56"/>
+        <location filename="../ui/pages/JavaPage.qml" line="58"/>
         <source>Java 版本</source>
         <translation>Java 版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="56"/>
+        <location filename="../ui/pages/JavaPage.qml" line="58"/>
         <source>CPU 架构</source>
         <translation>CPU 架構</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="56"/>
+        <location filename="../ui/pages/JavaPage.qml" line="58"/>
         <source>操作系统</source>
         <translation>作業系統</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="56"/>
+        <location filename="../ui/pages/JavaPage.qml" line="58"/>
         <source>分发形式</source>
         <translation>發佈形式</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="58"/>
+        <location filename="../ui/pages/JavaPage.qml" line="60"/>
         <source>选启动器/游戏需要的主版本。拿不准就选 17——覆盖目前绝大多数整合包与 Forge。</source>
         <translation>選啟動器/遊戲需要的主版本。拿不準就選 17——涵蓋目前絕大多數整合包與 Forge。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="59"/>
+        <location filename="../ui/pages/JavaPage.qml" line="61"/>
         <source>JDK 含 JRE 与编译工具；JRE 只有运行环境。启动器一键安装用 JDK（JRE 缺少 jdk.crypto.ec，部分加载器会崩）。</source>
         <translation>JDK 含 JRE 與編譯工具；JRE 只有執行環境。啟動器一鍵安裝用 JDK（JRE 缺少 jdk.crypto.ec，部分載入器會崩）。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="60"/>
+        <location filename="../ui/pages/JavaPage.qml" line="62"/>
         <source>绝大多数机器是 x64。32 位系统选 x32；注意 Java 21 及以上没有 32 位版本。</source>
         <translation>絕大多數機器是 x64。32 位元系統選 x32；注意 Java 21 及以上沒有 32 位元版本。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="61"/>
+        <location filename="../ui/pages/JavaPage.qml" line="63"/>
         <source>选择你的操作系统。</source>
         <translation>選擇你的作業系統。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="62"/>
+        <location filename="../ui/pages/JavaPage.qml" line="64"/>
         <source>便携版（ZIP）解压后由启动器托管，不写注册表；安装版（MSI）装进系统并写入 PATH / JAVA_HOME。</source>
         <translation>可攜版（ZIP）解壓縮後由啟動器託管，不寫登錄檔；安裝版（MSI）裝進系統並寫入 PATH / JAVA_HOME。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="84"/>
+        <location filename="../ui/pages/JavaPage.qml" line="86"/>
         <source>已重新扫描：%1 个运行时</source>
         <translation>已重新掃描：%1 個執行環境</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="154"/>
+        <location filename="../ui/pages/JavaPage.qml" line="156"/>
         <source>Java %1 · 便携版（ZIP）</source>
         <translation>Java %1 · 可攜版（ZIP）</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="155"/>
+        <location filename="../ui/pages/JavaPage.qml" line="157"/>
         <source>MSI 安装包</source>
         <translation>MSI 安裝套件</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="186"/>
+        <location filename="../ui/pages/JavaPage.qml" line="188"/>
         <source>Java %1 · %2 · %3 · 便携版（ZIP）</source>
         <translation>Java %1 · %2 · %3 · 可攜版（ZIP）</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="187"/>
+        <location filename="../ui/pages/JavaPage.qml" line="189"/>
         <source>正在下载 Java %1…</source>
         <translation>正在下載 Java %1…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="321"/>
+        <location filename="../ui/pages/JavaPage.qml" line="317"/>
+        <source>Java 安装失败：%1</source>
+        <translation>Java 安裝失敗：%1</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/JavaPage.qml" line="318"/>
+        <source>Java 安装失败，请检查网络后重试</source>
+        <translation>Java 安裝失敗，請檢查網路後重試</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/JavaPage.qml" line="337"/>
         <source>已保存到 %1</source>
         <translation>已儲存到 %1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="323"/>
+        <location filename="../ui/pages/JavaPage.qml" line="339"/>
         <source>下载失败</source>
         <translation>下載失敗</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="330"/>
+        <location filename="../ui/pages/JavaPage.qml" line="346"/>
         <source>选择 MSI 保存位置</source>
         <translation>選擇 MSI 儲存位置</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="371"/>
+        <location filename="../ui/pages/JavaPage.qml" line="387"/>
         <source>还没选</source>
         <translation>尚未選擇</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="374"/>
+        <location filename="../ui/pages/JavaPage.qml" line="390"/>
         <source>先选一个主版本</source>
         <translation>先選一個主版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="375"/>
+        <location filename="../ui/pages/JavaPage.qml" line="391"/>
         <source>选择 JDK 或 JRE</source>
         <translation>選擇 JDK 或 JRE</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="376"/>
+        <location filename="../ui/pages/JavaPage.qml" line="392"/>
         <source>选择 CPU 架构</source>
         <translation>選擇 CPU 架構</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="377"/>
+        <location filename="../ui/pages/JavaPage.qml" line="393"/>
         <source>选择操作系统</source>
         <translation>選擇作業系統</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="378"/>
+        <location filename="../ui/pages/JavaPage.qml" line="394"/>
         <source>选一个文件即可开始</source>
         <translation>選一個檔案即可開始</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="437"/>
+        <location filename="../ui/pages/JavaPage.qml" line="453"/>
         <source>重新扫描本机</source>
         <translation>重新掃描本機</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="646"/>
+        <location filename="../ui/pages/JavaPage.qml" line="662"/>
         <source>取消</source>
         <translation>取消</translation>
     </message>
@@ -942,7 +963,7 @@
         <translation type="vanished">選完上一步後展開</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="811"/>
+        <location filename="../ui/pages/JavaPage.qml" line="827"/>
         <source>已选</source>
         <translation>已選</translation>
     </message>
@@ -959,17 +980,17 @@
         <translation type="vanished">來源 mirrors.tuna.tsinghua.edu.cn</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="959"/>
+        <location filename="../ui/pages/JavaPage.qml" line="975"/>
         <source>正在保存…</source>
         <translation>正在儲存…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="988"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1004"/>
         <source>重新安装</source>
         <translation>重新安裝</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="988"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1004"/>
         <source>下载并安装</source>
         <translation>下載並安裝</translation>
     </message>
@@ -978,98 +999,98 @@
         <translation type="vanished">下載</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1062"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1078"/>
         <source>本机已检测到</source>
         <translation>本機已偵測到</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="437"/>
-        <location filename="../ui/pages/JavaPage.qml" line="1092"/>
+        <location filename="../ui/pages/JavaPage.qml" line="453"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1108"/>
         <source>扫描中…</source>
         <translation>掃描中…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="855"/>
+        <location filename="../ui/pages/JavaPage.qml" line="871"/>
         <source>便携版由启动器托管、不写注册表；安装版会写进系统目录并配置 PATH / JAVA_HOME。</source>
         <translation>免安裝版由啟動器管理、不寫入登錄檔；安裝版會寫入系統目錄並設定 PATH / JAVA_HOME。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="989"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1005"/>
         <source>另存为…</source>
         <translation>另存新檔…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1026"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1042"/>
         <source>%1 个文件 · 来源 mirrors.tuna.tsinghua.edu.cn</source>
         <translation>%1 個檔案 · 來源 mirrors.tuna.tsinghua.edu.cn</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1092"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1108"/>
         <source>重新扫描</source>
         <translation>重新掃描</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1188"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1204"/>
         <source>含编译工具 · 推荐</source>
         <translation>含編譯工具 · 推薦</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1189"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1205"/>
         <source>只有运行环境</source>
         <translation>僅含執行環境</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1193"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1209"/>
         <source>Windows 10 / 11</source>
         <translation>Windows 10 / 11</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1197"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1213"/>
         <source>旧版整合包</source>
         <translation>舊版整合包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1198"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1214"/>
         <source>主流</source>
         <translation>主流</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1200"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1216"/>
         <source>最新</source>
         <translation>最新</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1202"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1218"/>
         <source>已识别</source>
         <translation>已識別</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1252"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1268"/>
         <source>便携版（Portable）· 解压后由启动器托管，不写注册表</source>
         <translation>可攜版（Portable）· 解壓縮後由啟動器託管，不寫登錄檔</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1253"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1269"/>
         <source>安装版（Installer）· 写入系统目录与 PATH / JAVA_HOME，需管理员权限</source>
         <translation>安裝版（Installer）· 寫入系統目錄與 PATH / JAVA_HOME，需管理員權限</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1254"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1270"/>
         <source>归档包 · 解压后手动指定给启动器</source>
         <translation>封存包 · 解壓縮後手動指定給啟動器</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1273"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1289"/>
         <source>%1 · 启动器托管%2</source>
         <translation>%1 · 啟動器託管%2</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1281"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1297"/>
         <source>未发现可用 Java —— 建议装一个</source>
         <translation>未發現可用 Java —— 建議裝一個</translation>
     </message>
     <message>
-        <location filename="../ui/pages/JavaPage.qml" line="1282"/>
+        <location filename="../ui/pages/JavaPage.qml" line="1298"/>
         <source>%1 个运行时 · 你可能并不需要下载</source>
         <translation>%1 個執行環境 · 你可能並不需要下載</translation>
     </message>
@@ -1092,158 +1113,163 @@
         <translation>遊戲崩潰</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="53"/>
+        <location filename="../ui/LaunchOverlay.qml" line="55"/>
+        <source>游戏日志</source>
+        <translation>遊戲日誌</translation>
+    </message>
+    <message>
+        <location filename="../ui/LaunchOverlay.qml" line="56"/>
         <source>启动失败</source>
         <translation>啟動失敗</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="66"/>
+        <location filename="../ui/LaunchOverlay.qml" line="69"/>
         <source>等 %1 个</source>
         <translation>等 %1 個</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="72"/>
+        <location filename="../ui/LaunchOverlay.qml" line="75"/>
         <source>类型</source>
         <translation>類型</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="74"/>
+        <location filename="../ui/LaunchOverlay.qml" line="77"/>
         <source>时间</source>
         <translation>時間</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="76"/>
+        <location filename="../ui/LaunchOverlay.qml" line="79"/>
         <source>疑似</source>
         <translation>疑似</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="97"/>
+        <location filename="../ui/LaunchOverlay.qml" line="100"/>
         <source>已就绪</source>
         <translation>已就緒</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="98"/>
-        <location filename="../ui/LaunchOverlay.qml" line="116"/>
+        <location filename="../ui/LaunchOverlay.qml" line="101"/>
+        <location filename="../ui/LaunchOverlay.qml" line="119"/>
         <source>失败</source>
         <translation>失敗</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="114"/>
+        <location filename="../ui/LaunchOverlay.qml" line="117"/>
         <source>完成</source>
         <translation>完成</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="115"/>
+        <location filename="../ui/LaunchOverlay.qml" line="118"/>
         <source>进行中</source>
         <translation>進行中</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="117"/>
+        <location filename="../ui/LaunchOverlay.qml" line="120"/>
         <source>跳过</source>
         <translation>略過</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="229"/>
+        <location filename="../ui/LaunchOverlay.qml" line="235"/>
         <source>启动失败 · %1</source>
         <translation>啟動失敗 · %1</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="230"/>
+        <location filename="../ui/LaunchOverlay.qml" line="236"/>
         <source>启动 %1</source>
         <translation>啟動 %1</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="249"/>
+        <location filename="../ui/LaunchOverlay.qml" line="255"/>
         <source>正在分析日志…</source>
         <translation>正在分析日誌…</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="250"/>
+        <location filename="../ui/LaunchOverlay.qml" line="256"/>
         <source>崩溃报告已生成</source>
         <translation>崩潰報告已產生</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="259"/>
+        <location filename="../ui/LaunchOverlay.qml" line="265"/>
         <source>第 %1 / %2 步</source>
         <translation>第 %1 / %2 步</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="283"/>
+        <location filename="../ui/LaunchOverlay.qml" line="289"/>
         <source>总进度</source>
         <translation>總進度</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="362"/>
+        <location filename="../ui/LaunchOverlay.qml" line="368"/>
         <source>准备运行环境</source>
         <translation>準備執行環境</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="370"/>
+        <location filename="../ui/LaunchOverlay.qml" line="376"/>
         <source>%1 项待补全</source>
         <translation>%1 項待補全</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="445"/>
+        <location filename="../ui/LaunchOverlay.qml" line="451"/>
         <source>下载完成后会自动继续启动</source>
         <translation>下載完成後會自動繼續啟動</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="446"/>
+        <location filename="../ui/LaunchOverlay.qml" line="452"/>
         <source>补全完成，正在继续启动</source>
         <translation>補全完成，正在繼續啟動</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="587"/>
+        <location filename="../ui/LaunchOverlay.qml" line="593"/>
         <source>正在分析日志，请稍候…</source>
         <translation>正在分析日誌，請稍候…</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="635"/>
+        <location filename="../ui/LaunchOverlay.qml" line="641"/>
         <source>建议</source>
         <translation>建議</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="687"/>
+        <location filename="../ui/LaunchOverlay.qml" line="693"/>
         <source>游戏已启动</source>
         <translation>遊戲已啟動</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="687"/>
+        <location filename="../ui/LaunchOverlay.qml" line="693"/>
         <source>正在按阶段推进，取消后可重新启动</source>
         <translation>正在按階段推進，取消後可重新啟動</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="704"/>
+        <location filename="../ui/LaunchOverlay.qml" line="710"/>
         <source>导出日志</source>
         <translation>匯出日誌</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="708"/>
+        <location filename="../ui/LaunchOverlay.qml" line="714"/>
         <source>已导出: %1</source>
         <translation>已匯出：%1</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="708"/>
+        <location filename="../ui/LaunchOverlay.qml" line="714"/>
         <source>导出失败，可先查看日志文件夹</source>
         <translation>匯出失敗，可先查看日誌資料夾</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="715"/>
+        <location filename="../ui/LaunchOverlay.qml" line="721"/>
         <source>查看日志</source>
         <translation>查看日誌</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="723"/>
+        <location filename="../ui/LaunchOverlay.qml" line="729"/>
         <source>重试</source>
         <translation>重試</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="734"/>
+        <location filename="../ui/LaunchOverlay.qml" line="740"/>
         <source>关闭</source>
         <translation>關閉</translation>
     </message>
     <message>
-        <location filename="../ui/LaunchOverlay.qml" line="747"/>
+        <location filename="../ui/LaunchOverlay.qml" line="753"/>
         <source>取消启动</source>
         <translation>取消啟動</translation>
     </message>
@@ -1251,317 +1277,316 @@
 <context>
     <name>MultiplayerPage</name>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="76"/>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="78"/>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="456"/>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="674"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="80"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="82"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="460"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="695"/>
         <source>房主</source>
         <translation>房主</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="83"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="87"/>
         <source>房主已离开</source>
         <translation>房主已離開</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="83"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="87"/>
         <source>出错了</source>
         <translation>出錯了</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="85"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="89"/>
         <source>正在创建房间…</source>
         <translation>正在建立房間…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="86"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="90"/>
         <source>正在加入联机网络…</source>
         <translation>正在加入連線網路…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="87"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="91"/>
         <source>正在查找联机中心…</source>
         <translation>正在尋找連線中心…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="88"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="92"/>
         <source>正在连接联机中心…</source>
         <translation>正在連接連線中心…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="89"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="93"/>
         <source>房间已建好 · 还差游戏里开服</source>
         <translation>房間已建好 · 還差遊戲裡開服</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="90"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="94"/>
         <source>正在验证 MC 连接…</source>
         <translation>正在驗證 MC 連線…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="91"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="95"/>
         <source>房间已连通</source>
         <translation>房間已連通</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="91"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="95"/>
         <source>已加入 · %1 的房间</source>
         <translation>已加入 · %1 的房間</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="92"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="96"/>
         <source>房间在线 · %1/%2</source>
         <translation>房間線上 · %1/%2</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="93"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="97"/>
         <source>和朋友一起玩</source>
         <translation>和朋友一起玩</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="103"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="107"/>
         <source>房间已自动退出。可以重新加入，或者自己开一间。</source>
         <translation>房間已自動退出。可以重新加入，或者自己開一間。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="105"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="109"/>
         <source>少了位数，或者校验位不对。连续 3 次失败会冷却 60 秒。</source>
         <translation>少了位數，或者校驗位不對。連續 3 次失敗會冷卻 60 秒。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="109"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="113"/>
         <source>生成房间码并启动隧道，通常 2–5 秒。</source>
         <translation>產生房間碼並啟動隧道，通常 2–5 秒。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="110"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="114"/>
         <source>正在建立到房主的隧道。</source>
         <translation>正在建立到房主的隧道。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="111"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="115"/>
         <source>房主刚创建房间时可能需要多等几秒。</source>
         <translation>房主剛建立房間時可能需要多等幾秒。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="112"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="116"/>
         <source>正在连到房主的联机中心…</source>
         <translation>正在連到房主的連線中心…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="113"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="117"/>
         <source>请打开游戏，进入单人世界后按 Esc 选「对局域网开放」。开好后会自动识别，不用填端口。</source>
         <translation>請開啟遊戲，進入單人世界後按 Esc 選「對區域網路開放」。開好後會自動辨識，不用填連接埠。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="114"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="118"/>
         <source>现在把码发出去，朋友加进来会直接失败。</source>
         <translation>現在把碼發出去，朋友加進來會直接失敗。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="115"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="119"/>
         <source>最多 8 次尝试；不过也会放行，先进游戏再看。</source>
         <translation>最多 8 次嘗試；不過也會放行，先進遊戲再看。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="116"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="120"/>
         <source>朋友现在可以在游戏里进去了。</source>
         <translation>朋友現在可以在遊戲裡進去了。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="116"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="120"/>
         <source>打开 Minecraft 的「多人游戏」，进「局域网世界」即可。</source>
         <translation>開啟 Minecraft 的「多人遊戲」，進「區域網路世界」即可。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="117"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="121"/>
         <source>朋友在「多人游戏」的「局域网世界」里能直接看到，无需输入 IP。</source>
         <translation>朋友在「多人遊戲」的「區域網路世界」裡能直接看到，無需輸入 IP。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="118"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="122"/>
         <source>房主在自己游戏里「对局域网开放」，其他人凭房间码加入。不用公网 IP、不用开端口，最多 5 人。</source>
         <translation>房主在自己遊戲裡「對區域網路開放」，其他人憑房間碼加入。不用公網 IP、不用開連接埠，最多 5 人。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="140"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="144"/>
         <source>未知来源</source>
         <translation>未知來源</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="153"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="157"/>
         <source>直连</source>
         <translation>直連</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="154"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="158"/>
         <source>简单</source>
         <translation>簡單</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="155"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="159"/>
         <source>中等</source>
         <translation>中等</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="156"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="160"/>
         <source>困难</source>
         <translation>困難</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="172"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="176"/>
         <source>先粘贴房间码</source>
         <translation>先貼上房間碼</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="180"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="184"/>
         <source>房间里不能改名，请先离开房间</source>
         <translation>房間裡不能改名，請先離開房間</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="192"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="196"/>
         <source>已保存</source>
         <translation>已儲存</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="220"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="224"/>
         <source>游戏端口已就绪：%1</source>
         <translation>遊戲連接埠已就緒：%1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="245"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="249"/>
         <source>联机</source>
         <translation>連線</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="456"/>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="674"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="460"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="695"/>
         <source>访客</source>
         <translation>訪客</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="480"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="484"/>
         <source>2 分钟内没开服会自动关闭</source>
         <translation>2 分鐘內沒開服會自動關閉</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="506"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="510"/>
         <source>这台设备叫</source>
         <translation>這台裝置叫</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="536"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="540"/>
         <source>修改</source>
         <translation>修改</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="585"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="592"/>
         <source>粘贴房间码</source>
         <translation>貼上房間碼</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="596"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="600"/>
         <source>加入</source>
         <translation>加入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="614"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="620"/>
         <source>在房间里</source>
         <translation>在房間裡</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="675"/>
         <source>%1 · 这台设备</source>
-        <translation>%1 · 這台裝置</translation>
+        <translation type="vanished">%1 · 這台裝置</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="698"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="723"/>
         <source>本机</source>
         <translation>本機</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="718"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="743"/>
         <source>%1 位玩家正在加入…</source>
         <translation>%1 位玩家正在加入…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="735"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="760"/>
         <source>还有 %1 个空位</source>
         <translation>還有 %1 個空位</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="752"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="777"/>
         <source>创建房间</source>
         <translation>建立房間</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="761"/>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="927"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="786"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="956"/>
         <source>取消</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="772"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="797"/>
         <source>开好服后再复制房间码</source>
         <translation>開好服後再複製房間碼</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="779"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="804"/>
         <source>复制房间码</source>
         <translation>複製房間碼</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="782"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="807"/>
         <source>房间码已复制</source>
         <translation>房間碼已複製</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="791"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="817"/>
         <source>关闭房间</source>
         <translation>關閉房間</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="800"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="826"/>
         <source>离开房间</source>
         <translation>離開房間</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="809"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="838"/>
         <source>重新输入</source>
         <translation>重新輸入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="809"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="838"/>
         <source>知道了</source>
         <translation>知道了</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="818"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="847"/>
         <source>联机身份跟着「这台设备」走，与 MC 账号无关。</source>
         <translation>連線身分跟著「這台裝置」走，與 MC 帳號無關。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="859"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="888"/>
         <source>这台设备的昵称</source>
         <translation>這台裝置的暱稱</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="867"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="896"/>
         <source>别人在成员列表里看到的就是它。只改这块牌子，不改设备、不改 MC 账号。</source>
         <translation>別人在成員列表裡看到的就是它。只改這塊牌子，不改裝置、不改 MC 帳號。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="903"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="932"/>
         <source>设备码 %1</source>
         <translation>裝置碼 %1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="911"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="940"/>
         <source>固定不变，用于区分同名设备</source>
         <translation>固定不變，用於區分同名裝置</translation>
     </message>
     <message>
-        <location filename="../ui/pages/MultiplayerPage.qml" line="920"/>
+        <location filename="../ui/pages/MultiplayerPage.qml" line="949"/>
         <source>保存</source>
         <translation>儲存</translation>
     </message>
@@ -1599,83 +1624,88 @@
         <translation>%1 小時 %2 分</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="146"/>
-        <location filename="../ui/pages/ProgressPage.qml" line="351"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="52"/>
+        <source>0 KB/s</source>
+        <translation>0 KB/s</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/ProgressPage.qml" line="156"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="371"/>
         <source>任务</source>
         <translation>任務</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="151"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="161"/>
         <source>%1 下载完成</source>
         <translation>%1 下載完成</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="151"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="161"/>
         <source>%1 安装完成</source>
         <translation>%1 安裝完成</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="251"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="271"/>
         <source>下载进度</source>
         <translation>下載進度</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="291"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="311"/>
         <source>总进度</source>
         <translation>總進度</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="337"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="357"/>
         <source>总速度</source>
         <translation>總速度</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="354"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="374"/>
         <source>%1 进行中</source>
         <translation>%1 進行中</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="365"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="385"/>
         <source>剩余</source>
         <translation>剩餘</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="411"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="431"/>
         <source>文件</source>
         <translation>檔案</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="532"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="555"/>
         <source>部分失败</source>
         <translation>部分失敗</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="604"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="629"/>
         <source>安装失败，可重试</source>
         <translation>安裝失敗，可重試</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="679"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="704"/>
         <source>完成</source>
         <translation>完成</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="718"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="743"/>
         <source>重试</source>
         <translation>重試</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="730"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="755"/>
         <source>取消</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="743"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="768"/>
         <source>关闭</source>
         <translation>關閉</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ProgressPage.qml" line="754"/>
+        <location filename="../ui/pages/ProgressPage.qml" line="779"/>
         <source>当前没有下载任务</source>
         <translation>目前沒有下載任務</translation>
     </message>
@@ -1683,251 +1713,256 @@
 <context>
     <name>ResourceDetailPage</name>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="101"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="105"/>
         <source>已完成 %1</source>
         <translation>已完成 %1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="102"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="106"/>
         <source>失败 %1</source>
         <translation>失敗 %1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="105"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="109"/>
         <source>下载中 %1%2 %3</source>
         <translation>下載中 %1%2 %3</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="339"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="399"/>
         <source>%1 亿</source>
         <translation>%1 億</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="334"/>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="340"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="394"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="400"/>
         <source>%1 万</source>
         <translation>%1 萬</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="335"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="395"/>
         <source>%1M</source>
         <translation>%1M</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="336"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="396"/>
         <source>%1K</source>
         <translation>%1K</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="358"/>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="412"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="418"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="473"/>
         <source>该组合没有可下载文件</source>
         <translation>該組合沒有可下載檔案</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="410"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="471"/>
         <source>前置还在解析，请稍候</source>
         <translation>前置仍在解析，請稍候</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="427"/>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="561"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="488"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="622"/>
         <source>已取消</source>
         <translation>已取消</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="464"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="525"/>
         <source>没有可下载的文件</source>
         <translation>沒有可下載的檔案</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="509"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="570"/>
         <source>已提交 %1 个文件</source>
         <translation>已提交 %1 個檔案</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="526"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="587"/>
         <source>已提交下载</source>
         <translation>已提交下載</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="536"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="597"/>
         <source>选择保存位置（共 %1 个文件，其余存入同一文件夹）</source>
         <translation>選擇儲存位置（共 %1 個檔案，其餘存入同一資料夾）</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="537"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="598"/>
         <source>选择保存位置</source>
         <translation>選擇儲存位置</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="551"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="612"/>
         <source>开始下载 %1</source>
         <translation>開始下載 %1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="592"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="653"/>
         <source>返回</source>
         <translation>返回</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="727"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="788"/>
         <source>下载量</source>
         <translation>下載量</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="732"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="793"/>
         <source>版本</source>
         <translation>版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="740"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="801"/>
         <source>更新</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="774"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="835"/>
         <source>本次安装</source>
         <translation>本次安裝</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="780"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="841"/>
         <source>未选择版本</source>
         <translation>未選擇版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="788"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="849"/>
         <source>+ %1 个必需前置</source>
         <translation>+ %1 個必需前置</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="796"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="857"/>
         <source>下载 %1 个文件</source>
         <translation>下載 %1 個檔案</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="796"/>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="1016"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="857"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1077"/>
         <source>下载</source>
         <translation>下載</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="805"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="866"/>
         <source>多文件：选一次文件夹，全部存入</source>
         <translation>多檔案：選一次資料夾，全部存入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="805"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="866"/>
         <source>下载时由你选择保存位置</source>
         <translation>下載時由你選擇儲存位置</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="852"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="913"/>
         <source>游戏版本</source>
         <translation>遊戲版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="863"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="924"/>
         <source>选择版本</source>
         <translation>選擇版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="882"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="943"/>
         <source>加载器</source>
         <translation>載入器</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="896"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="957"/>
         <source>先选版本</source>
         <translation>先選版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="915"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="976"/>
         <source>正在读取版本…</source>
         <translation>正在讀取版本…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="916"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="977"/>
         <source>选择版本后，加载器只列出该版本实际有文件的项</source>
         <translation>選擇版本後，載入器只列出該版本實際有檔案的項</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="917"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="978"/>
         <source>%1 个加载器 · 该组合 %2 个版本</source>
         <translation>%1 個載入器 · 該組合 %2 個版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="939"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1000"/>
         <source>可下载版本</source>
         <translation>可下載版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="952"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1013"/>
         <source>最新 · 另有 %1 个旧版</source>
         <translation>最新 · 另有 %1 個舊版</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="952"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1013"/>
         <source>最新</source>
         <translation>最新</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="1003"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1064"/>
         <source>没有匹配的文件</source>
         <translation>沒有符合的檔案</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="1041"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1102"/>
         <source>该组合下还有 %1 个旧版本</source>
         <translation>該組合下還有 %1 個舊版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="1047"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1108"/>
         <source>收起</source>
         <translation>收起</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="1047"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1108"/>
         <source>展开</source>
         <translation>展開</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="1154"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1219"/>
         <source>前置模组</source>
         <translation>前置模組</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="1221"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1289"/>
+        <source>仅提示</source>
+        <translation>僅提示</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1290"/>
         <source>必需</source>
         <translation>必需</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="1221"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1290"/>
         <source>可选</source>
         <translation>可選</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="500"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="561"/>
         <source> 等 %1 个</source>
         <translation> 等 %1 個</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="501"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="562"/>
         <source>%1 个前置没有可用的下载信息，已跳过：%2</source>
         <translation>%1 個前置沒有可用的下載資訊，已略過：%2</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="715"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="776"/>
         <source>MC百科</source>
         <translation>MC百科</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="951"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1012"/>
         <source>已选旧版本</source>
         <translation>已選舊版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourceDetailPage.qml" line="977"/>
+        <location filename="../ui/pages/ResourceDetailPage.qml" line="1038"/>
         <source>回到最新</source>
         <translation>回到最新</translation>
     </message>
@@ -1935,150 +1970,164 @@
 <context>
     <name>ResourcePage</name>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="169"/>
-        <location filename="../ui/pages/ResourcePage.qml" line="347"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="181"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="367"/>
         <source>全部加载器</source>
         <translation>全部載入器</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="317"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="314"/>
+        <source>搜索失败，请稍后重试</source>
+        <translation>搜尋失敗，請稍後重試</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/ResourcePage.qml" line="337"/>
         <source>全部来源</source>
         <translation>全部來源</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="346"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="366"/>
         <source>加载器</source>
         <translation>載入器</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="355"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="375"/>
         <source>环境</source>
         <translation>環境</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="356"/>
-        <location filename="../ui/pages/ResourcePage.qml" line="358"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="376"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="378"/>
         <source>全部环境</source>
         <translation>全部環境</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="358"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="378"/>
         <source>客户端</source>
         <translation>用戶端</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="358"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="378"/>
         <source>服务端</source>
         <translation>伺服器端</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="364"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="384"/>
         <source>排序</source>
         <translation>排序</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="365"/>
-        <location filename="../ui/pages/ResourcePage.qml" line="367"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="385"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="387"/>
         <source>下载量</source>
         <translation>下載量</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="367"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="387"/>
         <source>最近更新</source>
         <translation>最近更新</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="367"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="387"/>
         <source>名称</source>
         <translation>名稱</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="381"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="401"/>
         <source>重置</source>
         <translation>重設</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="550"/>
         <source>正在加载…</source>
-        <translation>正在載入…</translation>
+        <translation type="vanished">正在載入…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="550"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="574"/>
         <source>没有找到匹配的资源</source>
         <translation>沒有找到符合的資源</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="565"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="574"/>
+        <source>搜索失败</source>
+        <translation>搜尋失敗</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/ResourcePage.qml" line="604"/>
         <source>重新加载</source>
         <translation>重新載入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="605"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="604"/>
+        <source>重试</source>
+        <translation>重試</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/ResourcePage.qml" line="644"/>
         <source>上一页</source>
         <translation>上一頁</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="624"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="663"/>
         <source>下一页</source>
         <translation>下一頁</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="68"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="71"/>
         <source>Mod</source>
         <translation>Mod</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="69"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="72"/>
         <source>光影包</source>
         <translation>光影包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="69"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="72"/>
         <source>资源包</source>
         <translation>資源包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="82"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="85"/>
         <source>松开以导入%1</source>
         <translation>放開以匯入%1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="83"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="86"/>
         <source>请先选择一个实例</source>
         <translation>請先選擇一個執行個體</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="85"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="88"/>
         <source>导入到实例 %1 的 %2 目录 · 只接受 %3</source>
         <translation>匯入到執行個體 %1 的 %2 目錄 · 只接受 %3</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="87"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="90"/>
         <source>拖入的文件会写进当前选中实例的目录，请先在版本页选择实例</source>
         <translation>拖入的檔案會寫進目前選取執行個體的目錄，請先在版本頁選擇執行個體</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="119"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="122"/>
         <source>当前版本暂不支持导入%1</source>
         <translation>目前版本暫不支援匯入%1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="123"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="126"/>
         <source>请先在版本页选择一个实例，再拖入文件</source>
         <translation>請先在版本頁選擇一個執行個體，再拖入檔案</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="134"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="137"/>
         <source>已导入 %1 个%2</source>
         <translation>已匯入 %1 個%2</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="136"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="139"/>
         <source>已导入 %1 个%2，%3 个失败</source>
         <translation>已匯入 %1 個%2，%3 個失敗</translation>
     </message>
     <message>
-        <location filename="../ui/pages/ResourcePage.qml" line="139"/>
+        <location filename="../ui/pages/ResourcePage.qml" line="142"/>
         <source>导入失败：文件内容不是有效的%1</source>
         <translation>匯入失敗：檔案內容不是有效的%1</translation>
     </message>
@@ -2086,23 +2135,23 @@
 <context>
     <name>ResourceTile</name>
     <message>
-        <location filename="../ui/controls/ResourceTile.qml" line="25"/>
+        <location filename="../ui/controls/ResourceTile.qml" line="30"/>
         <source>%1M</source>
         <translation>%1M</translation>
     </message>
     <message>
-        <location filename="../ui/controls/ResourceTile.qml" line="26"/>
+        <location filename="../ui/controls/ResourceTile.qml" line="31"/>
         <source>%1K</source>
         <translation>%1K</translation>
     </message>
     <message>
-        <location filename="../ui/controls/ResourceTile.qml" line="29"/>
+        <location filename="../ui/controls/ResourceTile.qml" line="34"/>
         <source>%1 亿</source>
         <translation>%1 億</translation>
     </message>
     <message>
-        <location filename="../ui/controls/ResourceTile.qml" line="24"/>
-        <location filename="../ui/controls/ResourceTile.qml" line="30"/>
+        <location filename="../ui/controls/ResourceTile.qml" line="29"/>
+        <location filename="../ui/controls/ResourceTile.qml" line="35"/>
         <source>%1 万</source>
         <translation>%1 萬</translation>
     </message>
@@ -2110,7 +2159,7 @@
 <context>
     <name>SAcctChip</name>
     <message>
-        <location filename="../ui/controls/SAcctChip.qml" line="45"/>
+        <location filename="../ui/controls/SAcctChip.qml" line="50"/>
         <source>登录</source>
         <translation>登入</translation>
     </message>
@@ -2396,37 +2445,42 @@
         <translation>已加入圖庫並啟用</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetAppearancePane.qml" line="584"/>
+        <location filename="../ui/pages/SetAppearancePane.qml" line="576"/>
+        <source>这个文件不是可用的图片，换一张试试</source>
+        <translation>這個檔案不是可用的圖片，換一張試試</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/SetAppearancePane.qml" line="588"/>
         <source>取景</source>
         <translation>取景</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetAppearancePane.qml" line="585"/>
+        <location filename="../ui/pages/SetAppearancePane.qml" line="589"/>
         <source>在预览框内拖动调整位置；按住 Ctrl 滚轮或拖动下方滑块缩放。预览框与启动页同比例，框里看到的就是启动页实际显示的范围。</source>
         <translation>在預覽框內拖動調整位置；按住 Ctrl 滾輪或拖動下方滑桿縮放。預覽框與啟動頁同比例，框裡看到的就是啟動頁實際顯示的範圍。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetAppearancePane.qml" line="655"/>
+        <location filename="../ui/pages/SetAppearancePane.qml" line="659"/>
         <source>重置取景</source>
         <translation>重設取景</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetAppearancePane.qml" line="660"/>
+        <location filename="../ui/pages/SetAppearancePane.qml" line="664"/>
         <source>取景已重置</source>
         <translation>取景已重設</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetAppearancePane.qml" line="668"/>
+        <location filename="../ui/pages/SetAppearancePane.qml" line="672"/>
         <source>恢复默认背景</source>
         <translation>還原預設背景</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetAppearancePane.qml" line="673"/>
+        <location filename="../ui/pages/SetAppearancePane.qml" line="677"/>
         <source>已恢复默认背景</source>
         <translation>已還原預設背景</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetAppearancePane.qml" line="686"/>
+        <location filename="../ui/pages/SetAppearancePane.qml" line="690"/>
         <source>支持 PNG / JPG / WEBP / BMP。图片会被复制到启动器数据目录，删除或移动原文件不会影响显示。</source>
         <translation>支援 PNG / JPG / WEBP / BMP。圖片會被複製到啟動器資料目錄，刪除或移動原始檔案不會影響顯示。</translation>
     </message>
@@ -2444,74 +2498,90 @@
         <translation>遊戲檔案下載來源</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="37"/>
         <source>影响 MC 本体与资源文件；加载器另有独立策略</source>
-        <translation>影響 MC 本體與資源檔案；載入器另有獨立策略</translation>
+        <translation type="vanished">影響 MC 本體與資源檔案；載入器另有獨立策略</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="40"/>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="53"/>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="42"/>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="59"/>
         <source>镜像优先</source>
         <translation>鏡像優先</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="40"/>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="53"/>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="42"/>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="59"/>
         <source>官方优先</source>
         <translation>官方優先</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="40"/>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="53"/>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="42"/>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="59"/>
         <source>自动切换</source>
         <translation>自動切換</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="49"/>
         <source>资源列表源</source>
-        <translation>資源清單來源</translation>
+        <translation type="vanished">資源清單來源</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="50"/>
         <source>Mod / 光影 / 资源包等的索引与详情</source>
-        <translation>Mod / 光影 / 資源包等的索引與詳情</translation>
+        <translation type="vanished">Mod / 光影 / 資源包等的索引與詳情</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="62"/>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="68"/>
         <source>速度与并发</source>
         <translation>速度與並行</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="66"/>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="72"/>
         <source>最大并发连接</source>
         <translation>最大並行連線數</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="70"/>
         <source>越高越快，官方源实测 192 最快；第三方镜像并发过高可能被限流</source>
-        <translation>越高越快，官方來源實測 192 最快；第三方鏡像併發過高可能被限流</translation>
+        <translation type="vanished">越高越快，官方來源實測 192 最快；第三方鏡像併發過高可能被限流</translation>
     </message>
     <message>
         <source>太高会被下载站限流，16 是稳妥值</source>
         <translation type="vanished">太高會被下載站限流，16 是穩妥的值</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="96"/>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="39"/>
+        <source>影响 MC 本体与资源文件；加载器与模组下载另有独立策略</source>
+        <translation>影響 MC 本體與資源檔案；載入器與模組下載另有獨立策略</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="55"/>
+        <source>版本列表源</source>
+        <translation>版本列表來源</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="56"/>
+        <source>MC 版本清单、版本 JSON 与资源索引的来源；模组搜索不跟随此项</source>
+        <translation>MC 版本清單、版本 JSON 與資源索引的來源；模組搜尋不跟隨此項</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="77"/>
+        <source>上限 24（下载引擎的硬上限）；第三方镜像并发过高会被限流</source>
+        <translation>上限 24（下載引擎的硬上限）；第三方鏡像併發過高會被限流</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="101"/>
         <source>限速</source>
         <translation>限速</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="97"/>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="102"/>
         <source>关掉表示不限速，占满带宽</source>
         <translation>關閉表示不限速，佔滿頻寬</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="111"/>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="116"/>
         <source>速度上限</source>
         <translation>速度上限</translation>
     </message>
     <message>
-        <location filename="../ui/pages/SetDownloadPane.qml" line="129"/>
+        <location filename="../ui/pages/SetDownloadPane.qml" line="134"/>
         <source>不限速</source>
         <translation>不限速</translation>
     </message>
@@ -2953,72 +3023,72 @@
 <context>
     <name>ShadowLauncher</name>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1626"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1627"/>
         <source>极光（默认）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1627"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1628"/>
         <source>方寸</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1628"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1629"/>
         <source>山河</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1629"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1630"/>
         <source>林澜</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1630"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1631"/>
         <source>未见 二</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1631"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1632"/>
         <source>未见 四</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1632"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1633"/>
         <source>未见 六</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1633"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1634"/>
         <source>寂光</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1634"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1635"/>
         <source>余温 一</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1635"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1636"/>
         <source>余温 二</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1636"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1637"/>
         <source>城市建筑 二</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1637"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1638"/>
         <source>城市建筑 四</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1638"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1639"/>
         <source>城市漫步 六</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1639"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1640"/>
         <source>静谧</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3026,154 +3096,165 @@
 <context>
     <name>ShadowLauncher::AccountBackend</name>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="155"/>
+        <location filename="../src/backend/account_backend.cpp" line="165"/>
         <source>正版登录成功: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="199"/>
+        <location filename="../src/backend/account_backend.cpp" line="209"/>
         <source>用户名不能为空</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="233"/>
+        <location filename="../src/backend/account_backend.cpp" line="230"/>
+        <source>离线用户名需为 1-16 个字符，不能含 \ / : * ? &quot; &lt; &gt; | 等字符</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/account_backend.cpp" line="244"/>
+        <location filename="../src/backend/account_backend.cpp" line="1825"/>
+        <source>账号数量已达上限（%1 个），请先移除不用的账号再添加</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/account_backend.cpp" line="278"/>
         <source>离线登录: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="245"/>
-        <location filename="../src/backend/account_backend.cpp" line="323"/>
+        <location filename="../src/backend/account_backend.cpp" line="290"/>
+        <location filename="../src/backend/account_backend.cpp" line="368"/>
         <source>未登录正版账号</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="282"/>
+        <location filename="../src/backend/account_backend.cpp" line="327"/>
         <source>披风ID未找到</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="329"/>
+        <location filename="../src/backend/account_backend.cpp" line="374"/>
         <source>皮肤文件不存在</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="354"/>
+        <location filename="../src/backend/account_backend.cpp" line="399"/>
         <source>无法读取皮肤文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="369"/>
+        <location filename="../src/backend/account_backend.cpp" line="414"/>
         <source>网络请求失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="398"/>
+        <location filename="../src/backend/account_backend.cpp" line="443"/>
         <source>正在刷新皮肤...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="403"/>
+        <location filename="../src/backend/account_backend.cpp" line="448"/>
         <source>正在刷新离线头像...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="407"/>
+        <location filename="../src/backend/account_backend.cpp" line="452"/>
         <source>未登录，无需刷新</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="408"/>
+        <location filename="../src/backend/account_backend.cpp" line="453"/>
         <source>当前没有可刷新的账号</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="556"/>
+        <location filename="../src/backend/account_backend.cpp" line="601"/>
         <source>已登出</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="576"/>
+        <location filename="../src/backend/account_backend.cpp" line="621"/>
         <source>Microsoft 登录已在进行中</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="920"/>
+        <location filename="../src/backend/account_backend.cpp" line="965"/>
         <source>登录凭据已过期，正在重新获取…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="935"/>
+        <location filename="../src/backend/account_backend.cpp" line="980"/>
         <source>登录凭据已过期，请重新登录该账号</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="936"/>
+        <location filename="../src/backend/account_backend.cpp" line="981"/>
         <source>网络请求失败，请稍后重试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1375"/>
+        <location filename="../src/backend/account_backend.cpp" line="1420"/>
         <source>网络请求异常</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1394"/>
+        <location filename="../src/backend/account_backend.cpp" line="1439"/>
         <source>令牌已过期</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1404"/>
+        <location filename="../src/backend/account_backend.cpp" line="1449"/>
         <source>网络异常，令牌刷新失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1408"/>
+        <location filename="../src/backend/account_backend.cpp" line="1453"/>
         <source>服务器错误 (%1)，令牌刷新失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1410"/>
-        <location filename="../src/backend/account_backend.cpp" line="1415"/>
+        <location filename="../src/backend/account_backend.cpp" line="1455"/>
+        <location filename="../src/backend/account_backend.cpp" line="1460"/>
         <source>令牌刷新失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1439"/>
+        <location filename="../src/backend/account_backend.cpp" line="1484"/>
         <source>正版登录已过期，请重新登录</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1441"/>
+        <location filename="../src/backend/account_backend.cpp" line="1486"/>
         <source>令牌刷新暂时失败（%1），将在下次启动时重试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1484"/>
+        <location filename="../src/backend/account_backend.cpp" line="1529"/>
         <source>正版</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1485"/>
+        <location filename="../src/backend/account_backend.cpp" line="1530"/>
         <source>外置</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1486"/>
+        <location filename="../src/backend/account_backend.cpp" line="1531"/>
         <source>离线</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1883"/>
+        <location filename="../src/backend/account_backend.cpp" line="1936"/>
         <source>这个正版账号没有可用的登录凭据，请重新登录</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1892"/>
+        <location filename="../src/backend/account_backend.cpp" line="1945"/>
         <source>已切换到 %1</source>
         <translation type="unfinished">已切換到 %1</translation>
     </message>
     <message>
-        <location filename="../src/backend/account_backend.cpp" line="1937"/>
+        <location filename="../src/backend/account_backend.cpp" line="1990"/>
         <source>已移除账号 %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3759,813 +3840,835 @@
 <context>
     <name>ShadowLauncher::JavaRuntimeInstaller</name>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="179"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="212"/>
         <source>Java 安装已在运行中</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="189"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="222"/>
         <source>正在扫描系统中已有的 Java...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="194"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="227"/>
         <source>Java 扫描已在进行中，等待完成...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="210"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="243"/>
         <source>前置检测完成：系统中已有 %1 个 Java 运行时</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="216"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="249"/>
         <source>当前系统为 ARM64，将安装 x64 版 Java（Windows 11 可通过模拟运行）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="218"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="251"/>
         <source>当前系统为 32 位 ARM，暂不支持自动安装 Java。请手动安装 Java 后重试。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="223"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="256"/>
         <source>无法检测系统架构，请手动安装 Java。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="249"/>
-        <location filename="../src/core/java_runtime_installer.cpp" line="330"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="282"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="363"/>
         <source>Java 安装已取消</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="255"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="288"/>
         <source>全部 Java 就绪（已安装 %1 个，跳过 %2 个）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="279"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="312"/>
         <source>已检测到 %1，跳过</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="292"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="325"/>
         <source>%1 已在启动器缓存中，跳过</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="300"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="333"/>
         <source>正在安装 %1...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="317"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="350"/>
         <source>%1 安装失败，正在自动重试...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="319"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="352"/>
         <source>%1 安装失败（%2），正在自动重试...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="333"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="366"/>
         <source>%1 安装失败，请检查网络后重试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="334"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="367"/>
         <source>%1 安装失败: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="353"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="386"/>
         <source>Java 安装取消请求已发送（当前版本下载完成后停止）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="660"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="694"/>
         <source>已有 Java 安装任务在进行中，请等待完成</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="716"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="752"/>
         <source>Java %1 下载被其他进程锁定</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="754"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="790"/>
         <source>Java %1 没有 32 位版本（镜像仅提供 64 位）。32 位系统请改用 Java 17。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="768"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="804"/>
         <source>获取 Java %1 文件列表失败: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="778"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="814"/>
         <source>镜像中未找到 Java %1 (%2) 的 .zip 文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="788"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="824"/>
         <source>正在下载 Java %1...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="816"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="852"/>
         <source>下载 Java %1 失败: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="828"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="857"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="963"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="1026"/>
+        <source>已取消</source>
+        <translation type="unfinished">已取消</translation>
+    </message>
+    <message>
+        <location filename="../src/core/java_runtime_installer.cpp" line="869"/>
         <source>正在解压 Java %1...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="843"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="884"/>
         <source>无法读取 Java %1 压缩包</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="855"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="896"/>
         <source>Java %1 压缩包损坏</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="907"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="963"/>
+        <source>Java %1 解压已中止</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/core/java_runtime_installer.cpp" line="970"/>
+        <source>Java %1 压缩包含 %2 个非法路径条目（疑似被篡改），已中止安装</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/core/java_runtime_installer.cpp" line="983"/>
         <source>Java %1 解压后未找到 java.exe</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="914"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="990"/>
         <source>Java %1 版本校验失败（实际 %2）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/java_runtime_installer.cpp" line="919"/>
+        <location filename="../src/core/java_runtime_installer.cpp" line="995"/>
         <source>Java %1 解压不完整（缺少核心文件），请重试</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/core/java_runtime_installer.cpp" line="1048"/>
+        <source>Java %1 已就绪</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>ShadowLauncher::LaunchBackend</name>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="147"/>
+        <location filename="../src/backend/launch_backend.cpp" line="148"/>
         <source>已在启动中</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="164"/>
-        <location filename="../src/backend/launch_backend.cpp" line="890"/>
+        <location filename="../src/backend/launch_backend.cpp" line="165"/>
+        <location filename="../src/backend/launch_backend.cpp" line="976"/>
         <source>正在准备...</source>
         <translation>正在準備...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="167"/>
+        <location filename="../src/backend/launch_backend.cpp" line="168"/>
         <source>启动 %1 | %2 | JVM: %3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="168"/>
+        <location filename="../src/backend/launch_backend.cpp" line="169"/>
         <source>默认G1GC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="232"/>
+        <location filename="../src/backend/launch_backend.cpp" line="233"/>
         <source>用户取消启动，已结束游戏进程</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="234"/>
+        <location filename="../src/backend/launch_backend.cpp" line="235"/>
         <source>用户取消了启动</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="265"/>
+        <location filename="../src/backend/launch_backend.cpp" line="272"/>
         <source>已强制结束所有游戏进程</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="544"/>
-        <location filename="../src/backend/launch_backend.cpp" line="586"/>
+        <location filename="../src/backend/launch_backend.cpp" line="630"/>
+        <location filename="../src/backend/launch_backend.cpp" line="672"/>
         <source>Java 自动安装</source>
         <translation>Java 自動安裝</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="544"/>
+        <location filename="../src/backend/launch_backend.cpp" line="630"/>
         <source>安装器未就绪</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="559"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1346"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1347"/>
+        <location filename="../src/backend/launch_backend.cpp" line="645"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1432"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1433"/>
         <source>正在自动下载 Java %1...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="566"/>
+        <location filename="../src/backend/launch_backend.cpp" line="652"/>
         <source>正在下载 Java %1 (%2%)...</source>
         <translation>正在下載 Java %1 (%2%)...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="584"/>
+        <location filename="../src/backend/launch_backend.cpp" line="670"/>
         <source>[失败] Java %1 自动安装失败: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="585"/>
+        <location filename="../src/backend/launch_backend.cpp" line="671"/>
         <source>下载安装失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="586"/>
+        <location filename="../src/backend/launch_backend.cpp" line="672"/>
         <source>Java %1 下载安装失败: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="590"/>
+        <location filename="../src/backend/launch_backend.cpp" line="676"/>
         <source>[完成] Java %1 已自动安装</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="591"/>
+        <location filename="../src/backend/launch_backend.cpp" line="677"/>
         <source>Java %1 下载完成，正在继续启动...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="592"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1676"/>
+        <location filename="../src/backend/launch_backend.cpp" line="678"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1762"/>
         <source>已就绪</source>
         <translation type="unfinished">已就緒</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="704"/>
+        <location filename="../src/backend/launch_backend.cpp" line="790"/>
         <source>检查登录状态</source>
         <translation>檢查登入狀態</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="705"/>
+        <location filename="../src/backend/launch_backend.cpp" line="791"/>
         <source>检查 Java 环境</source>
         <translation>檢查 Java 環境</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="706"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1027"/>
+        <location filename="../src/backend/launch_backend.cpp" line="792"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1113"/>
         <source>检查版本文件</source>
         <translation>檢查版本檔案</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="707"/>
+        <location filename="../src/backend/launch_backend.cpp" line="793"/>
         <source>检查依赖文件</source>
         <translation>檢查依賴檔案</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="708"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1029"/>
+        <location filename="../src/backend/launch_backend.cpp" line="794"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1115"/>
         <source>检查内存分配</source>
         <translation>檢查記憶體配置</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="712"/>
+        <location filename="../src/backend/launch_backend.cpp" line="798"/>
         <source>准备外置登录组件</source>
         <translation>準備外置登入元件</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="713"/>
+        <location filename="../src/backend/launch_backend.cpp" line="799"/>
         <source>启动游戏进程</source>
         <translation>啟動遊戲程序</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="946"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1032"/>
         <source>见上方「准备运行环境」</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="950"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1036"/>
         <source>Java 21（本机缺失）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="950"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1350"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1036"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1436"/>
         <source>正在下载并安装</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="952"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1550"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1038"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1636"/>
         <source>authlib-injector.jar</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="952"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1551"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1038"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1637"/>
         <source>外置登录依赖，正在下载</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="953"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1039"/>
         <source>1.2 / 1.9 MB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="956"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1042"/>
         <source>准备运行环境</source>
         <translation type="unfinished">準備執行環境</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="985"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1071"/>
         <source>java.lang.OutOfMemoryError: Java heap space</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="986"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1042"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1876"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1072"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1128"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1985"/>
         <source>启动失败</source>
         <translation type="unfinished">啟動失敗</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="998"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1795"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1868"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1869"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1084"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1885"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1977"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1978"/>
         <source>启动完成</source>
         <translation>啟動完成</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1025"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1111"/>
         <source>正在刷新正版登录令牌</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1026"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1112"/>
         <source>正在检测 Java 环境</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1028"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1114"/>
         <source>正在下载 libraries 12 / 48</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1030"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1116"/>
         <source>正在启动游戏进程</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1043"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1129"/>
         <source>启动失败：未找到 Java 21，可在版本设置中指定</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1072"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1878"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1158"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1987"/>
         <source>启动失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1129"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1215"/>
         <source>令牌刷新超时，正在重试(%1/3)...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1130"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1131"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1216"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1217"/>
         <source>令牌刷新超时，重试(%1/3)...</source>
         <translation>令牌更新逾時，重試(%1/3)...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1139"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1225"/>
         <source>网络超时，无法验证正版登录状态</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1154"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1155"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1240"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1241"/>
         <source>正版授权验证通过</source>
         <translation>正版授權驗證通過</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1156"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1242"/>
         <source>正版令牌验证通过</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1171"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1221"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1245"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1266"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1292"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1257"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1307"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1331"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1352"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1378"/>
         <source>登录状态</source>
         <translation type="unfinished">登入狀態</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1171"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1266"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1257"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1352"/>
         <source>正版登录已过期，请重新登录</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1178"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1264"/>
         <source>令牌刷新失败(%1)，正在重试(%2/3)...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1179"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1180"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1265"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1266"/>
         <source>令牌刷新失败(%1)，重试(%2/3)...</source>
         <translation>令牌更新失敗(%1)，重試(%2/3)...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1194"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1195"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1280"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1281"/>
         <source>正在刷新正版登录令牌(%1/3)...</source>
         <translation>正在更新正版登入令牌(%1/3)...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1209"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1295"/>
         <source>令牌刷新失败(%1)，缓存令牌仍有效，继续启动</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1210"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1211"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1296"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1297"/>
         <source>令牌刷新失败，使用本地令牌继续</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1221"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1307"/>
         <source>正版登录已过期或无法验证，请重新登录</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1236"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1238"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1322"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1324"/>
         <source>检查登录状态...</source>
         <translation>檢查登入狀態...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1246"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1332"/>
         <source>当前账号身份未就绪，请重新登录后再启动</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1276"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1277"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1362"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1363"/>
         <source>正在刷新正版登录令牌...</source>
         <translation>正在更新正版登入令牌...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1293"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1379"/>
         <source>外置登录凭据缺失，请重新登录该账号</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1304"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1306"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1390"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1392"/>
         <source>检查 Java 环境...</source>
         <translation>檢查 Java 環境...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1313"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1399"/>
         <source>正在检测 Java 环境...</source>
         <translation>正在偵測 Java 環境...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1349"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1435"/>
         <source>Java %1（本机缺失）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1354"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1440"/>
         <source>Java 可执行文件</source>
         <translation>Java 執行檔</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1355"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1441"/>
         <source>未找到匹配的 Java（需要 %1+）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1363"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1449"/>
         <source>检测到 32 位 Java，已限制内存 1536MB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1371"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1373"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1457"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1459"/>
         <source>检查版本文件...</source>
         <translation>檢查版本檔案...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1377"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1463"/>
         <source>版本目录</source>
         <translation type="unfinished">版本目錄</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1377"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1463"/>
         <source>目录不存在</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1384"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1388"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1398"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1470"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1474"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1484"/>
         <source>版本配置</source>
         <translation>版本設定</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1384"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1470"/>
         <source>未找到有效的版本配置文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1388"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1474"/>
         <source>配置文件无法读取</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1399"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1485"/>
         <source>版本配置文件格式损坏（%1）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1415"/>
-        <location filename="../src/backend/launch_backend.cpp" line="2449"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1501"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2568"/>
         <source>核心 Jar</source>
         <translation>核心 Jar</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1415"/>
-        <location filename="../src/backend/launch_backend.cpp" line="2450"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1501"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2569"/>
         <source>未找到版本 jar 文件，且无继承来源</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1426"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1512"/>
         <source>版本名 &quot;%1&quot; 与 JSON 内 id 不一致</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1434"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1436"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1520"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1522"/>
         <source>检查依赖文件...</source>
         <translation>檢查依賴檔案...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1442"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1449"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1528"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1535"/>
         <source> ...共%1个</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1443"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1529"/>
         <source>依赖库文件</source>
         <translation>依賴函式庫檔案</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1450"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1536"/>
         <source>运行库文件</source>
         <translation>執行階段函式庫</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1460"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1462"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1546"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1548"/>
         <source>检查内存分配...</source>
         <translation>檢查記憶體配置...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1477"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1563"/>
         <source>内存分配</source>
         <translation type="unfinished">記憶體分配</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1478"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1564"/>
         <source>分配 %1 MB 超过物理内存 %2 MB，游戏无法启动</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1483"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1569"/>
         <source>当前可用内存 %1 MB 小于分配值 %2 MB，可能卡顿</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1489"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1575"/>
         <source>内存不足 512MB，可能影响运行</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1494"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1496"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1580"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1582"/>
         <source>准备启动环境...</source>
         <translation>準備啟動環境...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1504"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1590"/>
         <source>验证外置登录服务器...</source>
         <translation>驗證外置登入伺服器...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1518"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1604"/>
         <source>外置登录服务器</source>
         <translation>外置登入伺服器</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1519"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1605"/>
         <source>无法连接到认证服务器（%1）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1547"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1548"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1633"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1634"/>
         <source>正在下载 authlib-injector.jar...</source>
         <translation>正在下載 authlib-injector.jar...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1591"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1650"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1677"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1736"/>
         <source>正在下载 authlib-injector.jar (%1%)...</source>
         <translation>正在下載 authlib-injector.jar (%1%)...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1593"/>
-        <location filename="../src/backend/launch_backend.cpp" line="1652"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1679"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1738"/>
         <source>%1 / %2 MB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1673"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1759"/>
         <source>authlib-injector.jar 下载失败，外置登录可能无法正常工作</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1674"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1760"/>
         <source>下载失败，外置登录可能不可用</source>
         <translation>下載失敗，外置登入可能無法使用</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1693"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1779"/>
         <source>正在启动...</source>
         <translation>正在啟動...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1695"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1781"/>
         <source>正在启动 Minecraft...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1758"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1848"/>
         <source>进程已启动，等待窗口...</source>
         <translation>程序已啟動，等待視窗...</translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1774"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1864"/>
         <source>游戏进程意外退出</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1775"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1865"/>
         <source>进程存活</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1775"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1865"/>
         <source>游戏进程在窗口出现前退出</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1776"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1866"/>
         <source>启动失败: 进程意外退出</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1799"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1889"/>
         <source>Minecraft 启动完成</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1871"/>
+        <location filename="../src/backend/launch_backend.cpp" line="1980"/>
         <source>Minecraft 启动成功</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1905"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2022"/>
         <source>无法读取 Java 可执行文件以检测架构</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1938"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2055"/>
         <source>无法识别 PE 签名，假设为 64-bit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1955"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2072"/>
         <source>检测到 32 位 Java (x86)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1958"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2075"/>
         <source>检测到 64 位 Java (x64)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1961"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2078"/>
         <source>检测到 ARM64 Java</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="1965"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2082"/>
         <source>未知架构 Machine=0x%1，假设为 64-bit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2005"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2122"/>
         <source>[警告] 未找到版本 JSON，跳过库文件检查</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2013"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2130"/>
         <source>[警告] 无法读取版本 JSON 以检查库文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2022"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2139"/>
         <source>[警告] 版本 JSON 解析失败，无法检查库文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2121"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2238"/>
         <source>[警告] 缺少 %1 个依赖库文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2124"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2241"/>
         <source>[完成] 所有依赖库文件完整</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2147"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2264"/>
         <source>[警告] 未找到版本 JSON，跳过运行库检查</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2159"/>
-        <location filename="../src/backend/launch_backend.cpp" line="2166"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2276"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2283"/>
         <source>找到运行库: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2182"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2299"/>
         <source>[警告] 无法读取版本 JSON 以检查原生库</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2183"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2300"/>
         <source>(无法读取版本配置)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2192"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2309"/>
         <source>[警告] 版本 JSON 解析失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2193"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2310"/>
         <source>(版本配置解析失败)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2240"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2357"/>
         <source>版本未定义原生库 (可能无需原生库)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2245"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2362"/>
         <source>[警告] 缺少 %1 个原生库文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2247"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2364"/>
         <source>[完成] 所有原生库文件完整</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2267"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2386"/>
         <source>已结束游戏进程 (PID: %1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2476"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2595"/>
         <source>日志已导出到: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/launch_backend.cpp" line="2488"/>
+        <location filename="../src/backend/launch_backend.cpp" line="2607"/>
         <source>无法打开: %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4573,67 +4676,67 @@
 <context>
     <name>ShadowLauncher::Launcher</name>
     <message>
-        <location filename="../src/core/launcher.cpp" line="346"/>
+        <location filename="../src/core/launcher.cpp" line="348"/>
         <source>另一个 Minecraft 实例已在运行</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/launcher.cpp" line="413"/>
+        <location filename="../src/core/launcher.cpp" line="415"/>
         <source>无法读取版本配置: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/launcher.cpp" line="422"/>
+        <location filename="../src/core/launcher.cpp" line="424"/>
         <source>版本配置格式错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/launcher.cpp" line="440"/>
+        <location filename="../src/core/launcher.cpp" line="442"/>
         <source>启动 Minecraft %1...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/launcher.cpp" line="568"/>
+        <location filename="../src/core/launcher.cpp" line="570"/>
         <source>正在停止 Minecraft...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/launcher.cpp" line="654"/>
+        <location filename="../src/core/launcher.cpp" line="656"/>
         <source>Minecraft 进程已启动 (PID: %1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/launcher.cpp" line="862"/>
+        <location filename="../src/core/launcher.cpp" line="858"/>
         <source>Minecraft 异常退出 (退出码: %1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/launcher.cpp" line="880"/>
+        <location filename="../src/core/launcher.cpp" line="876"/>
         <source>启动失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/launcher.cpp" line="881"/>
+        <location filename="../src/core/launcher.cpp" line="877"/>
         <source>未知进程错误</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/launcher.cpp" line="896"/>
+        <location filename="../src/core/launcher.cpp" line="892"/>
         <source>Java 未找到: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/launcher.cpp" line="903"/>
+        <location filename="../src/core/launcher.cpp" line="899"/>
         <source>版本目录不存在: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/launcher.cpp" line="910"/>
+        <location filename="../src/core/launcher.cpp" line="906"/>
         <source>版本核心文件缺失: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/launcher.cpp" line="917"/>
+        <location filename="../src/core/launcher.cpp" line="913"/>
         <source>版本配置文件缺失: %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4646,98 +4749,103 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="129"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="133"/>
         <source>无法启动本地回调服务器</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="182"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="186"/>
         <source>微软回调报错：%1（%2）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="189"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="195"/>
+        <source>登录回调校验未通过（state 不匹配），请重新登录</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/core/microsoft_auth.cpp" line="202"/>
         <source>浏览器回调里没有授权码，请重试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="193"/>
-        <location filename="../src/core/microsoft_auth.cpp" line="297"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="206"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="311"/>
         <source>获取授权码</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="217"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="231"/>
         <source>打开浏览器</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="224"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="238"/>
         <source>登录超时（5 分钟未完成浏览器登录），请重试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="301"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="315"/>
         <source>登录被用户手动取消</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="308"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="322"/>
         <source>正在加载登录页面</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="322"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="336"/>
         <source>换取访问令牌</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="357"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="371"/>
         <source>Xbox Live 认证</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="375"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="389"/>
         <source>XBL 令牌为空</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="383"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="397"/>
         <source>XSTS 认证</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="401"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="415"/>
         <source>XSTS 错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="406"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="420"/>
         <source>XSTS 响应无效</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="413"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="427"/>
         <source>Minecraft 认证</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="425"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="439"/>
         <source>MC 令牌为空</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="434"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="448"/>
         <source>获权个人信息</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="446"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="460"/>
         <source>未找到 Minecraft 档案</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/microsoft_auth.cpp" line="465"/>
+        <location filename="../src/core/microsoft_auth.cpp" line="479"/>
         <source>认证流程冲突，请稍后重试</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5342,10 +5450,10 @@
     </message>
     <message>
         <location filename="../src/core/modpack/modpack_downloader.cpp" line="291"/>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="523"/>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="534"/>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="562"/>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="680"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="539"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="550"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="578"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="696"/>
         <source>开始下载模组…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5375,67 +5483,67 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="520"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="536"/>
         <source>正在补全下载地址…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="663"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="679"/>
         <source>⚠ %1 官方直链缺失，改用镜像分片尝试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="666"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="682"/>
         <source>无法获取下载地址（HTTP %1）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="672"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="688"/>
         <source>⚠ %1 无法获取下载地址</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="704"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="720"/>
         <source>⚠ CurseForge 地址解析失败，%1ms 后第 %2/%3 次重试: %4</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="732"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="748"/>
         <source>❌ %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="778"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="794"/>
         <source>无可用下载地址</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="801"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="817"/>
         <source>警告：覆盖前备份失败，旧文件已保留（下载成功后仍会被新文件替换）: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="940"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="956"/>
         <source>下载失败（详见日志）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="950"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="966"/>
         <source>⚠ %1 下载失败: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="1005"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="1021"/>
         <source>❌ 模组下载停滞 %1 秒无任何字节进展，已中止（已完成文件保留）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="1022"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="1038"/>
         <source>下载停滞（%1 秒无字节进展）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_downloader.cpp" line="1069"/>
+        <location filename="../src/core/modpack/modpack_downloader.cpp" line="1085"/>
         <source>已取消下载</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5672,7 +5780,7 @@
     <message>
         <location filename="../src/core/modpack/modpack_install_task.cpp" line="314"/>
         <source>关闭</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">關閉</translation>
     </message>
     <message>
         <location filename="../src/core/modpack/modpack_install_task.cpp" line="327"/>
@@ -5710,465 +5818,475 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="468"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="441"/>
+        <source>解压体积超出安全上限（疑似恶意压缩包），已中止导入</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="442"/>
+        <source>整合包被安全策略拒绝：%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="478"/>
         <source>已安装整合包自带的 Java：%1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="493"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="503"/>
         <source>覆写资源解压完成，共 %1 个文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="494"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="504"/>
         <source>整合包不含覆写资源，跳过解压</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="505"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="515"/>
         <source>整合包不含远端模组，跳过下载</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="514"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="524"/>
         <source>下载模组</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="516"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="526"/>
         <source>准备下载 %1 个文件…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="603"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="613"/>
         <source>模组批量下载，剩余 %1 个文件（%2 个失败）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="604"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="614"/>
         <source>模组批量下载，剩余 %1 个文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="644"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="654"/>
         <source>[追踪] onDownloadAllFinished 进入 cancelled=%1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="649"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="659"/>
         <source>[追踪] onDownloadAllFinished 忽略：终态已开始</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="667"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="677"/>
         <source>Minecraft %1 的加载器安装失败（确定性错误，重试无效）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="669"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="679"/>
         <source>[追踪] %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="709"/>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="713"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="719"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="723"/>
         <source>全部 %1 个文件下载失败，首个错误: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="710"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="720"/>
         <source>⚠ %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="721"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="731"/>
         <source>%1/%2 个文件下载失败（已保留 %3 个已完成文件），首个错误: %4</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="723"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="733"/>
         <source>❌ %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="738"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="748"/>
         <source>[追踪] tryFinalize 进入 modsDone=%1 mcDone=%2 phase=%3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="749"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="759"/>
         <source>警告：%1 个旧文件覆盖前备份失败，新文件已覆盖，原内容不可恢复：</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="754"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="764"/>
         <source>   ...（其余 %1 个见下载日志）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="776"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="786"/>
         <source>安装游戏本体与加载器</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="787"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="797"/>
         <source>安装 Minecraft %1 + %2 %3 → %4</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="792"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="802"/>
         <source>[追踪] installFinished 收到 ok=%1 installingMc=%2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="797"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="807"/>
         <source>[追踪] runMcInstall 已连接 installFinished (m_vb=%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="805"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="815"/>
         <source>整合包未指定加载器，按纯原版处理（安装 %1）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="836"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="846"/>
         <source>[追踪] onMcInstallFinished ok=%1 进入</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="864"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="874"/>
         <source>加载器安装失败，正在自动重试（第 %1 次）…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="866"/>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1171"/>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1182"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="876"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1185"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1196"/>
         <source>重新安装加载器…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="874"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="884"/>
         <source>加载器安装失败（MC 与模组已保留），请点击卡片「重试加载器」重新尝试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="876"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="886"/>
         <source>加载器安装失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="877"/>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="879"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="887"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="889"/>
         <source>加载器安装失败（MC 与模组已保留），可点击重试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="883"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="893"/>
         <source>Minecraft %1 安装失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="892"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="902"/>
         <source>将版本 %1 重命名为 %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="894"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="904"/>
         <source>版本重命名失败: %1 → %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="905"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="915"/>
         <source>复制已安装的 %1 版本目录到 %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="909"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="919"/>
         <source>原版版本目录不存在: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="980"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="990"/>
         <source>[追踪] runFinalize 进入</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="981"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="991"/>
         <source>整理版本信息</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="985"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="995"/>
         <source>正在生成版本信息…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="995"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1005"/>
         <source>未找到版本 JSON，尝试从原版清单补全…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1002"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1012"/>
         <source>版本 JSON 缺失（%1），安装流程异常</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1070"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1080"/>
         <source>已补全版本 JSON: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1073"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1083"/>
         <source>无法写入版本 JSON: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1081"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1091"/>
         <source>[追踪] completeImport 进入</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1085"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1095"/>
         <source>已刷新版本列表</source>
         <translation type="unfinished">已重新整理版本列表</translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1092"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1104"/>
         <source>导入完成</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1095"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1109"/>
         <source>完成</source>
         <translation type="unfinished">完成</translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1096"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1110"/>
         <source>✅ 整合包导入完成：%1 → 版本 %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1139"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1153"/>
         <source>整合包图标已保存: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1160"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1174"/>
         <source>加载器安装失败，且该加载器暂不支持重试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1172"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1186"/>
         <source>重新安装加载器</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1179"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1193"/>
         <source>用户点击「重试加载器」，重新尝试安装加载器…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1195"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1209"/>
         <source>══ 取消触发：终止全部任务（模组下载 / MC 下载 / 加载器安装）══</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1197"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1211"/>
         <source>→ 正在终止模组独立下载引擎（网络请求 + 落盘）…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1204"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1218"/>
         <source>→ 正在终止版本安装（会话 %1）…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1212"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1226"/>
         <source>→ 放弃待重试的加载器安装，清理已生成文件…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1217"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1231"/>
         <source>→ 当前处于解析/解压阶段，等待工作线程响应取消…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1223"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1237"/>
         <source>→ 等待全部任务停止后统一清理临时文件…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1226"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1240"/>
         <source>⚠ 取消兜底触发：强制清理（部分任务未响应）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1246"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1260"/>
         <source>⚠ %1（等待版本安装停止后回滚）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1264"/>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1301"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1278"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1315"/>
         <source>❌ 导入失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1266"/>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1304"/>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1677"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1280"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1318"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1691"/>
         <source>失败</source>
         <translation type="unfinished">失敗</translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1288"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1302"/>
         <source>⚠ %1（等待版本安装结束后置为失败，已完成文件保留）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1302"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1316"/>
         <source>→ 已保留 %1 个已下载文件，失败清单可用「补下失败项」重试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1323"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1337"/>
         <source>没有可补下的失败文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1346"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1360"/>
         <source>正在补下 %1 个失败的文件…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1347"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1361"/>
         <source>↻ 补下失败项：%1 个文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1348"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1362"/>
         <source>正在下载模组</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1367"/>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1368"/>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1370"/>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1371"/>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1372"/>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1675"/>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1677"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1381"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1382"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1384"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1385"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1386"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1689"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1691"/>
         <source>已取消</source>
         <translation type="unfinished">已取消</translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1369"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1383"/>
         <source>导入已取消，已清理本次生成的文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1377"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1391"/>
         <source>回滚清理中…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1387"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1401"/>
         <source>→ 已恢复被覆盖的旧文件 %1 个</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1393"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1407"/>
         <source>→ 已删除任务创建文件 %1 个（模组/解压资源/临时 Jar）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1410"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1424"/>
         <source>检测到玩家存档，保留版本目录: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1413"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1427"/>
         <source>→ 已删除版本目录: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1419"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1433"/>
         <source>→ 已删除覆盖备份目录: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1422"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1436"/>
         <source>✅ 临时文件清理完成，本次任务无残留、无挂起后台任务</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1471"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1485"/>
         <source>正在准备下载文件…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1473"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1487"/>
         <source>正在下载模组 (%1/%2，%3 个失败)…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1476"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1490"/>
         <source>正在下载模组 (%1/%2)…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1479"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1493"/>
         <source>正在安装 Minecraft %1…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1481"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1495"/>
         <source>正在整理文件…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1503"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1517"/>
         <source>解析校验</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1503"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1517"/>
         <source>Overrides 解压</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1503"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1517"/>
         <source>模组批量下载</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1504"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1518"/>
         <source>版本信息注册</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1540"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1554"/>
         <source>导入整合包</source>
         <translation type="unfinished">匯入整合包</translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1542"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1556"/>
         <source>开始导入整合包</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1673"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1687"/>
         <source>已完成</source>
         <translation type="unfinished">已完成</translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1702"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1716"/>
         <source>已备份将被覆盖的文件: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1705"/>
+        <location filename="../src/core/modpack/modpack_install_task.cpp" line="1719"/>
         <source>警告：无法备份将被覆盖的文件（覆盖后不可恢复）: %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -6176,78 +6294,98 @@
 <context>
     <name>ShadowLauncher::MultiplayerManager</name>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="159"/>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="194"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="160"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="202"/>
         <source>请先退出当前房间</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="202"/>
-        <source>操作过于频繁，请稍后再试</source>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="218"/>
+        <source>房间码无效或不存在；连续 %1 次失败已触发冷却，请 %2 秒后再试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="205"/>
-        <source>房间码无效，请检查后重试</source>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="222"/>
+        <source>尝试过于频繁，请 %1 秒后再试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="376"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="226"/>
+        <source>房间码无效或不存在，请检查后重试</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="397"/>
         <source>房间里不能改名，请先离开房间</source>
         <translation type="unfinished">房間裡不能改名，請先離開房間</translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="381"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="402"/>
         <source>昵称不能为空</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="571"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="597"/>
         <source>无法启动联机服务: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="608"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="639"/>
         <source>MC服务器启动超时，联机会话结束</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="658"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="689"/>
         <source>房间已满（%1/%1）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="884"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="916"/>
         <source>无法创建联机隧道端口</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="910"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="938"/>
         <source>未找到联机中心，请确认房主已创建房间</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="916"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="945"/>
         <source>房间已空闲超时，自动关闭</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="985"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="1014"/>
         <source>重连失败：无法创建联机隧道</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="1019"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="1034"/>
+        <source>与联机中心的连接已断开</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="1052"/>
         <source>网络错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="1064"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="1099"/>
         <source>联机服务器尚未就绪，请稍后再试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="1800"/>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="1357"/>
+        <source>无法建立游戏端口转发（本地端口 %1 不可用）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="1359"/>
+        <source>无法建立游戏端口转发（本地端口 %1 不可用），请重试或换用其他端口</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/multiplayer/multiplayer_manager.cpp" line="1891"/>
         <source>MC服务器连接已断开，联机会话结束</source>
         <translation type="unfinished"></translation>
     </message>
@@ -6255,469 +6393,509 @@
 <context>
     <name>ShadowLauncher::ResourceBackend</name>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="276"/>
-        <source>[汉化] 打开 %1 失败: %2</source>
+        <location filename="../src/backend/resource_backend.cpp" line="284"/>
+        <source>%1：网络连接失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="283"/>
-        <source>[汉化] 解析 %1 失败: %2</source>
+        <location filename="../src/backend/resource_backend.cpp" line="285"/>
+        <source>%1：网络连接失败（%2）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="304"/>
-        <source>[汉化] 已加载 %1 条模组中文名，示例: %2</source>
+        <location filename="../src/backend/resource_backend.cpp" line="288"/>
+        <source>%1：服务暂时不可用（HTTP %2）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/resource_backend.cpp" line="293"/>
+        <source>%1：镜像与官方均未返回有效数据（HTTP %2）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/resource_backend.cpp" line="295"/>
+        <source>%1：镜像与官方均未返回有效数据（%2）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/resource_backend.cpp" line="297"/>
+        <source>%1：镜像与官方均未返回有效数据</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/resource_backend.cpp" line="310"/>
+        <source>仍有源 25 秒未返回响应</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/backend/resource_backend.cpp" line="313"/>
+        <source>[搜索失败] %1: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/resource_backend.cpp" line="322"/>
+        <source>[汉化] 打开 %1 失败: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/resource_backend.cpp" line="329"/>
+        <source>[汉化] 解析 %1 失败: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/resource_backend.cpp" line="350"/>
+        <source>[汉化] 已加载 %1 条模组中文名，示例: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/resource_backend.cpp" line="359"/>
         <source>[百科] 打开 %1 失败: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="320"/>
+        <location filename="../src/backend/resource_backend.cpp" line="366"/>
         <source>[百科] 解析 %1 失败: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="351"/>
+        <location filename="../src/backend/resource_backend.cpp" line="397"/>
         <source>[百科] 已加载 %1 条 class-id 索引（en:%2/cf:%3/mr:%4）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="530"/>
+        <location filename="../src/backend/resource_backend.cpp" line="576"/>
         <source>加载 %1 个 %2 推荐Mod</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="550"/>
+        <location filename="../src/backend/resource_backend.cpp" line="596"/>
         <source>加载 %1 个光影包</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="565"/>
+        <location filename="../src/backend/resource_backend.cpp" line="611"/>
         <source>[搜索] 正在搜索Mod: %1 (%2)...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="584"/>
+        <location filename="../src/backend/resource_backend.cpp" line="630"/>
         <source>[搜索] 中文“%1”命中 %2 个候选，聚合搜索</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="593"/>
+        <location filename="../src/backend/resource_backend.cpp" line="639"/>
         <source>[搜索] 中文“%1”→英文“%2”</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="594"/>
+        <location filename="../src/backend/resource_backend.cpp" line="640"/>
         <source>[搜索] 中文“%1”未命中汉化表，原样搜索</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="596"/>
+        <location filename="../src/backend/resource_backend.cpp" line="642"/>
         <source>[搜索] searchModsEx 入口 q=“%1” eff=“%2”</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="637"/>
+        <location filename="../src/backend/resource_backend.cpp" line="696"/>
         <source>[池子] Mod 搜索重置: q=%1 offset=%2 limit=%3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="722"/>
+        <location filename="../src/backend/resource_backend.cpp" line="781"/>
         <source>Modrinth 镜像返回空(异常)，降级官方 API</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="735"/>
+        <location filename="../src/backend/resource_backend.cpp" line="795"/>
         <source>官方降级成功: +%1 条</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="738"/>
+        <location filename="../src/backend/resource_backend.cpp" line="798"/>
         <source>Modrinth 官方降级失败: HTTP %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="745"/>
+        <location filename="../src/backend/resource_backend.cpp" line="806"/>
         <source>Modrinth 官方降级网络错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="759"/>
+        <location filename="../src/backend/resource_backend.cpp" line="822"/>
         <source>Modrinth 搜索失败: HTTP %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="766"/>
+        <location filename="../src/backend/resource_backend.cpp" line="830"/>
         <source>Modrinth 网络错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="792"/>
+        <location filename="../src/backend/resource_backend.cpp" line="858"/>
         <source>CurseForge 搜索失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="816"/>
+        <location filename="../src/backend/resource_backend.cpp" line="883"/>
         <source>[池子] Mod 有源 25s 未返回，结束等待</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="839"/>
+        <location filename="../src/backend/resource_backend.cpp" line="907"/>
         <source>[池子] Mod 合并: 冻结 %1 + 候选 %2 → 池 %3 条</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="873"/>
+        <location filename="../src/backend/resource_backend.cpp" line="941"/>
         <source>[汉化] emitModPool 池=%1 条，附加中文=%2 条，表=%3 条</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="975"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1047"/>
         <source>[搜索] 中文聚合：合并 %1 条结果</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1074"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1146"/>
         <source>冒险类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1075"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1147"/>
         <source>猎奇诡异类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1076"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1148"/>
         <source>装饰类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1077"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1149"/>
         <source>经济系统类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1078"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1150"/>
         <source>装备武器类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1079"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1151"/>
         <source>食物食材类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1080"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1152"/>
         <source>游戏机制类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1081"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1153"/>
         <source>前置依赖库</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1082"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1154"/>
         <source>魔法类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1083"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1155"/>
         <source>管理辅助类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1084"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1156"/>
         <source>迷你小游戏类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1085"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1157"/>
         <source>生物怪物类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1086"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1158"/>
         <source>性能优化类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1087"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1159"/>
         <source>社交交互类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1088"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1160"/>
         <source>仓储存储类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1089"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1161"/>
         <source>科技工业类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1090"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1162"/>
         <source>交通载具类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1091"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1163"/>
         <source>实用工具类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1092"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1164"/>
         <source>世界生成类</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1129"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1205"/>
         <source>[池子] 光影搜索重置: offset=%1 limit=%2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1191"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1267"/>
         <source>光影镜像返回空(异常)，降级官方 API</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1204"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1281"/>
         <source>光影官方降级成功: +%1 条</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1207"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1284"/>
         <source>光影官方降级失败: HTTP %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1214"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1292"/>
         <source>光影官方降级网络错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1228"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1308"/>
         <source>光影搜索失败: HTTP %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1235"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1316"/>
         <source>光影搜索网络错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1262"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1345"/>
         <source>CurseForge 光影搜索失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1278"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1362"/>
         <source>[池子] 光影有源 25s 未返回，结束等待</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1299"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1384"/>
         <source>[池子] 光影合并: 冻结 %1 + 候选 %2 → 池 %3 条</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1329"/>
-        <location filename="../src/backend/resource_backend.cpp" line="1345"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1417"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1433"/>
         <source>已有下载任务进行中</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1337"/>
-        <location filename="../src/backend/resource_backend.cpp" line="1353"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1425"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1441"/>
         <source>正在查找 %1 MC%2 的最新版本...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1382"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1474"/>
         <source>[池子] 资源包搜索重置: offset=%1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1432"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1524"/>
         <source>[RP] 镜像返回空(异常)，降级官方 API</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1462"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1555"/>
         <source>[RP] 官方降级成功: +%1 条</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1465"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1558"/>
         <source>[RP] 官方降级失败: HTTP %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1472"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1566"/>
         <source>[RP] 官方降级网络错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1511"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1607"/>
         <source>[RP] Modrinth 搜索失败: HTTP %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1518"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1615"/>
         <source>[RP] Modrinth 网络错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1542"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1641"/>
         <source>[RP] CurseForge 搜索失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1558"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1658"/>
         <source>[池子] 资源包有源 25s 未返回，结束等待</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1579"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1680"/>
         <source>[池子] 资源包合并: 冻结 %1 + 候选 %2 → 池 %3 条</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1636"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1747"/>
         <source>[池子] 整合包搜索重置: q=%1 loader=%2 cat=%3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1696"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1807"/>
         <source>整合包镜像返回空(异常)，降级官方 API</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1709"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1821"/>
         <source>整合包官方降级成功: +%1 条</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1712"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1824"/>
         <source>整合包官方降级失败: HTTP %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1719"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1832"/>
         <source>整合包官方降级网络错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1733"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1848"/>
         <source>整合包 Modrinth 搜索失败: HTTP %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1740"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1856"/>
         <source>整合包 Modrinth 网络错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1765"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1883"/>
         <source>整合包 CurseForge 搜索失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1781"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1900"/>
         <source>[池子] 整合包有源 25s 未返回，结束等待</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1825"/>
+        <location filename="../src/backend/resource_backend.cpp" line="1945"/>
         <source>[池子] 整合包合并: 冻结 %1 + 候选 %2 → 池 %3 条</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="1941"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2067"/>
         <source>[池子] 数据包搜索重置: q=%1 cat=%2 sort=%3 source=%4</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2002"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2128"/>
         <source>数据包镜像返回空(异常)，降级官方 API</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2015"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2142"/>
         <source>数据包官方降级成功: +%1 条</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2018"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2145"/>
         <source>数据包官方降级失败: HTTP %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2025"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2153"/>
         <source>数据包官方降级网络错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2039"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2169"/>
         <source>数据包 Modrinth 搜索失败: HTTP %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2046"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2177"/>
         <source>数据包 Modrinth 网络错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2074"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2207"/>
         <source>数据包 CurseForge 搜索失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2091"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2225"/>
         <source>[池子] 数据包有源 25s 未返回，结束等待</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2132"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2267"/>
         <source>[池子] 数据包合并: 冻结 %1 + 候选 %2 → 池 %3 条</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2332"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2470"/>
         <source>[依赖] %1 → Modrinth: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2432"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2570"/>
         <source>[警告]️ 已有下载任务进行中</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2439"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2577"/>
         <source>[搜索] 正在查找资源包 %1 ...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2473"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2611"/>
         <source>找到 %1 个结果</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2568"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2706"/>
         <source>[完成] %1 下载完成</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2570"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2708"/>
         <source>[失败] %1 下载失败，请检查版本兼容性</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/resource_backend.cpp" line="2618"/>
+        <location filename="../src/backend/resource_backend.cpp" line="2756"/>
         <source>找到 %1 个资源包</source>
         <translation type="unfinished"></translation>
     </message>
@@ -6725,127 +6903,127 @@
 <context>
     <name>ShadowLauncher::SettingsBackend</name>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="374"/>
+        <location filename="../src/backend/settings_backend.cpp" line="375"/>
         <source>Java 已配置: %1 (版本 %2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="382"/>
+        <location filename="../src/backend/settings_backend.cpp" line="383"/>
         <source>正在后台自动检测 Java...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="395"/>
+        <location filename="../src/backend/settings_backend.cpp" line="396"/>
         <source>[失败] 路径不存在: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="400"/>
+        <location filename="../src/backend/settings_backend.cpp" line="401"/>
         <source>[失败] 无法获取 Java 版本: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="414"/>
+        <location filename="../src/backend/settings_backend.cpp" line="415"/>
         <source>[完成] Java 已设置: %1 (版本 %2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="433"/>
+        <location filename="../src/backend/settings_backend.cpp" line="434"/>
         <source>Java 扫描已在进行中...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="437"/>
+        <location filename="../src/backend/settings_backend.cpp" line="438"/>
         <source>正在后台扫描 Java 安装...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="466"/>
+        <location filename="../src/backend/settings_backend.cpp" line="467"/>
         <source>找到 %1 个 Java 安装，最新: Java %2 (优先 Java 21)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="474"/>
+        <location filename="../src/backend/settings_backend.cpp" line="475"/>
         <source>[警告] 未在系统中找到 Java 安装</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="503"/>
+        <location filename="../src/backend/settings_backend.cpp" line="504"/>
         <source>[失败] Java 索引无效: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="512"/>
+        <location filename="../src/backend/settings_backend.cpp" line="513"/>
         <source>[完成] 已切换 Java %1: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="532"/>
+        <location filename="../src/backend/settings_backend.cpp" line="533"/>
         <source>[完成] 已选择 Java %1: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="538"/>
+        <location filename="../src/backend/settings_backend.cpp" line="539"/>
         <source>[警告] 未找到合适的 Java，请手动指定</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="554"/>
+        <location filename="../src/backend/settings_backend.cpp" line="555"/>
         <source>[完成] 已改为自动选择 Java（启动时按版本需求匹配）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="571"/>
+        <location filename="../src/backend/settings_backend.cpp" line="572"/>
         <source>Java 列表为空，正在后台重新扫描...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="625"/>
+        <location filename="../src/backend/settings_backend.cpp" line="626"/>
         <source>选择 Java 可执行文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="627"/>
+        <location filename="../src/backend/settings_backend.cpp" line="628"/>
         <source>Java 可执行文件 (java.exe javaw.exe);;所有文件 (*.*)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1063"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1064"/>
         <source>游戏目录已设置: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1071"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1072"/>
         <source>版本隔离已开启 — 各版本拥有独立的存档/截图/配置</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1072"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1073"/>
         <source>版本隔离已关闭 — 所有版本共享游戏目录</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1080"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1081"/>
         <source>版本 %1 已迁移到隔离模式</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1082"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1083"/>
         <source>版本 %1 迁移失败：未找到版本 JSON</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1744"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1745"/>
         <source>极光（默认）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1868"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1881"/>
         <source>选择启动页背景图片</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/settings_backend.cpp" line="1869"/>
+        <location filename="../src/backend/settings_backend.cpp" line="1882"/>
         <source>图片 (*.png *.jpg *.jpeg *.webp *.bmp)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -6853,312 +7031,307 @@
 <context>
     <name>ShadowLauncher::ShadowBackend</name>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="238"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="239"/>
         <source>[完成] 已自动匹配 Java %1: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="441"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="442"/>
         <source>皮肤已上传，正在同步头像</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="443"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="444"/>
         <source>皮肤上传失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="655"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="656"/>
         <source>所有文件校验通过</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="655"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="656"/>
         <source>存在损坏/缺失文件，请修复后重试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="670"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="674"/>
         <source>Shadow Launcher — 版本完整性校验报告
 </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="672"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="676"/>
         <source>时间: </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="673"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="679"/>
         <source>版本: </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="674"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="680"/>
         <source>异常文件数: </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="680"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="686"/>
         <source>请使用「一键修复」重新下载损坏/缺失的文件。
 </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="809"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="815"/>
         <source>资源包下载</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="833"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="839"/>
         <source>资源包下载失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="897"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="905"/>
         <source>下载失败</source>
         <translation type="unfinished">下載失敗</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="945"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="953"/>
         <source>已取消</source>
         <translation type="unfinished">已取消</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="1395"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="1418"/>
         <source>今天 %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="1396"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="1419"/>
         <source>昨天 %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="1397"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="1420"/>
         <source>%1 天前</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="1401"/>
-        <source>%1 月 %2 日</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="1706"/>
-        <location filename="../src/backend/shadow_backend.cpp" line="1781"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="1724"/>
         <location filename="../src/backend/shadow_backend.cpp" line="1799"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="1817"/>
         <source>原版</source>
         <translation type="unfinished">原版</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="1879"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="1897"/>
         <source>已扫描 %1 个已安装版本</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2148"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2166"/>
         <source>正在扫描 Java 环境...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2164"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2182"/>
         <source>[JVM] GC参数已更新: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2175"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2193"/>
         <source>[GAME] 游戏附加参数已更新: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2186"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2204"/>
         <source>[GPU] 高性能显卡模式: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2362"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2380"/>
         <source>用户手动选择 Java 环境...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2386"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2404"/>
         <source>外部 .minecraft 遵循原布局，不可切换版本隔离</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2430"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2448"/>
         <source>已切换到外部 .minecraft: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2454"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2472"/>
         <source>已恢复默认游戏目录: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2479"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2497"/>
         <source>选择保存文件夹</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2508"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2526"/>
         <source>已打开游戏目录</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2517"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2535"/>
         <source>已打开最新日志</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2537"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2555"/>
         <source>已打开日志目录</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2545"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2563"/>
         <source>已打开启动器日志目录</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2558"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2576"/>
         <source>已打开崩溃日志</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2570"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2588"/>
         <source>已打开崩溃日志 (隔离目录)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2637"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2655"/>
         <source>正版令牌已过期且无刷新令牌，导出脚本将以离线方式启动（Realms 不可用）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2660"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2678"/>
         <source>正版令牌已过期且刷新失败，导出脚本将以离线方式启动（Realms 不可用）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2715"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2733"/>
         <source>已打开存档文件夹</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2727"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2745"/>
         <source>已打开截图文件夹</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2739"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2757"/>
         <source>已打开 Mod 文件夹</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2751"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2769"/>
         <source>已打开资源包文件夹</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="2759"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="2777"/>
         <source>已打开光影包文件夹</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3250"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3272"/>
         <source>正版令牌已过期且没有刷新令牌，本次启动将以离线身份进入（请重新登录正版账号）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3273"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3295"/>
         <source>正版令牌过期且刷新失败（网络或账号问题），本次以离线身份进入</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3745"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3777"/>
         <source>选择皮肤图片</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3746"/>
-        <location filename="../src/backend/shadow_backend.cpp" line="3864"/>
-        <location filename="../src/backend/shadow_backend.cpp" line="3897"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3778"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3896"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3929"/>
         <source>PNG 图片 (*.png)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3752"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3784"/>
         <source>无法读取图片</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3759"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3791"/>
         <source>皮肤尺寸必须为 64x64 或 64x32，当前为 %1x%2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3764"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3796"/>
         <source>已选择皮肤: %1 (%2x%3)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3771"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3803"/>
         <source>账户后端未就绪</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3800"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3832"/>
         <source>离线账号无法更换皮肤（仅正版账号支持上传）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3811"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3843"/>
         <source>未就绪</source>
         <translation type="unfinished">未就緒</translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3829"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3861"/>
         <source>获取皮肤信息失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3846"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3878"/>
         <source>未找到活跃皮肤</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3857"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3889"/>
         <source>皮肤纹理下载失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3863"/>
-        <location filename="../src/backend/shadow_backend.cpp" line="3896"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3895"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3928"/>
         <source>保存皮肤文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3872"/>
-        <location filename="../src/backend/shadow_backend.cpp" line="3901"/>
-        <location filename="../src/backend/shadow_backend.cpp" line="3912"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3904"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3933"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3944"/>
         <source>皮肤已保存到: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3874"/>
-        <location filename="../src/backend/shadow_backend.cpp" line="3916"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3906"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3948"/>
         <source>保存失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="3892"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="3924"/>
         <source>没有可保存的皮肤</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/shadow_backend.cpp" line="5259"/>
+        <location filename="../src/backend/shadow_backend.cpp" line="5291"/>
         <source>自动重启失败，请手动重新打开启动器以完成更新</source>
         <translation type="unfinished"></translation>
     </message>
@@ -7332,610 +7505,636 @@
 <context>
     <name>ShadowLauncher::VersionBackend</name>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="229"/>
+        <location filename="../src/backend/version_backend.cpp" line="230"/>
         <source>版本列表已加载 (%1 个版本)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="248"/>
+        <location filename="../src/backend/version_backend.cpp" line="249"/>
         <source>获取版本列表失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="511"/>
+        <location filename="../src/backend/version_backend.cpp" line="520"/>
         <source>正在获取版本列表...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="599"/>
+        <location filename="../src/backend/version_backend.cpp" line="623"/>
         <source>[警告] %1 正在下载中</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="613"/>
+        <location filename="../src/backend/version_backend.cpp" line="637"/>
         <source>[等待] %1 已在下载队列中</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="655"/>
+        <location filename="../src/backend/version_backend.cpp" line="684"/>
         <source>[下载] 发现断点续传文件: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="673"/>
+        <location filename="../src/backend/version_backend.cpp" line="702"/>
         <source>[下载] 发现 %1 个断点续传块文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="717"/>
+        <location filename="../src/backend/version_backend.cpp" line="746"/>
         <source>未找到版本: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="733"/>
-        <location filename="../src/backend/version_backend.cpp" line="737"/>
-        <location filename="../src/backend/version_backend.cpp" line="741"/>
+        <location filename="../src/backend/version_backend.cpp" line="762"/>
+        <location filename="../src/backend/version_backend.cpp" line="766"/>
+        <location filename="../src/backend/version_backend.cpp" line="770"/>
         <source>正在获取 %1 版本信息...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="854"/>
+        <location filename="../src/backend/version_backend.cpp" line="883"/>
         <source>版本信息格式错误: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="1080"/>
-        <location filename="../src/backend/version_backend.cpp" line="2245"/>
-        <location filename="../src/backend/version_backend.cpp" line="3381"/>
-        <location filename="../src/backend/version_backend.cpp" line="3436"/>
-        <location filename="../src/backend/version_backend.cpp" line="3529"/>
-        <location filename="../src/backend/version_backend.cpp" line="3603"/>
-        <location filename="../src/backend/version_backend.cpp" line="3643"/>
+        <location filename="../src/backend/version_backend.cpp" line="1109"/>
+        <location filename="../src/backend/version_backend.cpp" line="2356"/>
+        <location filename="../src/backend/version_backend.cpp" line="3496"/>
+        <location filename="../src/backend/version_backend.cpp" line="3551"/>
+        <location filename="../src/backend/version_backend.cpp" line="3644"/>
+        <location filename="../src/backend/version_backend.cpp" line="3718"/>
+        <location filename="../src/backend/version_backend.cpp" line="3758"/>
         <source>校验中...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="1282"/>
+        <location filename="../src/backend/version_backend.cpp" line="1311"/>
         <source>[完成] 版本信息已就绪 (预取)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="1339"/>
+        <location filename="../src/backend/version_backend.cpp" line="1368"/>
         <source>获取 %1 版本信息: %2%</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="1465"/>
+        <location filename="../src/backend/version_backend.cpp" line="1494"/>
         <source>[版本] 版本信息拉取失败（第 %1 轮），稍后整体重试…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="1482"/>
+        <location filename="../src/backend/version_backend.cpp" line="1511"/>
         <source>获取版本信息失败（已重试 %1 轮，全部源不可用）: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="1536"/>
+        <location filename="../src/backend/version_backend.cpp" line="1565"/>
         <source>[版本] 拉取版本信息 第 %1/%2 轮（超时 %3s）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="1607"/>
-        <location filename="../src/backend/version_backend.cpp" line="3251"/>
-        <location filename="../src/backend/version_backend.cpp" line="4083"/>
-        <location filename="../src/backend/version_backend.cpp" line="4105"/>
-        <location filename="../src/backend/version_backend.cpp" line="4486"/>
-        <location filename="../src/backend/version_backend.cpp" line="4543"/>
-        <location filename="../src/backend/version_backend.cpp" line="5057"/>
-        <location filename="../src/backend/version_backend.cpp" line="5144"/>
-        <location filename="../src/backend/version_backend.cpp" line="5194"/>
+        <location filename="../src/backend/version_backend.cpp" line="1636"/>
+        <location filename="../src/backend/version_backend.cpp" line="3366"/>
+        <location filename="../src/backend/version_backend.cpp" line="4203"/>
+        <location filename="../src/backend/version_backend.cpp" line="4225"/>
+        <location filename="../src/backend/version_backend.cpp" line="4606"/>
+        <location filename="../src/backend/version_backend.cpp" line="4682"/>
+        <location filename="../src/backend/version_backend.cpp" line="5218"/>
+        <location filename="../src/backend/version_backend.cpp" line="5305"/>
+        <location filename="../src/backend/version_backend.cpp" line="5360"/>
         <source>空闲</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="1729"/>
-        <location filename="../src/backend/version_backend.cpp" line="1868"/>
-        <location filename="../src/backend/version_backend.cpp" line="1931"/>
-        <location filename="../src/backend/version_backend.cpp" line="1959"/>
+        <location filename="../src/backend/version_backend.cpp" line="1776"/>
+        <location filename="../src/backend/version_backend.cpp" line="1915"/>
+        <location filename="../src/backend/version_backend.cpp" line="1978"/>
+        <location filename="../src/backend/version_backend.cpp" line="2007"/>
+        <location filename="../src/backend/version_backend.cpp" line="2334"/>
         <source>已取消</source>
         <translation type="unfinished">已取消</translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="1887"/>
-        <location filename="../src/backend/version_backend.cpp" line="1888"/>
-        <location filename="../src/backend/version_backend.cpp" line="1913"/>
+        <location filename="../src/backend/version_backend.cpp" line="1934"/>
         <location filename="../src/backend/version_backend.cpp" line="1935"/>
-        <location filename="../src/backend/version_backend.cpp" line="1936"/>
-        <location filename="../src/backend/version_backend.cpp" line="1947"/>
-        <location filename="../src/backend/version_backend.cpp" line="1948"/>
+        <location filename="../src/backend/version_backend.cpp" line="1960"/>
+        <location filename="../src/backend/version_backend.cpp" line="1983"/>
+        <location filename="../src/backend/version_backend.cpp" line="1984"/>
+        <location filename="../src/backend/version_backend.cpp" line="1995"/>
+        <location filename="../src/backend/version_backend.cpp" line="1996"/>
         <source>已取消 %1 的安装</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="1914"/>
-        <location filename="../src/backend/version_backend.cpp" line="2467"/>
+        <location filename="../src/backend/version_backend.cpp" line="1961"/>
+        <location filename="../src/backend/version_backend.cpp" line="2582"/>
         <source>已取消队列中的 %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="2152"/>
+        <location filename="../src/backend/version_backend.cpp" line="2252"/>
         <source>[完成] %1 安装完成</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="2227"/>
+        <location filename="../src/backend/version_backend.cpp" line="2327"/>
         <source>取消</source>
         <translation type="unfinished">取消</translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="2251"/>
+        <location filename="../src/backend/version_backend.cpp" line="2362"/>
         <source>校验失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="2259"/>
+        <location filename="../src/backend/version_backend.cpp" line="2370"/>
         <source>[失败] %1 校验失败: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="2267"/>
+        <location filename="../src/backend/version_backend.cpp" line="2378"/>
         <source>未知错误</source>
         <translation type="unfinished">未知錯誤</translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="2274"/>
+        <location filename="../src/backend/version_backend.cpp" line="2385"/>
         <source>[重试] %1 安装失败 (%2)，正在尝试自动修复损坏文件...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="2362"/>
-        <location filename="../src/backend/version_backend.cpp" line="8918"/>
+        <location filename="../src/backend/version_backend.cpp" line="2477"/>
+        <location filename="../src/backend/version_backend.cpp" line="9181"/>
         <source>正在导入用户数据...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="2412"/>
-        <location filename="../src/backend/version_backend.cpp" line="9060"/>
+        <location filename="../src/backend/version_backend.cpp" line="2527"/>
+        <location filename="../src/backend/version_backend.cpp" line="9323"/>
         <source>用户数据导入完成</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="2416"/>
+        <location filename="../src/backend/version_backend.cpp" line="2531"/>
         <source>用户数据导入失败：ZIP文件读取失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="2802"/>
+        <location filename="../src/backend/version_backend.cpp" line="2917"/>
         <source>MC 和 %1 下载完成，开始安装...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="2838"/>
+        <location filename="../src/backend/version_backend.cpp" line="2953"/>
         <source>OptiFine jar 数据缺失</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="3056"/>
-        <location filename="../src/backend/version_backend.cpp" line="6555"/>
-        <location filename="../src/backend/version_backend.cpp" line="9320"/>
+        <location filename="../src/backend/version_backend.cpp" line="3171"/>
+        <location filename="../src/backend/version_backend.cpp" line="6826"/>
+        <location filename="../src/backend/version_backend.cpp" line="9594"/>
         <source>模组加载器安装失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="3129"/>
+        <location filename="../src/backend/version_backend.cpp" line="3244"/>
         <source>该任务已关闭，无法重试，请重新安装</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="3145"/>
+        <location filename="../src/backend/version_backend.cpp" line="3260"/>
         <source>已重启 %1 安装（复用已下载的原版与主文件）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="3156"/>
+        <location filename="../src/backend/version_backend.cpp" line="3271"/>
         <source>缺少任务信息，无法重试，请重新安装</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="3161"/>
+        <location filename="../src/backend/version_backend.cpp" line="3276"/>
         <source>该加载器暂不支持重试，请关闭后重新安装</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="3383"/>
-        <location filename="../src/backend/version_backend.cpp" line="3645"/>
-        <location filename="../src/backend/version_backend.cpp" line="9650"/>
+        <location filename="../src/backend/version_backend.cpp" line="3498"/>
+        <location filename="../src/backend/version_backend.cpp" line="3760"/>
+        <location filename="../src/backend/version_backend.cpp" line="9924"/>
         <source>下载中...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="3844"/>
+        <location filename="../src/backend/version_backend.cpp" line="3959"/>
         <source>▶ 开始队列中下一个版本: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4030"/>
+        <location filename="../src/backend/version_backend.cpp" line="4148"/>
         <source>正在修复文件，校验已排队，修复完成后自动继续</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4041"/>
+        <location filename="../src/backend/version_backend.cpp" line="4159"/>
         <source>校验已在运行，本次校验排队，完成后自动继续</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4053"/>
-        <location filename="../src/backend/version_backend.cpp" line="6664"/>
+        <location filename="../src/backend/version_backend.cpp" line="4171"/>
+        <location filename="../src/backend/version_backend.cpp" line="6927"/>
         <source>校验中</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4065"/>
+        <location filename="../src/backend/version_backend.cpp" line="4185"/>
         <source>正在校验版本 %1...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4081"/>
+        <location filename="../src/backend/version_backend.cpp" line="4201"/>
         <source>[失败] 无法读取版本配置: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4103"/>
+        <location filename="../src/backend/version_backend.cpp" line="4223"/>
         <source>[失败] 版本配置解析失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4123"/>
+        <location filename="../src/backend/version_backend.cpp" line="4243"/>
         <source>正在收集文件校验信息...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4426"/>
+        <location filename="../src/backend/version_backend.cpp" line="4546"/>
         <source>校验 %1 个文件...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4482"/>
+        <location filename="../src/backend/version_backend.cpp" line="4602"/>
         <source>[警告] 校验已取消</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4506"/>
+        <location filename="../src/backend/version_backend.cpp" line="4639"/>
+        <source>[警告] 校验已取消，本次没有产生校验结论</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/version_backend.cpp" line="4645"/>
         <source>[完成] 校验完成: %1 个文件全部通过</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4524"/>
+        <location filename="../src/backend/version_backend.cpp" line="4663"/>
         <source>[失败] 校验完成: %1/%2 个文件失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4526"/>
+        <location filename="../src/backend/version_backend.cpp" line="4665"/>
         <source>   失败文件: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4605"/>
+        <location filename="../src/backend/version_backend.cpp" line="4757"/>
         <source>正在取消校验...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4616"/>
+        <location filename="../src/backend/version_backend.cpp" line="4776"/>
         <source>正在取消修复...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4637"/>
+        <location filename="../src/backend/version_backend.cpp" line="4797"/>
         <source>没有可清理的校验结果，先执行校验识别损坏文件...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4675"/>
+        <location filename="../src/backend/version_backend.cpp" line="4835"/>
         <source>[清理] 清理完成: 删除 %1 个损坏文件, %2 个文件已不存在</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4679"/>
+        <location filename="../src/backend/version_backend.cpp" line="4839"/>
         <source>[提示] 请重新下载版本 %1 以恢复缺失文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4700"/>
+        <location filename="../src/backend/version_backend.cpp" line="4861"/>
         <source>没有待修复的文件缓存，正在重新校验...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4720"/>
+        <location filename="../src/backend/version_backend.cpp" line="4881"/>
         <source>[失败] 无法读取版本 JSON: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="4736"/>
+        <location filename="../src/backend/version_backend.cpp" line="4897"/>
         <source>[失败] 版本 JSON 解析失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5051"/>
+        <location filename="../src/backend/version_backend.cpp" line="5212"/>
         <source>[失败] %1 个文件在版本元数据中找不到下载地址，无法自动修复</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5053"/>
+        <location filename="../src/backend/version_backend.cpp" line="5214"/>
         <source>   无法修复: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5067"/>
+        <location filename="../src/backend/version_backend.cpp" line="5228"/>
         <source>[修复] 开始修复 %1 个文件</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5081"/>
+        <location filename="../src/backend/version_backend.cpp" line="5242"/>
         <source>修复中...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5148"/>
+        <location filename="../src/backend/version_backend.cpp" line="5309"/>
         <source>[完成] 修复完成: 全部 %1 个文件已恢复</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5151"/>
+        <location filename="../src/backend/version_backend.cpp" line="5312"/>
         <source>[失败] %1 个文件修复失败，请检查网络后重试</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5195"/>
+        <location filename="../src/backend/version_backend.cpp" line="5361"/>
         <source>[警告] 修复已取消</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5208"/>
+        <location filename="../src/backend/version_backend.cpp" line="5374"/>
         <source>[失败] 下载失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5220"/>
+        <location filename="../src/backend/version_backend.cpp" line="5386"/>
         <source>[失败] 下载失败: %1 (无可用源)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5255"/>
+        <location filename="../src/backend/version_backend.cpp" line="5421"/>
         <source>[调试] %1 失败: %2 (code=%3)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5286"/>
+        <location filename="../src/backend/version_backend.cpp" line="5452"/>
         <source>[失败] 写入文件失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5292"/>
+        <location filename="../src/backend/version_backend.cpp" line="5458"/>
         <source>[失败] 无法写入: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5298"/>
+        <location filename="../src/backend/version_backend.cpp" line="5464"/>
         <source>[完成] 已修复: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5330"/>
+        <location filename="../src/backend/version_backend.cpp" line="5546"/>
         <source>重命名失败: ID不能为空</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5348"/>
+        <location filename="../src/backend/version_backend.cpp" line="5558"/>
+        <source>重命名失败: 版本 ID 非法（不能含 \ / : * ? &quot; &lt; &gt; | 或 ..，不能以空格/点结尾，最长 128 字符）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/version_backend.cpp" line="5577"/>
+        <source>重命名失败: 目标路径越界</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/version_backend.cpp" line="5587"/>
         <source>重命名失败: 版本 %1 不存在</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5358"/>
+        <location filename="../src/backend/version_backend.cpp" line="5597"/>
         <source>重命名失败: 目标 %1 已存在</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5370"/>
+        <location filename="../src/backend/version_backend.cpp" line="5609"/>
         <source>重命名失败: 无法重命名目录</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5406"/>
+        <location filename="../src/backend/version_backend.cpp" line="5646"/>
+        <source>重命名失败: 无法重命名版本文件，已回滚</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/version_backend.cpp" line="5663"/>
         <source>版本已重命名: %1 → %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5474"/>
+        <location filename="../src/backend/version_backend.cpp" line="5731"/>
         <source>克隆失败: ID不能为空</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5492"/>
+        <location filename="../src/backend/version_backend.cpp" line="5742"/>
+        <source>克隆失败: 版本 ID 非法（不能含 \ / : * ? &quot; &lt; &gt; | 或 ..，不能以空格/点结尾，最长 128 字符）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/backend/version_backend.cpp" line="5760"/>
         <source>克隆失败: 源版本 %1 不存在</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5502"/>
+        <location filename="../src/backend/version_backend.cpp" line="5770"/>
         <source>克隆失败: 目标 %1 已存在</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5514"/>
+        <location filename="../src/backend/version_backend.cpp" line="5785"/>
         <source>克隆失败: 复制过程中出错</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5548"/>
+        <location filename="../src/backend/version_backend.cpp" line="5819"/>
         <source>版本已克隆: %1 → %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5588"/>
+        <location filename="../src/backend/version_backend.cpp" line="5859"/>
         <source>已复制路径: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5701"/>
+        <location filename="../src/backend/version_backend.cpp" line="5972"/>
         <source>Fabric API 下载失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5772"/>
+        <location filename="../src/backend/version_backend.cpp" line="6043"/>
         <source>下载文件异常</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5781"/>
+        <location filename="../src/backend/version_backend.cpp" line="6052"/>
         <source>安装会话已失效（可能已取消）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5983"/>
+        <location filename="../src/backend/version_backend.cpp" line="6254"/>
         <source>%1 下载失败，正在重试（第 %2 轮）...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="5993"/>
+        <location filename="../src/backend/version_backend.cpp" line="6264"/>
         <source>所有源均不可用</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6050"/>
+        <location filename="../src/backend/version_backend.cpp" line="6321"/>
         <source>安装 OptiFine...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6116"/>
+        <location filename="../src/backend/version_backend.cpp" line="6387"/>
         <source>[完成] OptiFine 版本 ID: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6167"/>
+        <location filename="../src/backend/version_backend.cpp" line="6438"/>
         <source>并行下载 OptiFine: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6237"/>
+        <location filename="../src/backend/version_backend.cpp" line="6508"/>
         <source>OptiFine 下载失败（BMCLAPI 和官方源均失败）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6239"/>
-        <location filename="../src/backend/version_backend.cpp" line="6257"/>
+        <location filename="../src/backend/version_backend.cpp" line="6510"/>
+        <location filename="../src/backend/version_backend.cpp" line="6528"/>
         <source>OptiFine 下载失败</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6255"/>
+        <location filename="../src/backend/version_backend.cpp" line="6526"/>
         <source>OptiFine 下载失败（所有源返回无效数据）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6291"/>
-        <location filename="../src/backend/version_backend.cpp" line="6295"/>
+        <location filename="../src/backend/version_backend.cpp" line="6562"/>
+        <location filename="../src/backend/version_backend.cpp" line="6566"/>
         <source>OptiFine JAR 下载完成，等待 MC 下载...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6299"/>
+        <location filename="../src/backend/version_backend.cpp" line="6570"/>
         <source>[完成] MC 和 OptiFine 均下载完成，开始安装...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6347"/>
+        <location filename="../src/backend/version_backend.cpp" line="6618"/>
         <source>下载 OptiFine (mods/): %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6395"/>
-        <location filename="../src/backend/version_backend.cpp" line="6411"/>
+        <location filename="../src/backend/version_backend.cpp" line="6666"/>
+        <location filename="../src/backend/version_backend.cpp" line="6682"/>
         <source>[完成] OptiFine 已保存到 mods/ (%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6399"/>
+        <location filename="../src/backend/version_backend.cpp" line="6670"/>
         <source>[失败] OptiFine 下载失败 — 网络问题</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6455"/>
-        <location filename="../src/backend/version_backend.cpp" line="9425"/>
+        <location filename="../src/backend/version_backend.cpp" line="6726"/>
+        <location filename="../src/backend/version_backend.cpp" line="9699"/>
         <source>模组加载器: </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6528"/>
+        <location filename="../src/backend/version_backend.cpp" line="6799"/>
         <source>[ModLoader] 安装完成</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6529"/>
-        <location filename="../src/backend/version_backend.cpp" line="9303"/>
+        <location filename="../src/backend/version_backend.cpp" line="6800"/>
+        <location filename="../src/backend/version_backend.cpp" line="9577"/>
         <source>完成</source>
         <translation type="unfinished">完成</translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6540"/>
+        <location filename="../src/backend/version_backend.cpp" line="6811"/>
         <source>[完成] 所有版本安装完成！</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6556"/>
-        <location filename="../src/backend/version_backend.cpp" line="9342"/>
+        <location filename="../src/backend/version_backend.cpp" line="6827"/>
+        <location filename="../src/backend/version_backend.cpp" line="9616"/>
         <source>[失败] 模组加载器安装失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="6591"/>
+        <location filename="../src/backend/version_backend.cpp" line="6854"/>
         <source>等待MC下载完成...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="7146"/>
-        <location filename="../src/backend/version_backend.cpp" line="7151"/>
-        <location filename="../src/backend/version_backend.cpp" line="8734"/>
+        <location filename="../src/backend/version_backend.cpp" line="7409"/>
+        <location filename="../src/backend/version_backend.cpp" line="7414"/>
+        <location filename="../src/backend/version_backend.cpp" line="8997"/>
         <source>导入用户数据</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="7512"/>
+        <location filename="../src/backend/version_backend.cpp" line="7775"/>
         <source>已完成</source>
         <translation type="unfinished">已完成</translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="8378"/>
+        <location filename="../src/backend/version_backend.cpp" line="8641"/>
         <source>等待原版 %1 下载完成</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="9068"/>
+        <location filename="../src/backend/version_backend.cpp" line="9331"/>
         <source>用户数据导入失败：%1
 版本已成功安装，但用户数据未能导入。
 可手动从压缩包恢复数据。卡片将在60秒后关闭。</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="9074"/>
+        <location filename="../src/backend/version_backend.cpp" line="9337"/>
         <source>用户数据导入失败: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="9270"/>
+        <location filename="../src/backend/version_backend.cpp" line="9554"/>
         <source>[失败] 安装文件拷贝校验失败，已清理残缺产物</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="9274"/>
+        <location filename="../src/backend/version_backend.cpp" line="9558"/>
         <source>安装文件拷贝校验失败（文件不完整）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="9302"/>
+        <location filename="../src/backend/version_backend.cpp" line="9576"/>
         <source>安装完成</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="9328"/>
+        <location filename="../src/backend/version_backend.cpp" line="9602"/>
         <source>%1 安装失败: %2，正在自动重装（第 %3 次）...</source>
         <translation type="unfinished"></translation>
     </message>
@@ -7943,17 +8142,17 @@
 <context>
     <name>ShadowLauncher::VersionBackend::VerifyWorker</name>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="3928"/>
+        <location filename="../src/backend/version_backend.cpp" line="4043"/>
         <source> (缺失)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="3940"/>
+        <location filename="../src/backend/version_backend.cpp" line="4055"/>
         <source> (校验失败)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/backend/version_backend.cpp" line="3951"/>
+        <location filename="../src/backend/version_backend.cpp" line="4066"/>
         <source> (大小不符)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -7961,23 +8160,23 @@
 <context>
     <name>ShadowLauncher::VersionDownloader</name>
     <message>
-        <location filename="../src/core/version_downloader.cpp" line="958"/>
-        <location filename="../src/core/version_downloader.cpp" line="1670"/>
+        <location filename="../src/core/version_downloader.cpp" line="969"/>
+        <location filename="../src/core/version_downloader.cpp" line="1678"/>
         <source>下载已取消</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/version_downloader.cpp" line="1075"/>
-        <location filename="../src/core/version_downloader.cpp" line="1090"/>
-        <location filename="../src/core/version_downloader.cpp" line="1097"/>
-        <location filename="../src/core/version_downloader.cpp" line="1128"/>
-        <location filename="../src/core/version_downloader.cpp" line="1402"/>
-        <location filename="../src/core/version_downloader.cpp" line="1449"/>
+        <location filename="../src/core/version_downloader.cpp" line="1086"/>
+        <location filename="../src/core/version_downloader.cpp" line="1101"/>
+        <location filename="../src/core/version_downloader.cpp" line="1108"/>
+        <location filename="../src/core/version_downloader.cpp" line="1139"/>
+        <location filename="../src/core/version_downloader.cpp" line="1410"/>
+        <location filename="../src/core/version_downloader.cpp" line="1457"/>
         <source>Mojang 官方</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/version_downloader.cpp" line="1699"/>
+        <location filename="../src/core/version_downloader.cpp" line="1707"/>
         <source>%1 个文件缺失或校验失败</source>
         <translation type="unfinished"></translation>
     </message>
@@ -8018,87 +8217,87 @@
 <context>
     <name>StagePage</name>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="52"/>
+        <location filename="../ui/pages/StagePage.qml" line="55"/>
         <source>%1 秒</source>
         <translation>%1 秒</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="53"/>
+        <location filename="../ui/pages/StagePage.qml" line="56"/>
         <source>%1 分钟</source>
         <translation>%1 分鐘</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="54"/>
+        <location filename="../ui/pages/StagePage.qml" line="57"/>
         <source>%1 小时 %2 分</source>
         <translation>%1 小時 %2 分</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="240"/>
+        <location filename="../ui/pages/StagePage.qml" line="243"/>
         <source>取消启动</source>
         <translation>取消啟動</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="241"/>
+        <location filename="../ui/pages/StagePage.qml" line="244"/>
         <source>运行中 %1</source>
         <translation>執行中 %1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="242"/>
+        <location filename="../ui/pages/StagePage.qml" line="245"/>
         <source>先登录</source>
         <translation>先登入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="242"/>
+        <location filename="../ui/pages/StagePage.qml" line="245"/>
         <source>启动游戏</source>
         <translation>啟動遊戲</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="297"/>
+        <location filename="../ui/pages/StagePage.qml" line="304"/>
         <source>版本</source>
         <translation>版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="301"/>
+        <location filename="../ui/pages/StagePage.qml" line="308"/>
         <source>设置</source>
         <translation>設定</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="388"/>
+        <location filename="../ui/pages/StagePage.qml" line="395"/>
         <source>正在运行的实例</source>
         <translation>正在執行的實例</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="430"/>
+        <location filename="../ui/pages/StagePage.qml" line="437"/>
         <source>结束</source>
         <translation>結束</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="449"/>
+        <location filename="../ui/pages/StagePage.qml" line="456"/>
         <source>全部结束</source>
         <translation>全部結束</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="471"/>
+        <location filename="../ui/pages/StagePage.qml" line="478"/>
         <source>未选择版本</source>
         <translation>未選擇版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="492"/>
+        <location filename="../ui/pages/StagePage.qml" line="499"/>
         <source>正在准备启动</source>
         <translation>正在準備啟動</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="493"/>
+        <location filename="../ui/pages/StagePage.qml" line="500"/>
         <source>游戏运行中</source>
         <translation>遊戲執行中</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="494"/>
+        <location filename="../ui/pages/StagePage.qml" line="501"/>
         <source>还没有登录账号</source>
         <translation>還沒有登入帳號</translation>
     </message>
     <message>
-        <location filename="../ui/pages/StagePage.qml" line="495"/>
+        <location filename="../ui/pages/StagePage.qml" line="502"/>
         <source>上次游玩 · %1</source>
         <translation>上次遊玩 · %1</translation>
     </message>
@@ -8263,49 +8462,49 @@
         <translation>%1（另有 %2 個問題）</translation>
     </message>
     <message>
-        <location filename="../ui/StageShell.qml" line="350"/>
+        <location filename="../ui/StageShell.qml" line="375"/>
         <source>新版本</source>
         <translation>新版本</translation>
     </message>
     <message>
-        <location filename="../ui/StageShell.qml" line="351"/>
+        <location filename="../ui/StageShell.qml" line="376"/>
         <source>更新已就绪：%1，点击立即重启安装</source>
         <translation>更新已就緒：%1，點擊立即重新啟動安裝</translation>
     </message>
     <message>
-        <location filename="../ui/StageShell.qml" line="374"/>
+        <location filename="../ui/StageShell.qml" line="399"/>
         <source>%1 下载完成</source>
         <translation>%1 下載完成</translation>
     </message>
     <message>
-        <location filename="../ui/StageShell.qml" line="374"/>
-        <location filename="../ui/StageShell.qml" line="375"/>
-        <location filename="../ui/StageShell.qml" line="384"/>
+        <location filename="../ui/StageShell.qml" line="399"/>
+        <location filename="../ui/StageShell.qml" line="400"/>
+        <location filename="../ui/StageShell.qml" line="409"/>
         <source>文件</source>
         <translation>檔案</translation>
     </message>
     <message>
-        <location filename="../ui/StageShell.qml" line="375"/>
+        <location filename="../ui/StageShell.qml" line="400"/>
         <source>%1 下载失败</source>
         <translation>%1 下載失敗</translation>
     </message>
     <message>
-        <location filename="../ui/StageShell.qml" line="384"/>
+        <location filename="../ui/StageShell.qml" line="409"/>
         <source>%1 下载失败：%2</source>
         <translation>%1 下載失敗：%2</translation>
     </message>
     <message>
-        <location filename="../ui/StageShell.qml" line="384"/>
+        <location filename="../ui/StageShell.qml" line="409"/>
         <source>未知错误</source>
         <translation>未知錯誤</translation>
     </message>
     <message>
-        <location filename="../ui/StageShell.qml" line="387"/>
+        <location filename="../ui/StageShell.qml" line="412"/>
         <source>已取消</source>
         <translation>已取消</translation>
     </message>
     <message>
-        <location filename="../ui/StageShell.qml" line="1143"/>
+        <location filename="../ui/StageShell.qml" line="1168"/>
         <source>这里不接受这种文件</source>
         <translation>這裡不接受這種檔案</translation>
     </message>
@@ -8380,210 +8579,257 @@
 <context>
     <name>VersionPage</name>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="126"/>
+        <location filename="../ui/pages/VersionPage.qml" line="134"/>
         <source>版本名</source>
         <translation>版本名稱</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="127"/>
+        <location filename="../ui/pages/VersionPage.qml" line="135"/>
         <source>MC 版本</source>
         <translation>MC 版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="128"/>
+        <location filename="../ui/pages/VersionPage.qml" line="136"/>
         <source>加载器</source>
         <translation>載入器</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="129"/>
+        <location filename="../ui/pages/VersionPage.qml" line="137"/>
         <source>版本类型</source>
         <translation>版本類型</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="130"/>
+        <location filename="../ui/pages/VersionPage.qml" line="138"/>
         <source>模组</source>
         <translation>模組</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="131"/>
+        <location filename="../ui/pages/VersionPage.qml" line="139"/>
         <source>大小</source>
         <translation>大小</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="132"/>
+        <location filename="../ui/pages/VersionPage.qml" line="140"/>
         <source>上次游玩</source>
         <translation>上次遊玩</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="133"/>
+        <location filename="../ui/pages/VersionPage.qml" line="141"/>
         <source>游戏目录</source>
         <translation>遊戲目錄</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="142"/>
+        <location filename="../ui/pages/VersionPage.qml" line="150"/>
         <source>未识别</source>
         <translation>未識別</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="145"/>
+        <location filename="../ui/pages/VersionPage.qml" line="153"/>
         <source>%1 · 整合包</source>
         <translation>%1 · 整合包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="146"/>
+        <location filename="../ui/pages/VersionPage.qml" line="154"/>
         <source>%1 个</source>
         <translation>%1 個</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="146"/>
+        <location filename="../ui/pages/VersionPage.qml" line="154"/>
         <source>无模组</source>
         <translation>無模組</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="150"/>
+        <location filename="../ui/pages/VersionPage.qml" line="158"/>
         <source>没有记录</source>
         <translation>沒有記錄</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="176"/>
+        <location filename="../ui/pages/VersionPage.qml" line="184"/>
         <source>游戏文件夹</source>
         <translation>遊戲資料夾</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="186"/>
+        <location filename="../ui/pages/VersionPage.qml" line="194"/>
         <source>切换失败：这个文件夹不是有效的游戏目录</source>
         <translation>切換失敗：這個資料夾不是有效的遊戲目錄</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="189"/>
+        <location filename="../ui/pages/VersionPage.qml" line="197"/>
         <source>已切回默认游戏目录</source>
         <translation>已切回預設遊戲目錄</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="189"/>
+        <location filename="../ui/pages/VersionPage.qml" line="197"/>
         <source>已切换游戏文件夹</source>
         <translation>已切換遊戲資料夾</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="211"/>
+        <location filename="../ui/pages/VersionPage.qml" line="219"/>
         <source>重命名失败</source>
-        <translation type="unfinished">重新命名失敗</translation>
+        <translation>重新命名失敗</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="220"/>
+        <location filename="../ui/pages/VersionPage.qml" line="228"/>
         <source>已添加文件夹 %1</source>
         <translation>已新增資料夾 %1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="238"/>
+        <location filename="../ui/pages/VersionPage.qml" line="246"/>
         <source>已切换到 %1</source>
         <translation>已切換到 %1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="270"/>
+        <location filename="../ui/pages/VersionPage.qml" line="278"/>
         <source>原版</source>
         <translation>原版</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="276"/>
+        <location filename="../ui/pages/VersionPage.qml" line="284"/>
         <source>快照版</source>
         <translation>快照版</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="277"/>
+        <location filename="../ui/pages/VersionPage.qml" line="285"/>
         <source>旧版</source>
         <translation>舊版</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="278"/>
+        <location filename="../ui/pages/VersionPage.qml" line="286"/>
         <source>正式版</source>
         <translation>正式版</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="475"/>
+        <location filename="../ui/pages/VersionPage.qml" line="345"/>
+        <source>已开始补下 %1 个文件，进度见「下载进度」</source>
+        <translation>已開始補下 %1 個檔案，進度見「下載進度」</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VersionPage.qml" line="346"/>
+        <source>无法补下：任务已结束或正在导入，请重新导入整合包</source>
+        <translation>無法補下：任務已結束或正在匯入，請重新匯入整合包</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VersionPage.qml" line="513"/>
         <source>返回</source>
         <translation>返回</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="483"/>
+        <location filename="../ui/pages/VersionPage.qml" line="521"/>
         <source>选择版本</source>
         <translation>選擇版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="496"/>
+        <location filename="../ui/pages/VersionPage.qml" line="534"/>
         <source>%1 个已安装</source>
         <translation>%1 個已安裝</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="560"/>
+        <location filename="../ui/pages/VersionPage.qml" line="598"/>
         <source>刷新</source>
         <translation>重新整理</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="561"/>
+        <location filename="../ui/pages/VersionPage.qml" line="599"/>
         <source>已刷新版本列表</source>
         <translation>已重新整理版本列表</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="673"/>
+        <location filename="../ui/pages/VersionPage.qml" line="716"/>
+        <source>有 %1 个文件未下载成功</source>
+        <translation>有 %1 個檔案未下載成功</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VersionPage.qml" line="732"/>
+        <source>忽略</source>
+        <translation>忽略</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VersionPage.qml" line="735"/>
+        <source>已忽略未完成文件；需要时重新导入整合包即可</source>
+        <translation>已忽略未完成檔案；需要時重新匯入整合包即可</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VersionPage.qml" line="743"/>
+        <source>补下失败项</source>
+        <translation>補下失敗項</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VersionPage.qml" line="770"/>
+        <source>补下失败项？</source>
+        <translation>補下失敗項？</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VersionPage.qml" line="778"/>
+        <source>只会重新下载上次失败的 %1 个文件，已完成的版本与模组不会重下。
+补下过程可在「下载进度」查看，也可随时取消。</source>
+        <translation>只會重新下載上次失敗的 %1 個檔案，已完成的版本與模組不會重下。
+補下過程可在「下載進度」查看，也可隨時取消。</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VersionPage.qml" line="797"/>
+        <source>开始补下</source>
+        <translation>開始補下</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VersionPage.qml" line="836"/>
         <source>已安装</source>
         <translation>已安裝</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="731"/>
+        <location filename="../ui/pages/VersionPage.qml" line="898"/>
         <source>搜索版本 / 加载器</source>
         <translation>搜尋版本 / 載入器</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="902"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1065"/>
         <source>还没有可用的版本
 在「下载」页安装一个版本后回到这里</source>
         <translation>還沒有可用的版本
 在「下載」頁安裝一個版本後回到這裡</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="903"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1066"/>
         <source>没有匹配「%1」的版本</source>
         <translation>沒有符合「%1」的版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1104"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1267"/>
         <source>打开目录</source>
         <translation>開啟目錄</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1116"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1279"/>
         <source>确定</source>
         <translation>確定</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1251"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1414"/>
         <source>使用中</source>
         <translation>使用中</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1358"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1521"/>
         <source>浏览其他文件夹…</source>
         <translation>瀏覽其他資料夾…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="355"/>
-        <location filename="../ui/pages/VersionPage.qml" line="550"/>
+        <location filename="../ui/pages/VersionPage.qml" line="379"/>
+        <location filename="../ui/pages/VersionPage.qml" line="588"/>
         <source>后端未就绪，无法导入整合包</source>
         <translation>後端未就緒，無法匯入整合包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="360"/>
+        <location filename="../ui/pages/VersionPage.qml" line="384"/>
         <source>只支持 .zip / .mrpack 整合包</source>
         <translation>只支援 .zip / .mrpack 整合包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="363"/>
+        <location filename="../ui/pages/VersionPage.qml" line="387"/>
         <source>已有整合包正在导入，请等它完成</source>
         <translation>已有整合包正在匯入，請等它完成</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="365"/>
+        <location filename="../ui/pages/VersionPage.qml" line="391"/>
         <source>开始导入整合包：%1</source>
         <translation>開始匯入整合包：%1</translation>
     </message>
@@ -8592,23 +8838,24 @@
         <translation type="vanished">整合包已匯入：%1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="443"/>
+        <location filename="../ui/pages/VersionPage.qml" line="478"/>
         <source>整合包导入失败：%1</source>
         <translation>整合包匯入失敗：%1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="547"/>
+        <location filename="../ui/pages/VersionPage.qml" line="585"/>
         <source>导入整合包</source>
         <translation>匯入整合包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="612"/>
+        <location filename="../ui/pages/VersionPage.qml" line="650"/>
         <source>正在导入整合包…</source>
         <translation>正在匯入整合包…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="626"/>
-        <location filename="../ui/pages/VersionPage.qml" line="1428"/>
+        <location filename="../ui/pages/VersionPage.qml" line="664"/>
+        <location filename="../ui/pages/VersionPage.qml" line="790"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1591"/>
         <source>取消</source>
         <translation>取消</translation>
     </message>
@@ -8621,83 +8868,83 @@
         <translation type="vanished">支援 .zip / .mrpack，一次一個</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1452"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1615"/>
         <source>选择整合包</source>
         <translation>選擇整合包</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1454"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1617"/>
         <source>整合包 (*.zip *.mrpack)</source>
         <translation>整合包 (*.zip *.mrpack)</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1454"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1617"/>
         <source>所有文件 (*)</source>
         <translation>所有檔案 (*)</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1399"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1562"/>
         <source>重命名文件夹</source>
         <translation>重新命名資料夾</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1400"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1563"/>
         <source>为文件夹命名</source>
         <translation>為資料夾命名</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1409"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1572"/>
         <source>显示名称</source>
         <translation>顯示名稱</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1310"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1473"/>
         <source>移除</source>
         <translation>移除</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1284"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1447"/>
         <source>确认移除？</source>
         <translation>確認移除？</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1415"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1578"/>
         <source>仅改启动器里的显示名，不动本地文件夹</source>
         <translation>僅改啟動器裡的顯示名，不動本地資料夾</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1416"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1579"/>
         <source>仅影响列表里的显示名，不动本地文件夹</source>
         <translation>僅影響列表裡的顯示名，不動本地資料夾</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="211"/>
+        <location filename="../ui/pages/VersionPage.qml" line="219"/>
         <source>已重命名为 %1</source>
         <translation>已重新命名為 %1</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="230"/>
+        <location filename="../ui/pages/VersionPage.qml" line="238"/>
         <source>已从列表移除（本地文件夹未删除）</source>
         <translation>已從列表移除（本地資料夾未刪除）</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="231"/>
+        <location filename="../ui/pages/VersionPage.qml" line="239"/>
         <source>移除失败：默认目录不能移除</source>
         <translation>移除失敗：預設目錄不能移除</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="220"/>
+        <location filename="../ui/pages/VersionPage.qml" line="228"/>
         <source>添加失败</source>
         <translation>新增失敗</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1284"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1447"/>
         <source>重命名</source>
         <translation>重新命名</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VersionPage.qml" line="1310"/>
-        <location filename="../ui/pages/VersionPage.qml" line="1435"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1473"/>
+        <location filename="../ui/pages/VersionPage.qml" line="1598"/>
         <source>确认</source>
         <translation>確認</translation>
     </message>
@@ -9422,92 +9669,120 @@
 <context>
     <name>VsModsPane</name>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="93"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="95"/>
         <source>搜索 Mod</source>
         <translation>搜尋 Mod</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="98"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="100"/>
         <source>%1 个 · 启用 %2</source>
         <translation>%1 個 · 啟用 %2</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="108"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="110"/>
         <source>刷新</source>
         <translation>重新整理</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="111"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="113"/>
         <source>正在重新扫描 Mod</source>
         <translation>正在重新掃描 Mod</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="119"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="121"/>
         <source>文件夹</source>
         <translation>資料夾</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="131"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="133"/>
         <source>全部启用</source>
         <translation>全部啟用</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="138"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="140"/>
         <source>全部禁用</source>
         <translation>全部停用</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="146"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="148"/>
         <source>导入</source>
         <translation>匯入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="305"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="302"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="425"/>
+        <source>删除</source>
+        <translation>刪除</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VsModsPane.qml" line="333"/>
         <source>此版本还没有 Mod</source>
         <translation>此版本還沒有 Mod</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="305"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="333"/>
         <source>没有匹配的 Mod</source>
         <translation>沒有符合的 Mod</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="317"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="345"/>
         <source>正在读取 Mod 列表…</source>
         <translation>正在讀取 Mod 清單…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="332"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="360"/>
         <source>正在启用 %1 个 Mod…</source>
         <translation>正在啟用 %1 個 Mod…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="332"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="360"/>
         <source>正在禁用 %1 个 Mod…</source>
         <translation>正在停用 %1 個 Mod…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="336"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="364"/>
         <source>已启用 %1 / %2 个 Mod</source>
         <translation>已啟用 %1 / %2 個 Mod</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="336"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="364"/>
         <source>已禁用 %1 / %2 个 Mod</source>
         <translation>已停用 %1 / %2 個 Mod</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="343"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="397"/>
+        <source>删除 Mod？</source>
+        <translation>刪除 Mod？</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VsModsPane.qml" line="405"/>
+        <source>%1
+这个操作不能撤销。</source>
+        <translation>%1
+這個操作不能復原。</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VsModsPane.qml" line="417"/>
+        <source>取消</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VsModsPane.qml" line="430"/>
+        <source>已删除 %1</source>
+        <translation>已刪除 %1</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VsModsPane.qml" line="441"/>
         <source>导入 Mod</source>
         <translation>匯入 Mod</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="350"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="448"/>
         <source>已导入</source>
         <translation>已匯入</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsModsPane.qml" line="350"/>
+        <location filename="../ui/pages/VsModsPane.qml" line="448"/>
         <source>导入失败</source>
         <translation>匯入失敗</translation>
     </message>
@@ -10064,146 +10339,151 @@
 <context>
     <name>VsToolsPane</name>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="52"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="58"/>
+        <source>已取消校验</source>
+        <translation>已取消校驗</translation>
+    </message>
+    <message>
+        <location filename="../ui/pages/VsToolsPane.qml" line="65"/>
         <source>校验通过</source>
         <translation>校驗通過</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="52"/>
-        <location filename="../ui/pages/VsToolsPane.qml" line="59"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="65"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="72"/>
         <source>发现 %1 个文件异常</source>
         <translation>發現 %1 個檔案異常</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="57"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="70"/>
         <source>正在校验…</source>
         <translation>正在校驗…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="58"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="71"/>
         <source>尚未校验此版本</source>
         <translation>尚未校驗此版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="60"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="73"/>
         <source>未发现异常</source>
         <translation>未發現異常</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="63"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="76"/>
         <source>正在逐个核对版本文件，可随时取消</source>
         <translation>正在逐個核對版本檔案，可隨時取消</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="64"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="77"/>
         <source>校验会逐个核对版本文件是否齐全</source>
         <translation>校驗會逐個核對版本檔案是否齊全</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="65"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="78"/>
         <source>本次扫描 %1 个文件</source>
         <translation>本次掃描 %1 個檔案</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="170"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="183"/>
         <source>已扫描 %1 / %2 个文件</source>
         <translation>已掃描 %1 / %2 個檔案</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="171"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="184"/>
         <source>正在统计文件…</source>
         <translation>正在統計檔案…</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="196"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="209"/>
         <source>重新校验</source>
         <translation>重新校驗</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="213"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="227"/>
         <source>开始校验版本文件</source>
         <translation>開始校驗版本檔案</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="222"/>
-        <location filename="../ui/pages/VsToolsPane.qml" line="427"/>
-        <location filename="../ui/pages/VsToolsPane.qml" line="488"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="236"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="442"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="503"/>
         <source>取消</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="247"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="262"/>
         <source>共 %1 项待修复</source>
         <translation>共 %1 項待修復</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="256"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="271"/>
         <source>修复</source>
         <translation>修復</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="260"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="275"/>
         <source>已开始修复，进度见「下载进度」</source>
         <translation>已開始修復，進度見「下載進度」</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="269"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="284"/>
         <source>异常文件</source>
         <translation>異常檔案</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="293"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="308"/>
         <source>另有 %1 项未列出</source>
         <translation>另有 %1 項未列出</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="303"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="318"/>
         <source>版本操作</source>
         <translation>版本操作</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="312"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="327"/>
         <source>打开版本目录</source>
         <translation>開啟版本目錄</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="319"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="334"/>
         <source>克隆版本</source>
         <translation>複製版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="323"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="338"/>
         <source>已创建副本</source>
         <translation>已建立副本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="323"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="338"/>
         <source>克隆失败</source>
         <translation>複製失敗</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="330"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="345"/>
         <source>重命名</source>
         <translation>重新命名</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="340"/>
-        <location filename="../ui/pages/VsToolsPane.qml" line="510"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="355"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="525"/>
         <source>导出用户数据</source>
         <translation>匯出使用者資料</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="364"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="379"/>
         <source>删除该版本</source>
         <translation>刪除該版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="406"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="421"/>
         <source>删除该版本？</source>
         <translation>刪除該版本？</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="414"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="429"/>
         <source>%1
 整个版本目录会连同其中的模组、存档与配置一起删除，
 同名的加载器版本也会一并删除。这个操作不能撤销。</source>
@@ -10212,42 +10492,42 @@
 同名的載入器版本也會一併刪除。這個操作無法復原。</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="435"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="450"/>
         <source>删除</source>
-        <translation type="unfinished">刪除</translation>
+        <translation>刪除</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="440"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="455"/>
         <source>已删除版本</source>
         <translation>已刪除版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="470"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="485"/>
         <source>重命名版本</source>
         <translation>重新命名版本</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="479"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="494"/>
         <source>新的版本 ID</source>
         <translation>新的版本 ID</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="495"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="510"/>
         <source>确认</source>
         <translation>確認</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="501"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="516"/>
         <source>已重命名</source>
         <translation>已重新命名</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="501"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="516"/>
         <source>重命名失败</source>
         <translation>重新命名失敗</translation>
     </message>
     <message>
-        <location filename="../ui/pages/VsToolsPane.qml" line="519"/>
+        <location filename="../ui/pages/VsToolsPane.qml" line="534"/>
         <source>已开始导出用户数据</source>
         <translation>已開始匯出使用者資料</translation>
     </message>

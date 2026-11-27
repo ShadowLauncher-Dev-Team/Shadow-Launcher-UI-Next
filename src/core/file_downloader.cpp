@@ -150,6 +150,7 @@ void FileDownloader::addFile(const QString& localPath, const QString& localName,
     file->expectedSha1 = sha1;
     file->needsJarStrip = jarStrip;
     file->fileSize = expectedSize;
+    file->declaredSize = expectedSize;   // D12：复位基线（运行中 fileSize 会被改写）
     file->isUnknownSize = (expectedSize <= 0);
     // 主流启动器 IsNoSplit 语义：<1MB 不分片（FileSize < 1024*1024）——
     // 1MB 以上可分片（配合速度门限防并发爆炸）；镜像源在 tryAddThread 拦截
@@ -190,13 +191,77 @@ void FileDownloader::notifyCacheHit(const QString& localPath, qint64 size)
 // Lifecycle
 // ═════════════════════════════════════════════════════════════════════════════
 
+// ── D12：同实例二次 start() 的运行态复位 ──
+// 契约 §5 要求「取消后可安全复用」，但旧 start() 只复位引擎级标志，没复位
+// m_files[*] 与统计，于是二次 start() 的表现是：不崩、**一个文件都不派发**、
+// allFinished 永不到来。三条独立成因（全部由本函数消除）：
+//   1) FileDownload::state 还是 4/5 → managerTick（:553 首线程阶段 / :583 加片阶段）直接跳过；
+//   2) threads 非空 → :592「无线程才补首线程」不成立，且 :597 的
+//      isNoSplit && !threads.isEmpty() 直接 continue（审计点名的 single-thread files,
+//      already started）；旧分片还带着上一轮的 downloadDone / tempPath /
+//      watchdogAbort / requestedEnd；
+//   3) completed+failed 仍 ≥ 上一轮的 total → 二次 start 立刻被 updateStats 判收尾，
+//      或者（若 total 更大）进度分母错、永远凑不满。
+// 首次 start() 时这里写的值与 addFile 写入的值完全一致 ⇒ 首次行为不变。
+void FileDownloader::resetRunState()
+{
+    m_phase = PhaseFirstThread;
+    m_lastSlowScanMs = 0;   // 尾程慢速扫描的下次触发时间按本轮重算
+
+    qint64 bytesSum = 0;
+    int fileCount = 0;
+    {
+        QMutexLocker lock(&m_filesMutex);
+        fileCount = m_files.size();
+        for (auto& f : m_files) {
+            // 文件级：回到「刚 addFile 完」的状态
+            f->state = 0;                 // 0=waiting（4=finished / 5=failed 会挡住调度）
+            f->threads.clear();           // 旧分片整批丢弃（含 UUID/tempPath/原子标志）
+            f->targetWritten = false;     // 上一轮写过的目标文件不属于本轮，取消时不得误删
+            f->committed = false;
+            f->singleFallbackUsed = false;// 整文件单连接兜底预算按轮计
+            f->retriedOnce = false;       // 全源失败重置重试预算按轮计
+            f->sourceFailCounts.fill(0);  // 不清零 → 源被判 FailCount>=5，首线程挑不出源
+            f->fileSize = f->declaredSize;
+            f->isUnknownSize = (f->declaredSize <= 0);
+            f->sizeIsPlaceholder = false;
+            f->isNoSplit = (!f->isUnknownSize && f->declaredSize < 1LL * 1024 * 1024);
+            if (f->fileSize > 0) bytesSum += f->fileSize;
+        }
+    }
+
+    // 引擎级：进度分母（totals）与计数按本次队列重算，否则进度条分母错
+    m_totalFiles.storeRelaxed(fileCount);
+    m_totalBytes.storeRelaxed(bytesSum);      // 缓存命中字节随后在 start() 里叠加
+    m_completedFiles.storeRelaxed(0);
+    m_failedFiles.storeRelaxed(0);
+    m_downloadedBytes.storeRelaxed(0);        // 本轮网络字节从 0 起算（进度与平均速度同口径）
+    // 不能在这里清 m_cacheBytes：缓存命中是 addFile()/notifyCacheHit() 在 start() 之前
+    // 就累加好的（:96 / :175），而 start() 的入账块（:286）要靠它把缓存字节折进
+    // m_totalBytes 再把进度分母补齐。此处清零会让 cb 恒为 0 → 分母少掉缓存命中字节、
+    // 进度虚高，收尾汇总的「缓存命中 x MB」也变 0。该值由 :286 的 fetchAndStore(0) 消费。
+    m_cacheHitBase = 0;                       // 收尾汇总的「缓存命中」按本会计
+    // cancel() 的 m_threadPool.clear() 会丢掉「已计入 +1 但从未启动」的 runnable，
+    // 那些 -1 永远不会发生；不复位就等于永久少了几条可用连接槽。
+    m_activeThreads.storeRelaxed(0);
+    // 不重置 m_nextUuid：tempPath 用 uuid 命名，回退可能撞上上一轮遗留的 dl_*.tmp。
+    // 不重置 m_hostStats：per-host 健康度/在途计数由 worker 自己配对增减，降级还有 30s 时限。
+
+    // 速度账本（§4 空闲 1.5s 归零的逻辑本身不变，只把本轮起点对齐）
+    m_speedIdleTicks = 0;
+    m_emaMbps = 0.0;
+    m_instantBps = 0;
+    m_currentSpeedBps.storeRelaxed(0);
+    m_runStartMs = getElapsedMs();            // D13：平均速度的时间起点
+}
+
 void FileDownloader::start()
 {
     if (m_state == Running) return;
     m_state = Running;
     m_cancelled.storeRelaxed(0);
     m_paused.storeRelaxed(0);
-    m_phase = PhaseFirstThread;
+    resetRunState();   // D12：复用前统一复位（首次调用是恒等变换）
 
     // 限速虚拟时钟按“下次任务生效”重置（限速设置本身在 start 前已由调用方写入）
     {
@@ -2303,15 +2368,27 @@ void FileDownloader::updateStats()
         const qint64 totalDl = m_totalBytes.loadRelaxed();
         // 完成汇总带缓存命中数（2026-08-05 补：缓存复用可见）
         const int cacheHits = m_cacheHitBase + m_cacheHits.loadRelaxed();   // 2026-11-19：补上 start() 清零前的基础数
-        emit logMessage(QString::fromUtf8("[夸父] [完成] 下载完成: %1/%2 文件, %3, 速度 %4 MB/s, 缓存命中 %5")
+        // ── D13：收尾不再打印停表后的瞬时速度，改打印「平均」（网络字节 / 本轮墙钟）──
+        // 旧实现打印 m_emaMbps：收尾前 speedTick 已经因为「1.5s 无新字节」把它归零
+        // （契约 §4 的空闲归零，见 :2283 分支），所以 8.5MB/s 的那一次也写成 0.0 MB/s。
+        // 平均值的两个输入都是可复算的整数（网络字节、耗时 ms），不依赖任何速度表。
+        const qint64 runMs = qMax<qint64>(1, getElapsedMs() - m_runStartMs);
+        const qint64 netBytes = m_downloadedBytes.loadRelaxed();
+        const double avgMBps = netBytes * 1000.0 / (runMs * 1024.0 * 1024.0);
+        const double runSec = runMs / 1000.0;
+        emit logMessage(QString::fromUtf8("[夸父] [完成] 下载完成: %1/%2 文件, %3, 平均 %4 MB/s（网络 %5 / 耗时 %6 s）, 缓存命中 %7")
                             .arg(done).arg(total)
                             .arg(formatSize(totalDl))
-                            .arg(m_emaMbps, 0, 'f', 1)
+                            .arg(avgMBps, 0, 'f', 2)
+                            .arg(formatSize(netBytes))
+                            .arg(runSec, 0, 'f', 1)
                             .arg(cacheHits));
-        qCInfo(logDownload) << QStringLiteral("[夸父] [完成] 下载完成: %1/%2 文件, %3, 速度 %4 MB/s, 缓存命中 %5")
+        qCInfo(logDownload) << QStringLiteral("[夸父] [完成] 下载完成: %1/%2 文件, %3, 平均 %4 MB/s（网络 %5 / 耗时 %6 s）, 缓存命中 %7")
             .arg(done).arg(total)
             .arg(formatSize(totalDl))
-            .arg(m_emaMbps, 0, 'f', 1)
+            .arg(avgMBps, 0, 'f', 2)
+            .arg(formatSize(netBytes))
+            .arg(runSec, 0, 'f', 1)
             .arg(cacheHits);
         emit allFinished();
     }

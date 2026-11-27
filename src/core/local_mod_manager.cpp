@@ -133,25 +133,55 @@ bool LocalModManager::importMod(const QString& filePath, const QString& versionI
     QDir().mkpath(dstDir);
     QString dstPath = dstDir + QStringLiteral("/") + fi.fileName();
 
-    // If already exists, append a counter
+    // 导入去重：启用态 x.jar 与禁用态 x.jar.disabled 是同一份模组，两种形态都要判，
+    // 否则已有 x.jar.disabled 时再导入 x.jar 会并存两份（D7）。
+    const QString disabledPath = dstPath + QStringLiteral(".disabled");
+    bool replaceDisabledCopy = false;
     if (QFile::exists(dstPath)) {
+        // 命中同名启用副本：保持既有语义（加 (1)/(2)… 后缀），
+        // 但 (N) 命名也要避开 .disabled 副本，不然同一个漏洞往下挪一层
         int c = 1;
         QString base = fi.completeBaseName();
-        while (QFile::exists(dstDir + QStringLiteral("/") + base + QStringLiteral(" (%1).jar").arg(c)))
-            c++;
-        dstPath = dstDir + QStringLiteral("/") + base + QStringLiteral(" (%1).jar").arg(c);
+        QString candidate;
+        do {
+            candidate = dstDir + QStringLiteral("/") + base + QStringLiteral(" (%1).jar").arg(c);
+            ++c;
+        } while (QFile::exists(candidate) || QFile::exists(candidate + QStringLiteral(".disabled")));
+        dstPath = candidate;
+    } else if (QFile::exists(disabledPath)) {
+        replaceDisabledCopy = true;   // 命中禁用副本：替换，不并存
     }
 
-    if (QFile::copy(filePath, dstPath)) {
-        QString name = QFileInfo(dstPath).fileName();
-        qCInfo(logMgr) << QStringLiteral("[本地Mod] 导入成功 文件=%1 目标=%2").arg(name, dstPath);
-        emit modsChanged(versionId);
-        emit importFinished(name, true, QString());
-        return true;
-    } else {
+    if (replaceDisabledCopy) {
+        // 先复制到临时名 → 删旧 .disabled → 改名就位；中途失败不丢用户的旧文件
+        const QString tempPath = dstDir + QStringLiteral("/") + fi.fileName() + QStringLiteral(".importing");
+        QFile::remove(tempPath);
+        if (!QFile::copy(filePath, tempPath)) {
+            emit importFinished(fi.fileName(), false, QStringLiteral("复制文件失败"));
+            return false;
+        }
+        if (!QFile::remove(disabledPath)) {
+            QFile::remove(tempPath);
+            emit importFinished(fi.fileName(), false, QStringLiteral("删除旧的禁用副本失败"));
+            return false;
+        }
+        if (!QFile::rename(tempPath, dstPath)) {
+            QFile::remove(tempPath);
+            emit importFinished(fi.fileName(), false, QStringLiteral("落盘失败（旧的禁用副本已删除）"));
+            return false;
+        }
+        qCInfo(logMgr) << QStringLiteral("[本地Mod] 已替换禁用副本 删除=%1 写入=%2")
+                              .arg(disabledPath, dstPath);
+    } else if (!QFile::copy(filePath, dstPath)) {
         emit importFinished(fi.fileName(), false, QStringLiteral("复制文件失败"));
         return false;
     }
+
+    const QString name = QFileInfo(dstPath).fileName();
+    qCInfo(logMgr) << QStringLiteral("[本地Mod] 导入成功 文件=%1 目标=%2").arg(name, dstPath);
+    emit modsChanged(versionId);
+    emit importFinished(name, true, QString());
+    return true;
 }
 
 bool LocalModManager::deleteMod(const QString& fileName, const QString& versionId)

@@ -654,12 +654,6 @@ int main(int argc, char *argv[])
         st->setDownloadSpeedLimitMB(30);
         report(QStringLiteral("F5 setDownloadSpeedLimitMB(30)"), QStringLiteral("20"), QString::number(st->downloadSpeedLimitMB()));
 
-        // F6：透明度 clamp
-        st->setSidebarOpacity(5.0);
-        report(QStringLiteral("F6 setSidebarOpacity(5.0)"), QStringLiteral("1"), QString::number(st->sidebarOpacity()));
-        st->setContentOpacity(-1.0);
-        report(QStringLiteral("F6 setContentOpacity(-1)"), QStringLiteral("0"), QString::number(st->contentOpacity()));
-
         // F7：枚举范围
         st->setGcMode(99);
         report(QStringLiteral("F7 setGcMode(99)"), QStringLiteral("3"), QString::number(st->gcMode()));
@@ -789,8 +783,11 @@ int main(int argc, char *argv[])
     // QML engine
     QQmlApplicationEngine engine;
 
-    // Appearance 单例（QML_SINGLETON，全局外观：配色方案/密度/动效开关）。
-    // 这里先建出来：截图模式要关掉它的持久化，避免调试跑一遍就改写用户的 appearance 设置。
+    // Appearance 单例（QML_SINGLETON）。它只承担 mode / density / reducedMotion 与非颜色令牌；
+    // 配色方案的真源是 ui/Theme.qml —— ui/ 下 'Appearance.' 的引用数为 0（2026-11-27 D10 实测），
+    // 因此本类里的调色板副本没有任何 QML 消费者，也从不被持久化（QSettings 不写 color 组）。
+    // 这里先建出来：截图模式要关掉它的持久化，避免调试跑一遍就改写用户的 appearance/* 设置
+    // （关掉的只有 mode/density/reducedMotion 三项）。
     // --ui-next-mode / --ui-next-density 在 QML 根对象就绪后才下发（见下方 setMode/setDensity）。
     AppearanceController* appearance = engine.singletonInstance<AppearanceController*>("ShadowLauncher.Next", "Appearance");
     if (appearance)

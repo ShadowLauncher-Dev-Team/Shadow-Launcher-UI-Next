@@ -153,6 +153,10 @@ signals:
     void shaderSearchResultsReady(const QVariantList& results);
     void resourcepackSearchCompleted(const QVariantList& results, int totalHits);
     void resourcepackSearchFailed(const QString& error);
+    /// D11：搜索**失败**（断网 / HTTP 非 2xx / 双源均无有效数据 / 源 25s 无响应）。
+    /// kind: mod | shader | resourcepack | modpack | datapack
+    /// 与「请求成功但 0 条」严格分开：那种情况只发结果信号（空列表），走「没有结果」态。
+    void resourceSearchFailed(const QString& kind, const QString& error);
     void resourcepackDownloadFinished(const QString& slug, bool success, const QString& filePath);
     void resourcepackVersionsLoaded(const QVariantMap& slugToVersions);
     void resourcepackVersionsPartial(const QString& slug, const QStringList& versions, const QVariantMap& details);
@@ -303,6 +307,22 @@ private:
     void ensureRpPool();
     void onRpSourceDone(int gen);
     void emitRpPool();
+    // ── D11：搜索失败归因（每池一份，按代次重置）──
+    // 只有「本轮 pending 归零、池子仍空、且没有任何源成功应答 2xx」才判失败；
+    // 有源成功应答（哪怕 0 条）说明请求是通的 → 那是「没有结果」，不发失败信号。
+    enum class FailWhy { Net, Http, BothDead };
+    struct SearchFailure {
+        QStringList errors;     // 本代各源失败原因（已分类成用户可读文案）
+        int sourceOk = 0;       // 本代成功应答 2xx 的源数（含 0 条）
+        bool timedOut = false;  // 有源 25s 未返回
+        bool reported = false;  // 本代已上报，防渐进 emit 重复发
+    };
+    SearchFailure m_modFail, m_shaderFail, m_rpFail, m_packFail, m_dpFail;
+    void noteFail(SearchFailure& st, const QString& source, FailWhy why,
+                  const QString& detail = {}, int httpStatus = 0);
+    /// 判定本轮是否失败；返回非空 = 失败（用户可读文案，调用方负责 emit），空 = 不是失败态
+    QString takeSearchFailure(const QString& kind, SearchFailure& st, bool poolEmpty, int pending);
+
     bool m_downloading = false;
     int m_dlProgress = 0;
     int m_dlTotal = 0;

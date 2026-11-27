@@ -11,6 +11,21 @@ Item {
     signal activated(int index)
 
     implicitHeight: itemHeight + 4
+
+    // ── 键盘（统一契约四件套）──
+    // 纯 Item + Repeater 手绘，**不是 QtQuick.Controls 的 Control/RadioButton**：
+    // 方向键与选中都没有自带行为，必须自己实现。"不可用"判据是 Item 自带的 enabled。
+    activeFocusOnTab: root.enabled
+
+    // 鼠标与键盘共用的唯一入口：改选中 + 发 activated。
+    // 越界（←/→ 到头）直接忽略、不做环绕 —— 环绕等于"到最后一项又跳回第一项"，看不出是到头了。
+    function selectSegment(i) {
+        if (i < 0 || i >= root.items.length) return
+        if (i === root.currentIndex) return
+        root.currentIndex = i
+        root.activated(i)
+    }
+
     // 每项等宽，宽度由**最长那条文案**决定 —— 不能只看 60px 下限。
     // 之前英文 "System language" 比 60px 宽，文字溢出到隔壁项上，三项叠在卡片外。
     // +20 而不是 +12：TextMetrics 与实际 Text 的排版有细微差异（字距/微调），
@@ -107,13 +122,38 @@ Item {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (root.currentIndex === index) return
-                        root.currentIndex = index
-                        root.activated(index)
-                    }
+                    // 点一下也拿焦点：键盘与鼠标共用同一套焦点状态
+                    onPressed: { Theme.keyboardNav = false; root.forceActiveFocus() }
+                    onClicked: root.selectSegment(index)
                 }
             }
         }
+    }
+
+    // ←/→ 在分项之间移动并立刻选中。故意不接管 Space/Enter：
+    // 本控件"选中即生效"，没有独立的激活动作，多给一个 Space 只会让焦点停在哪一项产生歧义。
+    // 不接管 ↑/↓：垂直键留给外层滚动容器，翻页时按上下键仍然滚页面。
+    Keys.onPressed: function(e) {
+        if (!root.enabled) return
+        if (e.key === Qt.Key_Left) {
+            e.accepted = true
+            root.selectSegment(root.currentIndex - 1)
+        } else if (e.key === Qt.Key_Right) {
+            e.accepted = true
+            root.selectSegment(root.currentIndex + 1)
+        }
+    }
+
+    // 焦点环：独立一层描边，只锚定 + 负 margin，不占布局
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -Theme.focusRingGap
+        radius: (root.radius !== undefined ? root.radius : 8) + Theme.focusRingGap
+        color: "transparent"
+        border.width: Theme.focusRingWidth
+        border.color: Theme.focusRing
+        visible: root.activeFocus && Theme.keyboardNav
+        z: 999
+        antialiasing: true
     }
 }

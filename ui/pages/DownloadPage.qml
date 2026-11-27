@@ -1424,7 +1424,10 @@ Item {
                 anchors.rightMargin: page.padR
                 anchors.verticalCenter: parent.verticalCenter
                 readonly property bool ready: page.canInstall()
-                color: ready ? (installPress.containsMouse ? Theme.accent : Theme.accentTop) : Theme.bgHover
+                // 按钮上是白字：悬停态原来用 Theme.accent(#3b82f6)，白字压上去只有 3.68:1，
+                // 不达 WCAG AA（审计 D3）。改为悬停时压更深的 accentBot(#1d4ed8, 6.70:1)，
+                // 常态用 accentTop(#2563eb, 5.17:1)，两者都达标且悬停仍能被看出"按下去了"。
+                color: ready ? (installPress.containsMouse ? Theme.accentBot : Theme.accentTop) : Theme.bgHover
                 border.width: ready ? 0 : 1
                 border.color: Theme.line2
                 clip: true

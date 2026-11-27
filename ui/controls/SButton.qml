@@ -32,6 +32,11 @@ Item {
     readonly property color _softFg3: onDark ? "#8d96a4" : Theme.fg3
     signal clicked()
 
+    // ── 键盘（统一契约四件套）──
+    // 唯一的"不可用"判据是 dimmed：muted 是"灰态但仍可点"的引导态，必须留在 Tab 链里；
+    // busy 也留在 Tab 链上（用户要能 Tab 过去看到它在忙，只是激活无效）。
+    activeFocusOnTab: !root.dimmed
+
     implicitHeight: kind === 0 ? 48 : 34
     implicitWidth: inner.implicitWidth + (kind === 0 ? 68 : 28)
 
@@ -41,7 +46,9 @@ Item {
         radius: root.radius
         color: {
             if (root.kind === 0) {
-                if (root.busy) return Theme.danger
+                // 忙碌态是红底白字：白字压 danger(#ef4444) 只有 3.76:1，压 dangerBot(#dc2626) 是 4.83:1。
+                // danger 本身按"墨色"用（图标/描边），深一档的 dangerBot 才是可承载白字的填充。
+                if (root.busy) return Theme.dangerBot
                 // 灰态按钮不能用"浅底 + 白字"：白色方案下就是白底白字（实测按钮整块消失）。
                 // 灰态统一走"弱底 + 次要文字色"，两套方案都可读。
                 if (root.dimmed || root.muted) return root._softFill
@@ -116,7 +123,8 @@ Item {
         border.color: root.danger ? Theme.danger : root._softBorder
     }
 
-    // 主按钮 hover 提亮（4% 白覆盖）：只解释"鼠标在这里"，不改变主色
+    // 主按钮 hover 提亮（#0dffffff = 5% 白覆盖）：只解释"鼠标在这里"，不改变主色。
+    // 注意这层覆盖也会压在白字下面：Theme.accentTop 已按"叠加后仍 ≥4.5:1"取值（4.73:1）。
     Rectangle {
         anchors.fill: parent
         radius: root.radius
@@ -137,6 +145,32 @@ Item {
         cursorShape: (root.enabled && !root.dimmed) ? Qt.PointingHandCursor : Qt.ArrowCursor
         hoverEnabled: true
         onContainsMouseChanged: root.hovered = containsMouse
+        // 鼠标按下也拿焦点：键盘与鼠标共用同一套焦点状态，不能各走一套
+        onPressed: { Theme.keyboardNav = false; root.forceActiveFocus() }
         onClicked: root.clicked()
+    }
+
+    // 键盘激活：与鼠标**同一个入口**（root.clicked()），不另写逻辑
+    Keys.onPressed: function(e) {
+        if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+            e.accepted = true
+            // dimmed：鼠标点不动，键盘也不激活；busy：激活无效但焦点保留。
+            // isAutoRepeat：按住不放会连发 pressed，等于鼠标连点；鼠标一次点击只发一次 clicked()。
+            if (e.isAutoRepeat || !root.enabled || root.dimmed || root.busy) return
+            root.clicked()
+        }
+    }
+
+    // 焦点环：独立一层描边，只锚定 + 负 margin，不参与布局（不改尺寸/位置）
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -Theme.focusRingGap
+        radius: root.radius + Theme.focusRingGap
+        color: "transparent"
+        border.width: Theme.focusRingWidth
+        border.color: Theme.focusRing
+        visible: root.activeFocus && Theme.keyboardNav
+        z: 999
+        antialiasing: true
     }
 }

@@ -205,12 +205,25 @@ void MultiplayerManager::joinRoom(const QString& code)
 
     auto parts = RoomCode::parse(code);
     if (!parts) {
-        // Track failed join attempts (brute-force protection)
-        if (m_guard && !m_guard->allowJoinRoom(m_machineId)) {
-            emitError(QStringLiteral("too_frequent"), tr("操作过于频繁，请稍后再试"));
+        // 防爆破保留：格式错误的尝试照旧计数（kJoinCooldown 次 → 冷却 kJoinCooldownSec 秒）。
+        // 但文案要说实话：房码本身无效是主因，被限流只是「现在不能再试」（D6）。
+        ConnectionGuard::JoinGate gate;
+        if (m_guard)
+            gate = m_guard->tryJoinRoom(m_machineId);
+        if (!gate.allowed) {
+            qCWarning(logNet) << QStringLiteral("[联机] 入房尝试被限流 冷却=%1 剩余秒=%2")
+                                     .arg(gate.throttled ? 1 : 0).arg(gate.retryAfterSec);
+            if (gate.throttled) {
+                emitError(QStringLiteral("code_invalid_throttled"),
+                          tr("房间码无效或不存在；连续 %1 次失败已触发冷却，请 %2 秒后再试")
+                              .arg(ConnectionGuard::kJoinCooldown).arg(gate.retryAfterSec));
+            } else {
+                emitError(QStringLiteral("too_frequent"),
+                          tr("尝试过于频繁，请 %1 秒后再试").arg(gate.retryAfterSec));
+            }
             return;
         }
-        emitError(QStringLiteral("code_invalid"), tr("房间码无效，请检查后重试"));
+        emitError(QStringLiteral("code_invalid"), tr("房间码无效或不存在，请检查后重试"));
         return;
     }
 
@@ -1333,9 +1346,19 @@ void MultiplayerManager::handleGuestServerPort(const QByteArray& body)
         }
 
         // TCP port-forward (Terracotta binds 0.0.0.0 — UNSPECIFIED)
+        // 2026-11-26 修（审计 E4）：原先失败只 warning 就继续往下 emit minecraftPortReady
+        // 并进入 verifyMcConnection —— 而验证连的是 127.0.0.1:localMcPort，可能连到本机
+        // 别的程序上并"验证通过"，界面于是显示"已加入房间"，隧道实际没建起来。
+        // 转发是加入房间的前置条件，失败必须当失败处理并整房收尾。
         if (!m_easyTier->addPortForward(QStringLiteral("0.0.0.0"), localMcPort,
                                         hostIp, port, QStringLiteral("tcp"))) {
-            qCWarning(logNet) << QStringLiteral("[联机] 无法创建MC TCP端口转发");
+            qCWarning(logNet) << QStringLiteral("[联机] 无法创建MC TCP端口转发 本地端口=%1 远程=%2:%3")
+                                     .arg(localMcPort).arg(hostIp).arg(port);
+            setState(Error, tr("无法建立游戏端口转发（本地端口 %1 不可用）").arg(localMcPort));
+            emitError(QStringLiteral("port_forward_failed"),
+                      tr("无法建立游戏端口转发（本地端口 %1 不可用），请重试或换用其他端口").arg(localMcPort));
+            leaveRoom();
+            return;
         }
 
         // UDP port-forward for mod compatibility (SimpleVoiceChat etc.)

@@ -117,7 +117,10 @@ Item {
             if (selLoader.length > 0 && v.loaders.indexOf(selLoader) < 0) continue
             out.push(v)
         }
-        out.sort(function(a, c) { return a.date < c.date ? 1 : (a.date > c.date ? -1 : 0) })
+        // 按完整时间戳排序（不是截到日的 date）：CF 每个文件一条版本后，同组合内常有多个文件
+        // 落在同一天，只比到日会让「最新」落在同日里数组靠前的那条（顺序不稳定 → 头部显示的
+        // 文件名可能不是真最新）。ts 是 fileDate 原文，ISO-8601 字典序即时间序。
+        out.sort(function(a, c) { return a.ts < c.ts ? 1 : (a.ts > c.ts ? -1 : 0) })
         return out
     }
     readonly property var latest: comboList.length > 0 ? comboList[0] : null
@@ -218,11 +221,14 @@ Item {
             arr.push({
                 // CF 的 files 端点不返回 Modrinth 式的版本 id（见 cf_api.cpp fetchFilesAsVersions），
                 // 恒空会让 pickedId 永远是 ""：旧版本行点了没反应、选中态也亮不起来。
-                // 复合 key（mcVer|loader）在同一次列表内唯一，拿它兜底做行标识。
+                // 复合 key（mcVer|loader|文件id）在同一次列表内唯一，拿它兜底做行标识。
                 id: d.id || key,
                 serverId: d.id || "",
-                version: d.version_number || key,
+                // displayName 为空时退回文件名（CF 旧条目偶有空的 displayName；
+                // key 现在是 mcVer|loader|文件id，直接显示会露出内部编码）
+                version: d.version_number || d.filename || key,
                 date: (d.date_published || "").substring(0, 10),
+                ts: d.date_published || "",
                 gameVersions: gv,
                 loaders: page.joinList(d.loaders),
                 url: d.url || "",
@@ -1175,7 +1181,11 @@ Item {
                             id: rowDate
                             anchors.right: parent.right; anchors.rightMargin: 18
                             anchors.verticalCenter: parent.verticalCenter
-                            text: modelData.date
+                            // 带上大小：现在一行 = 一个文件，同一版本号可能对应多个文件
+                            // （作者重传 / 同一天多个构建），只有名字+日期会让它们看起来完全一样。
+                            text: modelData.size > 0
+                                  ? (modelData.date + "   " + page.fmtSize(modelData.size))
+                                  : modelData.date
                             color: Theme.fg3; font.family: Theme.fontFamily; font.pixelSize: 10
                         }
                         MouseArea {

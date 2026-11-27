@@ -17,7 +17,9 @@ Item {
         anchors.fill: parent
         radius: Theme.rSm
         color: Theme.bgCard2
-        border.width: 1
+        // 聚焦视觉：把已有蓝边加粗到 Theme.focusRingWidth（输入类不另叠焦点环，
+        // 两层描边压在一起太重）。边框画在自身边界内，加粗不改变布局。
+        border.width: edit.activeFocus ? Theme.focusRingWidth : 1
         border.color: edit.activeFocus ? Theme.accent : Theme.line2
         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
     }
@@ -49,6 +51,18 @@ Item {
         font.pixelSize: 12
         clip: true
         selectByMouse: true
+        // 真实的"不可用"判据是 enabled（本控件没有 dimmed）；disabled 时退出 Tab 链。
+        activeFocusOnTab: root.enabled
+        // Esc 分层：有内容 -> 清空并消费（用户可再按一次去退整页浮层）；
+        // 已为空 -> 不消费，冒泡给 StageShell.escapeTopmost()。
+        Keys.onEscapePressed: function(event) {
+            if (edit.text.length > 0) {
+                edit.text = ""
+                event.accepted = true
+            } else {
+                event.accepted = false
+            }
+        }
         onTextChanged: if (root.text !== text) { root.text = text; root.edited(text) }
     }
 }

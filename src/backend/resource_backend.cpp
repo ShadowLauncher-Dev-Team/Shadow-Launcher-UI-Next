@@ -268,6 +268,52 @@ ResourceBackend::ResourceBackend(QObject* parent)
 
 ResourceBackend::~ResourceBackend() = default;
 
+// ============================================================
+// D11：搜索失败归因
+// 把「请求失败」（断网 / HTTP 非 2xx / 镜像与官方均无有效数据 / 源 25s 无响应）
+// 与「请求成功但 0 条」分开：后者一律走结果信号传空池 → QML「没有结果」态。
+// 判定：一轮搜索 pending 归零、池子仍空、且没有任何源成功应答 2xx。
+// ============================================================
+void ResourceBackend::noteFail(SearchFailure& st, const QString& source, FailWhy why,
+                               const QString& detail, int httpStatus)
+{
+    const QString brief = detail.simplified().left(60);
+    QString text;
+    switch (why) {
+    case FailWhy::Net:
+        text = brief.isEmpty() ? tr("%1：网络连接失败").arg(source)
+                               : tr("%1：网络连接失败（%2）").arg(source, brief);
+        break;
+    case FailWhy::Http:
+        text = tr("%1：服务暂时不可用（HTTP %2）").arg(source).arg(httpStatus);
+        break;
+    case FailWhy::BothDead:
+        // 镜像返回异常空后降级官方，官方也没给出有效数据：两个入口都走死了
+        if (httpStatus > 0)
+            text = tr("%1：镜像与官方均未返回有效数据（HTTP %2）").arg(source).arg(httpStatus);
+        else if (!brief.isEmpty())
+            text = tr("%1：镜像与官方均未返回有效数据（%2）").arg(source, brief);
+        else
+            text = tr("%1：镜像与官方均未返回有效数据").arg(source);
+        break;
+    }
+    st.errors << text;
+}
+
+QString ResourceBackend::takeSearchFailure(const QString& kind, SearchFailure& st,
+                                           bool poolEmpty, int pending)
+{
+    if (st.reported || pending > 0 || !poolEmpty) return {};
+    if (st.sourceOk > 0) return {};                      // 有源正常应答（哪怕 0 条）→「没有结果」
+    if (st.errors.isEmpty() && !st.timedOut) return {};   // 本轮没发请求（源被筛选跳过）→ 不下结论
+    QStringList lines = st.errors;
+    if (st.timedOut) lines << tr("仍有源 25 秒未返回响应");
+    st.reported = true;
+    const QString text = lines.join(QStringLiteral("；"));
+    emit logMessage(tr("[搜索失败] %1: %2").arg(kind, text));
+    return text;
+}
+
 void ResourceBackend::loadModTranslations()
 {
     const QString path = QStringLiteral(":/qt/qml/ShadowLauncher/assets/data/mod_zh.json");
@@ -621,11 +667,13 @@ void ResourceBackend::searchModsEx(const QString& query, const QString& loader,
     m_modSearchSource = source;
 
     // 搜索词/条件变化 → 重置池子与游标
-    // 2026-11-25：「重试」也要重置 —— key 相同但池子空且双源都已耗尽（上一轮全部失败），
-    // 此时游标/More 标记停在"没有更多"，ensureModPool 直接发空池、连一个请求都不发，
+    // 2026-11-25：「重试」也要重置 —— 否则 ensureModPool 直接发空池、连一个请求都不发，
     // 「重新加载」按钮点了等于没点，网络恢复后列表依旧是空的。
+    // D11：判据从「双源都耗尽」改成「空池 + 无在途请求」。旧判据在 Modrinth-only 时失效——
+    // 环境/许可证筛选激活、或分类是 CF 专属值时不发 CF 请求，m_modCfMore 恒为 true，
+    // 重置永不触发；而失败态下的「重试」正好落在这一格，按下等于没按。
     if (key != m_modSearchKey
-        || (m_modPool.isEmpty() && !m_modMrMore && !m_modCfMore)) {
+        || (m_modPool.isEmpty() && m_modPending == 0)) {
         // 诊断（2026-11-25 复验）：这条日志用来分辨「重置分支到底有没有被编译/执行」——
         // 同一 key 的空池重试若没有这行，说明该分支没进构建，而不是条件没命中。
         qCInfo(logApp) << QStringLiteral("[池子] Mod 重置 keyChanged=%1 poolEmpty=%2 mrMore=%3 cfMore=%4")
@@ -643,6 +691,7 @@ void ResourceBackend::searchModsEx(const QString& query, const QString& loader,
         m_modCfMore = true;
         m_mrFallbackUsed = false;
         m_modShownCount = 0;
+        m_modFail = SearchFailure{};   // D11：新代次，失败归因清零
         // 本分支同时承担「重试」语义（上面空池条件），因此不能只当它是"新搜索"。
         emit logMessage(tr("[池子] Mod 搜索重置: q=%1 offset=%2 limit=%3").arg(query).arg(page * limit).arg(limit));
     }
@@ -742,10 +791,12 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
                             m_modMrAll.append(parseSearchResponseItems(r2));
                             m_modMrOffset += r2.size();
                             m_modMrMore = m_modMrOffset < t2;
+                            ++m_modFail.sourceOk;   // D11：请求是通的（哪怕 0 条）
                             emit logMessage(tr("官方降级成功: +%1 条").arg(r2.size()));
                         } else {
                             m_modMrMore = false;
                             emit logMessage(tr("Modrinth 官方降级失败: HTTP %1").arg(s2));
+                            noteFail(m_modFail, QStringLiteral("Modrinth"), FailWhy::BothDead, QString(), s2);
                         }
                         onModSourceDone(gen);
                     };
@@ -753,6 +804,7 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
                         if (gen != m_modGen) return;
                         m_modMrMore = false;
                         emit logMessage(tr("Modrinth 官方降级网络错误: %1").arg(e2));
+                        noteFail(m_modFail, QStringLiteral("Modrinth"), FailWhy::BothDead, e2);
                         onModSourceDone(gen);
                     };
                     if (m_fetchEngine)
@@ -764,9 +816,11 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
                 m_modMrAll.append(parseSearchResponseItems(results));
                 m_modMrOffset += results.size();
                 m_modMrMore = m_modMrOffset < totalHits;
+                ++m_modFail.sourceOk;   // D11：2xx 应答（含 0 条）→ 不是失败态
             } else {
                 m_modMrMore = false;
                 emit logMessage(tr("Modrinth 搜索失败: HTTP %1").arg(status));
+                noteFail(m_modFail, QStringLiteral("Modrinth"), FailWhy::Http, QString(), status);
             }
             onModSourceDone(gen);
         };
@@ -774,6 +828,7 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
             if (gen != m_modGen) return;
             m_modMrMore = false;
             emit logMessage(tr("Modrinth 网络错误: %1").arg(error));
+            noteFail(m_modFail, QStringLiteral("Modrinth"), FailWhy::Net, error);
             onModSourceDone(gen);
         };
         if (m_fetchEngine)
@@ -794,12 +849,14 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
                 m_modCfAll.append(items);
                 m_modCfOffset += items.size();
                 m_modCfMore = m_modCfOffset < total;
+                ++m_modFail.sourceOk;   // D11
                 onModSourceDone(gen);
             },
             [this, gen](const QString& err) {
                 if (gen != m_modGen) return;
                 m_modCfMore = false;
                 emit logMessage(tr("CurseForge 搜索失败: %1").arg(err));
+                noteFail(m_modFail, QStringLiteral("CurseForge"), FailWhy::Net, err);
                 onModSourceDone(gen);
             });
     }
@@ -824,6 +881,7 @@ void ResourceBackend::ensureModPool(bool cfOnly, bool mrOnly,
             if (gen != m_modGen) return;
             if (m_modPending > 0) {
                 emit logMessage(tr("[池子] Mod 有源 25s 未返回，结束等待"));
+                m_modFail.timedOut = true;   // D11：有源失联
                 m_modPending = 0;
                 emitModPool();
             }
@@ -883,6 +941,9 @@ void ResourceBackend::emitModPool()
     emit logMessage(tr("[汉化] emitModPool 池=%1 条，附加中文=%2 条，表=%3 条")
                         .arg(m_modPool.size()).arg(zhCount).arg(m_zhByTitle.size()));
     emit modSearchResultsReady(m_modPool);
+    const QString failText = takeSearchFailure(QStringLiteral("mod"), m_modFail,
+                                               m_modPool.isEmpty(), m_modPending);
+    if (!failText.isEmpty()) emit resourceSearchFailed(QStringLiteral("mod"), failText);
 }
 
 // ── 中文多候选聚合搜索：多个英文名并发搜 Modrinth，全部回后合并去重 ──
@@ -900,6 +961,7 @@ void ResourceBackend::startZhAggregatedModSearch(const QStringList& ens, const Q
     m_modMrOffset = 0;  m_modCfOffset = 0;
     m_modMrMore = false; m_modCfMore = false;
     m_modShownCount = 0;
+    m_modFail = SearchFailure{};   // D11：聚合搜索同样是新代次
     m_modSearchLimit = qMax(1, limit);
     m_modSearchPage = m_modSearchLimit > 0 ? page / m_modSearchLimit : 0;
     m_modSearchQuery = origQuery;
@@ -1123,9 +1185,10 @@ void ResourceBackend::searchShadersEx(
     m_shaderSearchLoader = loader;
     m_shaderSearchSource = source;
 
-    // 空池 + 双源耗尽 = 上一轮失败：重试时重置游标，否则「重新加载」不发请求（见 searchModsEx）
+    // 空池 + 无在途请求 = 上一轮什么都没拿到（失败或 0 条）：重试必须重置游标
+    // （否则「重新加载」不发请求；判据变更理由见 searchModsEx）
     if (key != m_shaderSearchKey
-        || (m_shaderPool.isEmpty() && !m_shaderMrMore && !m_shaderCfMore)) {
+        || (m_shaderPool.isEmpty() && m_shaderPending == 0)) {
         ++m_shaderGen;   // 新搜索代次：旧响应全部作废
         m_shaderSearchKey = key;
         m_shaderPending = 0;
@@ -1138,6 +1201,7 @@ void ResourceBackend::searchShadersEx(
         m_shaderCfMore = true;
         m_shaderFallbackUsed = false;
         m_shaderShownCount = 0;
+        m_shaderFail = SearchFailure{};   // D11：新代次，失败归因清零
         emit logMessage(tr("[池子] 光影搜索重置: offset=%1 limit=%2").arg(offset).arg(limit));
     }
     ensureShaderPool();
@@ -1213,10 +1277,12 @@ void ResourceBackend::ensureShaderPool()
                             m_shaderMrAll.append(parseSearchResponseItems(r2));
                             m_shaderMrOffset += r2.size();
                             m_shaderMrMore = m_shaderMrOffset < t2;
+                            ++m_shaderFail.sourceOk;   // D11：请求是通的（哪怕 0 条）
                             emit logMessage(tr("光影官方降级成功: +%1 条").arg(r2.size()));
                         } else {
                             m_shaderMrMore = false;
                             emit logMessage(tr("光影官方降级失败: HTTP %1").arg(s2));
+                            noteFail(m_shaderFail, QStringLiteral("Modrinth"), FailWhy::BothDead, QString(), s2);
                         }
                         onShaderSourceDone(gen);
                     };
@@ -1224,6 +1290,7 @@ void ResourceBackend::ensureShaderPool()
                         if (gen != m_shaderGen) return;
                         m_shaderMrMore = false;
                         emit logMessage(tr("光影官方降级网络错误: %1").arg(e2));
+                        noteFail(m_shaderFail, QStringLiteral("Modrinth"), FailWhy::BothDead, e2);
                         onShaderSourceDone(gen);
                     };
                     if (m_fetchEngine)
@@ -1235,9 +1302,11 @@ void ResourceBackend::ensureShaderPool()
                 m_shaderMrAll.append(parseSearchResponseItems(results));
                 m_shaderMrOffset += results.size();
                 m_shaderMrMore = m_shaderMrOffset < totalHits;
+                ++m_shaderFail.sourceOk;   // D11：2xx 应答（含 0 条）→ 不是失败态
             } else {
                 m_shaderMrMore = false;
                 emit logMessage(tr("光影搜索失败: HTTP %1").arg(status));
+                noteFail(m_shaderFail, QStringLiteral("Modrinth"), FailWhy::Http, QString(), status);
             }
             onShaderSourceDone(gen);
         };
@@ -1245,6 +1314,7 @@ void ResourceBackend::ensureShaderPool()
             if (gen != m_shaderGen) return;
             m_shaderMrMore = false;
             emit logMessage(tr("光影搜索网络错误: %1").arg(error));
+            noteFail(m_shaderFail, QStringLiteral("Modrinth"), FailWhy::Net, error);
             onShaderSourceDone(gen);
         };
         if (m_fetchEngine)
@@ -1266,12 +1336,14 @@ void ResourceBackend::ensureShaderPool()
                 m_shaderCfAll.append(items);
                 m_shaderCfOffset += items.size();
                 m_shaderCfMore = m_shaderCfOffset < total;
+                ++m_shaderFail.sourceOk;   // D11
                 onShaderSourceDone(gen);
             },
             [this, gen](const QString& err) {
                 if (gen != m_shaderGen) return;
                 m_shaderCfMore = false;
                 emit logMessage(tr("CurseForge 光影搜索失败: %1").arg(err));
+                noteFail(m_shaderFail, QStringLiteral("CurseForge"), FailWhy::Net, err);
                 onShaderSourceDone(gen);
             });
     }
@@ -1288,6 +1360,7 @@ void ResourceBackend::ensureShaderPool()
             if (gen != m_shaderGen) return;
             if (m_shaderPending > 0) {
                 emit logMessage(tr("[池子] 光影有源 25s 未返回，结束等待"));
+                m_shaderFail.timedOut = true;   // D11：有源失联
                 m_shaderPending = 0;
                 emitShaderPool();
             }
@@ -1328,6 +1401,9 @@ void ResourceBackend::emitShaderPool()
     if (shown > m_shaderShownCount)
         m_shaderShownCount = qMin(shown, m_shaderPool.size());
     emit shaderSearchResultsReady(m_shaderPool);
+    const QString failText = takeSearchFailure(QStringLiteral("shader"), m_shaderFail,
+                                               m_shaderPool.isEmpty(), m_shaderPending);
+    if (!failText.isEmpty()) emit resourceSearchFailed(QStringLiteral("shader"), failText);
 }
 
 
@@ -1378,9 +1454,10 @@ void ResourceBackend::searchResourcepacks(const QString& query, const QString& g
     m_rpSearchCats = categories;
     m_rpSearchSource = source;
 
-    // 空池 + 双源耗尽 = 上一轮失败：重试时重置游标，否则「重新加载」不发请求（见 searchModsEx）
+    // 空池 + 无在途请求 = 上一轮什么都没拿到（失败或 0 条）：重试必须重置游标（见 searchModsEx）。
+    // 资源包这里尤其容易踩：选了分类时 CF 侧整体跳过，m_rpCfMore 恒为 true，旧判据必然不触发。
     if (key != m_rpSearchKey
-        || (m_rpPool.isEmpty() && !m_rpMrMore && !m_rpCfMore)) {
+        || (m_rpPool.isEmpty() && m_rpPending == 0)) {
         ++m_rpGen;   // 新搜索代次：旧响应全部作废
         m_rpSearchKey = key;
         m_rpPending = 0;
@@ -1393,6 +1470,7 @@ void ResourceBackend::searchResourcepacks(const QString& query, const QString& g
         m_rpCfMore = true;
         m_rpFallbackUsed = false;
         m_rpShownCount = 0;
+        m_rpFail = SearchFailure{};   // D11：新代次，失败归因清零
         emit logMessage(tr("[池子] 资源包搜索重置: offset=%1").arg(offset));
     }
     ensureRpPool();
@@ -1473,10 +1551,12 @@ void ResourceBackend::ensureRpPool()
                             m_rpMrAll.append(l2);
                             m_rpMrOffset += l2.size();
                             m_rpMrMore = m_rpMrOffset < t2;
+                            ++m_rpFail.sourceOk;   // D11：请求是通的（哪怕 0 条）
                             emit logMessage(tr("[RP] 官方降级成功: +%1 条").arg(l2.size()));
                         } else {
                             m_rpMrMore = false;
                             emit logMessage(tr("[RP] 官方降级失败: HTTP %1").arg(s2));
+                            noteFail(m_rpFail, QStringLiteral("Modrinth"), FailWhy::BothDead, QString(), s2);
                         }
                         onRpSourceDone(gen);
                     };
@@ -1484,6 +1564,7 @@ void ResourceBackend::ensureRpPool()
                         if (gen != m_rpGen) return;
                         m_rpMrMore = false;
                         emit logMessage(tr("[RP] 官方降级网络错误: %1").arg(e2));
+                        noteFail(m_rpFail, QStringLiteral("Modrinth"), FailWhy::BothDead, e2);
                         onRpSourceDone(gen);
                     };
                     if (m_fetchEngine)
@@ -1520,9 +1601,11 @@ void ResourceBackend::ensureRpPool()
                 m_rpMrAll.append(list);
                 m_rpMrOffset += list.size();
                 m_rpMrMore = m_rpMrOffset < total;
+                ++m_rpFail.sourceOk;   // D11：2xx 应答（含 0 条）→ 不是失败态
             } else {
                 m_rpMrMore = false;
                 emit logMessage(tr("[RP] Modrinth 搜索失败: HTTP %1").arg(status));
+                noteFail(m_rpFail, QStringLiteral("Modrinth"), FailWhy::Http, QString(), status);
             }
             onRpSourceDone(gen);
         };
@@ -1530,6 +1613,7 @@ void ResourceBackend::ensureRpPool()
             if (gen != m_rpGen) return;
             m_rpMrMore = false;
             emit logMessage(tr("[RP] Modrinth 网络错误: %1").arg(error));
+            noteFail(m_rpFail, QStringLiteral("Modrinth"), FailWhy::Net, error);
             onRpSourceDone(gen);
         };
         if (m_fetchEngine)
@@ -1548,12 +1632,14 @@ void ResourceBackend::ensureRpPool()
                 m_rpCfAll.append(items);
                 m_rpCfOffset += items.size();
                 m_rpCfMore = m_rpCfOffset < total;
+                ++m_rpFail.sourceOk;   // D11
                 onRpSourceDone(gen);
             },
             [this, gen](const QString& err) {
                 if (gen != m_rpGen) return;
                 m_rpCfMore = false;
                 emit logMessage(tr("[RP] CurseForge 搜索失败: %1").arg(err));
+                noteFail(m_rpFail, QStringLiteral("CurseForge"), FailWhy::Net, err);
                 onRpSourceDone(gen);
             });
     }
@@ -1570,6 +1656,7 @@ void ResourceBackend::ensureRpPool()
             if (gen != m_rpGen) return;
             if (m_rpPending > 0) {
                 emit logMessage(tr("[池子] 资源包有源 25s 未返回，结束等待"));
+                m_rpFail.timedOut = true;   // D11：有源失联
                 m_rpPending = 0;
                 emitRpPool();
             }
@@ -1610,6 +1697,13 @@ void ResourceBackend::emitRpPool()
     if (shown > m_rpShownCount)
         m_rpShownCount = qMin(shown, m_rpPool.size());
     emit resourcepackSearchCompleted(m_rpPool, m_rpPool.size());
+    // D11：空池 + 无源成功应答 → 失败态；旧的 resourcepackSearchFailed 壳信号一并接上
+    const QString failText = takeSearchFailure(QStringLiteral("resourcepack"), m_rpFail,
+                                               m_rpPool.isEmpty(), m_rpPending);
+    if (!failText.isEmpty()) {
+        emit resourceSearchFailed(QStringLiteral("resourcepack"), failText);
+        emit resourcepackSearchFailed(failText);   // 旧壳信号：语义相同，保住既有接线
+    }
 }
 
 
@@ -1634,9 +1728,9 @@ void ResourceBackend::searchModpacksEx(const QString& query, const QString& load
     m_packSearchVersions = gameVersions;
     m_packSearchSource = source;
 
-    // 空池 + 双源耗尽 = 上一轮失败：重试时重置游标，否则「重新加载」不发请求（见 searchModsEx）
+    // 空池 + 无在途请求 = 上一轮什么都没拿到（失败或 0 条）：重试必须重置游标（见 searchModsEx）
     if (key != m_packSearchKey
-        || (m_packPool.isEmpty() && !m_packMrMore && !m_packCfMore)) {
+        || (m_packPool.isEmpty() && m_packPending == 0)) {
         ++m_packGen;
         m_packSearchKey = key;
         m_packPending = 0;
@@ -1649,6 +1743,7 @@ void ResourceBackend::searchModpacksEx(const QString& query, const QString& load
         m_packCfMore = true;
         m_packFallbackUsed = false;
         m_packShownCount = 0;
+        m_packFail = SearchFailure{};   // D11：新代次，失败归因清零
         emit logMessage(tr("[池子] 整合包搜索重置: q=%1 loader=%2 cat=%3")
             .arg(query).arg(loader).arg(category));
     }
@@ -1722,10 +1817,12 @@ void ResourceBackend::ensurePackPool()
                             m_packMrAll.append(parseSearchResponseItems(r2));
                             m_packMrOffset += r2.size();
                             m_packMrMore = m_packMrOffset < t2;
+                            ++m_packFail.sourceOk;   // D11：请求是通的（哪怕 0 条）
                             emit logMessage(tr("整合包官方降级成功: +%1 条").arg(r2.size()));
                         } else {
                             m_packMrMore = false;
                             emit logMessage(tr("整合包官方降级失败: HTTP %1").arg(s2));
+                            noteFail(m_packFail, QStringLiteral("Modrinth"), FailWhy::BothDead, QString(), s2);
                         }
                         onPackSourceDone(gen);
                     };
@@ -1733,6 +1830,7 @@ void ResourceBackend::ensurePackPool()
                         if (gen != m_packGen) return;
                         m_packMrMore = false;
                         emit logMessage(tr("整合包官方降级网络错误: %1").arg(e2));
+                        noteFail(m_packFail, QStringLiteral("Modrinth"), FailWhy::BothDead, e2);
                         onPackSourceDone(gen);
                     };
                     if (m_fetchEngine)
@@ -1744,9 +1842,11 @@ void ResourceBackend::ensurePackPool()
                 m_packMrAll.append(parseSearchResponseItems(results));
                 m_packMrOffset += results.size();
                 m_packMrMore = m_packMrOffset < totalHits;
+                ++m_packFail.sourceOk;   // D11：2xx 应答（含 0 条）→ 不是失败态
             } else {
                 m_packMrMore = false;
                 emit logMessage(tr("整合包 Modrinth 搜索失败: HTTP %1").arg(status));
+                noteFail(m_packFail, QStringLiteral("Modrinth"), FailWhy::Http, QString(), status);
             }
             onPackSourceDone(gen);
         };
@@ -1754,6 +1854,7 @@ void ResourceBackend::ensurePackPool()
             if (gen != m_packGen) return;
             m_packMrMore = false;
             emit logMessage(tr("整合包 Modrinth 网络错误: %1").arg(error));
+            noteFail(m_packFail, QStringLiteral("Modrinth"), FailWhy::Net, error);
             onPackSourceDone(gen);
         };
         if (m_fetchEngine)
@@ -1773,12 +1874,14 @@ void ResourceBackend::ensurePackPool()
                 m_packCfAll.append(items);
                 m_packCfOffset += items.size();
                 m_packCfMore = m_packCfOffset < total;
+                ++m_packFail.sourceOk;   // D11
                 onPackSourceDone(gen);
             },
             [this, gen](const QString& err) {
                 if (gen != m_packGen) return;
                 m_packCfMore = false;
                 emit logMessage(tr("整合包 CurseForge 搜索失败: %1").arg(err));
+                noteFail(m_packFail, QStringLiteral("CurseForge"), FailWhy::Net, err);
                 onPackSourceDone(gen);
             });
     }
@@ -1795,6 +1898,7 @@ void ResourceBackend::ensurePackPool()
             if (gen != m_packGen) return;
             if (m_packPending > 0) {
                 emit logMessage(tr("[池子] 整合包有源 25s 未返回，结束等待"));
+                m_packFail.timedOut = true;   // D11：有源失联
                 m_packPending = 0;
                 emitPackPool();
             }
@@ -1858,6 +1962,9 @@ void ResourceBackend::emitPackPool()
     if (shown > m_packShownCount)
         m_packShownCount = qMin(shown, m_packPool.size());
     emit modpackSearchResultsReady(m_packPool);
+    const QString failText = takeSearchFailure(QStringLiteral("modpack"), m_packFail,
+                                               m_packPool.isEmpty(), m_packPending);
+    if (!failText.isEmpty()) emit resourceSearchFailed(QStringLiteral("modpack"), failText);
 }
 
 // ── 整合包详情版本列表：Modrinth slug → fetchModVersions；CF 数字 id → fetchModVersionsCf ──
@@ -1941,9 +2048,9 @@ void ResourceBackend::searchDatapacksEx(const QString& query, const QString& cat
     m_dpSearchSort = sort;
     m_dpSearchSource = source;
 
-    // 空池 + 双源耗尽 = 上一轮失败：重试时重置游标，否则「重新加载」不发请求（见 searchModsEx）
+    // 空池 + 无在途请求 = 上一轮什么都没拿到（失败或 0 条）：重试必须重置游标（见 searchModsEx）
     if (key != m_dpSearchKey
-        || (m_dpPool.isEmpty() && !m_dpMrMore && !m_dpCfMore)) {
+        || (m_dpPool.isEmpty() && m_dpPending == 0)) {
         ++m_dpGen;
         m_dpSearchKey = key;
         m_dpPending = 0;
@@ -1956,6 +2063,7 @@ void ResourceBackend::searchDatapacksEx(const QString& query, const QString& cat
         m_dpCfMore = true;
         m_dpFallbackUsed = false;
         m_dpShownCount = 0;
+        m_dpFail = SearchFailure{};   // D11：新代次，失败归因清零
         emit logMessage(tr("[池子] 数据包搜索重置: q=%1 cat=%2 sort=%3 source=%4")
             .arg(query).arg(category).arg(sort).arg(source));
     }
@@ -2030,10 +2138,12 @@ void ResourceBackend::ensureDpPool()
                             m_dpMrAll.append(parseSearchResponseItems(r2));
                             m_dpMrOffset += r2.size();
                             m_dpMrMore = m_dpMrOffset < t2;
+                            ++m_dpFail.sourceOk;   // D11：请求是通的（哪怕 0 条）
                             emit logMessage(tr("数据包官方降级成功: +%1 条").arg(r2.size()));
                         } else {
                             m_dpMrMore = false;
                             emit logMessage(tr("数据包官方降级失败: HTTP %1").arg(s2));
+                            noteFail(m_dpFail, QStringLiteral("Modrinth"), FailWhy::BothDead, QString(), s2);
                         }
                         onDpSourceDone(gen);
                     };
@@ -2041,6 +2151,7 @@ void ResourceBackend::ensureDpPool()
                         if (gen != m_dpGen) return;
                         m_dpMrMore = false;
                         emit logMessage(tr("数据包官方降级网络错误: %1").arg(e2));
+                        noteFail(m_dpFail, QStringLiteral("Modrinth"), FailWhy::BothDead, e2);
                         onDpSourceDone(gen);
                     };
                     if (m_fetchEngine)
@@ -2052,9 +2163,11 @@ void ResourceBackend::ensureDpPool()
                 m_dpMrAll.append(parseSearchResponseItems(results));
                 m_dpMrOffset += results.size();
                 m_dpMrMore = m_dpMrOffset < totalHits;
+                ++m_dpFail.sourceOk;   // D11：2xx 应答（含 0 条）→ 不是失败态
             } else {
                 m_dpMrMore = false;
                 emit logMessage(tr("数据包 Modrinth 搜索失败: HTTP %1").arg(status));
+                noteFail(m_dpFail, QStringLiteral("Modrinth"), FailWhy::Http, QString(), status);
             }
             onDpSourceDone(gen);
         };
@@ -2062,6 +2175,7 @@ void ResourceBackend::ensureDpPool()
             if (gen != m_dpGen) return;
             m_dpMrMore = false;
             emit logMessage(tr("数据包 Modrinth 网络错误: %1").arg(error));
+            noteFail(m_dpFail, QStringLiteral("Modrinth"), FailWhy::Net, error);
             onDpSourceDone(gen);
         };
         if (m_fetchEngine)
@@ -2084,12 +2198,14 @@ void ResourceBackend::ensureDpPool()
                 m_dpCfAll.append(items);
                 m_dpCfOffset += items.size();
                 m_dpCfMore = m_dpCfOffset < total;
+                ++m_dpFail.sourceOk;   // D11
                 onDpSourceDone(gen);
             },
             [this, gen](const QString& err) {
                 if (gen != m_dpGen) return;
                 m_dpCfMore = false;
                 emit logMessage(tr("数据包 CurseForge 搜索失败: %1").arg(err));
+                noteFail(m_dpFail, QStringLiteral("CurseForge"), FailWhy::Net, err);
                 onDpSourceDone(gen);
             },
             sortField);
@@ -2107,6 +2223,7 @@ void ResourceBackend::ensureDpPool()
             if (gen != m_dpGen) return;
             if (m_dpPending > 0) {
                 emit logMessage(tr("[池子] 数据包有源 25s 未返回，结束等待"));
+                m_dpFail.timedOut = true;   // D11：有源失联
                 m_dpPending = 0;
                 emitDpPool();
             }
@@ -2167,6 +2284,9 @@ void ResourceBackend::emitDpPool()
     if (shown > m_dpShownCount)
         m_dpShownCount = qMin(shown, m_dpPool.size());
     emit datapackSearchResultsReady(m_dpPool);
+    const QString failText = takeSearchFailure(QStringLiteral("datapack"), m_dpFail,
+                                               m_dpPool.isEmpty(), m_dpPending);
+    if (!failText.isEmpty()) emit resourceSearchFailed(QStringLiteral("datapack"), failText);
 }
 
 // 数据包翻页预取：只预热司南引擎缓存（与 prefetchModpacks 同构）

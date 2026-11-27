@@ -13,6 +13,20 @@ Item {
     implicitWidth: 36
     implicitHeight: 20
 
+    // 轨道胶囊圆角：焦点环沿用它 + focusRingGap，才能和轨道同心
+    readonly property real radius: 10
+
+    // ── 键盘（统一契约四件套）──
+    // "不可用"判据是 Item 自带的 enabled：开关没有 dimmed/busy 这类内部灰态，
+    // 也不会因为不可用自己变灰（轨道颜色只看 checked），所以只能以 enabled 为准。
+    activeFocusOnTab: root.enabled
+
+    // 鼠标与键盘共用的唯一入口
+    function toggle() {
+        root.checked = !root.checked
+        root.toggled(root.checked)
+    }
+
     Rectangle {
         id: track
         anchors.fill: parent
@@ -36,9 +50,31 @@ Item {
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
-        onClicked: {
-            root.checked = !root.checked
-            root.toggled(root.checked)
+        // 点一下也拿焦点：键盘与鼠标共用同一套焦点状态
+        onPressed: { Theme.keyboardNav = false; root.forceActiveFocus() }
+        onClicked: root.toggle()
+    }
+
+    // 键盘激活：与鼠标**同一个入口**（root.toggle()），不另写逻辑
+    Keys.onPressed: function(e) {
+        if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+            e.accepted = true
+            // isAutoRepeat：按住不放等于鼠标连点，一次按下只切一次
+            if (e.isAutoRepeat || !root.enabled) return
+            root.toggle()
         }
+    }
+
+    // 焦点环：独立一层描边，只锚定 + 负 margin，不占布局
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -Theme.focusRingGap
+        radius: (root.radius !== undefined ? root.radius : 8) + Theme.focusRingGap
+        color: "transparent"
+        border.width: Theme.focusRingWidth
+        border.color: Theme.focusRing
+        visible: root.activeFocus && Theme.keyboardNav
+        z: 999
+        antialiasing: true
     }
 }

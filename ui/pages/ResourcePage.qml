@@ -29,6 +29,9 @@ Item {
     readonly property int pageSize: tabIndex === 2 ? 20 : (tabIndex === 2 ? 20 : 30)
     property var pool: []
     property bool busy: false
+    // D11：后端上报的搜索失败原因（网络失败 / HTTP 非 2xx / 镜像与官方均无有效数据）。
+    // 非空 = 请求失败；空 + 没有卡片 = 请求成功但 0 条（真的没有结果）。这是两种状态。
+    property string searchError: ""
     property bool _autoOpened: false
 
     // ── 动效：入场预算 ──
@@ -150,6 +153,15 @@ Item {
         return ref >= 860 ? 4 : (ref >= 600 ? 3 : 2)
     }
 
+    // ── 空态三态判据（D11）──
+    //   loadingState：还在拉（busy 且还没有任何卡片）→ 骨架屏
+    //   failedState ：本轮结束、没有卡片、后端报过失败（searchError 非空）→ 失败文案 + 具体原因 + 重试
+    //   emptyState  ：本轮结束、没有卡片、后端没报失败 → 请求成功但 0 条，「没有找到匹配的资源」
+    // 后端只在「没有任何源成功应答」时才发失败信号，所以这两个状态不会互相误判。
+    readonly property bool loadingState: page.busy && listModel.count === 0
+    readonly property bool failedState: listModel.count === 0 && !page.busy && page.searchError.length > 0
+    readonly property bool emptyState: listModel.count === 0 && !page.busy && page.searchError.length === 0
+
     function sourceArg() { return page.source === 1 ? "modrinth" : (page.source === 2 ? "curseforge" : "") }
 
     // 加载器下拉选项：只从本轮实际返回的条目里取（不写死 fabric/forge/neoforge）
@@ -179,6 +191,8 @@ Item {
         if (!page.b) return
         page.pageNo = (pageNum === undefined) ? 0 : Math.max(0, pageNum)
         page.busy = true
+        // 新一轮（含失败态下的「重试」）先清失败原因，否则重试后仍停在失败文案上
+        page.searchError = ""
         // 必须清零：ticks 原来只在 running 由 false 变 true 时归零，而连续搜索/翻页时
         // busy 一直是 true，计数会跨搜索一路累加 —— 后面某次搜索一上来就撞上限、条立刻关掉。
         settleTimer.ticks = 0
@@ -202,6 +216,7 @@ Item {
     // 结果到达：按池子切片（后端已经是全量有序池）
     function applyPool(items) {
         page.pool = items || []
+        if (page.pool.length > 0) page.searchError = ""
         listModel.clear()
         var start = page.pageNo * page.pageSize
         var end = Math.min(start + page.pageSize, page.pool.length)
@@ -293,6 +308,11 @@ Item {
         function onResourcepackSearchCompleted(results, totalHits) { if (page.tabIndex === 3) page.applyPool(results) }
         function onModpackSearchResultsReady(results) { if (page.tabIndex === 4) page.applyPool(results) }
         function onDatapackSearchResultsReady(results) { if (page.tabIndex === 5) page.applyPool(results) }
+        // D11：后端失败信号（网络 / HTTP / 双源均无有效数据）→ 失败态，不落到「没有结果」
+        function onResourceSearchFailed(kind, error) {
+            if (kind !== page.kind) return
+            page.searchError = (error && error.length > 0) ? error : qsTr("搜索失败，请稍后重试")
+        }
         // 司南异步下完图标 → 回填对应行（原始 URL 命中则换成本地路径）
         function onIconReady(url, localPath) {
             for (var i = 0; i < listModel.count; ++i) {
@@ -464,7 +484,7 @@ Item {
         // 只在列表还空的时候出现，已有内容时用顶部进度条表示在拉数据（不闪掉已有卡片）。
         Grid {
             id: skeleton
-            readonly property bool on: page.busy && listModel.count === 0
+            readonly property bool on: page.loadingState
             visible: on
             anchors.fill: parent
             anchors.leftMargin: 0
@@ -540,29 +560,48 @@ Item {
             }
         }   // 网格宿主
 
-        // ── 空态 / 加载态 ──
+        // ── 空态：请求失败 / 真的没有结果（加载中走上面的骨架屏）──
+        // 三态判据见文件里的 loadingState / failedState / emptyState。
+        // 失败态必须给出**具体原因**（断网 / HTTP 5xx / 镜像与官方均无有效数据）——
+        // 笼统写「没有找到匹配的资源」会把断网的用户引导去改搜索词，那是这一条真正要修的病。
         Column {
             Layout.alignment: Qt.AlignHCenter
             spacing: 10
-            visible: listModel.count === 0 && !page.busy
+            visible: page.failedState || page.emptyState
+
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: page.busy ? qsTr("正在加载…") : qsTr("没有找到匹配的资源")
-                color: page.busy ? Theme.fg2 : Theme.fg3
+                text: page.failedState ? qsTr("搜索失败") : qsTr("没有找到匹配的资源")
+                color: page.failedState ? Theme.fg2 : Theme.fg3
                 font.family: Theme.fontFamily
-                font.pixelSize: 12
+                font.pixelSize: page.failedState ? 13 : 12
+            }
+            // 失败原因：后端按「源 + 失败类别」拼好（Modrinth：网络连接失败（…）/
+            // CurseForge：服务暂时不可用（HTTP 502）/ 镜像与官方均未返回有效数据）
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: page.failedState
+                width: Math.min(page.width - 140, 520)
+                text: page.searchError
+                color: Theme.fg3
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
             }
             Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
-                visible: !page.busy
-                width: 96; height: 30
+                width: Math.max(96, retryLabel.implicitWidth + 28); height: 30
                 radius: Theme.rSm
                 color: retryHover.containsMouse ? Theme.bgCard : "transparent"
                 border.width: 1
                 border.color: Theme.line2
                 Text {
+                    id: retryLabel
                     anchors.centerIn: parent
-                    text: qsTr("重新加载")
+                    // 失败 → 重试（复用 page.pageNo / query / source 等现有参数）；
+                    // 没有结果 → 重新加载（可能是后端临时只回了一部分）
+                    text: page.failedState ? qsTr("重试") : qsTr("重新加载")
                     color: Theme.fg2
                     font.family: Theme.fontFamily
                     font.pixelSize: 11

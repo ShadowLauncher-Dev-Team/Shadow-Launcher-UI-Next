@@ -28,9 +28,6 @@ class SettingsBackend : public QObject {
     Q_PROPERTY(int languageIndex READ languageIndex WRITE setLanguageIndex NOTIFY languageChanged)
     Q_PROPERTY(bool languageChanged READ isLanguageChanged NOTIFY languageChanged)
     Q_PROPERTY(QString customBgPath READ customBgPath WRITE setCustomBgPath NOTIFY customBgChanged)
-    Q_PROPERTY(qreal sidebarOpacity READ sidebarOpacity WRITE setSidebarOpacity NOTIFY customBgChanged)
-    Q_PROPERTY(qreal contentOpacity READ contentOpacity WRITE setContentOpacity NOTIFY customBgChanged)
-    Q_PROPERTY(qreal backgroundBlur READ backgroundBlur WRITE setBackgroundBlur NOTIFY customBgChanged)
     Q_PROPERTY(qreal cropX READ cropX WRITE setCropX NOTIFY customBgChanged)
     Q_PROPERTY(qreal cropY READ cropY WRITE setCropY NOTIFY customBgChanged)
     // 2026-11-13 外观页：背景图缩放倍率（1.0 = 恰好铺满；>1 放大后可在框内拖动取景）
@@ -185,12 +182,6 @@ public:
     QString customBgPath() const { return activeBgPath(); }
     // 兼容旧接口：把某个本地路径直接当成「一张新导入的图」加进图库并激活
     void setCustomBgPath(const QString& path) { importBgFile(path); }
-    qreal sidebarOpacity() const { return m_sidebarOpacity; }
-    void setSidebarOpacity(qreal v) { m_sidebarOpacity = qBound(0.0, v, 1.0); saveSettings(); emit customBgChanged(); }
-    qreal contentOpacity() const { return m_contentOpacity; }
-    void setContentOpacity(qreal v) { m_contentOpacity = qBound(0.0, v, 1.0); saveSettings(); emit customBgChanged(); }
-    qreal backgroundBlur() const { return m_backgroundBlur; }
-    void setBackgroundBlur(qreal v) { m_backgroundBlur = qBound(0.0, v, 1.0); saveSettings(); emit customBgChanged(); }
     qreal cropX() const { return activeBg().cropX; }
     void setCropX(qreal v) { setActiveView(activeBg().zoom, qBound(0.0, v, 1.0), activeBg().cropY); }
     Q_INVOKABLE void updateCrop(qreal x, qreal y) {
@@ -344,9 +335,6 @@ private:
     QVector<BgImage> m_bgImages;      // 图库（第 0 项永远是内置默认图）
     QString m_activeBgId;             // 当前使用哪一项
     QString m_bgStorageDir;           // 导入图的存放目录（空 = 相对 exe 的 data/custom_bg）
-    qreal m_sidebarOpacity = 0.90;
-    qreal m_contentOpacity = 0.70;
-    qreal m_backgroundBlur = 0.0;
 
     // ── 图库内部 ──
     void ensureBgLibrary();                       // 首次访问时初始化 + 迁移旧 customBg/path
