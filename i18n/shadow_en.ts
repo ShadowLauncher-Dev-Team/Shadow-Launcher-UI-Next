@@ -8467,7 +8467,7 @@
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="211"/>
         <source>重命名失败</source>
-        <translation type="unfinished">Rename failed</translation>
+        <translation>Rename failed</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="220"/>
@@ -10214,7 +10214,7 @@ and any loader version of the same name goes with it. This cannot be undone.</tr
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="435"/>
         <source>删除</source>
-        <translation type="unfinished">Delete</translation>
+        <translation>Delete</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="440"/>

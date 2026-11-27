@@ -10139,7 +10139,7 @@
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="330"/>
         <source>重命名</source>
-        <translation type="unfinished">重命名</translation>
+        <translation>重命名</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="340"/>
@@ -10189,7 +10189,7 @@
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="495"/>
         <source>确认</source>
-        <translation type="unfinished">确认</translation>
+        <translation>确认</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="501"/>

@@ -8467,7 +8467,7 @@
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="211"/>
         <source>重命名失败</source>
-        <translation type="unfinished">重新命名失敗</translation>
+        <translation>重新命名失敗</translation>
     </message>
     <message>
         <location filename="../ui/pages/VersionPage.qml" line="220"/>
@@ -10214,7 +10214,7 @@
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="435"/>
         <source>删除</source>
-        <translation type="unfinished">刪除</translation>
+        <translation>刪除</translation>
     </message>
     <message>
         <location filename="../ui/pages/VsToolsPane.qml" line="440"/>
