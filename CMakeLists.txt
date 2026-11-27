@@ -783,6 +783,16 @@ if(SHADOW_BUILD_MODPACK_SELFTEST)
     target_include_directories(DLCoreEngineTest PRIVATE src)
     target_link_libraries(DLCoreEngineTest PRIVATE Qt6::Core Qt6::Network Qt6::Concurrent)
 
+    # 端口探测口径单测（2026-11-26 审计 E4）
+    #   addPortForward 绑 0.0.0.0，探测必须同口径，否则通配被占时误判"可用"
+    # 用法：PortProbeTest.exe   退出码 0=PASS 1=FAIL 2=SKIP
+    add_executable(PortProbeTest
+        tests/test_port_probe.cpp
+        src/multiplayer/port_request.cpp
+    )
+    target_include_directories(PortProbeTest PRIVATE src)
+    target_link_libraries(PortProbeTest PRIVATE Qt6::Core Qt6::Network)
+
     # CF 适配器自测：搜索统一模型 + 文件→版本转换 + 分类表
     add_executable(CfApiTest
         tests/test_cf_api.cpp

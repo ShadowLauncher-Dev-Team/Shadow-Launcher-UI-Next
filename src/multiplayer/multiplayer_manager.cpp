@@ -1333,9 +1333,19 @@ void MultiplayerManager::handleGuestServerPort(const QByteArray& body)
         }
 
         // TCP port-forward (Terracotta binds 0.0.0.0 — UNSPECIFIED)
+        // 2026-11-26 修（审计 E4）：原先失败只 warning 就继续往下 emit minecraftPortReady
+        // 并进入 verifyMcConnection —— 而验证连的是 127.0.0.1:localMcPort，可能连到本机
+        // 别的程序上并"验证通过"，界面于是显示"已加入房间"，隧道实际没建起来。
+        // 转发是加入房间的前置条件，失败必须当失败处理并整房收尾。
         if (!m_easyTier->addPortForward(QStringLiteral("0.0.0.0"), localMcPort,
                                         hostIp, port, QStringLiteral("tcp"))) {
-            qCWarning(logNet) << QStringLiteral("[联机] 无法创建MC TCP端口转发");
+            qCWarning(logNet) << QStringLiteral("[联机] 无法创建MC TCP端口转发 本地端口=%1 远程=%2:%3")
+                                     .arg(localMcPort).arg(hostIp).arg(port);
+            setState(Error, tr("无法建立游戏端口转发（本地端口 %1 不可用）").arg(localMcPort));
+            emitError(QStringLiteral("port_forward_failed"),
+                      tr("无法建立游戏端口转发（本地端口 %1 不可用），请重试或换用其他端口").arg(localMcPort));
+            leaveRoom();
+            return;
         }
 
         // UDP port-forward for mod compatibility (SimpleVoiceChat etc.)
