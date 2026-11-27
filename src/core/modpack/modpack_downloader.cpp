@@ -461,6 +461,22 @@ void ModpackDownloader::processResolvedBatch(int startIndex, const QMap<int, QJs
         rf.displayName = o.value(QStringLiteral("displayName")).toString(rf.displayName);
         rf.fileName = o.value(QStringLiteral("fileName")).toString();
         rf.size = static_cast<qint64>(o.value(QStringLiteral("fileLength")).toDouble(0));
+        // 2026-11-27 修（审计 E1）：CF 路径此前从未给 rf.sha1 赋值，于是这条链路只剩 size 校验
+        // （fileLength 为 0 时等于完全不校验），而 Modrinth 路径是靠 hashes.sha1 全程校验的。
+        // CF API 本来就给了哈希（algo 1=sha1、2=md5，与 cf_api.cpp:244-250 同一口径），
+        // 只是没被接上。接上之后 file_downloader 的三条路径（整文件 1552 / 兜底 1797 / 合并 2091）
+        // 都会按 sha1 判定，坏包自然会在导入期暴露而不是等到启动崩。
+        if (rf.sha1.isEmpty()) {
+            const QJsonArray cfHashes = o.value(QStringLiteral("hashes")).toArray();
+            for (const QJsonValue& hv : cfHashes) {
+                const QJsonObject ho = hv.toObject();
+                if (ho.value(QStringLiteral("algo")).toInt() != 1) continue;
+                const QString cfSha1 = ho.value(QStringLiteral("value")).toString();
+                if (cfSha1.size() == 40)   // 只要合法的 sha1 hex，长度不对宁可留空走 size 校验
+                    rf.sha1 = cfSha1.toLatin1();
+                break;
+            }
+        }
         const QString category = classifyCategory(rf.fileName, o.value(QStringLiteral("modules")).toArray());
         rf.category = category;
 
