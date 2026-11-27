@@ -51,7 +51,7 @@ Item {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         // 点一下也拿焦点：键盘与鼠标共用同一套焦点状态
-        onPressed: root.forceActiveFocus()
+        onPressed: { Theme.keyboardNav = false; root.forceActiveFocus() }
         onClicked: root.toggle()
     }
 
@@ -73,7 +73,7 @@ Item {
         color: "transparent"
         border.width: Theme.focusRingWidth
         border.color: Theme.focusRing
-        visible: root.activeFocus
+        visible: root.activeFocus && Theme.keyboardNav
         z: 999
         antialiasing: true
     }

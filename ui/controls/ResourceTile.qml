@@ -88,6 +88,7 @@ Rectangle {
         // 鼠标按下也拿焦点：键盘与鼠标共用同一套焦点状态
         onPressed: {
             tile.pressed = true
+            Theme.keyboardNav = false
             tile.forceActiveFocus()
         }
         onReleased: tile.pressed = false
@@ -219,7 +220,7 @@ Rectangle {
         color: "transparent"
         border.width: Theme.focusRingWidth
         border.color: Theme.focusRing
-        visible: tile.activeFocus
+        visible: tile.activeFocus && Theme.keyboardNav
         z: 999
         antialiasing: true
     }

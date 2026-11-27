@@ -81,6 +81,7 @@ Item {
         // 原来写成 root.setFromX(...) → 每次按下都抛 TypeError，滑块既不能点也不能拖。
         onPressed: (m) => {
             // 拖/点也拿焦点：键盘与鼠标共用同一套焦点状态
+            Theme.keyboardNav = false
             root.forceActiveFocus()
             drag.setFromX(m.x)
         }
@@ -120,7 +121,7 @@ Item {
         color: "transparent"
         border.width: Theme.focusRingWidth
         border.color: Theme.focusRing
-        visible: root.activeFocus
+        visible: root.activeFocus && Theme.keyboardNav
         z: 999
         antialiasing: true
     }

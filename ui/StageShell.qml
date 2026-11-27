@@ -249,7 +249,13 @@ Item {
         return false
     }
     Keys.onEscapePressed: function(event) {
+        Theme.keyboardNav = true
         if (root.escapeTopmost()) event.accepted = true
+    }
+    // 任意按键 = 用户在用键盘 → 之后焦点环可见（模拟 :focus-visible）。
+    // 鼠标按下时各控件会把 keyboardNav 置回 false，所以点击不会留下蓝框。
+    Keys.onPressed: function(event) {
+        Theme.keyboardNav = true
     }
 
     property bool versionsOpen: false

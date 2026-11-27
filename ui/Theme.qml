@@ -167,4 +167,10 @@ QtObject {
     readonly property int focusRingWidth: 2
     readonly property int focusRingGap: 2          // 环与控件之间的空隙
     readonly property color focusRing: dark ? "#7aa7ff" : "#2563eb"
+    // ── 焦点环可见性：模拟 CSS 的 :focus-visible（2026-11-27）──
+    // 只判 activeFocus 是错的：鼠标点一下控件就会 forceActiveFocus，蓝框留在那儿不消失
+    // （用户实测报障：「每点击一次组件就会留下蓝色边框」）。
+    // 正确的语义是——焦点照常保留（点完还能接着用键盘操作），但**环只在键盘导航时画**。
+    // 由 StageShell 的 Keys.onPressed 置 true，各控件的鼠标 onPressed 置 false。
+    property bool keyboardNav: false
 }
