@@ -233,6 +233,25 @@ Item {
     // 页面内部的窄屏适配（padding / 字号）另有各自的 narrow，与这里无关，那些保留。
     readonly property bool narrow: false
     readonly property int sideW: Theme.sideW
+
+    // ── Esc 分层退出（2026-11-27 D5 键盘可用性）──
+    // 只关「整页浮层」，按叠加顺序逐层退回；没有浮层时不吃事件（让它继续冒泡给页面）。
+    // 两处明确**不**响应 Esc，理由钉死在这里，防止以后被人"顺手补全"：
+    //   AgreementGate —— 协议/法规页，必须用户主动勾选，不能被一键跳过；
+    //   LaunchOverlay —— 启动/安装进行中，误触 Esc 会中断用户正在进行的操作。
+    focus: true
+    function escapeTopmost() {
+        if (root.settingsOpen)  { root.settingsOpen  = false; return true }
+        if (root.prefsOpen)     { root.prefsOpen     = false; return true }
+        if (root.versionsOpen)  { root.versionsOpen  = false; return true }
+        if (root.resDetailOpen) { root.resDetailOpen = false; return true }
+        if (root.accountOpen)   { root.accountOpen   = false; return true }
+        return false
+    }
+    Keys.onEscapePressed: function(event) {
+        if (root.escapeTopmost()) event.accepted = true
+    }
+
     property bool versionsOpen: false
     // 版本设置（从版本页的版本卡片进入；叠在版本页之上，返回时回到版本页）
     property bool settingsOpen: false

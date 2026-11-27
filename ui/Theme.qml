@@ -158,4 +158,13 @@ QtObject {
     readonly property int easePop: Easing.OutBack
     // 逐条入场的行数上限：超过之后统一在第 N 行同时出现，避免长列表拖沓
     readonly property int staggerMax: 12
+
+    // ── 键盘焦点环（2026-11-27 D5 键盘可用性）──
+    // 焦点必须是**独立一层描边**，不能复用控件自身的 border：
+    // ghost 按钮 / 滑块 / 开关本来就带描边，复用的话焦点态与常态分不出来。
+    // 颜色在深色下取 accent 的亮一档（压 bg #08090d ≈8.5:1）、
+    // 浅色下用 accentTop 本色（压浅底 ≈4.6:1），都远超 WCAG 非文本 3:1。
+    readonly property int focusRingWidth: 2
+    readonly property int focusRingGap: 2          // 环与控件之间的空隙
+    readonly property color focusRing: dark ? "#7aa7ff" : "#2563eb"
 }

@@ -18,6 +18,11 @@ Rectangle {
 
     property bool hovered: false
 
+    // ── 键盘（统一契约四件套）──
+    // 本卡片没有 dimmed/busy 这类内部灰态：唯一的"不可用"通道是 Qt 的 Item.enabled
+    // （为 false 时父子一起收不到鼠标事件，鼠标入口本来就已经死了 ⇒ Tab 也该跳过）。
+    activeFocusOnTab: tile.enabled
+
     // 下载量缩写：中文用「亿 / 万」，英文没有这两个量级 → SI 后缀（120M / 12K）。
     // 探针就是译文本身：中文里「%1 万」含「万」，英文里不含。
     function fmtDl(n) {
@@ -30,6 +35,14 @@ Rectangle {
         if (n >= 10000) return qsTr("%1 万").arg((n / 10000).toFixed(0))
         return n.toString()
     }
+    // 鼠标点击与键盘激活的**唯一入口**：按压复位 → 涟漪起手式 → clicked()。
+    // 键盘没有坐标，从卡片中心起涟漪（与中心点击同一效果）。
+    function activate(px, py) {
+        tile.pressed = false
+        ripple.burst(px, py)
+        tile.clicked()
+    }
+
     // 页面统一推进的高光相位（用于 hover 时扫一道光）
     property real shimmerPhase: 0
     property bool pressed: false
@@ -38,7 +51,11 @@ Rectangle {
     color: hovered ? Theme.bgCard2 : Theme.bgCard2
     border.width: 1
     border.color: hovered ? Theme.line2 : Theme.line
-    clip: true
+    // clip 去掉：唯一的裁剪需求（涟漪越界、高光越界）已由 SRipple / SShimmer 各自
+    // 的 clip:true 承担，根 Item 的矩形 clip 只会把焦点环（负 margin 那 2px）切掉，
+    // 让环退化成贴着边框的一条 1px 暗线（qml.exe 探针实测：环色 #7aa7ff 只剩 30 号像素、
+    // 亮度掉到 rgb(71,95,142)）。去掉后静止渲染与原来只差：卡片自身底边那 1 设备像素
+    // （原先被 clip 削掉，现在正常绘制），其余 46 个像素差值为 1/255（抗锯齿舍入，探针比对）。
     Behavior on color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
     Behavior on border.color { ColorAnimation { duration: Theme.durFast; easing.type: Theme.easeStandard } }
 
@@ -68,13 +85,23 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
         onEntered: tile.hovered = true
         onExited: tile.hovered = false
-        onPressed: tile.pressed = true
+        // 鼠标按下也拿焦点：键盘与鼠标共用同一套焦点状态
+        onPressed: {
+            tile.pressed = true
+            tile.forceActiveFocus()
+        }
         onReleased: tile.pressed = false
         onCanceled: tile.pressed = false
-        onClicked: {
-            tile.pressed = false
-            ripple.burst(hit.mouseX, hit.mouseY)
-            tile.clicked()
+        onClicked: tile.activate(hit.mouseX, hit.mouseY)
+    }
+
+    // 键盘激活：与鼠标**同一个入口**（tile.activate → clicked() → 进详情），不另写逻辑
+    Keys.onPressed: function(e) {
+        if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+            e.accepted = true
+            // isAutoRepeat：按住不放会连发，等于鼠标连点；鼠标一次点击只进一次详情。
+            if (e.isAutoRepeat || !tile.enabled) return
+            tile.activate(tile.width / 2, tile.height / 2)
         }
     }
 
@@ -182,5 +209,18 @@ Rectangle {
                 font.pixelSize: 10
             }
         }
+    }
+
+    // 焦点环：独立一层描边，只锚定 + 负 margin，不参与布局（不改尺寸/位置）
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -Theme.focusRingGap
+        radius: tile.radius + Theme.focusRingGap
+        color: "transparent"
+        border.width: Theme.focusRingWidth
+        border.color: Theme.focusRing
+        visible: tile.activeFocus
+        z: 999
+        antialiasing: true
     }
 }

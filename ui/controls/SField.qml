@@ -28,7 +28,8 @@ Item {
         anchors.fill: parent
         radius: Theme.rSm
         color: Theme.bgCard2
-        border.width: 1
+        // 聚焦视觉：把已有蓝边加粗到 Theme.focusRingWidth（输入类不另叠焦点环，见 SInput 说明）。
+        border.width: input.activeFocus ? Theme.focusRingWidth : 1
         border.color: input.activeFocus ? Theme.accent : Theme.line2
         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
 
@@ -57,8 +58,19 @@ Item {
         clip: true
         selectByMouse: true
         onTextChanged: root.edited(text)
+        // 真实的"不可用"判据是 enabled：busy 只是搜索进行中，仍可输入/清空（同 SButton 的 busy 语义）。
+        activeFocusOnTab: root.enabled
         Keys.onReturnPressed: root.accepted()
-        Keys.onEscapePressed: { text = ""; root.edited("") }
+        // Esc 分层：有内容 -> 清空并消费（可再按一次退整页浮层）；已为空 -> 不消费，
+        // 让事件冒泡到 StageShell.escapeTopmost()。清空走 input.text（onTextChanged 已发 edited），别重复发。
+        Keys.onEscapePressed: function(event) {
+            if (input.text.length > 0) {
+                input.text = ""
+                event.accepted = true
+            } else {
+                event.accepted = false
+            }
+        }
     }
 
     // 浮动标签：空态在框内，激活后上浮到边框上

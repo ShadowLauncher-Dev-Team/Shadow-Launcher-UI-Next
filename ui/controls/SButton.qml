@@ -32,6 +32,11 @@ Item {
     readonly property color _softFg3: onDark ? "#8d96a4" : Theme.fg3
     signal clicked()
 
+    // ── 键盘（统一契约四件套）──
+    // 唯一的"不可用"判据是 dimmed：muted 是"灰态但仍可点"的引导态，必须留在 Tab 链里；
+    // busy 也留在 Tab 链上（用户要能 Tab 过去看到它在忙，只是激活无效）。
+    activeFocusOnTab: !root.dimmed
+
     implicitHeight: kind === 0 ? 48 : 34
     implicitWidth: inner.implicitWidth + (kind === 0 ? 68 : 28)
 
@@ -140,6 +145,32 @@ Item {
         cursorShape: (root.enabled && !root.dimmed) ? Qt.PointingHandCursor : Qt.ArrowCursor
         hoverEnabled: true
         onContainsMouseChanged: root.hovered = containsMouse
+        // 鼠标按下也拿焦点：键盘与鼠标共用同一套焦点状态，不能各走一套
+        onPressed: root.forceActiveFocus()
         onClicked: root.clicked()
+    }
+
+    // 键盘激活：与鼠标**同一个入口**（root.clicked()），不另写逻辑
+    Keys.onPressed: function(e) {
+        if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+            e.accepted = true
+            // dimmed：鼠标点不动，键盘也不激活；busy：激活无效但焦点保留。
+            // isAutoRepeat：按住不放会连发 pressed，等于鼠标连点；鼠标一次点击只发一次 clicked()。
+            if (e.isAutoRepeat || !root.enabled || root.dimmed || root.busy) return
+            root.clicked()
+        }
+    }
+
+    // 焦点环：独立一层描边，只锚定 + 负 margin，不参与布局（不改尺寸/位置）
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -Theme.focusRingGap
+        radius: root.radius + Theme.focusRingGap
+        color: "transparent"
+        border.width: Theme.focusRingWidth
+        border.color: Theme.focusRing
+        visible: root.activeFocus
+        z: 999
+        antialiasing: true
     }
 }
